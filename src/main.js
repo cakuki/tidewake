@@ -4,6 +4,7 @@ import { createShip } from './ship.js';
 import { createWorld } from './world.js';
 import { createWake } from './wake.js';
 import { targetSpeed, approach, steerRate } from './physics.js';
+import { createAudio } from './audio.js';
 import { VERSION } from './version.js';
 
 const app = document.getElementById('app');
@@ -42,6 +43,10 @@ const state = {
   windName: 'NE breeze',
 };
 const MAX_SPEED = 55;
+
+// ---- Audio: procedural sea ambience (starts on first user gesture) ----
+const audio = createAudio();
+audio.init();
 
 // ---- Input ----
 const keys = new Set();
@@ -118,6 +123,9 @@ function update(dt, t) {
   let deg = Math.round((state.heading * 180 / Math.PI) % 360); if (deg < 0) deg += 360;
   $heading.textContent = deg;
   $speed.textContent = (state.speed / MAX_SPEED * 18).toFixed(1);
+
+  // sea/wind ambience tracks speed (no-op until audio is started by a gesture)
+  audio.update({ speed: state.speed, maxSpeed: MAX_SPEED });
 }
 
 let simT = 0;
