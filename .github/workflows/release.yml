@@ -56,7 +56,9 @@ jobs:
       - name: Assemble site
         run: |
           rm -rf _site && mkdir -p _site
-          cp -r index.html src assets _site/
+          cp index.html _site/
+          cp -r src _site/
+          [ -d assets ] && cp -r assets _site/ || true
           cp docs/playtest.png _site/playtest.png || true
 
       - name: Upload Pages artifact
