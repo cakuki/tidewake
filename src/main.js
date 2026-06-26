@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createOcean } from './ocean.js';
 import { createShip } from './ship.js';
 import { createWorld } from './world.js';
+import { createWake } from './wake.js';
 import { VERSION } from './version.js';
 
 const app = document.getElementById('app');
@@ -27,6 +28,8 @@ const ocean = createOcean();
 scene.add(ocean.mesh);
 const ship = createShip();
 scene.add(ship);
+const wake = createWake(ocean);
+scene.add(wake.points);
 
 // ---- Ship state (simple arcade sailing) ----
 const state = {
@@ -107,6 +110,10 @@ function update(dt, t) {
   camera.lookAt(state.pos.x, h + 8, state.pos.z);
 
   ocean.update(t, camera.position);
+
+  // bow wake + trailing foam (rides the swell, scales with speed)
+  state.maxSpeed = MAX_SPEED;
+  wake.update(dt, state, t);
 
   // HUD
   let deg = Math.round((state.heading * 180 / Math.PI) % 360); if (deg < 0) deg += 360;
