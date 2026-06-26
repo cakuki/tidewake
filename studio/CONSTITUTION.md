@@ -22,11 +22,14 @@ over grim simulation. Fun first.
 2. **Plan on GitHub Issues.** Product Manager + Project Manager + Tech Lead refine,
    prioritise, and resolve dependencies **every loop** before building.
 3. **Build the top slice.** Smallest valuable change that moves the roadmap.
-4. **Play-test every build** in a real browser (headless gate in CI + Chrome MCP QA).
-5. **Release often** — several times/hour — via GitHub Actions. Tag `v0.0.YYYYMMDDHHmmSS`.
-6. **Retrospective every 3–4 loops.** Keep what works, improve what doesn't, together.
+4. **TDD for testable logic.** For pure game logic (physics, economy, util), write a failing
+   unit test first → implement → green; keep it in small testable modules (`tests/unit/*.test.mjs`,
+   `npm test`). The headless playtest stays the integration gate; UI/art/feel are verified by QA.
+5. **Play-test every build** in a real browser (headless gate in CI + Chrome MCP QA).
+6. **Release often** — several times/hour — via GitHub Actions. Tag `v0.0.YYYYMMDDHHmmSS`.
+7. **Retrospective every 3–4 loops.** Keep what works, improve what doesn't, together.
    Project Manager updates the loop runbook with the inputs.
-7. **Self-improve continuously.** Each role studies industry leaders and adopts their best
+8. **Self-improve continuously.** Each role studies industry leaders and adopts their best
    practices into its own agent definition. Genuine craft, never manipulative.
 
 ## Roles (see `studio/agents/`)
@@ -39,6 +42,8 @@ over grim simulation. Fun first.
 | Software Developer | Implements slices, tests, keeps it shippable |
 | Game Designer | Fun, mechanics, scenarios, levels, progression, humour |
 | Graphic Designer | Art direction, open-source/AI art, models, shaders, UI |
+| Sound Engineer | Audio system & SFX: sea ambience, UI/spatial sound, WebAudio mix |
+| Musician | Music & adaptive score: shanty-flavoured themes, moods, comic motifs |
 | QA | Play-tests builds, files bugs, guards the release gate |
 
 ## Communication (file-based bus — see `studio/comms/`)

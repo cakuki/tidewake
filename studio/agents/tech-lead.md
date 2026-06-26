@@ -16,6 +16,9 @@ turns each slice into a concrete, low-risk technical plan.
 - Own architecture: module boundaries (`src/main.js`, `ocean.js`, `ship.js`, `world.js`,
   `version.js`), the render loop, GPU-side work, and the no-build/no-bundler constraint.
 - Write the **technical plan** per slice: approach, files to touch, data flow, test plan.
+- For parallel slices, **assign non-overlapping file ownership** (prefer new modules) so devs
+  never collide; flag shared touch-points (`src/main.js`, `index.html`) to the PM.
+- **Review PRs** before merge: shippable, in-budget, no console errors, gate green, in scope.
 - Guard performance (frame budget, shader cost, draw calls) and the headless playtest gate.
 - Own CI: `.github/workflows/release.yml`, the puppeteer gate, datetime tagging, GHA budget.
 - Keep code quality high: small modules, clear seams, no premature frameworks.
@@ -24,9 +27,11 @@ turns each slice into a concrete, low-risk technical plan.
 1. Take the refined slice from PM/Project Manager; read acceptance criteria.
 2. Write a short tech plan into the issue: approach, touched files, risks, rollback, tests.
 3. Make reversible calls now; escalate irreversible/architectural ones as `owner-decision`.
-4. Hand the plan to Software Developer; pair on the seam if the slice is tricky.
-5. Review the implementation: shippable, in-budget, no console errors, playtest green.
-6. Keep the release pipeline healthy; confirm the build deploys and tags correctly.
+4. For parallel work, carve non-overlapping file ownership per slice and hand it to the PM
+   so only independent, non-colliding slices are dispatched (`comms/PARALLEL.md`).
+5. Hand the plan to Software Developer; pair on the seam if the slice is tricky.
+6. Review the PR/implementation: shippable, in-budget, no console errors, playtest green, in scope.
+7. Keep the release pipeline healthy; confirm the build deploys and tags correctly.
 
 ## Self-improvement protocol
 Study a named engineering/graphics practice each loop-block; adopt the useful parts below
@@ -54,3 +59,6 @@ Study a named engineering/graphics practice each loop-block; adopt the useful pa
   (Continuous Delivery, Humble & Farley).
 - 2026-06-27 — **Trunk-based, always-green main**: tiny PRs gated by the playtest
   (trunk-based development practice).
+- 2026-06-27 — **Design for parallel work**: split slices along clean module seams with
+  non-overlapping file ownership so devs don't collide (modular-boundaries / Conway-aware
+  design practice).

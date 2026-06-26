@@ -3,6 +3,7 @@ import { createOcean } from './ocean.js';
 import { createShip } from './ship.js';
 import { createWorld } from './world.js';
 import { createWake } from './wake.js';
+import { targetSpeed, approach, steerRate } from './physics.js';
 import { VERSION } from './version.js';
 
 const app = document.getElementById('app');
@@ -81,13 +82,11 @@ function update(dt, t) {
   const steer = (keys.has('a') || keys.has('arrowleft') ? 1 : 0) - (keys.has('d') || keys.has('arrowright') ? 1 : 0);
 
   // wind modifies achievable speed: sailing with the wind is faster
-  const intoWind = Math.cos(state.heading - state.windDir); // 1 downwind, -1 upwind
-  const windFactor = 0.55 + 0.45 * (intoWind * 0.5 + 0.5);
-  const targetSpeed = state.throttle * MAX_SPEED * windFactor;
-  state.speed += (targetSpeed - state.speed) * Math.min(1, dt * 1.5);
+  const target = targetSpeed(state.throttle, MAX_SPEED, state.heading, state.windDir);
+  state.speed = approach(state.speed, target, dt, 1.5);
 
   // steering scales with speed
-  state.heading += steer * dt * 0.9 * Math.min(1, state.speed / 12 + 0.15);
+  state.heading += steer * dt * steerRate(state.speed);
 
   // integrate position
   state.pos.x += Math.sin(state.heading) * state.speed * dt;

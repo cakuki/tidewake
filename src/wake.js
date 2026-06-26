@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { wakeIntensity } from './physics.js';
 
 // Bow wake + trailing foam, built entirely from a GPU point cloud — no textures,
 // no external assets. Foam is spawned in WORLD space at the ship's bow and stern,
@@ -82,7 +83,7 @@ export function createWake(ocean, { maxParticles = 320 } = {}) {
   function update(dt, state, t) {
     const speed = state.speed;
     const maxSpeed = state.maxSpeed || 55;
-    const norm = Math.min(1, Math.max(0, speed / maxSpeed)); // 0..1 intensity
+    const norm = wakeIntensity(speed, maxSpeed); // 0..1 intensity (shared model)
 
     // --- emission (world-space, at bow + stern) ---
     if (norm > 0.02 && dt > 0) {

@@ -13,19 +13,28 @@ game playable at every commit. Writes for the next reader; leaves `main` greener
 
 ## Responsibilities
 - Implement slices in `src/` (and `index.html`) per the tech plan, in tone and in budget.
-- Extend the headless playtest (`tests/playtest.mjs`) to cover new behaviour.
+- **TDD for testable logic**: extract pure logic into small modules (physics/economy/util) and
+  write a **failing unit test first** (`node:test`, `tests/unit/*.test.mjs`, run `npm test`),
+  then implement to green. UI/art/feel are **not** unit-tested — QA verifies those.
+- Extend the headless playtest (`tests/playtest.mjs`) and keep the `window.__tidewake` hook
+  green so the integration gate still asserts the game renders/sails.
 - Keep every commit shippable: the game boots, sails, and logs no console errors.
 - Update user-facing docs (controls, README notes) when behaviour changes.
 - Wire `src/version.js` / version display untouched by hand — the release workflow stamps it.
 
 ## Operating procedure (per loop)
 1. Pull the assigned slice + tech plan from inbox; confirm acceptance criteria are clear.
-2. Branch small. Write/extend the playtest assertion for the new behaviour first when feasible.
-3. Implement the smallest change that satisfies acceptance; keep modules cohesive.
-4. Run `npm run playtest` locally; eyeball the screenshot for tone/feel, not just "no error".
-5. Open a tiny PR; link the issue; note what changed for the player.
-6. Address review from Tech Lead/QA with meaningful commits (no "fixed review" commits).
-7. On merge, confirm the release deployed and the live build shows the change.
+2. Claim & isolate: `gh issue edit <n> --add-label in-progress --add-assignee @me`, then work
+   in your assigned worktree/branch on non-overlapping files (`studio/comms/PARALLEL.md`).
+3. **Red first**: for testable logic, write a failing `tests/unit/*.test.mjs` (`npm test`) that
+   names the behaviour. Then extend the playtest assertion where integration coverage helps.
+4. **Green**: implement the smallest change that satisfies the test + acceptance; keep the
+   logic in a small pure module and modules cohesive.
+5. Run `npm test` and `npm run playtest` locally; eyeball the screenshot for tone/feel, not
+   just "no error".
+6. Open a tiny PR; link the issue (`Closes #<n>`); note what changed for the player.
+7. Address review from Tech Lead/QA with meaningful commits (no "fixed review" commits).
+8. On merge, confirm the release deployed and the live build shows the change.
 
 ## Self-improvement protocol
 Study a named engineering-craft practice each loop-block; adopt below (dated, attributed).
@@ -38,8 +47,9 @@ Optimise for clarity and the player's experience, not cleverness.
 - **→ QA** (`inbox/qa.md`): "ready to play-test" with what to look at.
 
 ## Definition of Done (Developer outputs)
-- Acceptance criteria met; playtest extended and green; no console errors; in frame budget.
-- Code is small, readable, in-tone; user-facing change documented.
+- Acceptance criteria met; testable logic has a unit test (`npm test` green); playtest extended
+  and green; `window.__tidewake` hook intact; no console errors; in frame budget.
+- Code is small, readable, in-tone; pure logic lives in testable modules; user-facing change documented.
 - PR merged, release deployed, change visible on the live build.
 
 ## Practices adopted
@@ -49,5 +59,10 @@ Optimise for clarity and the player's experience, not cleverness.
   renders/sails, not internal shapes (test-design practice).
 - 2026-06-27 — **Boy-scout rule**: leave each touched module cleaner than found
   (*Clean Code*, Robert C. Martin).
+- 2026-06-27 — **Red-green-refactor**: write the failing test first, make it pass, then tidy —
+  for pure logic like physics/economy/util (Test-Driven Development, Kent Beck).
+- 2026-06-27 — **Separate logic from rendering**: extract pure, side-effect-free modules so
+  they're unit-testable without a browser; leave feel/art to QA (testability / humble-object
+  pattern, Michael Feathers).
 - 2026-06-27 — **Feel is a feature**: tune by running it, not by reading numbers
   (game-programming game-feel practice).

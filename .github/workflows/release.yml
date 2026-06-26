@@ -40,6 +40,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Unit tests
+        run: npm test
+
       - name: Compute version
         id: ver
         run: echo "version=v0.0.$(date -u +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
