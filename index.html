@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tidewake — an experimental age-of-sail pirate adventure</title>
+  <meta name="description" content="Tidewake: an experimental, open 3D age-of-sail pirate adventure. Sail, explore, trade, and seek your fortune." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2214%22>%E2%9A%93</text></svg>" />
+  <style>
+    :root { color-scheme: dark; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a1c2b; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    #app { position: fixed; inset: 0; }
+    canvas { display: block; }
+
+    #hud {
+      position: fixed; left: 12px; top: 12px; z-index: 10;
+      color: #cfe8ff; text-shadow: 0 1px 3px rgba(0,0,0,.8);
+      font-size: 13px; line-height: 1.5; pointer-events: none;
+      background: rgba(7, 22, 38, .35); border: 1px solid rgba(120,180,230,.25);
+      border-radius: 8px; padding: 8px 12px; backdrop-filter: blur(3px);
+    }
+    #hud b { color: #ffd98a; }
+    #title {
+      position: fixed; left: 0; right: 0; top: 18px; z-index: 10; text-align: center;
+      color: #eaf6ff; letter-spacing: .35em; font-size: 14px; text-shadow: 0 2px 8px rgba(0,0,0,.7);
+      pointer-events: none;
+    }
+    #help {
+      position: fixed; left: 0; right: 0; bottom: 14px; z-index: 10; text-align: center;
+      color: #9fc4e6; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,.8); pointer-events: none;
+    }
+    #version { position: fixed; right: 10px; bottom: 10px; z-index: 10; color: #6f97b8; font-size: 11px; pointer-events: none; }
+    #boot {
+      position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
+      background: radial-gradient(circle at 50% 40%, #123249, #07131f 80%); color: #cfe8ff;
+      font-size: 13px; letter-spacing: .3em; transition: opacity .6s ease;
+    }
+    #boot.hidden { opacity: 0; pointer-events: none; }
+    a { color: #ffd98a; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="title">⚓ T I D E W A K E</div>
+  <div id="hud">
+    <div>Heading <b><span id="heading">0</span>°</b></div>
+    <div>Speed <b><span id="speed">0.0</span></b> kn</div>
+    <div>Wind <b><span id="wind">—</span></b></div>
+  </div>
+  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; experimental build</div>
+  <div id="version">v0.0.0-dev</div>
+  <div id="boot">CASTING OFF…</div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>

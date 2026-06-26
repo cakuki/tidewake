@@ -1,0 +1,14 @@
+{
+  "name": "tidewake",
+  "version": "0.0.0",
+  "private": true,
+  "description": "An experimental, open 3D age-of-sail pirate adventure.",
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8777",
+    "playtest": "node tests/playtest.mjs"
+  },
+  "devDependencies": {
+    "puppeteer": "^23.0.0"
+  }
+}
