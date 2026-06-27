@@ -29,13 +29,11 @@ delegated by owner to PM+TL → set **P1, next** (high value, low complexity, no
 
 ## Top of queue (do in order)
 
-1. **#76 — collision + arcade harbour/fight slow-to-stop (P1, owner-steered) — HALF DONE.** Phases:
-   ~~**(a1) island push-out**~~ ✅ SHIPPED Loop 31 (`…140435`) → ~~**(c) ease speed for harbouring/
-   fighting**~~ ✅ SHIPPED Loop 32 (`…182358`) → **(b) ship-vs-ship collision** (remaining) →
-   **(a2) slide polish** (remaining). Keep the **arcade feel** (soft graze/bounce, forgiving circle
-   hitboxes, no brick wall — see `studio/feedback/inbox/2026-06-27-collision-and-harbour-slowdown.md`).
-   — _why: believability pillar; makes the shipped cannon combat (#59) + harbouring feel weighty;
-   cheap, pure, reversible. (Note: DL loop #2 ritual preempts even this per the HARD trigger — item 4.)_
+1. ~~**#76 — collision + arcade harbour/fight slow-to-stop (P1, owner-steered).**~~ ✅ **COMPLETE & CLOSED**
+   (Loop 38, `v0.0.20260627202808`). All four phases shipped: **(a1) island push-out** (Loop 31) →
+   **(c) harbour/fight slow-to-stop** (Loop 32) → **(b) ship-vs-ship collision** (Loop 35) →
+   **(a2) tangential slide polish** (Loop 38). The sea now has edges & consequence — soft graze, slide
+   along coasts & hulls, no brick wall, no phasing. Pick the next unblocked work item below.
 
 2. **#58 — weather & day-night, OPTIONAL & toggle-off (sunny default).** Plugs into the #73 panel's
    toggle registry (one `register({id:'weather',default:false,apply})` line; see `src/ui/README.md`).
