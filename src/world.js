@@ -16,6 +16,9 @@ export function createWorld(scene) {
       void main(){ float h = normalize(vp).y * 0.5 + 0.5; gl_FragColor = vec4(mix(bottom, top, smoothstep(0.0,0.7,h)),1.0);} `,
   });
   scene.add(new THREE.Mesh(skyGeo, skyMat));
+  // Expose the sky-dome tint uniforms so the optional day-night cycle (#58) can shift the
+  // sky through dawn/dusk/night without rebuilding the dome.
+  const sky = skyMat.uniforms;
 
   // Bright sunny horizon haze (matches the ocean haze + sky band). Pushed back a
   // touch so the foreground water stays vividly turquoise.
@@ -126,5 +129,5 @@ export function createWorld(scene) {
   });
   scene.add(islands);
 
-  return { islands };
+  return { islands, sky };
 }

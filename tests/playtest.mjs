@@ -526,6 +526,31 @@ try {
   // The hulls met but were NEVER allowed to interpenetrate beyond a small NPC-drift tolerance.
   if (!(bump.minDist >= bump.bound - 3)) fail(`ship-vs-ship: the player phased into another hull (minDist=${bump.minDist?.toFixed(1)} < ${bump.bound - 3})`);
 
+  // 2j) Optional day-night cycle (#58): OFF by default (the sunny look). Flipping the toggle ON
+  // and jumping the clock to golden hour must SHIFT the sun + sky/sea tint; flipping it OFF must
+  // restore the sunny default EXACTLY (byte-for-byte haze). Driven via the QA hook.
+  const daynight = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const offDefault = { ...tw.daynight };                 // the permanent sunny look (toggle OFF)
+    const enabledOnFlip = tw.setOption('daynight', true).daynight === true;
+    tw.setDayPhase(0.70);                                  // jump to golden afternoon
+    tw.step(0.5);
+    const golden = { ...tw.daynight };
+    tw.setOption('daynight', false);                       // flip OFF
+    tw.step(0.1);
+    const restored = { ...tw.daynight };
+    return { offDefault, enabledOnFlip, golden, restored };
+  });
+  if (!('enabled' in daynight.offDefault)) fail('day-night: QA surface (tw.daynight) missing');
+  if (daynight.offDefault.enabled) fail('day-night: cycle should be OFF by default (sunny stays default)');
+  if (!daynight.enabledOnFlip) fail('day-night: toggle did not register / flip on via tw.setOption');
+  if (!daynight.golden.enabled) fail('day-night: cycle did not enable when toggled on');
+  if (!(daynight.golden.haze !== daynight.offDefault.haze)) fail('day-night: sky/sea haze did not shift at golden hour');
+  if (!(daynight.golden.sunIntensity !== daynight.offDefault.sunIntensity || daynight.golden.sun[1] !== daynight.offDefault.sun[1])) fail('day-night: the sun did not move at golden hour');
+  if (daynight.restored.enabled) fail('day-night: cycle did not disable when toggled off');
+  if (!(daynight.restored.haze === daynight.offDefault.haze)) fail(`day-night: OFF did not restore the sunny haze exactly (${daynight.restored.haze} != ${daynight.offDefault.haze})`);
+  if (!(daynight.restored.sunIntensity === daynight.offDefault.sunIntensity)) fail('day-night: OFF did not restore the sunny sun intensity exactly');
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -548,7 +573,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, bump, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, bump, daynight, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

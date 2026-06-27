@@ -182,6 +182,10 @@ export function createOcean() {
 
   return {
     mesh,
+    // The live ShaderMaterial uniforms — exposed so the optional day-night cycle (#58) can
+    // modulate the sun direction + sky/sea tint. When the iOS shader fallback is installed the
+    // sea is a flat MeshLambert (no uniforms in use); callers guard with `fellBack`.
+    uniforms,
     update(t, camPos) {
       uniforms.uTime.value = t;
       if (camPos) {

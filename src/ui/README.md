@@ -50,15 +50,22 @@ follows the same standard — pure registry/persistence logic (`resolveOptions` 
 
 ```js
 // STORED toggle — the panel owns + persists it. Visual/experimental features default OFF so
-// the current look stays the default. This is exactly the seam weather/day-night (#58) plugs into:
+// the current look stays the default. This is the real day & night cycle (#58), the first
+// inhabitant of the panel after Sound + Spyglass:
 settings.register({
-  id: 'weather',
-  label: 'Weather & day-night',
-  hint: 'clouds, rain, a passing night — off by default',
-  default: false,                       // OFF → the sunny look is the default
-  apply: (on) => world.setWeather(on),  // your feature reads this to switch on/off
+  id: 'daynight',
+  label: 'Day & night',
+  hint: 'a gentle dawn-to-dusk cycle — sunny by default',
+  default: false,                          // OFF → the sunny Caribbean look is the default
+  apply: (on) => daynight.setEnabled(on),  // your feature reads this to switch on/off
 });
 ```
+
+The day-night feature itself follows the same house standard: a PURE `dayNight(t)` palette
+function (no three.js, unit-tested in `tests/unit/daynight.test.mjs`) plus a thin
+`createDayNight(refs)` factory that captures the current sunny look and maps the palette onto
+the live scene each frame. `dayNight(NOON)` returns the exact sunny constants, and flipping the
+toggle OFF restores them byte-for-byte (the sunny default is sacred). See `src/daynight.js`.
 
 Toggle definition fields:
 

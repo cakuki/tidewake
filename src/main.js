@@ -10,6 +10,7 @@ import { createMusic } from './music.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';
 import { createSettings } from './ui/settings.js';
+import { createDayNight } from './daynight.js';
 import { createMinimap } from './minimap.js';
 import { createBigMap } from './bigmap.js';
 import { createSailing } from './sailing.js';
@@ -49,12 +50,24 @@ camera.position.set(0, 40, -70);
 const sun = new THREE.DirectionalLight(0xfff4de, 2.2);
 sun.position.set(300, 500, 120);
 scene.add(sun);
-scene.add(new THREE.HemisphereLight(0xd2effb, 0x3a5a4c, 0.95));
+const hemi = new THREE.HemisphereLight(0xd2effb, 0x3a5a4c, 0.95);
+scene.add(hemi);
 
 // World + scene objects
 const world = createWorld(scene);
 const ocean = createOcean();
 scene.add(ocean.mesh);
+
+// Optional day & night cycle (#58) — OFF by default so the permanent sunny Caribbean look
+// (#61) stays the default and is restored byte-for-byte when toggled off. When ON, a slow,
+// pretty time-of-day arc plays (dawn → noon → golden afternoon → dusk → a soft moonlit
+// night). It modulates the sun light, hemisphere fill, scene haze/fog, the sky dome and the
+// ocean's sun/sea-tint uniforms — uniform/colour writes only, no new draw calls.
+// CREATIVE SPARK: the first time the cycle dips into dusk, the watch sings out a quiet line.
+const daynight = createDayNight({
+  scene, sun, hemi, ocean, sky: world.sky,
+  onDusk: () => { try { hud.flashBanner('🌅 The sun dips toward the yardarm…', 'Golden light spills across the swell — the watch lights the stern lantern.'); } catch { /* a flourish must never break the loop */ } },
+});
 const ship = createShip();
 scene.add(ship);
 const wake = createWake(ocean);
@@ -228,6 +241,12 @@ settings.register({
   id: 'perf', label: 'Spyglass readout', hint: 'fps · draw calls · triangles', default: urlPerf,
   apply: (on) => { perfOn = on; syncPerfOverlay(); },
 });
+// Day & night cycle (#58) — STORED, default OFF so the sunny Caribbean look stays the default.
+// `apply` flips the cycle on/off; OFF restores the sunny default immediately and exactly.
+settings.register({
+  id: 'daynight', label: 'Day & night', hint: 'a gentle dawn-to-dusk cycle — sunny by default',
+  default: false, apply: (on) => daynight.setEnabled(on),
+});
 settings.init(); // builds the panel, wires the O / Esc keys, applies the saved/default toggles
 
 function setPerf(on) { settings.setOption('perf', on); } // one source of truth for the overlay
@@ -304,6 +323,7 @@ function update(dt, t) {
   wasHarbourSettling = harbourSettling;
 
   ocean.update(t, camera.position);
+  daynight.update(dt);                          // optional day-night cycle (#58): no-op while OFF
   ports.update(state, onArrive, t);            // arrival detection (fires once) + buoy bob
   wake.update(dt, state, t);                   // bow wake + trailing foam
   hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
@@ -438,6 +458,20 @@ window.__tidewake = {
   get settingsOpen() { return settings.isOpen; },
   openSettings() { settings.open(); return settings.isOpen; },
   closeSettings() { settings.close(); return settings.isOpen; },
+  // Day-night cycle (#58) QA surface: whether it's running, the current phase, and the live
+  // sun direction — so the headless playtest can flip the toggle and assert the sun/colour
+  // state changes, then flip OFF and assert the sunny default restores. setDayPhase jumps the
+  // clock (e.g. to golden hour) for a deterministic shot.
+  get daynight() {
+    return {
+      enabled: daynight.enabled,
+      phase: daynight.phase,
+      sun: [sun.position.x, sun.position.y, sun.position.z],
+      sunIntensity: sun.intensity,
+      haze: scene.background.getHex(),
+    };
+  },
+  setDayPhase(t) { daynight.phase = t; return daynight.phase; },
   // Route-planning chart (#54) QA surface: read its open-state + drive the toggle headlessly.
   get bigmap() { return { open: bigmap.open }; },
   mapToggle() { bigmap.toggle(); syncMapToggle(); return bigmap.open; },
