@@ -3,7 +3,7 @@
 Single source of truth for the never-stopping delivery loop. The orchestrator
 updates this each loop so progress survives context resets.
 
-- **Current loop:** 15 (#33 combat shipped; next: #16 minimap, then renown two-poles split)
+- **Current loop:** 16 (#16 minimap shipped; next: renown two-poles split — Infamy↔Standing)
 - **Loops since last retro:** 0 (Retro 3 DONE — reset; covered cycles 7,8,9,11)
 - **Cycles since last deep-learning loop:** 0 (Deep-learning loop #1 DONE — all 9 agents refreshed; filed #32-#40)
 - **Research backlog (prioritise):** #43 (port reputation reactions, #39-followup) port reputation reactions (NEXT), #32 glTF ship, #33 Insult Broadside combat, #16 minimap, #35 cannon SFX, #36 fixed-timestep, #37 visual-diff QA, #40 adaptive music, #25 actions bump ( #34 contract step ADOPTED into runbook/PARALLEL.md)
@@ -38,6 +38,7 @@ updates this each loop so progress survives context resets.
 | 12 | Art polish: carved hull + richer islands + ink-wash horizon | #42 | v0.0.20260627072700 | 114 tests; procedural, no assets |
 | 13 | Ports react to renown (tiered greetings + standing perk) | #43 | v0.0.20260627074620 | 124 tests; greets by title; price perk |
 | 14 | Insult Broadside — comedic insult-duel combat vs NPCs | #33 | v0.0.20260627080427 | 134 tests; morale duel, 14 jabs, coin+renown reward; cleaned stray branch, filed #44 |
+| 15 | Minimap radar (islands/ports/NPCs, north-up) | #16 | v0.0.20260627083006 | 141 tests; bottom-left, plots world |
 | — | Retro 3 (subagent) | — | — | Fantasy now legible (sail→trade→renown rank, NPCs). Adopted #34 shared-contract step + re-dispatch-glitched-subagent rule + QA nav/timing gotchas into runbook; new guardrail "reactive verbs over inert content". Next = #43 (port reputation reactions, #39-followup) reputation reactions + #32 glTF ship (parallel, contract'd) |
 
 ## Hourly Telegram log
