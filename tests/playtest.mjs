@@ -125,6 +125,31 @@ try {
   });
   if (duel.engaged && duel.result !== 'win') fail(`duel engaged but did not resolve to a win (result=${duel.result}, rounds=${duel.rounds})`);
 
+  // 2c) Route-planning map (#54): open the big chart, confirm the overlay is visible,
+  // the chart drew (liveness counter) and the open-state is exposed, then close it.
+  const bigmap = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const overlay = document.getElementById('bigmap-overlay');
+    const canvas = document.getElementById('bigmap');
+    tw.mapToggle();                                   // open
+    tw.step(0.5);                                     // let it draw a few frames
+    const openState = {
+      exposed: tw.bigmap.open === true,
+      visible: !!overlay && overlay.classList.contains('show'),
+      canvas: !!canvas && canvas.width > 0,
+      frames: window.__bigmapFrames || 0,
+    };
+    tw.mapToggle();                                   // close
+    tw.step(0.1);
+    const closedHidden = !!overlay && !overlay.classList.contains('show') && tw.bigmap.open === false;
+    return { ...openState, closedHidden };
+  });
+  if (!bigmap.exposed) fail('big map open-state not exposed (tw.bigmap.open)');
+  if (!bigmap.visible) fail('big map overlay (#bigmap-overlay) did not become visible on toggle');
+  if (!bigmap.canvas) fail('big map canvas (#bigmap) missing or zero size');
+  if (!(bigmap.frames > 0)) fail('big map never rendered a frame while open');
+  if (!bigmap.closedHidden) fail('big map did not hide on the second toggle');
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });

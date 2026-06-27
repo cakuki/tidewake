@@ -166,6 +166,34 @@
       background: rgba(7, 22, 38, .35); border: 1px solid rgba(120,180,230,.25);
       backdrop-filter: blur(3px); box-shadow: 0 6px 22px rgba(0,0,0,.4);
     }
+    /* Big route-planning map (#54): a toggleable full-screen chart, HUD glass over a
+       dimmed sea. Hidden until opened (Tab / the 🗺 button); the game plays underneath. */
+    #map-toggle {
+      position: fixed; right: 54px; top: 12px; z-index: 11; pointer-events: auto;
+      width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
+      font-size: 16px; line-height: 1; color: #cfe8ff;
+      background: rgba(7, 22, 38, .35); border: 1px solid rgba(120,180,230,.25);
+      border-radius: 8px; backdrop-filter: blur(3px); user-select: none;
+      transition: background .15s ease, border-color .15s ease;
+    }
+    #map-toggle:hover { background: rgba(7, 22, 38, .55); border-color: rgba(120,180,230,.45); }
+    #map-toggle.on { background: rgba(60,120,180,.5); border-color: rgba(180,220,255,.7); color: #fff; }
+    #bigmap-overlay {
+      position: fixed; inset: 0; z-index: 25; display: grid; place-items: center;
+      gap: 12px; grid-auto-flow: row; padding: 24px;
+      background: radial-gradient(circle at 50% 45%, rgba(8,22,36,.62), rgba(5,14,24,.82) 80%);
+      opacity: 0; pointer-events: none; transition: opacity .2s ease;
+    }
+    #bigmap-overlay.show { opacity: 1; pointer-events: auto; }
+    #bigmap {
+      width: min(86vmin, 720px); height: min(86vmin, 720px); border-radius: 12px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.6); backdrop-filter: blur(2px);
+    }
+    #bigmap-cap {
+      color: #cfe8ff; font-size: 12px; letter-spacing: .02em; text-align: center;
+      text-shadow: 0 1px 3px rgba(0,0,0,.8); max-width: 86vmin;
+    }
+    #bigmap-cap b { color: #ffd98a; }
     #audio-toggle {
       position: fixed; right: 12px; top: 12px; z-index: 11; pointer-events: auto;
       width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
@@ -256,8 +284,17 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <div id="legend" role="dialog" aria-live="polite"></div>
   <canvas id="minimap" width="150" height="150" aria-label="Minimap of nearby islands, ports and ships"></canvas>
+  <button id="map-toggle" type="button" aria-pressed="false" aria-label="Open route-planning map" title="Map (Tab)">🗺</button>
   <button id="audio-toggle" type="button" aria-pressed="false" aria-label="Mute" title="Mute (m)">🔊</button>
-  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; F duel a ship (1–4 to jab) &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; M mute &nbsp;·&nbsp; P perf &nbsp;·&nbsp; N new voyage</div>
+  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; F duel a ship (1–4 to jab) &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; Tab map &nbsp;·&nbsp; M mute &nbsp;·&nbsp; P perf &nbsp;·&nbsp; N new voyage</div>
+
+  <!-- Route-planning chart (#54): a larger north-up map of the whole archipelago — every
+       island + named port — for choosing where to sail to trade. Toggle with Tab or 🗺;
+       Esc / click the backdrop to dismiss. The game keeps running underneath. -->
+  <div id="bigmap-overlay" role="dialog" aria-label="Route-planning map">
+    <canvas id="bigmap" width="720" height="720" aria-label="Route-planning map of the whole archipelago — islands, named ports and ships"></canvas>
+    <div id="bigmap-cap">⚓ Plan your route — sail to a <b>named port</b> to trade &nbsp;·&nbsp; <b>Tab</b> / <b>Esc</b> to close</div>
+  </div>
   <div id="version">v0.0.0-dev</div>
   <!-- Perf overlay (#52): fps · ms/frame · draw calls · triangles. Hidden until toggled
        with P (or booted via ?perf); tap to dismiss on touch. For on-device measurement. -->

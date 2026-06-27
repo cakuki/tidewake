@@ -10,6 +10,7 @@ import { createMusic } from './music.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';
 import { createMinimap } from './minimap.js';
+import { createBigMap } from './bigmap.js';
 import { createSailing } from './sailing.js';
 import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
@@ -59,6 +60,8 @@ scene.add(npcs.group);
 const input = createInput(renderer.domElement);
 const hud = createHud();
 const minimap = createMinimap({ world, ports, npcs });
+// Bigger route-planning chart (#54): same world data, zoomed way out + ports labelled.
+const bigmap = createBigMap({ world, ports, npcs });
 const sailing = createSailing({ ship, ocean, camera, input });
 const state = sailing.state;
 const persistence = createPersistence(state);
@@ -142,6 +145,24 @@ syncPerfOverlay();
 addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'p') { perfOn = !perfOn; syncPerfOverlay(); } });
 if ($perf) $perf.addEventListener('click', () => { perfOn = false; syncPerfOverlay(); });
 
+// Route-planning map (#54): Tab toggles the big chart, Esc closes it; the 🗺 button does
+// the same for touch / mouse. Tab is otherwise unused at sea, so we preventDefault to stop
+// it shuffling focus. A liveness reflect on the button keeps its pressed-state in sync.
+const $mapToggle = document.getElementById('map-toggle');
+function syncMapToggle() {
+  if ($mapToggle) { $mapToggle.classList.toggle('on', bigmap.open); $mapToggle.setAttribute('aria-pressed', String(bigmap.open)); }
+}
+addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') { e.preventDefault(); bigmap.toggle(); syncMapToggle(); }
+  else if (e.key === 'Escape' && bigmap.open) { bigmap.close(); syncMapToggle(); }
+});
+if ($mapToggle) $mapToggle.addEventListener('click', () => { bigmap.toggle(); syncMapToggle(); });
+// Click the dimmed backdrop (not the chart itself) to dismiss.
+const $mapOverlay = document.getElementById('bigmap-overlay');
+if ($mapOverlay) $mapOverlay.addEventListener('click', (e) => {
+  if (e.target === $mapOverlay) { bigmap.close(); syncMapToggle(); }
+});
+
 function updatePerf(frameMs) {
   const info = renderer.info;
   perfMs = perfMs ? perfMs * 0.9 + frameMs * 0.1 : frameMs;
@@ -168,6 +189,7 @@ function update(dt, t) {
   hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
   checkLegends();                              // endgame payoff: crown a new legend once (#46)
   minimap.update(state);                       // north-up radar: isles/ports/ships (#16)
+  bigmap.update(state);                         // route-planning chart (only redraws while open) (#54)
   hud.renderDuel(duel.snapshot());             // insult-duel panel + "hail" prompt (#33)
   audio.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
   music.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
@@ -240,6 +262,9 @@ window.__tidewake = {
   get perf() { return { ...perf }; },
   get perfBudget() { return { ...BUDGET }; },
   get ports() { return ports.ports; },
+  // Route-planning chart (#54) QA surface: read its open-state + drive the toggle headlessly.
+  get bigmap() { return { open: bigmap.open }; },
+  mapToggle() { bigmap.toggle(); syncMapToggle(); return bigmap.open; },
   get npcs() { return npcs.snapshot(); },
   get docked() { return ports.docked; },
   // Insult Broadside (#33) QA surface: read the live duel + drive it headlessly.

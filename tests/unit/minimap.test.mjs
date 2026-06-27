@@ -52,3 +52,45 @@ test('clamping preserves bearing (a NE point stays NE on the rim)', () => {
   // equal +x and +z -> 45° down-right; x and y offsets stay equal
   assert.ok(Math.abs((r.x - SIZE / 2) - (r.y - SIZE / 2)) < 1e-9);
 });
+
+// ---- Big route-planning map (#54) -----------------------------------------
+// The big chart reuses these very helpers at a larger canvas + radius so the whole
+// archipelago fits. These tests pin the scale + that every island/port lands inside.
+const BIG_SIZE = 720;
+const BIG_RADIUS = 4000;                 // world units shown from centre to edge
+const BIG_SCALE = minimapScale(BIG_SIZE, BIG_RADIUS);
+
+// The archipelago anchors from world.js: [x, z, radius]. Ports sit just off island edges.
+const ISLANDS = [
+  [320, -260, 60], [-480, 220, 90], [180, 640, 75],
+  [-700, -520, 110], [820, 380, 85], [-260, -780, 70],
+];
+
+test('big map scale: pixels-per-unit = half-size / big radius', () => {
+  assert.equal(BIG_SCALE, 360 / 4000);
+});
+
+test('big map covers every island (whole disc) within the canvas', () => {
+  for (const [x, z, r] of ISLANDS) {
+    const p = worldToMinimap(x, z, 0, 0, BIG_SCALE, BIG_SIZE);
+    assert.ok(p.onRadar, `island (${x},${z}) is on the big map`);
+    const rr = r * BIG_SCALE;
+    assert.ok(p.x - rr >= 0 && p.x + rr <= BIG_SIZE, 'island disc within canvas (x)');
+    assert.ok(p.y - rr >= 0 && p.y + rr <= BIG_SIZE, 'island disc within canvas (y)');
+  }
+});
+
+test('a port at the far edge of the archipelago still maps inside the big map', () => {
+  // Just off the furthest island (-700,-520, r110): a port ~ (-810, -600).
+  const r = worldToMinimap(-810, -600, 0, 0, BIG_SCALE, BIG_SIZE);
+  assert.ok(r.onRadar, 'edge port is on the chart');
+  assert.ok(r.x >= 0 && r.x <= BIG_SIZE && r.y >= 0 && r.y <= BIG_SIZE, 'edge port within canvas');
+});
+
+test('the big map shows much more sea than the corner radar', () => {
+  // A point 2500u out is beyond the 1200u radar but well within the 4000u chart.
+  const onRadar = worldToMinimap(2500, 0, 0, 0, SCALE, SIZE);
+  const onChart = worldToMinimap(2500, 0, 0, 0, BIG_SCALE, BIG_SIZE);
+  assert.ok(!onRadar.onRadar, 'beyond the small radar');
+  assert.ok(onChart.onRadar, 'within the big chart');
+});
