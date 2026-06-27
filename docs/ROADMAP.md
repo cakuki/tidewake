@@ -59,11 +59,14 @@ await loop **PM + TL sign-off**. `from-owner` issues:
 | [#97](https://github.com/cakuki/tidewake/issues/97) | **Living sea fauna** — flying gulls, jumping dolphins, ambient animals (instanced + culled; extends #68) | Art & Audio / 🌊 | P2 |
 | [#98](https://github.com/cakuki/tidewake/issues/98) | **Ship's-wheel touch steering** — replace L/R buttons with a draggable wheel widget; camera-orbit coexistence solved by DOM layering | M4 / UX | P2 |
 | [#99](https://github.com/cakuki/tidewake/issues/99) | **Sail zones** (future) — invisible regions driving sailing music; later hostility/weather. Producer of #94's `zoneId` context | later / 🌊 | P3 |
-| [#100](https://github.com/cakuki/tidewake/issues/100) | **Game Designer: battle-modes research + owner brief** (arcade combat / loadouts from workshops / boarding→crew fight/captain duel; keep verbal duel, expand jabs). *owner-decision — 08:00 2026-06-29 Telegram brief; not yet an accepted build* | M6 | — |
+| [#100](https://github.com/cakuki/tidewake/issues/100) | **Game Designer: battle-modes research + owner brief** (arcade combat / loadouts from workshops / boarding→crew fight/captain duel; keep verbal duel, expand jabs). *owner-decision — 08:00 CEST 2026-06-28 Telegram brief; not yet an accepted build* | M6 | — |
+| [#32](https://github.com/cakuki/tidewake/issues/32) | **Hero ship glTF swap** — adopt a CC0 Quaternius/Kenney Pirate Kit ship (per #55 research); procedural ship as async fallback. *Owner-greenlit 2026-06-28* | Art & Audio | P2 |
+| [#101](https://github.com/cakuki/tidewake/issues/101) | **CC0 Pirate Kit props** — dress ports/islands/decks (jetties, barrels, crates, palms, lanterns, stalls); rides #32's loader pipeline; a few props per loop | Art & Audio / 🌊 | P2 |
 
 > **#69 per-town music** is now the per-town-themes slice of the unified sound system **#94** (folded in, not a separate build).
+> **#32 + #101 (art, 2026-06-28):** owner directed us to start using the **CC0 Pirate Kit** assets (Quaternius/Kenney, "Excellent" style fit per `docs/art-sourcing.md`/#55) — **ships and props**. CC0-only, original silhouettes, `CREDITS.md` (CONSTITUTION).
 > **Carve-outs from the 2026-06-28 GO:** iOS/native renderer stays parked (#56/#62/#63 unchanged); battle **scenario** waits for the #100 brief — only the battle **switch** infra (#95) proceeds now.
-> **Sequencing the owner set:** fix the open owner bugs first (#65 hull water, #66 mobile overlap), then build #95 → #94 → #98 → #97 → #96, with the loop's PM+TL confirming priorities.
+> **Sequencing the owner set:** fix the open owner bugs first (#66 mobile overlap; #65 ✅ done), then build #95 → #94 → #98 → #97 → #96, with the art track (#32→#101) riding alongside. Loop PM+TL confirm priorities.
 
 \* #76 ✅ delivered. All second-intake priorities are **proposed, pending loop PM + TL sign-off**.
 

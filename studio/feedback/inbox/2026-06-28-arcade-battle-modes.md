@@ -5,7 +5,7 @@ type: idea
 status: raw           # raw | triaging | needs-clarification | assessed | accepted | parked | declined
 value: ""
 feasibility: ""
-decision: "HELD for Game Designer brief (owner 2026-06-28: 'Game designer should propose me options over telegram… brief me around 8am tomorrow on modes'). Battle SCENARIO/content blocked on owner's post-brief decision; the mode-SWITCH infra (enter/leave battle, NPCs continue) is unblocked under #95. Tracked as GD research task #100; 08:00 2026-06-29 Telegram briefing scheduled."
+decision: "HELD for Game Designer brief (owner 2026-06-28: 'Game designer should propose me options over telegram… brief me around 8am tomorrow on modes'). Battle SCENARIO/content blocked on owner's post-brief decision; the mode-SWITCH infra (enter/leave battle, NPCs continue) is unblocked under #95. Tracked as GD research task #100; Telegram briefing scheduled 08:00 CEST 2026-06-28 (06:00 UTC — the next 8am after the owner went to sleep at ~01:00)."
 issue: "https://github.com/cakuki/tidewake/issues/100 (Game Designer research/brief — owner-decision)"
 assets: []
 ---
@@ -32,8 +32,9 @@ Let the game designer do their magic! There should be some arcade fun. I think t
   - This is a **design-research item**, likely a parent epic that fans out into several issues. Triage
     should route to the Game Designer for a modes proposal before any build sign-off.
 - 2026-06-28 — **Owner direction: Game Designer brief, not auto-build.** Owner wants the Game Designer
-  to research & propose 2–4 battle-mode options **over Telegram ~08:00 2026-06-29**, then owner taps a
+  to research & propose 2–4 battle-mode options **over Telegram ~08:00 CEST 2026-06-28**, then owner taps a
   direction → PM triages the chosen scope into accepted issues. Filed GD research task **#100**
   (design + owner-decision; deliberately NOT `from-owner` — no accepted build yet). The **mode-switch
   infrastructure** is unblocked separately in **#95** and may proceed in parallel. status stays raw
-  (scenario blocked on the brief). 08:00 Telegram briefing scheduled.
+  (scenario blocked on the brief). Cloud briefing routine `trig_012nQS8QiGzT1uDEb3zKr7qC` fires 06:00 UTC
+  2026-06-28 (08:00 CEST); guaranteed deliverable = brief posted to #100, Telegram best-effort.
