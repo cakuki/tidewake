@@ -29,13 +29,13 @@ delegated by owner to PM+TL → set **P1, next** (high value, low complexity, no
 
 ## Top of queue (do in order)
 
-1. **#76 — collision + arcade harbour/fight slow-to-stop (P1, owner-steered).** Phase smallest-first
-   per TL feasibility: **(a1) island push-out** (pure `physics.js`, the smallest always-working
-   slice) → **(c) ease speed down for harbouring/fighting** → **(b) ship-vs-ship collision** →
-   **(a2) slide polish**. Keep the **arcade feel** (soft graze/bounce, forgiving circle hitboxes, no
-   brick wall — see the research in `studio/feedback/inbox/2026-06-27-collision-and-harbour-slowdown.md`).
+1. **#76 — collision + arcade harbour/fight slow-to-stop (P1, owner-steered) — HALF DONE.** Phases:
+   ~~**(a1) island push-out**~~ ✅ SHIPPED Loop 31 (`…140435`) → ~~**(c) ease speed for harbouring/
+   fighting**~~ ✅ SHIPPED Loop 32 (`…182358`) → **(b) ship-vs-ship collision** (remaining) →
+   **(a2) slide polish** (remaining). Keep the **arcade feel** (soft graze/bounce, forgiving circle
+   hitboxes, no brick wall — see `studio/feedback/inbox/2026-06-27-collision-and-harbour-slowdown.md`).
    — _why: believability pillar; makes the shipped cannon combat (#59) + harbouring feel weighty;
-   cheap, pure, reversible._
+   cheap, pure, reversible. (Note: DL loop #2 ritual preempts even this per the HARD trigger — item 4.)_
 
 2. **#58 — weather & day-night, OPTIONAL & toggle-off (sunny default).** Plugs into the #73 panel's
    toggle registry (one `register({id:'weather',default:false,apply})` line; see `src/ui/README.md`).
@@ -45,10 +45,15 @@ delegated by owner to PM+TL → set **P1, next** (high value, low complexity, no
    decision. Research-only: CC0/glTF sources, licensing, cost-vs-effectiveness, a recommendation.
    Writes to backlog/docs; no game code. — _why: owner P2, unblocks #32 glTF hull and the art path._
 
-4. **Retro 6 + Deep-learning research loop #2 (rituals, overdue).** Retro 6 (4 loops since Retro 5 —
-   capture this session's wins: two-way owner channel, smart intent-routing, 5 ships). DL #2 (~21
-   cycles overdue) — fan out role subagents (web research → takeaways + wildcard → `agents/`+`memory/`,
-   file ideas; never touches `src/`). — _why: process + creativity refresh; run between build slices._
+4. **Deep-learning research loop #2 (ritual, ~22 cycles overdue) — RUN THIS NEXT (HARD trigger).**
+   Per the new HARD ritual trigger in `LOOP.md`, with the DL counter past 10 the **next non-`from-owner`-P1
+   dispatch IS this ritual**, ahead of the work items below. Fan out role subagents (web research →
+   takeaways + wildcard → `agents/`+`memory/`, file ideas; never touches `src/`). — _why: the
+   creativity well has been mined ~22 cycles and is dry; this is the studio's refill._
+   _(✅ Retro 6 DONE — covered loops 27–32; see `studio/retros/2026-06-27-retro-6.md`.)_
+
+   After DL #2, the top work item is **#76 remaining phases** — (b) ship-vs-ship collision, (a2)
+   slide polish (a1 island push-out + c harbour/fight slow-to-stop already SHIPPED Loops 31/32).
 
 ## Depth (a thin layer, gated by perf budget — prefer over breadth)
 

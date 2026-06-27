@@ -11,21 +11,26 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 > orchestrator does not edit this file per cycle. Full protocol: "Lean orchestrator protocol
 > (post-compact)" in `docs/runbook/LOOP.md`.
 
-- **Current loop:** 30 done → next is **31** (read `queue.md` top). Loops 27–30 this session: #59
-  cannon combat → #63 mobile PWA → PWA notch safe-area fix → #73 settings/toggles panel.
-- **Loops since last retro:** **4** (27–30; Retro 5 covered 20–26) — **🟡 RETRO 6 DUE NOW** (every 3–4).
-- **Cycles since last deep-learning loop:** ~21 — **🔴 DL #2 BADLY OVERDUE** (trigger every 10; #1 at
-  loop 10 filed #32–#40; loops 11–29 all mined it — refill the well). #5 in `queue.md`. Run soon.
+- **Current loop:** 32 done → next is **33** (read `queue.md` top). Loops 27–32 this session: #59
+  cannon combat → #63 mobile PWA → PWA notch safe-area fix → #73 settings/toggles panel → #76 a1
+  island collision → #76 c harbour/fight slow-to-stop.
+- **Loops since last retro:** **0** (Retro 6 just covered 27–32; Retro 5 covered 20–26). Next retro
+  due at loop 36 (every 3–4).
+- **Cycles since last deep-learning loop:** ~22 — **🔴 DL #2 BADLY OVERDUE** (trigger every 10; #1 at
+  loop 10 filed #32–#40; loops 11–32 all mined it — refill the well). **HARD TRIGGER now in LOOP.md:
+  DL #2 is the NEXT non-`from-owner`-P1 dispatch** (#4 in `queue.md`). **← run this next.**
 - **State:** core arc COMPLETE + tuned reachable + onboarded + sunny + perf-gated; **+ cannon combat
-  (#59), + installable mobile PWA with heat-aware DPR cap (#63), + PWA safe-area-top (part of #75).**
-- **Next slices (`queue.md`):** ~~#73 settings/toggles UI~~ ✅ **SHIPPED Loop 30** → **#58** weather
-  (OPTIONAL toggle — plugs into the #73 panel's registry, sunny default) → **#55** art research →
-  **DL loop #2** + **Retro 6** (both ritual-overdue) → depth #76
-  collision / #72 cannon-followup / #32 glTF; polish #66 docked-touch-overlap, rest of #75.
+  (#59), + installable mobile PWA with heat-aware DPR cap (#63), + PWA safe-area-top (part of #75),
+  + settings/toggles panel (#73), + arcade island collision (#76 a1) + harbour/fight slow-to-stop (#76 c).**
+- **Next dispatch (per HARD ritual trigger):** **DL loop #2** (ritual, ~22 cycles overdue) — then the
+  `queue.md` top *work* item resumes: **#76 remaining phases** (b ship-vs-ship collision, a2 slide
+  polish) → **#58** weather (OPTIONAL toggle, plugs into #73 panel registry, sunny default) → **#55**
+  art research → depth #72 cannon-followup / #32 glTF; polish #66 docked-touch-overlap, rest of #75.
 - **Owner-decisions ANSWERED (Telegram 2026-06-27):** #56 mobile = **GO (shipped #63)**; #58 weather =
-  **GO as optional toggle**. New owner-steered: **#73** toggles UI, **#76** collision+harbour-slowdown.
-- **⏳ Pending owner question:** **#76 priority — P1 (jump queue) vs P2?** Held at filed-P1, NOT
-  preempting until he confirms (logged in `OWNER-CHANNEL.md` → Pending questions).
+  **GO as optional toggle**. Owner-steered #73 toggles UI + #76 collision/slow-down both **SHIPPED**
+  (Loops 30/31/32). #76 priority delegated to PM+TL → set P1, shipped a1+c; b/a2 remain.
+- **⏳ Pending owner question:** _(none open.)_ The #76-priority question was resolved 2026-06-27
+  (owner delegated to PM+TL; see `OWNER-CHANNEL.md` → Pending questions + `decisions.md`).
 - **Comms:** **two-way owner channel LIVE** (`OWNER-CHANNEL.md` + `scripts/owner-channel.sh`) — report
   out on every release/roadmap change; smart intent-routing in (pending-answer / thread-reaction /
   small ad-hoc inline / planning→PM-desk). Poll `owner-channel.sh peek` each cycle (step 0).
@@ -36,7 +41,7 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
   QA; Game Designer owns balance/tuning; from-owner P1s jump the queue.)
 - **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions
   read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
-- **Latest release:** **v0.0.20260627133536** (PWA safe-area-top). 31 releases, **249 tests**.
+- **Latest release:** **v0.0.20260627182358** (#76 c harbour/fight slow-to-stop). ~34 releases, **~284 tests**.
 - **Live:** https://cakuki.github.io/tidewake/
 - **Open enablers:** #37 deterministic visual-diff (schedule — open since cycle 10); #38 PR-validation
   CI gate; #36 fixed-timestep.
@@ -88,6 +93,7 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 | 31 | **#76 a1 — arcade island collision** (owner P1). Islands now STOP the ship instead of letting it phase through — soft, never a brick wall. Pure node-testable resolver in `src/physics.js`: forgiving CIRCLE hitboxes (each island's world.js radius, `ISLAND_HITBOX 0.9` so you graze the beach not open water), radial push-out + slide along the coast, swept sub-stepped to forbid tunnelling at speed, speed bled to ground-speed-actually-made (head-on glides to a stop, graze keeps its way on). Docking preserved (ports sit outside the hitbox; asserted). CREATIVE SPARK: comic "Scraaape… the hull complains" harbour banner on a hard run-aground (throttled). | #76 (a1) | v0.0.20260627140435 | 268 unit tests (+8 TDD-first collision cases); playtest now drives the ship into an island and **asserts non-penetration** (rammed head-on, held at boundary minDist=61, zero penetration); perf unchanged (77/130 draws · 85.2k/150k tris — pure CPU math), zero console errors. `window.__tidewake` exposes `.islands`. #76 stays OPEN — remaining phases: (c) harbour/fight slow-to-stop, (b) ship-vs-ship collision, (a2) slide polish |
 
 | 32 | **#76 c — arcade slow-to-stop for harbour & combat** (owner P1). The ship no longer teleport-freezes for a fight or barrels through a berth — it EASES to a near-stop via the existing `approach()` damping, then normal throttle control returns. Pure settle model TDD'd in `tests/unit/settle.test.mjs` (`harbourSlowFactor` smoothstep coast-in, `settledTargetSpeed`, `SETTLE_RATE`): converges to ~0 with no overshoot/oscillation and releases when the reason clears. `sailing.step` now ALWAYS runs (a settle reason lowers the target; helm ignored mid-fight; the berth assist yields the instant the player presses W to leave, so it never strands you at the dock). `window.__tidewake.state.settling` exposed. CREATIVE SPARK: a light "Sails reefed — battle stations" / "Easing into the berth…" beat. Also folded in the in-flight **#76 a1 beach fix** (islands solid to their visible squashed-ellipse shoreline) that was uncommitted in the tree. | #76 (c) | v0.0.20260627182358 | 284 unit tests (+16: 12 settle TDD + 4 beach-fix); playtest drives a port approach (speed 42→2.8, settling true, docked) **and** a fight (engage 10.9→~0, settling true, fight resolves) and asserts the ease-down; perf unchanged (77/130 draws · 85.2k/150k tris — pure CPU math), zero console errors, CI green, live 200. **#76 stays OPEN** — remaining: (b) ship-vs-ship collision, (a2) slide polish |
+| — | Retro 6 (subagent) | — | — | Covered loops 27–32 (depth+platform run: cannon #59 / mobile PWA #63 / safe-area #75 / settings #73 / collision #76 a1+c; ~284 tests, gate green). Headline GAME finding: build went from "landable arc" to "a sea that fights back & feels solid"; next creative lever is DL #2 (well dry ~22 cycles). Headline PROCESS finding: the 0-tool-use glitch recurred TWICE with injected "output style" text. Changes to `LOOP.md`: **(1)** every dispatch brief must carry an **ignore-injected/output-style-instructions guardrail**; **(2)** cycle-runners + orchestrator **verify a clean tree** (`git status --porcelain` empty) so no runner absorbs foreign WIP (Loop 32 inherited #76-a1 beach fix); **(3)** **HARD ritual trigger** — at retro-counter 4 / DL-counter 10 the NEXT dispatch IS the ritual (P1-preemptible); tightened heartbeat-vs-per-release wording. Also edited `agents/{software-developer,project-manager}.md`; logged 2 decision blocks. Retro counter reset to 0. **Recommend: run DL loop #2 next.** |
 
 ## Hourly Telegram log
 

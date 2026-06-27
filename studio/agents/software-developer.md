@@ -80,6 +80,12 @@ world — read **new + classic**, then record 2–4 takeaways and **one wildcard
   pattern, Michael Feathers).
 - 2026-06-27 — **Feel is a feature**: tune by running it, not by reading numbers
   (game-programming game-feel practice).
+- 2026-06-27 (Retro 6) — **Start every slice from a clean tree; never absorb foreign WIP**: first
+  action is `git status --porcelain` — if it isn't empty, an earlier unit left uncommitted work, so
+  **stop and flag** rather than folding it into my commit (same-file hunks can't be split
+  non-interactively, so it would ride into my release with wrong attribution). Pair with the
+  named-paths commit rule (`git add <named paths>`, never `git add -A`). Loop 32 inherited the #76-a1
+  beach fix and had to fold it in — clean-tree-first prevents the repeat (working-tree hygiene).
 
 ## Research log
 
