@@ -37,7 +37,7 @@ with the item files in `inbox/`. Raw items are never deleted — only their stat
 | 2026-06-27-ocean-fun-microdetails | idea | accepted | Ocean sail-over delight + standing '1-2 per loop/retro' rule | [#70](https://github.com/cakuki/tidewake/issues/70) |
 | 2026-06-27-islands-tlc | feature | accepted | Island palette/variety/props polish, coord w/ #61 | [#71](https://github.com/cakuki/tidewake/issues/71) |
 | 2026-06-27-collision-and-harbour-slowdown | feature | accepted | **DELIVERED & CLOSED** — island + ship collision + arcade slow-to-stop; loop built all 4 phases (a1/c/b/a2) | [#76](https://github.com/cakuki/tidewake/issues/76) |
-| 2026-06-27-shipwheel-mobile-nav | idea | accepted | Draggable ship's-wheel touch steering; camera-coexistence solved by DOM layering | [#98](https://github.com/cakuki/tidewake/issues/98) |
+| 2026-06-27-shipwheel-mobile-nav | idea | accepted | Draggable ship's-wheel touch steering; camera-coexistence solved by DOM layering (dup #98 closed) | [#93](https://github.com/cakuki/tidewake/issues/93) |
 | 2026-06-28-living-sea-fauna | idea | accepted | Living world: gulls/dolphins/animals, instanced + culled (extends #68) | [#97](https://github.com/cakuki/tidewake/issues/97) |
 | 2026-06-28-approach-town-music-cue | feature | accepted | Proximity crossfade 'port nearby' cue — first slice of the sound-system epic | [#94](https://github.com/cakuki/tidewake/issues/94) |
 | 2026-06-28-town-mode-trade-view | feature | accepted | Town as a real MODE (harbour→market, leave via button) + mobile-overlap fix; split mode/town | [#95](https://github.com/cakuki/tidewake/issues/95) + [#96](https://github.com/cakuki/tidewake/issues/96) |
