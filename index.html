@@ -320,6 +320,59 @@
     #settings-panel .set-help { margin-top: 9px; color: #9c916f; font-size: 10px; line-height: 1.4; }
     #settings-panel .set-help b { color: #ffd98a; }
     body.touch #settings-panel { width: min(82vw, 300px); }
+    /* The Ballad of Your Voyage (#78): the 📜 button (fourth in the top-right cluster, beside
+       ⚙ 🗺 🔊) opens a parchment scroll that reads back your voyage's deeds as a shareable ballad. */
+    #ballad-toggle {
+      position: fixed; right: calc(138px + env(safe-area-inset-right, 0px));
+      top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 11; pointer-events: auto;
+      width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
+      font-size: 16px; line-height: 1; color: #cfe8ff;
+      background: rgba(7, 22, 38, .35); border: 1px solid rgba(120,180,230,.25);
+      border-radius: 8px; backdrop-filter: blur(3px); user-select: none;
+      transition: background .15s ease, border-color .15s ease;
+    }
+    #ballad-toggle:hover { background: rgba(7, 22, 38, .55); border-color: rgba(120,180,230,.45); }
+    #ballad-toggle.on { background: rgba(60,120,180,.5); border-color: rgba(180,220,255,.7); color: #fff; }
+    /* The parchment scroll — warm aged paper over the dark sea-glass, a touch wider than the
+       control plate so the verses breathe. Centred so it reads like a proclamation. */
+    #ballad-panel {
+      position: fixed; left: 50%; top: 50%; z-index: 19; transform: translate(-50%, -50%) scale(.98);
+      width: min(92vw, 540px); max-height: min(82vh, 640px); display: flex; flex-direction: column;
+      color: #2c2110; pointer-events: none;
+      background: linear-gradient(170deg, #f6e7c2, #ecd6a8 60%, #e3c98f);
+      border: 1px solid rgba(120,86,40,.6); border-radius: 14px; padding: 18px 20px;
+      box-shadow: 0 18px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,240,200,.4) inset;
+      opacity: 0; transition: opacity .22s ease, transform .22s ease;
+    }
+    #ballad-panel.show { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+    #ballad-panel .bal-h {
+      color: #5a3d18; font-weight: 800; font-size: clamp(16px, 2.4vw, 21px); letter-spacing: .03em;
+      text-align: center; text-shadow: 0 1px 0 rgba(255,245,215,.6);
+    }
+    #ballad-panel .bal-scroll {
+      margin: 12px 2px; overflow-y: auto; flex: 1 1 auto;
+      border-top: 1px solid rgba(120,86,40,.28); border-bottom: 1px solid rgba(120,86,40,.28);
+      padding: 10px 2px;
+    }
+    #ballad-panel .bal-line {
+      font-size: 13.5px; line-height: 1.6; margin: 0 0 9px; color: #3a2c14;
+      font-style: italic; text-shadow: 0 1px 0 rgba(255,245,215,.5);
+    }
+    #ballad-panel .bal-line:first-child { color: #5a3d18; font-style: normal; font-weight: 600; }
+    #ballad-panel .bal-line:last-child { margin-bottom: 0; color: #6b5226; font-size: 12px; }
+    #ballad-panel .bal-actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+    #ballad-panel .bal-copy {
+      pointer-events: auto; cursor: pointer; font-family: inherit; font-size: 12.5px; font-weight: 700;
+      color: #2c2110; background: linear-gradient(180deg, #ffe6a6, #e9c772);
+      border: 1px solid rgba(120,86,40,.6); border-radius: 8px; padding: 7px 14px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25); transition: filter .12s ease, transform .12s ease;
+    }
+    #ballad-panel .bal-copy:hover { filter: brightness(1.06); }
+    #ballad-panel .bal-copy:active { transform: translateY(1px); }
+    #ballad-panel .bal-note { font-size: 11.5px; color: #4a6b2e; font-weight: 600; }
+    #ballad-panel .bal-help { margin-top: 9px; color: #6b5226; font-size: 10.5px; text-align: center; }
+    #ballad-panel .bal-help b { color: #5a3d18; }
+    body.touch #ballad-panel { width: min(92vw, 520px); }
     #boot {
       position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
       background: radial-gradient(circle at 50% 40%, #123249, #07131f 80%); color: #cfe8ff;
@@ -412,7 +465,13 @@
        toggle list is rendered by src/ui/settings.js from a one-line-per-toggle registry. -->
   <button id="settings-toggle" type="button" aria-pressed="false" aria-expanded="false" aria-controls="settings-panel" aria-label="Open settings" title="Settings (O)">⚙</button>
   <div id="settings-panel" role="dialog" aria-label="Settings" aria-hidden="true"></div>
-  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; F duel a ship (1–4 to jab) &nbsp;·&nbsp; G open fire (1–2 to aim) &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; Tab map &nbsp;·&nbsp; M mute &nbsp;·&nbsp; P perf &nbsp;·&nbsp; O settings &nbsp;·&nbsp; N new voyage</div>
+  <!-- The Ballad of Your Voyage (#78): the 📜 button (or the B key) opens a parchment panel
+       that auto-composes your run's deeds — isles raised, rivals bested, crowns earned — into
+       a short, witty, shareable ballad, with a copy-to-clipboard share. Rendered by
+       src/ui/ballad.js from the pure voyage log in src/voyage-log.js. -->
+  <button id="ballad-toggle" type="button" aria-pressed="false" aria-expanded="false" aria-controls="ballad-panel" aria-label="Open the Ballad of your Voyage" title="The Ballad of your Voyage (B)">📜</button>
+  <div id="ballad-panel" role="dialog" aria-label="The Ballad of Your Voyage" aria-hidden="true"></div>
+  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; F duel a ship (1–4 to jab) &nbsp;·&nbsp; G open fire (1–2 to aim) &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; Tab map &nbsp;·&nbsp; M mute &nbsp;·&nbsp; P perf &nbsp;·&nbsp; O settings &nbsp;·&nbsp; B ballad &nbsp;·&nbsp; N new voyage</div>
 
   <!-- Route-planning chart (#54): a larger north-up map of the whole archipelago — every
        island + named port — for choosing where to sail to trade. Toggle with Tab or 🗺;

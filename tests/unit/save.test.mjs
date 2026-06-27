@@ -313,3 +313,33 @@ test('a save with real progress but no onboarding field reads as a returning cap
   assert.ok(r);
   assert.deepEqual(r.onboarding, { goal: true, firstDock: true, firstTrade: true, firstRank: true });
 });
+
+// ---- Voyage-log persistence (save v7, #78 — the Ballad of Your Voyage) ----
+
+test('SAVE_VERSION advanced to carry the voyage log', () => {
+  assert.ok(SAVE_VERSION >= 7, 'the voyage log bumps the save version');
+});
+
+test('serialize → deserialize round-trips the voyage log (deeds survive a reload)', () => {
+  const voyageLog = [
+    { type: 'landfall', name: 'Rumlost Reef' },
+    { type: 'duel', foe: 'Black Sal', infamy: 30, coins: 55 },
+    { type: 'legend', pole: 'pirate', title: 'Terror of the Tidewake' },
+  ];
+  const restored = deserialize(serialize({ ...economyState(), voyageLog }));
+  assert.deepEqual(restored.voyageLog, voyageLog);
+});
+
+test('serialize sanitises junk out of the voyage log; a pre-ballad caller gets an empty log', () => {
+  const obj = JSON.parse(serialize({ ...economyState(), voyageLog: [{ evil: true }, { type: 'landfall', name: 'Tankard Rock' }] }));
+  assert.deepEqual(obj.voyageLog, [{ type: 'landfall', name: 'Tankard Rock' }]);
+  const fresh = JSON.parse(serialize(economyState())); // no voyageLog field
+  assert.deepEqual(fresh.voyageLog, []);
+});
+
+test('deserialize tolerates a malformed voyage log (never rejects the save)', () => {
+  const good = JSON.parse(serialize(economyState()));
+  const r = deserialize(JSON.stringify({ ...good, voyageLog: 'not an array' }));
+  assert.ok(r, 'a junk voyageLog must not reject the whole save');
+  assert.deepEqual(r.voyageLog, []);
+});

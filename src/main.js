@@ -10,6 +10,8 @@ import { createMusic } from './music.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';
 import { createSettings } from './ui/settings.js';
+import { createBallad } from './ui/ballad.js';
+import { recordEvent } from './voyage-log.js';
 import { createDayNight } from './daynight.js';
 import { createMinimap } from './minimap.js';
 import { createBigMap } from './bigmap.js';
@@ -21,7 +23,7 @@ import { createCannons } from './cannons.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
-import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown } from './renown.js';
+import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat } from './renown.js';
 import { BUDGET, formatPerf, pixelRatioCap } from './perf.js';
 import { isTouchDevice } from './input.js';
 import { GOAL, applyEvent, shouldShowGoal, normalizeFlags, currentStep } from './onboarding.js';
@@ -99,6 +101,19 @@ const sailing = createSailing({
 const state = sailing.state;
 const persistence = createPersistence(state);
 
+// Voyage log (#78): the anecdote factory. Notable systemic deeds — isles raised, rivals
+// out-jeered or sunk, crowns earned — are recorded into a small PURE log on the shared
+// state; the Ballad panel composes them into a witty, shareable story. logDeed funnels every
+// hook through the same pure recorder (dedupe + order + cap), then quietly persists so a
+// reload never loses a verse. A flourish must never break the loop, so it's fully guarded.
+function logDeed(event) {
+  try {
+    if (!Array.isArray(state.voyageLog)) state.voyageLog = [];
+    const next = recordEvent(state.voyageLog, event);
+    if (next !== state.voyageLog) { state.voyageLog = next; persistence.write(); }
+  } catch { /* the ballad is a garnish, never a dependency */ }
+}
+
 // Insult Broadside (#33): hail a nearby NPC and duel it with wit. Coins + INFAMY on
 // a win (#45 — combat is the pirate pole); a small coin setback on a loss. Reward/penalty
 // land on the shared state, and renown (the spine) is kept in step.
@@ -114,6 +129,7 @@ const duel = createDuel({
     if (result === 'win') {
       hud.flashBanner('⚔ They strike their colours!',
         `${enemyName} sails off jeering — but you pocket ${reward.coins}c and ${reward.renown} infamy for the sharper tongue.`);
+      logDeed({ type: 'duel', foe: enemyName, infamy: reward.renown, coins: reward.coins }); // #78
     } else {
       hud.flashBanner('🏴 Out-jeered!',
         `${enemyName}'s crew howls with laughter. You fumble ${penalty.coins} coins overboard and slink away.`);
@@ -135,6 +151,7 @@ const cannons = createCannons({
     if (result === 'win') {
       hud.flashBanner('🔥 You sink her!',
         `${foeName} slips beneath the waves — you haul ${reward.coins}c from the wreckage and your legend gains ${reward.infamy} infamy.`);
+      logDeed({ type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins }); // #78
     } else {
       hud.flashBanner('💥 Hull breached!',
         `${foeName} rakes you stem to stern — you break off and limp away, ${penalty.coins} coins lighter for the repairs.`);
@@ -166,6 +183,8 @@ if (saved) sailing.restore(saved);
 // (no save) gets an all-to-do set so the seeded goal greets a brand-new captain; a restored
 // voyage keeps whatever it earned (so a returning captain is never re-taught or re-applauded).
 state.onboarding = normalizeFlags(state.onboarding);
+// Voyage log (#78): a restored voyage keeps its deeds; a fresh one starts with a blank page.
+if (!Array.isArray(state.voyageLog)) state.voyageLog = [];
 
 // Quiet auto-save: periodically and whenever the tab is hidden or closed.
 setInterval(persistence.write, 2000);
@@ -182,6 +201,7 @@ function newVoyage() {
   sailing.reset();
   islandNamer.reset(); // a fresh voyage re-arms the island landfall greetings (#19)
   state.onboarding = normalizeFlags(state.onboarding); // reset() cleared it → fresh set
+  state.voyageLog = []; // a new voyage = a blank page; the Ballad starts unwritten (#78)
   obsStanding = undefined;
   obsRankIndex = undefined;
 }
@@ -253,6 +273,12 @@ settings.register({
   default: false, apply: (on) => daynight.setEnabled(on),
 });
 settings.init(); // builds the panel, wires the O / Esc keys, applies the saved/default toggles
+
+// The Ballad of Your Voyage (#78): a self-contained src/ui/ component (the #53 standard) that
+// owns the 📜 button + the parchment scroll. It reads the live voyage log and composes it into
+// a witty, shareable ballad, with a copy-to-clipboard share. Opens with 📜 or the B key.
+const ballad = createBallad({ getEvents: () => state.voyageLog || [] });
+ballad.init();
 
 function setPerf(on) { settings.setOption('perf', on); } // one source of truth for the overlay
 // Toggle the overlay: 'P' on desktop; tap the read-out to dismiss; ?perf boots it shown. All
@@ -354,6 +380,7 @@ function checkLegends() {
   for (const pole of ['pirate', 'governor']) {
     if (earned[pole] && !legends[pole]) {
       legends[pole] = true;
+      logDeed({ type: 'legend', pole, title: legendBeat(pole)?.title }); // crown the Ballad (#78)
       hud.showLegend(pole, {
         infamy: state.infamy ?? 0,
         standing: state.standing ?? 0,
@@ -387,6 +414,7 @@ function onArrive(portName, line) {
 function onApproachIsland(name, flavour) {
   try { hud.flashBanner(`🏝️ Landfall: ${name}`, flavour); }
   catch { /* a flourish must never break the loop */ }
+  logDeed({ type: 'landfall', name }); // record the discovery for the Ballad (#78)
 }
 
 function fireOnboarding(event) {
@@ -472,6 +500,14 @@ window.__tidewake = {
   get settingsOpen() { return settings.isOpen; },
   openSettings() { settings.open(); return settings.isOpen; },
   closeSettings() { settings.close(); return settings.isOpen; },
+  // The Ballad of Your Voyage (#78) QA surface: read the live deed log + the composed ballad
+  // text, drive the panel open/closed, and exercise the copy-to-clipboard share headlessly.
+  get voyageLog() { return Array.isArray(state.voyageLog) ? state.voyageLog.slice() : []; },
+  get ballad() { return ballad.ballad().text; },
+  get balladOpen() { return ballad.isOpen; },
+  openBallad() { ballad.open(); return ballad.isOpen; },
+  closeBallad() { ballad.close(); return ballad.isOpen; },
+  copyBallad() { return ballad.copy(); },
   // Day-night cycle (#58) QA surface: whether it's running, the current phase, and the live
   // sun direction — so the headless playtest can flip the toggle and assert the sun/colour
   // state changes, then flip OFF and assert the sunny default restores. setDayPhase jumps the

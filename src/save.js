@@ -15,14 +15,16 @@
 
 import { GOODS, HOLD_CAP, START_COINS } from './economy.js';
 import { normalizeFlags, freshFlags, completedFlags } from './onboarding.js';
+import { sanitizeLog } from './voyage-log.js';
 
 export const SAVE_KEY = 'tidewake.save.v1';
 // v2 added the economy fields (coins + cargo); v3 added renown (the Captain's Ledger);
 // v4 split renown into two poles — infamy (pirate) + standing (governor) (#45); v5 added
 // the earned endgame legends ({pirate, governor} crowns, #46); v6 added the invisible-
-// onboarding progress flags (seeded goal + first-win beats, fired once per captain, #60).
+// onboarding progress flags (seeded goal + first-win beats, fired once per captain, #60);
+// v7 added the voyage log — the deeds the Ballad of Your Voyage is composed from (#78).
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -78,6 +80,9 @@ export function serialize(state) {
   // Onboarding progress (#60): the seeded-goal + first-win flags, coerced to safe booleans.
   // A pre-onboarding caller (no `onboarding`) records a fresh, all-to-do set.
   const onboarding = state.onboarding ? normalizeFlags(state.onboarding) : freshFlags();
+  // Voyage log (#78): the deeds the Ballad is composed from. Sanitised on the way out so
+  // only clean, known entries are stored; a pre-ballad caller simply records an empty log.
+  const voyageLog = sanitizeLog(state.voyageLog);
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -90,6 +95,7 @@ export function serialize(state) {
     standing,
     legends,
     onboarding,
+    voyageLog,
   });
 }
 
@@ -174,6 +180,11 @@ export function deserialize(raw) {
     onboarding = hasProgress ? completedFlags() : freshFlags();
   }
 
+  // Voyage log (save v7, #78): the deeds for the Ballad. Like legends/onboarding it's
+  // flavour, not load-bearing physics — sanitiseLog drops any junk/foreign entry rather than
+  // rejecting an otherwise-valid save (fail open). Absent → an empty log (a fresh tale).
+  const voyageLog = sanitizeLog(obj.voyageLog);
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -185,6 +196,7 @@ export function deserialize(raw) {
     standing,
     legends,
     onboarding,
+    voyageLog,
     renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }

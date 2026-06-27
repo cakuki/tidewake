@@ -605,6 +605,67 @@ try {
     if (!landfall.nearestHasName) fail('island names: tw.nearestIsland missing a name');
   }
 
+  // 2l) The Ballad of Your Voyage (#78): the anecdote factory. A brand-new captain's ballad
+  // reads "yet unwritten"; after a real deed (sink a nearby ship), the log accrues a cannon
+  // entry, the composed ballad names the foe, the panel opens via the QA hook, and the deed
+  // PERSISTS across a reload. Drives it through tw.voyageLog / tw.ballad / openBallad.
+  const ballad = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    tw.newVoyage(); tw.step(0.1);
+    const fresh = { log: tw.voyageLog.length, text: tw.ballad };
+    // Sail to the nearest NPC and sink her with cannons (a guaranteed broadside-spam win).
+    function nearest() {
+      const s = tw.state.pos;
+      let best = null, bd = Infinity;
+      for (const n of tw.npcs) { const dx = n.pos[0] - s[0], dz = n.pos[1] - s[2]; const d = Math.hypot(dx, dz); if (d < bd) { bd = d; best = n; } }
+      return { best, bd };
+    }
+    tw.press('w');
+    let engaged = false;
+    for (let i = 0; i < 1500 && !engaged; i++) {
+      const { best, bd } = nearest();
+      if (!best) break;
+      if (bd <= 180) { engaged = tw.openFire(); if (engaged) break; }
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    let foeName = null;
+    if (engaged) {
+      foeName = tw.cannons.foeName;
+      for (let r = 0; r < 20 && tw.cannons.active; r++) tw.cannonFire(0);
+    }
+    tw.step(0.2);
+    const afterFight = { engaged, foeName, log: tw.voyageLog.length, hasCannonDeed: tw.voyageLog.some((e) => e.type === 'cannon'), text: tw.ballad };
+    // The panel opens + shows the ballad text via the QA hook.
+    const opened = tw.openBallad();
+    const panel = document.getElementById('ballad-panel');
+    const panelShown = !!panel && panel.classList.contains('show') && (panel.textContent || '').includes('Ballad');
+    tw.closeBallad();
+    tw.save();
+    return { fresh, afterFight, opened, panelShown };
+  });
+  if (!(ballad.fresh.log === 0)) fail(`ballad: a brand-new voyage should have an empty log (got ${ballad.fresh.log})`);
+  if (!ballad.fresh.text.includes('yet unwritten')) fail('ballad: a fresh voyage should read "yet unwritten"');
+  if (ballad.afterFight.engaged) {
+    if (!ballad.afterFight.hasCannonDeed) fail('ballad: a won cannon fight did not record a deed in the voyage log');
+    if (ballad.afterFight.foeName && !ballad.afterFight.text.includes(ballad.afterFight.foeName)) fail(`ballad: the composed ballad does not name the sunk foe "${ballad.afterFight.foeName}"`);
+    if (!ballad.opened) fail('ballad: panel did not report open via tw.openBallad()');
+    if (!ballad.panelShown) fail('ballad: #ballad-panel did not become visible / show the ballad text');
+  }
+  // Reload: the recorded deed must persist so the Ballad survives a reload.
+  if (ballad.afterFight.engaged) {
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.waitForFunction('window.__tidewake && window.__tidewake.ready === true', { timeout: 30000 });
+    const persistedBallad = await page.evaluate(() => ({ log: window.__tidewake.voyageLog.length, hasCannonDeed: window.__tidewake.voyageLog.some((e) => e.type === 'cannon') }));
+    if (!persistedBallad.hasCannonDeed) fail(`ballad: the recorded deed did not persist across a reload (log=${persistedBallad.log})`);
+  }
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -627,7 +688,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, bump, daynight, landfall, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, bump, daynight, landfall, ballad, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

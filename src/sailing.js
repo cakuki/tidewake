@@ -87,6 +87,9 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     if (saved.onboarding && typeof saved.onboarding === 'object') {
       state.onboarding = { ...saved.onboarding };
     }
+    // Voyage log (persisted since save v7): a returning captain keeps the deeds already sung,
+    // so reloading mid-voyage never loses the Ballad of Your Voyage (#78).
+    if (Array.isArray(saved.voyageLog)) state.voyageLog = saved.voyageLog.slice();
   }
 
   // Respawn at the origin, dead in the water. Clear economy so initEconomy re-seeds defaults.
@@ -97,6 +100,7 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     delete state.infamy; delete state.standing; delete state.renown;
     delete state.legends; // a new voyage starts legend-less; the crowns are yet to earn
     delete state.onboarding; // a fresh voyage re-teaches: the goal + first-win beats arm again (#60)
+    delete state.voyageLog; // a new voyage is a blank page — the Ballad starts unwritten (#78)
     if (input && typeof input.resetView === 'function') input.resetView(); // reopen astern (#49)
   }
 
