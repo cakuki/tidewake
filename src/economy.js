@@ -20,6 +20,25 @@ export const GOODS = [
 
 const GOOD_BY_ID = Object.fromEntries(GOODS.map((g) => [g.id, g]));
 
+// Goods can be addressed by canonical id ('rum') OR display name ('Rum'),
+// case-insensitively. The HUD lists names; the QA hook + ad-hoc callers
+// (tw.economy.buy('Rum', 2)) shouldn't have to know the internal id casing.
+// Trades always canonicalise to the id so cargo keys stay a single source of truth.
+const GOOD_BY_KEY = {};
+for (const g of GOODS) {
+  GOOD_BY_KEY[g.id.toLowerCase()] = g;
+  GOOD_BY_KEY[g.name.toLowerCase()] = g;
+}
+
+/**
+ * Resolve a good reference (id or display name, any case) to its canonical good.
+ * @param {string} key
+ * @returns {{id:string,name:string,base:number,icon:string}|null} null if unknown
+ */
+export function resolveGood(key) {
+  return (key != null && GOOD_BY_KEY[String(key).toLowerCase()]) || null;
+}
+
 // Hold capacity (total units across all goods) and starting purse. Tuned so a first
 // profitable round-trip is discoverable in well under two minutes.
 export const HOLD_CAP = 12;
@@ -141,7 +160,9 @@ export function buy(state, goodId, qty, portName = state && state.port) {
   initEconomy(state);
   qty = Math.trunc(qty);
   if (!(qty > 0)) return result(false, state, 'bad-qty');
-  if (!GOOD_BY_ID[goodId]) return result(false, state, 'unknown-good');
+  const good = resolveGood(goodId);
+  if (!good) return result(false, state, 'unknown-good');
+  goodId = good.id; // canonicalise id/name → id so cargo keys stay consistent
   if (!PORTS[portName]) return result(false, state, 'unknown-port');
 
   const unit = priceAt(portName, goodId).buy;
@@ -163,7 +184,9 @@ export function sell(state, goodId, qty, portName = state && state.port) {
   initEconomy(state);
   qty = Math.trunc(qty);
   if (!(qty > 0)) return result(false, state, 'bad-qty');
-  if (!GOOD_BY_ID[goodId]) return result(false, state, 'unknown-good');
+  const good = resolveGood(goodId);
+  if (!good) return result(false, state, 'unknown-good');
+  goodId = good.id; // canonicalise id/name → id so cargo keys stay consistent
   if (!PORTS[portName]) return result(false, state, 'unknown-port');
 
   const held = state.cargo[goodId] || 0;
