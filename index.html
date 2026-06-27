@@ -49,6 +49,31 @@
     #toast.show { opacity: 1; transform: translate(-50%, 0); }
     #toast .toast-title { color: #ffd98a; font-weight: 700; font-size: 14px; letter-spacing: .04em; }
     #toast .toast-line { margin-top: 4px; font-size: 12.5px; line-height: 1.45; color: #dfeaf5; }
+    #trade {
+      position: fixed; right: 12px; bottom: 44px; z-index: 11; width: 290px;
+      color: #e7f1fb; background: rgba(7, 22, 38, .62); border: 1px solid rgba(255,217,138,.4);
+      border-radius: 10px; padding: 10px 12px; backdrop-filter: blur(5px);
+      box-shadow: 0 8px 28px rgba(0,0,0,.5); font-size: 12px; pointer-events: none;
+      opacity: 0; transform: translateY(8px); transition: opacity .3s ease, transform .3s ease;
+    }
+    #trade.show { opacity: 1; transform: translateY(0); }
+    #trade .trade-h { color: #ffd98a; font-weight: 700; font-size: 13px; letter-spacing: .04em; }
+    #trade .trade-sub { color: #bcd5ea; font-size: 11px; margin-top: 2px; }
+    #trade .trade-cry { color: #9fd0a8; font-size: 11px; font-style: italic; margin: 4px 0 6px; min-height: 14px; }
+    #trade .trade-t { width: 100%; border-collapse: collapse; }
+    #trade .trade-t th { color: #7fa6c6; font-weight: 600; text-align: right; font-size: 10px; padding: 1px 4px; }
+    #trade .trade-t th:nth-child(2) { text-align: left; }
+    #trade .trade-t td { padding: 1px 4px; text-align: right; }
+    #trade .trade-t td.tk { color: #ffd98a; font-weight: 700; text-align: center; }
+    #trade .trade-t td.tg { text-align: left; }
+    #trade .trade-t td.tb { color: #ff9a8a; }
+    #trade .trade-t td.ts { color: #87e0a4; }
+    #trade .trade-t td.th { color: #cfe8ff; }
+    #trade .trow.spec td.tg::after { content: ' ·local'; color: #87e0a4; font-size: 9px; }
+    #trade .trow.crave td.tg::after { content: ' ·wanted'; color: #ffd98a; font-size: 9px; }
+    #trade .trade-msg { margin-top: 6px; min-height: 14px; color: #f3e6c4; font-size: 11px; }
+    #trade .trade-help { margin-top: 4px; color: #8fb4d6; font-size: 10.5px; }
+    #trade .trade-help b { color: #ffd98a; }
     #audio-toggle {
       position: fixed; right: 12px; top: 12px; z-index: 11; pointer-events: auto;
       width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
@@ -74,6 +99,7 @@
     <div>Heading <b><span id="heading">0</span>°</b></div>
     <div>Speed <b><span id="speed">0.0</span></b> kn</div>
     <div>Wind <b><span id="wind">—</span></b></div>
+    <div>Coins <b><span id="coins">100</span></b> · Hold <b><span id="cargo">0/12</span></b></div>
     <div id="windrose">
       <svg width="48" height="48" viewBox="0 0 48 48" aria-label="Wind relative to ship">
         <circle cx="24" cy="24" r="20" fill="rgba(7,22,38,.35)" stroke="rgba(120,180,230,.45)" stroke-width="1.5" />
@@ -89,9 +115,10 @@
       <span id="pos" class="pos-good">—</span>
     </div>
   </div>
+  <div id="trade" aria-live="polite"></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <button id="audio-toggle" type="button" aria-pressed="false" aria-label="Mute" title="Mute (m)">🔊</button>
-  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; M mute &nbsp;·&nbsp; N new voyage &nbsp;·&nbsp; experimental build</div>
+  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; M mute &nbsp;·&nbsp; N new voyage</div>
   <div id="version">v0.0.0-dev</div>
   <div id="boot">CASTING OFF…</div>
 

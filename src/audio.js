@@ -79,6 +79,7 @@ export function createAudio() {
   let muted = readMutePref();
   let gullTimer = null;
   let last = { speed: 0, maxSpeed: 55 };
+  let music = null; // optional Musician layer sharing this context + master + mute
 
   function readMutePref() {
     try {
@@ -225,6 +226,13 @@ export function createAudio() {
       if (ctx.state === 'suspended' && ctx.resume) ctx.resume().catch(() => {});
       started = true;
       scheduleGull();
+      // Bring the music up on the same gesture, sharing this graph + master bus.
+      try {
+        music?.start({ ctx, master });
+        music?.setMute(muted);
+      } catch {
+        /* music must never break the sea */
+      }
     } catch {
       // Anything goes wrong → remain silent and harmless.
       ctx = null;
@@ -265,7 +273,26 @@ export function createAudio() {
     muted = !!b;
     writeMutePref(muted);
     applyMuteRamp();
+    try {
+      music?.setMute(muted);
+    } catch {
+      /* ignore */
+    }
     refreshButton();
+  }
+
+  // Attach the Musician layer so it shares ONE context + master + mute. If the engine
+  // is already running, bring the music up immediately; otherwise it starts on gesture.
+  function attachMusic(m) {
+    music = m || null;
+    if (started && ctx && master && music) {
+      try {
+        music.start({ ctx, master });
+        music.setMute(muted);
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   function isMuted() {
@@ -317,5 +344,5 @@ export function createAudio() {
     }
   }
 
-  return { init, setMute, isMuted, update };
+  return { init, setMute, isMuted, update, attachMusic };
 }

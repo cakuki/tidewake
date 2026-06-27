@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { dockingUpdate } from './physics.js';
+import { initEconomy, market, buy, sell, cargoUsed, HOLD_CAP } from './economy.js';
 
 // Ports give the horizon a destination — the first rung of the "one boat → pirate
 // or governor" climb. Each port is *data* ({ name, x, z }) plus a small procedural
@@ -101,12 +102,32 @@ export function createPorts(world) {
   });
 
   let prevDocked = null;
+  let exposed = false;
+
+  // A live, QA-friendly snapshot of the trade state — plus deterministic buy/sell
+  // helpers the headless playtest can drive (tw.economy.buy('rum', 2), etc.). The
+  // helpers operate on the docked port; pass an explicit port to override.
+  function economyView(state) {
+    initEconomy(state);
+    return {
+      coins: state.coins,
+      cargo: { ...state.cargo },
+      used: cargoUsed(state.cargo),
+      capacity: HOLD_CAP,
+      port: prevDocked,
+      market: prevDocked ? market(prevDocked) : null,
+      buy: (good, qty = 1, port = prevDocked) => buy(state, good, qty, port),
+      sell: (good, qty = 1, port = prevDocked) => sell(state, good, qty, port),
+    };
+  }
 
   return {
     group,
     // Public, serialisable list for QA/tests.
     get ports() { return ports.map((p) => ({ name: p.name, pos: [p.x, p.z] })); },
     get docked() { return prevDocked; },
+    // The docked port's price board (or null at sea) — fed to the HUD trade panel.
+    market() { return prevDocked ? market(prevDocked) : null; },
     /**
      * Advance arrival detection. Calls onArrive(portName, harbourmasterLine) exactly
      * once when the ship first sails into a port's docking radius. Re-arms on leaving.
@@ -115,10 +136,23 @@ export function createPorts(world) {
      * @param {number} t  elapsed seconds (for buoy bob)
      */
     update(state, onArrive, t = 0) {
+      initEconomy(state);
       const { dockedName, arrived } = dockingUpdate(prevDocked, state.pos, ports, DOCK_RADIUS);
       prevDocked = dockedName;
+      // Trading is only legal while docked: the live `state.port` is the trade target
+      // that hud.js reads to render the panel and route key-driven buys/sells.
+      state.port = dockedName;
       if (arrived && typeof onArrive === 'function') {
         onArrive(dockedName, harbourmasterLine(dockedName));
+      }
+      // Expose the economy for QA/playtest once window.__tidewake exists (main.js
+      // assigns it after createPorts, so we attach lazily from inside the loop).
+      if (!exposed && typeof window !== 'undefined' && window.__tidewake) {
+        Object.defineProperty(window.__tidewake, 'economy', {
+          configurable: true,
+          get() { return economyView(state); },
+        });
+        exposed = true;
       }
       // gentle buoy bob + pennant flutter
       for (const p of ports) {

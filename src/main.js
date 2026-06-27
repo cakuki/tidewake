@@ -5,6 +5,7 @@ import { createWorld } from './world.js';
 import { createWake } from './wake.js';
 import { createPorts } from './ports.js';
 import { createAudio } from './audio.js';
+import { createMusic } from './music.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';
 import { createSailing } from './sailing.js';
@@ -52,8 +53,11 @@ const sailing = createSailing({ ship, ocean, camera, input });
 const state = sailing.state;
 const persistence = createPersistence(state);
 
-// Audio: procedural sea ambience (starts on first user gesture)
+// Audio: procedural sea ambience + adaptive sailing theme (start on first user gesture).
+// The music shares the audio engine's one context + master bus + mute toggle.
 const audio = createAudio();
+const music = createMusic();
+audio.attachMusic(music);
 audio.init();
 
 hud.setWind(state.windName);
@@ -87,6 +91,7 @@ function update(dt, t) {
   wake.update(dt, state, t);                   // bow wake + trailing foam
   hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
   audio.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
+  music.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
 }
 
 let simT = 0;

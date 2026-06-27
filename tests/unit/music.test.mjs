@@ -1,0 +1,105 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  clamp01,
+  beatDuration,
+  midiToFreq,
+  noteNameToMidi,
+  scaleDegreeToMidi,
+  degreeToFreq,
+  speedToIntensity,
+  melodyPattern,
+  bassPattern,
+  MAJOR_SCALE,
+  BARS,
+  BEATS_PER_BAR,
+  LOOP_BEATS,
+} from '../../src/music.js';
+
+test('clamp01: clamps to [0,1]', () => {
+  assert.equal(clamp01(-2), 0);
+  assert.equal(clamp01(0.3), 0.3);
+  assert.equal(clamp01(7), 1);
+});
+
+test('beatDuration: seconds-per-beat from tempo', () => {
+  assert.ok(Math.abs(beatDuration(120) - 0.5) < 1e-12, '120bpm -> 0.5s');
+  assert.ok(Math.abs(beatDuration(60) - 1) < 1e-12, '60bpm -> 1s');
+  assert.ok(Math.abs(beatDuration(90) - (2 / 3)) < 1e-12, '90bpm -> 0.666..s');
+  assert.equal(beatDuration(0), 0, 'no divide-by-zero / Infinity');
+  assert.equal(beatDuration(-10), 0, 'negative tempo guarded');
+});
+
+test('midiToFreq: A4 is 440 and octaves double', () => {
+  assert.ok(Math.abs(midiToFreq(69) - 440) < 1e-9, 'A4 == 440');
+  assert.ok(Math.abs(midiToFreq(81) - 880) < 1e-9, 'A5 == 880 (octave up)');
+  assert.ok(Math.abs(midiToFreq(57) - 220) < 1e-9, 'A3 == 220 (octave down)');
+});
+
+test('noteNameToMidi: parses naturals, sharps and octaves', () => {
+  assert.equal(noteNameToMidi('A4'), 69);
+  assert.equal(noteNameToMidi('C4'), 60);
+  assert.equal(noteNameToMidi('D4'), 62);
+  assert.equal(noteNameToMidi('F#4'), 66);
+  assert.equal(noteNameToMidi('C5'), 72, 'one octave up adds 12');
+});
+
+test('MAJOR_SCALE: the seven diatonic semitone offsets', () => {
+  assert.deepEqual(MAJOR_SCALE, [0, 2, 4, 5, 7, 9, 11]);
+});
+
+test('scaleDegreeToMidi: 1-based degree, octave wrapping', () => {
+  const root = 62; // D4
+  assert.equal(scaleDegreeToMidi(1, root), 62, 'degree 1 == root');
+  assert.equal(scaleDegreeToMidi(3, root), 66, 'degree 3 == major third (+4)');
+  assert.equal(scaleDegreeToMidi(5, root), 69, 'degree 5 == fifth (+7)');
+  assert.equal(scaleDegreeToMidi(8, root), 74, 'degree 8 == octave (+12)');
+  assert.equal(scaleDegreeToMidi(10, root), 78, 'degree 10 == ninth+octave');
+  assert.equal(scaleDegreeToMidi(15, root), 86, 'degree 15 == two octaves (+24)');
+});
+
+test('degreeToFreq: degree -> frequency via the scale', () => {
+  assert.ok(Math.abs(degreeToFreq(1, 69) - 440) < 1e-9, 'root A4 -> 440');
+  assert.ok(Math.abs(degreeToFreq(8, 69) - 880) < 1e-9, 'octave -> 880');
+});
+
+test('speedToIntensity: in [0,1], monotonic non-decreasing, bounded', () => {
+  const MAX = 55;
+  assert.ok(Math.abs(speedToIntensity(0, MAX) - 0) < 1e-12, 'rest -> 0');
+  assert.ok(Math.abs(speedToIntensity(MAX, MAX) - 1) < 1e-12, 'full -> 1');
+  assert.equal(speedToIntensity(999, MAX), 1, 'clamps above max');
+  assert.equal(speedToIntensity(10, 0), 0, 'maxSpeed 0 -> 0, no NaN');
+  let prev = -1;
+  for (let s = 0; s <= MAX; s += 5) {
+    const v = speedToIntensity(s, MAX);
+    assert.ok(v >= prev, `not monotonic at ${s}`);
+    assert.ok(v >= 0 && v <= 1, `out of range at ${s}: ${v}`);
+    prev = v;
+  }
+});
+
+test('melodyPattern: well-formed events that fill the loop exactly', () => {
+  const mel = melodyPattern();
+  assert.ok(Array.isArray(mel) && mel.length > 0, 'non-empty array');
+  let total = 0;
+  for (const n of mel) {
+    assert.equal(typeof n.deg, 'number', 'deg is a number');
+    assert.ok(Number.isFinite(n.deg), 'deg finite');
+    assert.ok(n.beats > 0, 'positive duration');
+    total += n.beats;
+  }
+  assert.ok(Math.abs(total - LOOP_BEATS) < 1e-9, `melody spans the full ${LOOP_BEATS}-beat loop`);
+});
+
+test('bassPattern: one chord root per bar', () => {
+  const bass = bassPattern();
+  assert.equal(bass.length, BARS, 'one root per bar');
+  for (const deg of bass) {
+    assert.equal(typeof deg, 'number');
+    assert.ok(deg >= 1, 'degrees are 1-based');
+  }
+});
+
+test('loop geometry: bars * beats-per-bar == loop beats', () => {
+  assert.equal(BARS * BEATS_PER_BAR, LOOP_BEATS);
+});
