@@ -67,6 +67,43 @@ world — study **new + classic**, then record 2–4 takeaways and **one wildcar
 - **GDC music talks** + adaptive film/game score breakdowns for modern technique.
 - A **wildcard**: a non-maritime folk tradition (e.g. Celtic, Balkan) to refresh the palette.
 
+## Research log
+
+- **2026-06-27 — Deep-learning loop (new + classic; web research).** Takeaways:
+  1. **Two-axis adaptive engine for WebAudio (no middleware).** Use **vertical layering** for
+     real-time intensity (calm→combat) and **horizontal resequencing** for hard scene cuts
+     (sailing↔port). WebAudio gives us both for free via the directed-graph model: each mood
+     layer is its own looping `BufferSource`→`GainNode` on the shared master bus; raise/lower
+     gains for intensity, swap whole loops at a bar line for scene change. Concretely for the
+     D-major hornpipe: stem it into **(a) rhythm bed — stomp+bodhrán**, **(b) harmony — accordion
+     pad**, **(c) lead — fiddle**, **(d) tension — low drone + snare**. Calm sailing = a+b at low
+     gain; busy sailing = +c; combat = +d and duck b. All same key/tempo so they're always
+     phase-coherent. (vertical layering vs horizontal resequencing — thegameaudioco / FMOD).
+  2. **Match the shanty *form* to the game verb.** Real shanties were function-built: **short-haul**
+     (quick forceful pulls, 2–4 time, a hard tug on a shouted word) → use the *form* for a brief
+     **raid/heave stinger**; **halyard / long-drag** (forceful with reset pauses between lines) →
+     **anchor-raise / sail-set cue**; **capstan** (smooth, melodic, sustained, full verses) → the
+     **steady sailing loop** we already have. Steal the *function and call-and-response shape*,
+     never a specific public-domain melody. (shanty taxonomy — museumfacts / singshanties).
+  3. **Cheap, legible mood transitions.** Three primitives cover everything and are trivial in
+     WebAudio: **crossfade** (gain ramps) for mood drift, **stinger** (one-shot brass stab /
+     glockenspiel over the bed) for instant events, and a short **bridge** bar to enter combat.
+     For tension without rewriting the tune, **shift mode** — borrow a minor sixth / flatten the
+     third on the tension layer so the same hornpipe turns anxious by layer-swap alone.
+     (adaptive-music transitions — Wikipedia / solarheavystudios).
+  4. **Comedy is a layer, not a track.** Keep the jokes as muteable one-shots over the bed:
+     **pizzicato** for sneaking, a **dotted/“lopsided drunk” rhythm** (PotC trick) for a swagger
+     cue, **Mickey-mouse** a brass stab to the player's blunder, glockenspiel “wink” on a payday.
+     Comedy that's a separate gain layer can be tuned/disabled without touching the music.
+     (comedy scoring — northernfilmorchestra / TV Tropes).
+
+  🎵 **Wildcard — a Klezmer “freygish” tension layer.** For combat/menace, add a 5th stem in the
+  **freygish/Ahava-Rabboh scale** (major third *and* an augmented 2nd / minor sixth — that
+  “happy-sad” bite), with klezmer ornaments (krekhts “sob”, trills, slides) on the fiddle. It sits
+  on the same D root as the hornpipe, so it layers in cleanly, but instantly reads as *exotic
+  danger* — a swashbuckling-comedy menace colour that's still folk-fiddle-and-accordion, not
+  orchestral cliché. One scale, dialled in by gain when a rival or storm appears.
+
 ## Practices adopted
 - 2026-06-27 — **Adaptive, not on-repeat**: write layered/branching cues that follow game
   state (interactive/adaptive-music practice, vertical layering + horizontal resequencing).

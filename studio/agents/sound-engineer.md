@@ -78,3 +78,44 @@ read/listen **new + classic**, then record 2–4 takeaways and **one wildcard id
   than fight (broadcast/game loudness discipline, EBU R128 thinking).
 - 2026-06-27 — **Respect the autoplay gate**: resume the context on first user gesture, fade
   in from silence (web-audio platform constraint).
+
+## Research log
+
+### 2026-06-27 — Procedural SFX recipes, spatial perf, ducking
+Deep-learning loop (web research, new + classic). Focused on our no-asset, single-bus
+WebAudio pipeline. Takeaways:
+
+- **Procedural cannon recipe (no sample):** one-shot `AudioBufferSourceNode` of white noise →
+  `BiquadFilter` lowpass (cutoff sweeping ~800→120 Hz) → `GainNode` envelope with a fast
+  attack (linearRamp to ~0.6 in ~0.1 s) then `exponentialRampToValue` to near-silence over
+  ~0.8–1 s, layered with a `triangle` oscillator whose frequency drops to give the boom "body".
+  Use **brown/pink noise** for the low rumble. Same skeleton (noise → filter → gain envelope)
+  is the universal one-shot: shorten the decay + raise the filter for musket/creak.
+  (DEV.to procedural-audio, MDN Advanced techniques.)
+- **Coin / comic chime:** stack 2–3 very short `triangle`/`sine` partials (high, e.g.
+  ~1.2k/1.8k/2.5k Hz) with snappy ~0.15 s exponential decays and tiny start offsets — reads as
+  a bright "ching". For a warmer bell, simple FM: sawtooth carrier + a low-Hz modulator
+  oscillator into the carrier-frequency `GainNode`. Cheap, fully synthetic.
+- **Ocean/wind as filtered noise, three branches:** white noise split into (a) lowpass whose
+  gain is amp-modulated by a slow `triangle` LFO = near waves swelling/dying, (b) a near-flat
+  bleed straight to the bus = wind bed, (c) **pink** noise through a second lowpass + slower LFO
+  = far waves. Detune the LFO rates so they never phase-align → no audible loop. Drive all
+  cutoffs/LFO rates from one **sea-state value** (our RTPC) so calm→storm is one knob.
+  (Audiokinetic rain-synthesis, SyntherJack ocean generator, GameSynth.)
+- **Ducking without true sidechain:** WebAudio's `DynamicsCompressor` has no sidechain input,
+  so duck manually — on a stinger trigger, `setTargetAtTime` the **music sub-bus** gain down
+  (e.g. to 0.35, ~80 ms) then ramp back up after the SFX tail. Keep a small bus hierarchy
+  (master → {ambience, sfx, music}) so ducking and mute touch one node, matching game-audio
+  bus practice. (Game Developer "Ducking", MDN best practices.)
+- **Spatial perf — use equalpower, save HRTF:** `PannerNode` with `panningModel:"HRTF"` is a
+  per-source convolution and can run up to ~4 convolvers while a source moves — too costly for
+  a harbour full of NPC ships. Default NPCs/gulls/cannon to `"equalpower"`; set `refDistance`,
+  `maxDistance`, and an inverse/linear `distanceModel` rolloff so distant ships cost and sound
+  less. **Pool** source nodes (reuse a fixed set) instead of churning new ones per shot.
+  (padenot web-audio-perf, HdM perf tips, MDN spatialization basics.)
+
+🔊 **Wildcard — "captain's ear" foveated audio:** spend the expensive HRTF panner only on the
+**one** ship/port the camera is locked onto (the focus target); everything else stays cheap
+equalpower. As the player's attention shifts, crossfade the previous focus down to equalpower
+and promote the new target to HRTF. Near-binaural immersion exactly where the player is looking,
+at roughly one convolver's cost — a perf trick that doubles as a storytelling lens.

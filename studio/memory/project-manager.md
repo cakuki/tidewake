@@ -13,3 +13,9 @@ Durable lessons about the loop, flow, and process. Grows over time; keep entries
 - 2026-06-27 (Retro 1) — **First retro held** (loops 0–3): runbook updated with thin-`main.js`,
   visual-gallery-diff, gameplay-verb-first, and CI-version guardrails. Watch items: `main.js`
   contention (#24), Actions Node-20 deprecation, the no-gameplay-verb product gap.
+- 2026-06-27 (Deep-learning research) — **No parallel dispatch across a shared seam without a
+  contract artifact both slices assert** (name·shape·owner·consumers recorded before dispatch,
+  tiny shared fixture). Lightweight consumer-driven contract testing — directly prevents the
+  state-contract integration bug two parallel devs hit. Cap WIP tightest on review/integrate and
+  swarm-to-merge before starting new code (Little's Law). Never cancel the retro; cap to 1–2
+  experiment-shaped actions with a next-loop check. Wildcard: a `Contracts` board lane.

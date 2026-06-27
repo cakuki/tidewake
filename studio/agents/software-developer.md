@@ -80,3 +80,35 @@ world — read **new + classic**, then record 2–4 takeaways and **one wildcard
   pattern, Michael Feathers).
 - 2026-06-27 — **Feel is a feature**: tune by running it, not by reading numbers
   (game-programming game-feel practice).
+
+## Research log
+
+### 2026-06-27 — Game-loop, input & rendering craft (web refresh)
+- **Fixed-timestep accumulator loop** (Gaffer "Fix Your Timestep", Isaac Sukin): `rAF` gives
+  the frame delta; add it to an accumulator and run `update(DT)` in lock-step DT slices
+  (e.g. 1/60) until drained, then render once with the leftover as an interpolation `alpha`.
+  This makes the simulation hardware-independent and *deterministic* — which makes physics/
+  economy pure-logic modules unit-testable: feed a fixed sequence of DT steps and assert exact
+  ship position. Keeps rendering (variable) cleanly separate from sim (fixed). Next slice that
+  touches movement should adopt this rather than multiplying by raw delta each frame.
+- **Command pattern for input** (Nystrom, *Game Programming Patterns* — Command): map raw
+  key/pointer events to abstract intent objects (`Thrust`, `TurnLeft`, `Anchor`) in a tiny
+  `input.js` boundary, then the sim consumes a stream of intents. Decouples browser events from
+  game logic → rebindable controls, testable logic (drive the sim with a scripted intent list,
+  no DOM), and a natural seam for replay. The intent list *is* a recordable input log.
+- **Humble Object for the renderer** (Feathers / xUnit Patterns): keep three.js objects "humble" —
+  they only read sim state and draw it; all decisions live in pure modules. We already do this;
+  the refinement is to push *every* branch (collision, scoring, spawn timing) out of `*.js`
+  render code into pure functions so the playtest shrinks to "does it boot and draw" while unit
+  tests cover behaviour. Track `renderer.info.render.calls` in the playtest as a cheap perf guard.
+- **InstancedMesh for repeated props** (three.js docs, Codrops 2025): when we add many identical
+  objects (waves, buoys, a fleet, debris), one `InstancedMesh(geometry, material, N)` with
+  per-instance matrices = 1 draw call instead of N. Cull by shrinking `.count`; share materials
+  or the batching win is lost. Big headroom before we need it, but design entity storage now so
+  swapping N meshes → 1 instanced mesh is mechanical.
+- 💡 **Wildcard — Deterministic replay harness**: combine the fixed-timestep loop + a single
+  seeded PRNG + the Command-pattern intent stream so a whole play session is `(seed, intent log)`.
+  Then a "playtest" can *replay* a recorded run headlessly and assert the final game state, and
+  any QA-reported bug ships as a tiny replay fixture that reproduces it exactly (no Heisenbugs).
+  Turns "feel" bugs into regression tests. Start small: seed `Math.random` wrapper + record the
+  intent list the input layer already produces.

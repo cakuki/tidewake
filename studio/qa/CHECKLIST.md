@@ -39,6 +39,10 @@ Never delete a case. If a feature is removed, mark the case `~~retired~~` with a
 
 ## Performance
 11. **FPS reasonable** — frame rate stays in budget (no obvious jank/stutter while sailing). _(seed)_
+12. **No micro-stutter under load (p99 frame time)** — sail a sustained run while sampling
+    `requestAnimationFrame` deltas; the **1% low (p99 frame time) stays under ~16.6 ms**, not just
+    the average. A healthy mean FPS can hide hitches — judge the worst 1% of frames, the ones
+    players actually feel. _(since: 2026-06-27 research — frame-time/jank measurement technique)_
 
 ## Audio _(add cases as the audio system lands)_
 - _(none yet — Sound Engineer/Musician work not shipped)_

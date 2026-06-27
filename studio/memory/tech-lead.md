@@ -15,3 +15,12 @@ Durable architecture decisions and engineering lessons. Grows over time; keep en
 - 2026-06-27 (Retro 1) — **`main.js` is the contention hotspot**: extract a `src/systems/`
   registry so features self-register and `main.js` stays a thin bootstrap + QA hook (#24, P1).
   A thin integration core is what makes parallel dev actually parallel.
+- 2026-06-27 (Research) — **Fixed-timestep accumulator + render interpolation** (Fiedler): step
+  sim in fixed `dt`, render with `alpha`; gives determinism AND a pure-logic `update(state,dt)`
+  that's node:test-able. Instance only repeated meshes (NPC debris/gulls), not the hero hull;
+  LOD islands; ECS stays overkill — keep the simple `src/systems/` registry. Determinism unlocks
+  a record/replay golden-trace CI gate (wildcard, defer until the loop lands).
+- 2026-06-27 (Research) — **CI gap**: Release runs the playtest gate only post-merge, no PR gate.
+  Backlog: lightweight PR-validation workflow (tests + headless playtest, no deploy) with
+  `cancel-in-progress: true` to gate trunk pre-merge and save free-tier minutes; deploy
+  concurrency stays non-cancelling.

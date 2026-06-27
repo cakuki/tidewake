@@ -13,3 +13,9 @@ Durable testing lessons, known issues, and regression notes. Grows over time; ke
 - 2026-06-27 (Retro 1) — **Headless gate can't see visuals** (swiftshader renders dark; it
   passed the invisible sail #23). The real-browser pass is the visual gate; diff every release's
   gallery shot against the previous one — visual regression is caught by eyes, not by CI.
+- 2026-06-27 (Research) — **Diff stable, not strict**: gallery shots flake on AA/DPI, so pin
+  viewport + `--force-device-scale-factor=1`, seed RNG/time, shoot a fixed pose, and compare
+  with a tolerance (`maxDiffPixelRatio`), not pixel-exact. CSS animations need real-time waits
+  (await `transitionend`, or `animations:'disabled'`); `stable` misses fades.
+- 2026-06-27 (Research) — **Perf budget = 16.6 ms/frame; judge the 1% low (p99 frame time), not
+  average FPS** — micro-stutters hide behind a healthy mean. Sample rAF deltas, assert p99.

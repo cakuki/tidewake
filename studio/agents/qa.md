@@ -107,3 +107,36 @@ read **new + classic**, then record 2–4 takeaways and **one wildcard idea** bo
   The diff is now **enforced**: for any visible change, archiving a `gallery/<version-tag>.png`
   shot is a Definition-of-Done item the cycle-runner **fails on** if missing. "0 escaped bugs"
   without a visual pass is luck, not a gate — close that gap.
+
+## Research log
+
+### 2026-06-27 — Visual diff, animation waits, perf budgets
+Real web research (new + classic): visual-regression tooling, Playwright/Puppeteer
+animation handling, frame-time/jank measurement, Whittaker exploratory tours.
+
+- **Stabilize the canvas before you diff, then diff with a tolerance — not pixel-exact.**
+  Canvas/WebGL shots flake on antialiasing, DPI and sub-pixel jitter. For the gallery diff,
+  remove the variance at the source: pin a **fixed viewport + `--force-device-scale-factor=1`**,
+  seed/freeze RNG and time, and capture from a **deterministic pose** (same spawn, same camera,
+  same tick) rather than a random gameplay moment. Then compare with a **threshold**
+  (Playwright-style `maxDiffPixelRatio` ≈ 0.01–0.02 + a small `maxDiffPixels`) so anti-aliasing
+  noise doesn't cry wolf while a real regression still trips it. A tiny **deterministic harness
+  pose** beats full-gameplay screenshots for repeatability.
+- **Synchronous `step()` never advances CSS/Web animations — drive them by real time or
+  fast-forward, then wait for "settled".** Our lesson confirmed by the field: CSS transitions
+  need wall-clock time. Two reliable patterns: (a) await the actual `transitionend`/`animationend`
+  event before screenshotting; (b) for visual *baselines*, set `animations: 'disabled'` / inject
+  `*{animation-duration:0s!important;transition-duration:0s!important}` so finite animations
+  fast-forward to their end state. Note: `waitForElementState('stable')` only catches
+  bounding-box motion, **not opacity/fade** — wait on the event for fades.
+- **Assert a frame-time budget, and judge the 1% low, not the average.** 60 fps = a **16.6 ms**
+  per-frame budget. Average FPS lies: a scene can average 60 while micro-stuttering. Sample
+  `requestAnimationFrame` deltas over a sailing run, then assert on **p99 frame time (the "1% low")**
+  — the worst frames you actually *feel* as hitches. Stash the rolling stats on `window` and read
+  them back from the headless gate so a perf regression becomes a failing check / trend line.
+- 🔎 **Wildcard — "Testing Tours" charter sheet for the playtest.** Borrow Whittaker's
+  exploratory *tours* and run a different one each loop instead of free-roaming: a **Landmark
+  Tour** (hit every island/HUD element in order), a **Bad-Neighborhood Tour** (replay the map
+  areas where past bugs clustered — e.g. world edges, the invisible-sail spot), and an
+  **Obsessive-Compulsive Tour** (spam throttle/steer/reverse, repeat the same action 20×).
+  Time-boxed charters give structured coverage that a vibes-based sail misses.

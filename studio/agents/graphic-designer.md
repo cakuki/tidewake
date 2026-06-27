@@ -69,3 +69,37 @@ read **new + classic**, then record 2–4 takeaways and **one wildcard idea** bo
   (open-source asset stewardship).
 - 2026-06-27 — **Light tells the story**: warm key light + haze sells atmosphere cheaply
   (cinematic-lighting / PBR practice).
+
+## Research log
+
+### 2026-06-27 — Stylised sea, CC0 assets, cheap charm
+Web research (three.js water shaders, CC0 glTF libraries, real-time stylisation, AI texturing).
+
+- **Layered foam beats one foam pass.** Modern stylised-water shaders (Codrops R3F water,
+  Mar-2025; sbcode Gerstner tutorial) combine three cheap layers: Gerstner/trochoidal vertex
+  displacement for the swell silhouette, *depth-difference foam* at shorelines/hulls (compare
+  scene depth vs. fragment depth → white band), and animated Voronoi/Perlin noise for drifting
+  surface foam. All fragment-cheap, no FFT needed — fits our no-build CDN budget. Sources:
+  tympanus.net/codrops (2025), sbcode.net/threejs/gerstnerwater, gameidea.org stylised-water (2026).
+- **CC0 pirate art is ready-made and license-free.** Quaternius *Pirate Kit* (quaternius.com,
+  CC0, glTF + FBX/OBJ/Blend, 71 animated low-poly models incl. ships) and Kenney *Pirate Kit*
+  (kenney.nl, CC0, 70+ assets) are public-domain — no attribution required (we attribute anyway
+  as courtesy). These can replace the box-hull sloop directly. Sky/light: **Poly Haven** HDRIs
+  (polyhaven.com, CC0) for image-based lighting and equirectangular sky domes.
+- **Charm is three cheap shader tricks, not geometry.** (1) Rim/back light via a Fresnel term
+  (`pow(1 - dot(N,V), k)`) to pop ship silhouettes off the haze; (2) vertical *gradient sky*
+  on the dome (lerp horizon→zenith) — no HDRI cost; (3) height-based ground/sea fog with
+  multi-octave FBM drift stays "negligible cost" per three.js forum, far cheaper than volumetrics.
+  Toon `gradientMap` quantises light into bands for hand-painted charm on characters only
+  (keep the sea PBR-realistic — our dual direction).
+- **AI texturing for tiny hero textures.** Free text→PBR tools (AITextured, GoEnhance, ZSky AI —
+  commercial-use-free output) generate seamless tileable albedo/normal/roughness in seconds.
+  Use for *one* hero material (wood deck, sail canvas), bake/atlas, keep ≤1K to respect file
+  budget. Verify each tool's output license before shipping (varies by tool; ZSky/AITextured
+  state commercial-free).
+
+🎨 **Wildcard — "ink-wash horizon":** render the far sea band and distant islands through a
+desaturated, slightly higher-contrast fog that fades to a warm paper tone near the horizon, so
+the world reads like a weathered nautical chart at distance but resolves to full-colour realism
+up close. Pure fog-colour + a distance-driven saturation lerp in the fog shader — near-zero cost,
+instantly signals "age of sail" and ties our realism/charm split into one atmospheric gag.

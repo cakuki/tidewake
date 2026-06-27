@@ -110,3 +110,38 @@ world — read **new + classic**, then record 2–4 takeaways and **one wildcard
   cycle time, scope, and blocked cards every cycle and between cycles; re-prioritise, split a
   card, or unblock the moment a signal appears, instead of waiting for the retro (Kanban flow
   management + Andon-cord / stop-the-line discipline).
+
+## Research log
+
+### 2026-06-27 — Deep-learning research (flow, parallel slices, retros)
+Web research on trunk-based dev, Kanban WIP/flow, contract testing, and retro health. Takeaways:
+
+- **Shared-contract step before any parallel split (our integration-seam fix).** When two
+  slices touch a shared state/data contract, the PM does not dispatch until that contract is
+  written down *first* — the field names, shapes, and ownership recorded in the issue (and a
+  tiny fixture/assertion both slices test against). This is the lightweight, game-dev version of
+  consumer-driven contract testing, where the consumer states what it depends on and the
+  provider verifies it still holds; teams report up to ~80% fewer integration-seam bugs. Rule:
+  **no parallel dispatch across a shared seam without a contract artifact both sides assert.**
+  This is exactly the bug we hit when two parallel devs shared a state contract.
+- **Explicit WIP limit on review/integrate, not just "Doing".** Flow physics (Little's Law:
+  cycle time = WIP ÷ throughput) says the fastest way to cut cycle time is to cap in-flight
+  work. The 2025 twist for an AI-accelerated studio that generates code fast: put the *tightest*
+  limit on `Ready-for-review`/`Integrating` (cap = ~1–2). When that column is full, the team
+  **swarms to merge before anyone starts new code** — drains the integration queue that causes
+  seam collisions, instead of piling up unmerged branches.
+- **Branching strategy is a workflow contract, not a git trick.** Keep branches short-lived
+  (merge within the loop) and, when a change would touch many subsystems, **create a seam first
+  / split the change** rather than carrying a long parallel branch. Long-lived divergence is the
+  root cause of the painful merges; trunk-discipline plus serialized merges keeps it cheap.
+- **Retro health: cap actions, run experiments, never cancel.** Cancelling/short-cutting the
+  retro when busy is the #1 anti-pattern — the busyness *is* the topic. Frame each action item as
+  a small, falsifiable experiment with a hypothesis and a next-loop check, and cap to 1–2 changes
+  per retro so they actually land (we already fold into the runbook — add the explicit check).
+
+🧩 **Wildcard — "Contract-of-the-loop" board lane.** Add a thin, ephemeral `Contracts` lane at
+the top of `board.md`: any shared touch-point (state shape, event name, save schema) a slice
+will read/write this loop gets a one-line entry — *name · shape · owner · consumers* — posted
+*before* dispatch and retired when both sides have merged. It makes invisible integration seams
+visible on the board, so the PM can see a collision brewing the moment two cards reference the
+same contract, and turns "we both assumed the state shape" into a checkable, shared artifact.

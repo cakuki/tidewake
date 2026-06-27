@@ -15,6 +15,14 @@ Durable design lessons, tuning notes, and fun hypotheses. Grows over time; keep 
   economy (#26) — buy-low/sell-high cargo, per-port price spreads, coin balance, hold cap.
   Tune so a first profitable route is discoverable in <2 min. This is the first *interesting
   decision* and the spend-side root of combat/crew/governance.
+- 2026-06-27 (Deep-learning loop) — **Design backbone from research**: state ONE big fantasy and let
+  rules (prices + reputation) generate the small goals (Burgess); build factions as a few reactive
+  numbers/"narrative atoms" not scripted missions (Levine); keep progression *bushy* with parallel
+  routes that each reveal world/character (Gilbert); make mutiny *earned* via a crew-morale system fed
+  by rationing/fairness/time-at-sea (Bounty/Hermione history), not random.
+- 2026-06-27 (Deep-learning loop) — 🎲 **Wildcard "Insult Broadside"**: comedic naval combat where
+  crews trade insults across the waves; a sharp jab drops enemy morale (surrender/flee), a weak one
+  shakes your own crew (feeds mutiny). Wit as a bloodless combat verb. Backlog issue filed (design+feature).
 - 2026-06-27 (Retro 2) — **I drive every cycle now**: the loop has a mandatory CREATIVE SPARK
   beat. Loops 4-6 ran without me — fixed. Give each slice one authored beat: port personalities
   (Gullet's Rest gouges you; Barnacle Bottom honest-and-broke), harbourmaster banter, comic

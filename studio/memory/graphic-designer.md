@@ -10,3 +10,9 @@ Durable art-direction decisions and asset notes. Grows over time; keep entries s
   slightly exaggerated, hand-crafted charm for ships/characters/UI. Original, no franchise lookalikes.
 - 2026-06-27 — **First priorities**: plan the placeholder→real-art path (glTF sloop within
   budget); set up `assets/` license-attribution discipline before sourcing anything.
+- 2026-06-27 — **Asset sources (CC0, license-clean)**: Quaternius + Kenney Pirate Kits (glTF,
+  CC0, ships+characters), Poly Haven HDRIs/skies (CC0). Stylised sea = Gerstner displacement +
+  depth-difference shoreline foam + animated Voronoi noise (no FFT). Cheap charm = Fresnel rim
+  light, vertical gradient sky dome, FBM height fog, toon gradientMap on characters only.
+- 2026-06-27 — **AI texturing**: free text→PBR (AITextured/GoEnhance/ZSky) for one hero material
+  at ≤1K, baked/atlased; check per-tool output license before shipping.

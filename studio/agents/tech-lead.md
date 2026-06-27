@@ -107,3 +107,61 @@ wider world — read **new + classic**, then record 2–4 takeaways and **one wi
   `main.js` hotspot, and the live build every cycle and between cycles; fix or prevent the
   moment a signal appears, instead of saving it for the retro (SRE monitoring + Andon-cord /
   stop-the-line, Toyota Production System).
+
+## Research log
+
+### 2026-06-27 — Web research (instancing, fixed-timestep, LOD, ECS scale, CI minutes)
+
+Real-world research, new + classic. Takeaways scoped to our actual size (one boat, a few
+islands, a handful of NPC ships — not 5,000 trees), so the bar for adopting anything is
+"does it pay off at *our* scale?".
+
+1. **Instance the repeated meshes (NPC ships, rocks, birds), not the hero.** Many copies of
+   one geometry → one draw call via `THREE.InstancedMesh`; per-instance transforms live in a
+   matrix buffer. The canonical win is large (a demo cut 9,000 draw calls → 300). Target
+   **< 100 draw calls/frame**. Two caveats for us: (a) instancing gives **no automatic LOD or
+   per-instance frustum culling** — distant instances still pay full vertex cost; (b) for a
+   *handful* of NPC ships the payoff is small, so apply it only where counts grow (debris,
+   wake foam, flocking gulls). If NPC hulls differ, `THREE.BatchedMesh` (r156+) batches
+   varied geometries sharing one material into a single draw call.
+   *(utsubo "100 Three.js tips 2026"; threejsroadmap "Draw Calls: The Silent Killer".)*
+
+2. **Decouple simulation from rendering with a fixed-timestep accumulator.** Bank real
+   elapsed time in an accumulator; withdraw fixed `dt` chunks (e.g. 1/60 s) and step the sim
+   until the bucket is below `dt`; render with `alpha = accumulator / dt` interpolating
+   prev→current state. Same simulation on a 240 Hz and a 30 Hz machine → **determinism**, no
+   spiral-of-death, smooth visuals. Bonus that fits our stack perfectly: a deterministic
+   fixed-step `update(state, dt)` is a **pure-logic function** → trivially node:test-able
+   without a browser. Cap max steps/frame to avoid death-spiral on a stalled tab.
+   *(Glenn Fiedler, "Fix Your Timestep!"; classic.)*
+
+3. **Islands get LOD + chunked frustum culling, not raw geometry.** three.js culls only at the
+   object level by default, and a big always-visible island mesh renders fully even when half
+   off-screen. Use `THREE.LOD` (swap lower-poly island/rock geometry by camera distance) and
+   **chunk** the world so each chunk is its own cullable object — the combo can nearly double
+   FPS while *increasing* draw distance. At our scale: a 2–3 level LOD per island and keeping
+   islands as separate objects (already true) is enough; skip chunk grids until island count
+   actually hurts. *(VR Me Up InstancedMesh devlog; Codrops grass LOD, 2025.)*
+
+4. **ECS is overkill at our size — keep the simple self-registering systems registry (#24).**
+   Consensus from the data-oriented-design crowd: ECS pays off at scale and for emergent
+   composition, but a small game is better served by plain composition + a flat per-frame
+   update loop; a full ECS is "a lot of optimization effort to beat plain OOP" you don't
+   recoup here. Our planned `src/systems/` registry where features self-register and get an
+   `update(dt)` call is exactly the right altitude. Resist the framework until entity counts
+   and cross-cutting queries genuinely demand it. *(Sander Mertens; GameDev.net threads.)*
+
+⚙️ **Wildcard — deterministic record/replay as a regression gate.** Because takeaway #2 makes
+the sim a deterministic, seeded, fixed-step pure function, we can **record the input stream
++ RNG seed** of a short play session and replay it headlessly in CI, asserting the final
+(or sampled) state matches a committed golden trace. This is state-diffing, not pixel-diffing
+— fast, flake-free, no GPU needed — and catches gameplay/physics regressions the screenshot
+gate can't see. Carmack-style determinism turned into a test oracle. Cheap to prototype once
+the fixed-timestep loop lands; defer until then.
+
+**CI note (acted on):** the Release workflow runs the playtest gate only *after* merge to
+main; there is no pre-merge PR gate, so a red main is found late. Filed a backlog issue for a
+lightweight PR-validation workflow (unit tests + headless playtest, **no** deploy/tag) with
+`concurrency: cancel-in-progress: true` so superseded PR pushes auto-cancel — gates trunk
+*before* merge and saves free-tier minutes. Deploy concurrency stays `cancel-in-progress:
+false` (never kill a deploy). *(GitHub Actions cost-optimization guides, 2025–2026.)*

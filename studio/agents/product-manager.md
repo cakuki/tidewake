@@ -79,3 +79,41 @@ game code; buildable wildcards become backlog issues.
   into "earn," gives a stateable goal, and is the spend-side prerequisite for combat/crew/
   governance. Sequence reward-for-the-verb immediately after the verb, before new verbs. Pair it
   with **activating the Musician** (#27) so the next block advances *feel*, not just mechanics.
+
+## Research log
+
+### 2026-06-27 — Deep-learning loop (web research: retention, rise-to-power, fun sequencing)
+
+Sources: web-game retention case studies & onboarding (RoLearn, Spaceport, digitaledge case
+study), power-fantasy design (KokuTech "Finding Fun"), open-world pirate/player-economy
+round-ups (Game Rant), and the Rise of Venice "one ship → trading empire + reputation" model.
+
+- **The first 5 minutes decides everything — and we're a *web* game.** Median session is ~4.45
+  min and Day-1 retention lives or dies on "is this fun?" answered almost instantly; every second
+  of non-gameplay in the opening costs ~2–3% of the cohort. Implication for Tidewake: the very
+  first session must deliver a *visible win*, not a tutorial. **Next fun beat:** after the port
+  economy (#26) lands, the opening should hand a fresh player a tiny seeded goal they can complete
+  in one short session — "sail to the next port, sell this cargo, watch a number go up" — with a
+  satisfying coin/feedback moment. Front-load the payoff; make onboarding invisible (do, don't read).
+
+- **Wealth is only meaningful when it *buys identity*, not just stuff.** Across pirate/economy
+  games the retentive hook isn't coins — it's slow, earned progression toward a *status* the world
+  reacts to (Rise of Venice: reputation gain, marrying into the council; Mount & Blade: politics
+  and standing). Coins alone plateau fast. **Near-term progression hook:** a **Captain's Ledger /
+  Notoriety track** — a per-port, persisted record that converts accumulated wealth + deeds into a
+  named, climbing legend along the two poles (feared pirate ↔ respected governor). This gives the
+  player a *stateable goal* the moment they have coins, and is the cheapest way to make #26's money
+  matter before combat/crew/governance exist.
+
+- **Power must be *felt*, and the curve must be visible.** Power-fantasy craft says victories feel
+  earned only when growth is legible — the player should see the gap between who they were and who
+  they are. A rising notoriety tier the world acknowledges (a title at the dock, a number that
+  climbs) is the lowest-cost way to make growth legible long before we can afford rich systems.
+
+- **🧭 Wildcard — "The World Knows Your Name":** a living **reputation board at each port** that
+  reads back the player's legend *and reacts*. Lean pirate and merchant sloops start fleeing you on
+  sight / a navy patrol begins hunting you; lean governor and townsfolk wave, prices soften, a port
+  flies your colors. One mechanic (the notoriety track) dramatizes the entire north-star fantasy as
+  emergent, story-making feedback — the cheapest possible "every session makes a story" engine, and
+  the seed of the eventual two-ending split. Comedy hook: NPC reactions get wittier as your legend
+  grows (cowering pun-cracking merchants; a smarmy harbourmaster who suddenly remembers your name).

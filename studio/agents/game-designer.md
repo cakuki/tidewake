@@ -79,3 +79,56 @@ buildable wildcards become backlog issues.
   has a mandatory CREATIVE SPARK beat. Three loops shipped with me dark; that was a process bug.
   Each slice — even "technical" ones — gets one authored charm/fun/feel beat from me or the
   Musician (port personalities, harbourmaster banter, a comic price event, a game-feel touch).
+
+## Research log
+
+### 2026-06-27 — Deep-learning loop (cycle-10): emergent goals, bushy progression, reactive factions
+
+Mixed new + classic web reading: Joel Burgess *Motivating Players in Open World Games* (GDC 2011),
+Ken Levine *Narrative Lego* (GDC 2014), Ron Gilbert *Why Adventure Games Suck* + *Puzzle Dependency
+Diagrams* (LucasArts), Pirates of the Burning Sea reputation design, and RMG Greenwich / Bounty &
+Hermione mutiny history for an authentic age-of-sail mechanic.
+
+Takeaways to apply to Tidewake:
+
+1. **The higher goal generates the small goals (Burgess).** "Emergent" goals come *out of the
+   simulation rules* in pursuit of one higher goal — and the story in the player's head beats the
+   one we scripted. For us: give the player ONE big stated fantasy ("be feared" / "own a town")
+   and let the price-spread economy + reputation rules manufacture the minute-to-minute goals. We
+   author the engine and the frame, not the to-do list. Check ego: don't over-script the voyage.
+
+2. **Build factions as recombinable "narrative atoms," not scripted missions (Levine's Narrative
+   Lego).** A small set of reactive pieces (a harbourmaster who *remembers* your last sale, a faction
+   that warms/cools per action) that trigger off player action gives near-infinite story from few
+   parts. Concretely: reputation = a couple of numbers per faction that gate prices, greetings, and
+   surrender odds — cheap to build, reads as a living world. Mirrors PotBS (sinking faction A's ship
+   cools A, warms its rival) — make reputation a *trade-off*, never a single rising bar.
+
+3. **Make progression "bushy," and every obstacle reveals world/character (Gilbert).** Gilbert's rule:
+   a bushy puzzle-dependency chart (many parallel threads) = more choice, more interesting; and every
+   puzzle must tell you something about story/character/world or be cut. For us: don't ship a linear
+   wealth ladder — offer parallel routes to rise (honest trade vs. smuggling vs. raiding), and make
+   each port/encounter *say something* (Gullet's Rest gouges because it's a monopoly; etc.). This is
+   the design backbone for the pirate↔governor branch.
+
+4. **Mutiny should be earned, not random (age-of-sail history).** The Bounty and Hermione mutinies
+   were driven by concrete grievances — short rations, humiliation, prolonged isolation — not dice.
+   A crew-morale system fed by *player decisions* (rationing, fairness of plunder splits, time at sea,
+   floggings) turns realism into drama: the player feels the squeeze and chooses. Ties spend-side
+   economy (#26) to human stakes and feeds the "feared captain" fantasy with real cost.
+
+🎲 **Wildcard — "Insult Broadside" (comedic combat via wit, swashbuckling-comedy core):** Steal
+Gilbert's insult sword-fighting and put it on the water. During a ship engagement, alongside cannon
+fire, the two crews trade *shouted insults across the waves*. You pick a jab; the enemy captain needs
+the right comeback. Landing a cutting insult drops the **enemy crew's morale** (raising surrender/flee
+odds — capture the prize without sinking the loot); whiffing a weak line shakes *your own* crew morale
+(feeding the mutiny system above). Wit becomes a combat verb that's bloodless, hilarious, on-tone, and
+mechanically real (it's text lines + the morale meter we already want). The first naval battle where
+the deadliest weapon is a good zinger — and a coward can still win a fight by talking.
+
+Sources: [Burgess GDC 2011](http://blog.joelburgess.com/2011/03/gdc-2011-transcript-motivating-players.html),
+[Narrative Lego (Levine)](https://swordandsource.ca/narrative-lego-a-gdc-talk-by-ken-levine/),
+[Why Adventure Games Suck](https://grumpygamer.com/why_adventure_games_suck/),
+[Puzzle Dependency Diagrams (GDC Vault)](https://www.gdcvault.com/play/1017978/The-Arcane-Art-of-Puzzle),
+[PotBS Reputation](https://potbs.fandom.com/wiki/Reputation),
+[Life at sea (RMG Greenwich)](https://www.rmg.co.uk/stories/maritime-history/life-sea-age-sail).
