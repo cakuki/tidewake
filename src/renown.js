@@ -17,15 +17,20 @@
 // The ladder. Thresholds are lifetime-renown (= infamy + standing) gates; the RANKS
 // titles are the canonical spine kept for back-compat. Per-pole titles live in LADDERS
 // below and are swapped in by titleFor() according to which pole dominates.
+// Tuned for a single short web session (#57): the median sitting is minutes, and the
+// first session must deliver a visible win. Thresholds reward EARLY (the first named
+// rank lands within ~one strong deed) then STRETCH (gaps strictly grow), so a focused
+// 10-20 min of trading/dueling climbs several rungs and a dedicated captain can reach
+// the summit. Gaps: 40, 80, 160, 280, 440, 600, 800 — fast dopamine, earned legend.
 export const RANKS = [
-  { at: 0,     title: 'Bilge-rat' },
-  { at: 120,   title: 'Deckhand' },
-  { at: 360,   title: 'Bosun' },
-  { at: 820,   title: 'Quartermaster' },
-  { at: 1600,  title: 'First Mate' },
-  { at: 3200,  title: 'Sea Captain' },
-  { at: 6400,  title: 'Dread Captain' },
-  { at: 12800, title: 'Terror of the Tidewake' },
+  { at: 0,    title: 'Bilge-rat' },
+  { at: 40,   title: 'Deckhand' },
+  { at: 120,  title: 'Bosun' },
+  { at: 280,  title: 'Quartermaster' },
+  { at: 560,  title: 'First Mate' },
+  { at: 1000, title: 'Sea Captain' },
+  { at: 1600, title: 'Dread Captain' },
+  { at: 2400, title: 'Terror of the Tidewake' },
 ];
 
 // ---- Two diverging title ladders + a neutral middle path (#45) ---------------
@@ -270,14 +275,21 @@ export function earnedLegend(infamy, standing) {
   };
 }
 
+// Coin→standing conversion (#57). A sale's proceeds already bundle the cost basis, so
+// gross-1:1 over-rewarded trade and dwarfed the duel pole. STANDING_PER_COIN scales the
+// haul down to roughly its profit margin, so a strong sale (~400-700c) nets ~160-280
+// standing — legible on the needle and ~comparable, per action, to a won duel's infamy.
+export const STANDING_PER_COIN = 0.4;
+
 /**
  * Renown earned from a single sale. Legend grows with the coin you pull in — bigger
- * hauls make a bigger name. One coin earned = one renown (junk / loss → 0). Monotonic.
+ * hauls make a bigger name (STANDING_PER_COIN of the proceeds; junk / loss → 0).
+ * Monotonic non-decreasing in proceeds.
  * @param {number} coinsEarned  the proceeds of the sale
  * @returns {number} renown to add (>= 0, integer)
  */
 export function renownForSale(coinsEarned) {
   const c = Number.isFinite(coinsEarned) ? coinsEarned : 0;
   if (c <= 0) return 0;
-  return Math.round(c);
+  return Math.round(c * STANDING_PER_COIN);
 }

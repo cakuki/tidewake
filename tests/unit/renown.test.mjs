@@ -252,6 +252,53 @@ test('LEGEND_AT is the top rung of the ladder', () => {
   assert.ok(LEGEND_AT > 0);
 });
 
+// ---- Single-session curve (#57): reachable in one short web sitting ----------
+
+test('LEGEND_AT is in single-session reach (low thousands, not a multi-hour grind)', () => {
+  // A focused ~10-20 min session of trading/dueling must plausibly crown a legend.
+  assert.ok(LEGEND_AT <= 4000, `legend must be reachable in a sitting, got ${LEGEND_AT}`);
+  assert.ok(LEGEND_AT >= 1000, 'but still an earned, non-trivial summit');
+});
+
+test('the ladder rewards early then stretches: rung gaps strictly increase', () => {
+  // Early ranks come fast (dopamine); later ranks pace out (aspirational).
+  let prevGap = -1;
+  for (let i = 1; i < RANKS.length; i++) {
+    const gap = RANKS[i].at - RANKS[i - 1].at;
+    assert.ok(gap > prevGap, `gap to rung ${i} (${gap}) must exceed the previous (${prevGap})`);
+    prevGap = gap;
+  }
+  // The very first named rank lands within roughly one strong action (fast first win).
+  assert.ok(RANKS[1].at <= 60, `first named rank should arrive fast, got ${RANKS[1].at}`);
+});
+
+test('a typical trading session climbs into the renowned tier (mid-upper ladder)', () => {
+  // Model ~12 solid sales of ~400-coin proceeds — a believable focused session.
+  let standing = 0;
+  for (let i = 0; i < 12; i++) standing += renownForSale(400);
+  assert.ok(standing > 0);
+  assert.ok(rankForRenown(standing).index >= 5, `a session should reach Sea Captain+, got index ${rankForRenown(standing).index} at ${standing}`);
+});
+
+test('a typical trading session can plausibly reach a legend (dedicated player)', () => {
+  // ~16 strong sales (good hauls) crosses the summit — a dedicated single sitting.
+  let standing = 0;
+  for (let i = 0; i < 16; i++) standing += renownForSale(450);
+  assert.ok(standing >= LEGEND_AT, `~16 strong sales should reach legend, got ${standing} vs ${LEGEND_AT}`);
+  assert.equal(earnedLegend(0, standing).governor, true);
+});
+
+test('titleFor at sample renown values reads the expected rungs', () => {
+  assert.equal(titleFor(0, 0).title, 'Bilge-rat');
+  // an infamy-led captain just past the first rung wears the first pirate rung
+  assert.equal(titleFor(RANKS[1].at, 0).title, LADDERS.pirate[1]);
+  // a standing-led captain mid-ladder wears a civic rung
+  assert.equal(titleFor(0, RANKS[4].at).title, LADDERS.governor[4]);
+  // maxing a pole reads its crown
+  assert.equal(titleFor(LEGEND_AT, 0).title, LADDERS.pirate.at(-1));
+  assert.equal(titleFor(0, LEGEND_AT).title, LADDERS.governor.at(-1));
+});
+
 test('LEGENDS: distinct pirate + governor crowns, each with title/icon/flavour', () => {
   for (const which of ['pirate', 'governor']) {
     const L = LEGENDS[which];

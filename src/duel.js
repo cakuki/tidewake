@@ -108,7 +108,10 @@ export function resolveInsult(insult, enemy, rng = Math.random) {
  */
 export function reward({ playerMorale = 0, enemyMaxMorale = MAX_MORALE } = {}) {
   const coins = Math.round(30 + enemyMaxMorale * 0.2 + playerMorale * 0.2);
-  const renown = Math.round(coins * 1.4);
+  // Infamy per win (#57): scaled so a duel visibly moves the needle against the lowered
+  // legend curve — ~100-160 infamy a win, keeping the pirate pole ~comparable, per deed,
+  // to the trader's standing so either path reaches its legend in a like-sized sitting.
+  const renown = Math.round(coins * 2.0);
   return { coins, renown };
 }
 
