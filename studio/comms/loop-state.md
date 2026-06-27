@@ -3,7 +3,7 @@
 Single source of truth for the never-stopping delivery loop. The orchestrator
 updates this each loop so progress survives context resets.
 
-- **Current loop:** 20 (Retro 4 DONE — core arc COMPLETE; next = tune curve #57; deep-learning #2 DUE)
+- **Current loop:** 22 (mobile #17 + owner P1 fixes #50/#51/#49 shipped; pivoted to OWNER backlog; next: #61 Caribbean water, #57 tuning, #52 perf)
 - **Loops since last retro:** 0 (Retro 4 DONE — reset; covered cycles 16,17,18,19)
 - **Cycles since last deep-learning loop:** ~9 — **#2 DUE NOW** (run before the well runs dry; #1 filed #32-#40)
 - **Research backlog (prioritise):** #57 tune renown curve (NEXT), #50/#51 from-owner P1 bugs (FAST-LANE), #58 weather & day-night, #59 ship-vs-ship cannon combat, #60 invisible onboarding, #49 camera astern (P1), #32 glTF hull, #35 cannon SFX, #37 deterministic visual-diff (schedule — owned since cycle 10), #52 perf budget (P1), #40 adaptive music, #36 fixed-timestep, #53 self-tested UI components
@@ -14,6 +14,7 @@ updates this each loop so progress survives context resets.
 - **Next hourly update due (UTC):** ~2026-06-27T08:35
 - **Latest release:** v0.0.20260627072700 (art polish: carved hull, richer islands, ink-wash)
 - **Live:** https://cakuki.github.io/tidewake/
+- **OWNER filed issues (from-owner label, P1 first):** #50/#51/#49 DONE; #61 Caribbean water, #57 renown tuning, #52 perf, #53 UI-component std, #54 bigger map, #55 art-sourcing, #56 mobile-go owner-decision
 - **Note:** session hit usage limit ~01:43-07:20 UTC (paused), resumed on owner "continue".
 - **Open enablers:** #37 deterministic visual-diff (schedule); #52 perf-budget gate (P1, gates #58 weather)
 
