@@ -6,6 +6,7 @@
 import { VERSION } from './version.js';
 import { GOODS, PORTS, HOLD_CAP, market, buy, sell, cargoUsed } from './economy.js';
 import { rankForRenown, renownTier, titleFor, dominantPole, legendBeat } from './renown.js';
+import { colourById } from './colours.js';
 import { createCompass } from './ui/compass.js';
 
 export function createHud() {
@@ -187,6 +188,19 @@ export function createHud() {
         ? ` · ${lean} · top of the ledger ★`
         : ` · ${lean} · ${rank.nextAt - total} to next`;
     }
+  }
+
+  // ---- False Colours chip (#79) ---------------------------------------------
+  // The HUD button that shows (and cycles, via main.js's click handler) the colours flown:
+  // true black vs false merchant. The `lie` class lets it read as a sly disguise when set.
+  const $coloursToggle = document.getElementById('colours-toggle');
+  function renderColours(id) {
+    if (!$coloursToggle) return;
+    const def = colourById(id);
+    $coloursToggle.innerHTML = `${def.icon} <b>${def.short}</b>`;
+    $coloursToggle.classList.toggle('lie', !!def.deceptive);
+    $coloursToggle.setAttribute('aria-label', `Flying ${def.name}. Press C to change colours.`);
+    $coloursToggle.title = `Colours: ${def.name} (C)`;
   }
 
   // One-time wind name stamp (the breeze is fixed for the voyage).
@@ -389,5 +403,5 @@ export function createHud() {
     compass.update(state);
   }
 
-  return { update, showArrival, setWind, renderDuel, renderCannons, flashBanner, showLegend, showGoal, hideGoal };
+  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, flashBanner, showLegend, showGoal, hideGoal };
 }

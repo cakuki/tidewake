@@ -122,6 +122,23 @@ test('serialize defaults a missing economy to a fresh purse + empty hold', () =>
   assert.deepEqual(restored.cargo, {});
 });
 
+// ---- Displayed colours persistence (#79 False Colours, save v8) ----
+
+test('serialize → deserialize round-trips the chosen colours', () => {
+  const s = { ...economyState(), colours: 'merchant' };
+  const restored = deserialize(serialize(s));
+  assert.equal(restored.colours, 'merchant');
+});
+
+test('a missing or unknown colours loads as the honest black default', () => {
+  const restored = deserialize(serialize(economyState())); // no colours field
+  assert.equal(restored.colours, 'black');
+  const good = JSON.parse(serialize({ ...economyState(), colours: 'merchant' }));
+  const tampered = deserialize(JSON.stringify({ ...good, colours: 'pirate-king' }));
+  assert.ok(tampered, 'an unknown colours never rejects the save (flavour, not physics)');
+  assert.equal(tampered.colours, 'black');
+});
+
 test('deserialize rejects negative or non-finite coins', () => {
   const good = JSON.parse(serialize(economyState()));
   assert.equal(deserialize(JSON.stringify({ ...good, coins: -1 })), null);

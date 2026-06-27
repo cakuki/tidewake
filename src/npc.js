@@ -141,29 +141,51 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   }
 
   const ARRIVE_R = 80;
+  // False Colours (#79): when the player flies their TRUE black flag while feared, nearby
+  // vessels react to the colours shown — they break off and FLEE the dread captain. Under
+  // false merchant colours they stay calm and let you approach (the disguise works). The
+  // pure disposition math lives in colours.js; main.js passes the verdict in via `ctx`.
+  const FLEE_RADIUS = 360; // how close the dread captain must be to scatter a vessel
 
-  function update(dt, t) {
+  // ctx (optional): { playerPos:[x,z]|null, flee:boolean } — drives the colours reaction.
+  function update(dt, t, ctx = {}) {
     if (dt <= 0) return;
+    const playerPos = ctx && ctx.playerPos;
+    const fleeOn = !!(ctx && ctx.flee) && Array.isArray(playerPos);
     for (const s of ships) {
-      // New mark once we reach the current one (avoid re-picking onto the origin/land).
-      if (hasArrived(s.x, s.z, s.wp.x, s.wp.z, ARRIVE_R)) {
-        let wp, tries = 0;
-        do {
-          wp = pickWaypoint(rng, bounds);
-          tries++;
-        } while (tries < 16 && islands.some(o => Math.hypot(o.x - wp.x, o.z - wp.z) < o.r + 90));
-        s.wp = wp;
+      // Are these colours making this vessel run? (player near + flee verdict on)
+      let fleeing = false;
+      if (fleeOn) {
+        const dpx = s.x - playerPos[0], dpz = s.z - playerPos[1];
+        fleeing = (dpx * dpx + dpz * dpz) < FLEE_RADIUS * FLEE_RADIUS;
       }
+      s.fleeing = fleeing;
 
-      // Desired heading = toward the mark, deflected around any island ahead.
-      const want = headingTo(s.x, s.z, s.wp.x, s.wp.z);
+      let want;
+      if (fleeing) {
+        // Bolt directly away from the player — heading FROM the player TO this hull.
+        want = headingTo(playerPos[0], playerPos[1], s.x, s.z);
+      } else {
+        // New mark once we reach the current one (avoid re-picking onto the origin/land).
+        if (hasArrived(s.x, s.z, s.wp.x, s.wp.z, ARRIVE_R)) {
+          let wp, tries = 0;
+          do {
+            wp = pickWaypoint(rng, bounds);
+            tries++;
+          } while (tries < 16 && islands.some(o => Math.hypot(o.x - wp.x, o.z - wp.z) < o.r + 90));
+          s.wp = wp;
+        }
+        // Desired heading = toward the mark, deflected around any island ahead.
+        want = headingTo(s.x, s.z, s.wp.x, s.wp.z);
+      }
       const target = avoidObstacles(s.x, s.z, want, islands, 220);
       s.heading = steerToward(s.heading, target, s.turnRate, dt);
 
-      // Advance along the (smoothly turning) heading.
+      // Advance along the (smoothly turning) heading — a panicked vessel claps on more sail.
+      const sp = fleeing ? s.speed * 1.35 : s.speed;
       const fx = Math.sin(s.heading), fz = Math.cos(s.heading);
-      s.x += fx * s.speed * dt;
-      s.z += fz * s.speed * dt;
+      s.x += fx * sp * dt;
+      s.z += fz * sp * dt;
 
       // Sit + bob on the live swell, with a gentle roll for life.
       const y = ocean.sampleHeight(s.x, s.z, t);
@@ -180,7 +202,7 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   }
 
   function snapshot() {
-    return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading }));
+    return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading, fleeing: !!s.fleeing }));
   }
 
   // Relocate ship `i` far away — a beaten foe slinking off over the horizon (#33).

@@ -47,14 +47,18 @@ export function sanitizeEvent(ev) {
   switch (ev.type) {
     case 'landfall':
       return isStr(ev.name) ? { type: 'landfall', name: String(ev.name).trim() } : null;
-    case 'duel':
-      return isStr(ev.foe)
-        ? { type: 'duel', foe: String(ev.foe).trim(), infamy: nonNegInt(ev.infamy), coins: nonNegInt(ev.coins) }
-        : null;
-    case 'cannon':
-      return isStr(ev.foe)
-        ? { type: 'cannon', foe: String(ev.foe).trim(), infamy: nonNegInt(ev.infamy), coins: nonNegInt(ev.coins) }
-        : null;
+    case 'duel': {
+      if (!isStr(ev.foe)) return null;
+      const out = { type: 'duel', foe: String(ev.foe).trim(), infamy: nonNegInt(ev.infamy), coins: nonNegInt(ev.coins) };
+      if (ev.treachery) out.treachery = true; // struck under false colours (#79) — only stamped when true
+      return out;
+    }
+    case 'cannon': {
+      if (!isStr(ev.foe)) return null;
+      const out = { type: 'cannon', foe: String(ev.foe).trim(), infamy: nonNegInt(ev.infamy), coins: nonNegInt(ev.coins) };
+      if (ev.treachery) out.treachery = true; // an ambush under false colours (#79)
+      return out;
+    }
     case 'legend':
       return (ev.pole === 'pirate' || ev.pole === 'governor') && isStr(ev.title)
         ? { type: 'legend', pole: ev.pole, title: String(ev.title).trim() }
@@ -134,6 +138,19 @@ const NARRATORS = {
   ],
 };
 
+// False-colours strikes (#79) get their own treacherous verse — the smug last-second reveal.
+// Chosen over the honest variant whenever the deed carries `treachery: true`.
+const TREACHERY_NARRATORS = {
+  duel: [
+    (e) => `You hailed ${e.foe} under honest merchant colours, traded pleasantries — then traded barbs and ran up the black, all in one breath. They struck their colours weeping; ${e.infamy} infamy for the loveliest lie at sea.`,
+    (e) => `${e.foe} waved you alongside, friendly as anything. A pity about the flag you swapped at the last — and the ${e.infamy} infamy you sailed off with, grinning.`,
+  ],
+  cannon: [
+    (e) => `You crept up on ${e.foe} under merchant colours, all smiles and waving — then ran out the guns and the black flag together. ${e.foe} never saw it coming; ${e.infamy} infamy the richer for the treachery.`,
+    (e) => `Old ${e.foe} took you for a humble trader right up until the broadside. The black snapped up as she went down — ${e.infamy} infamy, and not an ounce of it honest.`,
+  ],
+};
+
 const OPENING = 'Gather round and hear it sung — the ballad of a captain, a small boat, and a sea with opinions.';
 
 function tally(events) {
@@ -176,7 +193,8 @@ export function composeBallad(events, opts = {}) {
     lines = [OPENING];
     const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0 };
     for (const e of log) {
-      const pool = NARRATORS[e.type];
+      // A treacherous fight sings a false-colours verse; everything else, the honest pool.
+      const pool = (e.treachery && TREACHERY_NARRATORS[e.type]) || NARRATORS[e.type];
       if (!pool) continue;
       const i = seen[e.type]++ % pool.length;
       lines.push(pool[i](e));

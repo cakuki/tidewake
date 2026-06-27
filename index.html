@@ -333,6 +333,21 @@
     }
     #ballad-toggle:hover { background: rgba(7, 22, 38, .55); border-color: rgba(120,180,230,.45); }
     #ballad-toggle.on { background: rgba(60,120,180,.5); border-color: rgba(180,220,255,.7); color: #fff; }
+    /* False Colours chip (#79) — shows (and cycles, via C) the flag flown. A sly amber tint
+       when the disguise is up: false merchant colours. */
+    #colours-toggle {
+      position: fixed; right: calc(12px + env(safe-area-inset-right, 0px));
+      top: calc(54px + env(safe-area-inset-top, 0px)); z-index: 11; pointer-events: auto;
+      height: 30px; padding: 0 11px; display: inline-flex; align-items: center; gap: 5px;
+      cursor: pointer; font-size: 13px; line-height: 1; color: #cfe8ff;
+      background: rgba(7, 22, 38, .35); border: 1px solid rgba(120,180,230,.25);
+      border-radius: 8px; backdrop-filter: blur(3px); user-select: none;
+      transition: background .15s ease, border-color .15s ease;
+    }
+    #colours-toggle b { color: #fff; font-weight: 700; }
+    #colours-toggle:hover { background: rgba(7, 22, 38, .55); border-color: rgba(120,180,230,.45); }
+    #colours-toggle.lie { border-color: rgba(205,187,134,.6); color: #e9dcb4; background: rgba(60,48,18,.4); }
+    #colours-toggle.lie b { color: #f3e8c4; }
     /* The parchment scroll — warm aged paper over the dark sea-glass, a touch wider than the
        control plate so the verses breathe. Centred so it reads like a proclamation. */
     #ballad-panel {
@@ -470,8 +485,9 @@
        a short, witty, shareable ballad, with a copy-to-clipboard share. Rendered by
        src/ui/ballad.js from the pure voyage log in src/voyage-log.js. -->
   <button id="ballad-toggle" type="button" aria-pressed="false" aria-expanded="false" aria-controls="ballad-panel" aria-label="Open the Ballad of your Voyage" title="The Ballad of your Voyage (B)">📜</button>
+  <button id="colours-toggle" type="button" aria-label="Change displayed colours" title="Colours (C)">🏴 <b>Black</b></button>
   <div id="ballad-panel" role="dialog" aria-label="The Ballad of Your Voyage" aria-hidden="true"></div>
-  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; F duel a ship (1–4 to jab) &nbsp;·&nbsp; G open fire (1–2 to aim) &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; Tab map &nbsp;·&nbsp; M mute &nbsp;·&nbsp; P perf &nbsp;·&nbsp; O settings &nbsp;·&nbsp; B ballad &nbsp;·&nbsp; N new voyage</div>
+  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; C colours (fly false to creep up) &nbsp;·&nbsp; F duel a ship (1–4 to jab) &nbsp;·&nbsp; G open fire (1–2 to aim) &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; Tab map &nbsp;·&nbsp; M mute &nbsp;·&nbsp; P perf &nbsp;·&nbsp; O settings &nbsp;·&nbsp; B ballad &nbsp;·&nbsp; N new voyage</div>
 
   <!-- Route-planning chart (#54): a larger north-up map of the whole archipelago — every
        island + named port — for choosing where to sail to trade. Toggle with Tab or 🗺;

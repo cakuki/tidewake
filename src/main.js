@@ -24,6 +24,7 @@ import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat } from './renown.js';
+import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine } from './colours.js';
 import { BUDGET, formatPerf, pixelRatioCap } from './perf.js';
 import { isTouchDevice } from './input.js';
 import { GOAL, applyEvent, shouldShowGoal, normalizeFlags, currentStep } from './onboarding.js';
@@ -120,6 +121,7 @@ function logDeed(event) {
 const duel = createDuel({
   npcs,
   getShipPos: () => [state.pos.x, state.pos.z],
+  getColours: () => state.colours, // False Colours (#79): hailing under a disguise = treachery
   applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.renown; syncRenown(state); },
   applyPenalty: (p) => { initEconomy(state); state.coins = Math.max(0, state.coins - p.coins); },
   // Procedural audio juice (#48): challenge horn, cut/backfire/glance stings, win/lose
@@ -127,9 +129,15 @@ const duel = createDuel({
   sfx: (kind) => audio.playDuelHit(kind),
   onEnd: ({ result, reward, penalty, enemyName }) => {
     if (result === 'win') {
-      hud.flashBanner('⚔ They strike their colours!',
-        `${enemyName} sails off jeering — but you pocket ${reward.coins}c and ${reward.renown} infamy for the sharper tongue.`);
-      logDeed({ type: 'duel', foe: enemyName, infamy: reward.renown, coins: reward.coins }); // #78
+      if (reward.treachery) {
+        // The smug last-second reveal — the foe's betrayed splutter (#79 CREATIVE SPARK).
+        hud.flashBanner('🏴 The black flag snaps up!',
+          `“${pickLine(REVEAL_LINES)}” You out-jeer ${enemyName} for ${reward.coins}c and ${reward.renown} infamy — ${reward.treacheryBonus} of it pure treachery.`);
+      } else {
+        hud.flashBanner('⚔ They strike their colours!',
+          `${enemyName} sails off jeering — but you pocket ${reward.coins}c and ${reward.renown} infamy for the sharper tongue.`);
+      }
+      logDeed({ type: 'duel', foe: enemyName, infamy: reward.renown, coins: reward.coins, treachery: !!reward.treachery }); // #78/#79
     } else {
       hud.flashBanner('🏴 Out-jeered!',
         `${enemyName}'s crew howls with laughter. You fumble ${penalty.coins} coins overboard and slink away.`);
@@ -144,14 +152,20 @@ const duel = createDuel({
 const cannons = createCannons({
   npcs,
   getShipPos: () => [state.pos.x, state.pos.z],
+  getColours: () => state.colours, // False Colours (#79): opening fire under a disguise = ambush
   applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.infamy; syncRenown(state); },
   applyPenalty: (p) => { initEconomy(state); state.coins = Math.max(0, state.coins - p.coins); },
   sfx: (kind) => audio.playDuelHit(kind),
   onEnd: ({ result, reward, penalty, foeName }) => {
     if (result === 'win') {
-      hud.flashBanner('🔥 You sink her!',
-        `${foeName} slips beneath the waves — you haul ${reward.coins}c from the wreckage and your legend gains ${reward.infamy} infamy.`);
-      logDeed({ type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins }); // #78
+      if (reward.treachery) {
+        hud.flashBanner('🏴 You strike your true colours!',
+          `“${pickLine(REVEAL_LINES)}” ${foeName} goes down betrayed — ${reward.coins}c and ${reward.infamy} infamy, ${reward.treacheryBonus} of it for the perfidy.`);
+      } else {
+        hud.flashBanner('🔥 You sink her!',
+          `${foeName} slips beneath the waves — you haul ${reward.coins}c from the wreckage and your legend gains ${reward.infamy} infamy.`);
+      }
+      logDeed({ type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins, treachery: !!reward.treachery }); // #78/#79
     } else {
       hud.flashBanner('💥 Hull breached!',
         `${foeName} rakes you stem to stern — you break off and limp away, ${penalty.coins} coins lighter for the repairs.`);
@@ -186,6 +200,46 @@ state.onboarding = normalizeFlags(state.onboarding);
 // Voyage log (#78): a restored voyage keeps its deeds; a fresh one starts with a blank page.
 if (!Array.isArray(state.voyageLog)) state.voyageLog = [];
 
+// ---- False Colours (#79) -------------------------------------------------------------
+// The displayed flag: true black (honest pirate) vs false merchant (a disguise). A restored
+// voyage keeps its choice; a fresh one flies honest black. NPCs react to the colours SHOWN
+// (npc.js flee reaction below), and striking under false colours pays a treachery Infamy
+// bonus (duel.js/cannons.js). Cycle with the C key or the HUD chip.
+if (!colourById(state.colours) || state.colours !== colourById(state.colours).id) state.colours = DEFAULT_COLOURS;
+
+// Tint the player's own pennant to match the colours flown — and hide the cheeky skull
+// while disguised. The flag mesh is a Group (ship.js userData.flag) of [pennant, skull].
+function applyColoursToShip() {
+  try {
+    const flag = ship.userData && ship.userData.flag;
+    if (!flag || !flag.children) return;
+    const def = colourById(state.colours);
+    const pennant = flag.children[0], skull = flag.children[1];
+    if (pennant && pennant.material) pennant.material.color.setHex(def.flagColor);
+    if (skull) skull.visible = !!def.showSkull;
+  } catch { /* a flag tint must never break the loop */ }
+}
+
+// Track when a fooled NPC has been crept up on under false colours, so the smug "they
+// bought it" beat fires once per approach (re-arms when you leave range or drop the disguise).
+let fooledArmed = true;
+
+// Hoist a new set of colours: cycle, tint the ship, applaud the bluff, and persist the choice.
+function cycleColours() {
+  state.colours = nextColours(state.colours);
+  applyColoursToShip();
+  hud.renderColours(state.colours);
+  fooledArmed = true; // a fresh disguise can fool the next ship anew
+  const def = colourById(state.colours);
+  hud.flashBanner(`${def.icon} Colours: ${def.short}`, pickLine(HOIST_LINES[def.id] || HOIST_LINES[DEFAULT_COLOURS]));
+  persistence.write();
+}
+applyColoursToShip();
+hud.renderColours(state.colours);
+addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'c') cycleColours(); });
+const $coloursToggle = document.getElementById('colours-toggle');
+if ($coloursToggle) $coloursToggle.addEventListener('click', cycleColours);
+
 // Quiet auto-save: periodically and whenever the tab is hidden or closed.
 setInterval(persistence.write, 2000);
 addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persistence.write(); });
@@ -202,6 +256,10 @@ function newVoyage() {
   islandNamer.reset(); // a fresh voyage re-arms the island landfall greetings (#19)
   state.onboarding = normalizeFlags(state.onboarding); // reset() cleared it → fresh set
   state.voyageLog = []; // a new voyage = a blank page; the Ballad starts unwritten (#78)
+  state.colours = DEFAULT_COLOURS; // a fresh voyage flies honest black again (#79)
+  applyColoursToShip();
+  hud.renderColours(state.colours);
+  fooledArmed = true;
   obsStanding = undefined;
   obsRankIndex = undefined;
 }
@@ -343,7 +401,24 @@ function update(dt, t) {
     if (d < harbourDistance) harbourDistance = d;
   }
   sailing.step(dt, t, { fighting, harbourDistance, harbourRadius: DOCK_RADIUS });
-  if (!fighting) npcs.update(dt, t);           // wandering AI pauses while the guns/insults are out
+  if (!fighting) {
+    // False Colours (#79): NPCs react to the colours SHOWN. Fly your true black flag while
+    // feared and nearby vessels scatter; fly false merchant colours and they stay calm and
+    // let you approach — even an infamous captain. The disposition math is pure (colours.js).
+    const flee = npcFlees({ colours: state.colours, infamy: state.infamy ?? 0 });
+    npcs.update(dt, t, { playerPos: [state.pos.x, state.pos.z], flee });
+  }
+
+  // The smug "they bought it" beat (#79 CREATIVE SPARK): the first time you drift within
+  // hailing range of a vessel while disguised, the crew revels in the deception. Fires once
+  // per approach; re-arms when you leave range or strike your true colours.
+  if (!fighting && isDeceptive(state.colours)) {
+    if (duel.inRange()) {
+      if (fooledArmed) { hud.flashBanner('🏳 They wave you in…', pickLine(FOOLED_LINES)); fooledArmed = false; }
+    } else {
+      fooledArmed = true;
+    }
+  }
 
   // CREATIVE SPARK (#76 c): one light arcade beat as the ship squares up for a fight or coasts
   // into a berth — transition-guarded so it never spams, rotated so it never gets stale.
@@ -554,6 +629,18 @@ window.__tidewake = {
   get cannons() { return cannons.snapshot(); },
   openFire() { return cannons.openFire(); },
   cannonFire(aim) { return cannons.fire(aim); },
+  // False Colours (#79) QA surface: read the colours flown, whether they're a disguise, the
+  // pure NPC flee verdict for the current colours+infamy, plus drive the flag headlessly.
+  get colours() {
+    return {
+      id: state.colours,
+      short: colourById(state.colours).short,
+      deceptive: isDeceptive(state.colours),
+      flee: npcFlees({ colours: state.colours, infamy: state.infamy ?? 0 }),
+    };
+  },
+  cycleColours() { cycleColours(); return state.colours; },
+  setColours(id) { if (colourById(id).id === id) { state.colours = id; applyColoursToShip(); hud.renderColours(state.colours); fooledArmed = true; persistence.write(); } return state.colours; },
   press(k) { input.keys.add(k); },
   release(k) { input.keys.delete(k); },
   save() { persistence.write(); },

@@ -666,6 +666,90 @@ try {
     if (!persistedBallad.hasCannonDeed) fail(`ballad: the recorded deed did not persist across a reload (log=${persistedBallad.log})`);
   }
 
+  // 2m) False Colours (#79): flag deception as a verb. Two halves, both deterministic:
+  //   • NPC REACTION to the colours SHOWN — a feared captain under true black colours makes
+  //     vessels FLEE; under false merchant colours the disguise works and they stay calm.
+  //   • The TREACHERY payoff — creep up under false colours, open fire, and the win pays a
+  //     bonus to Infamy and records a perfidy verse for the Ballad (#78). The pure flee/bonus
+  //     math is unit-tested; here we drive the live wiring through the QA hook.
+  const falseColours = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    function nearest() {
+      const s = tw.state.pos; // [x, y, z]
+      let best = null, bd = Infinity;
+      for (const n of tw.npcs) { const dx = n.pos[0] - s[0], dz = n.pos[1] - s[2]; const d = Math.hypot(dx, dz); if (d < bd) { bd = d; best = n; } }
+      return { best, bd };
+    }
+    tw.newVoyage(); tw.step(0.1);
+    const fresh = { id: tw.colours.id, deceptive: tw.colours.deceptive };
+
+    // Make the captain feared, then read the pure flee verdict for each set of colours.
+    tw.setInfamy(5000);
+    tw.setColours('black');
+    const blackFlee = tw.colours.flee;     // true — the world fears the dread captain
+    tw.setColours('merchant');
+    const merchantFlee = tw.colours.flee;  // false — the disguise calms them
+
+    // Under TRUE black colours + feared: sail at the nearest NPC and confirm a vessel flees.
+    tw.setColours('black');
+    tw.press('w');
+    let sawFlee = false;
+    for (let i = 0; i < 2500 && !sawFlee; i++) {
+      const { best } = nearest(); if (!best) break;
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+      sawFlee = tw.npcs.some((n) => n.fleeing);
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+
+    // Under FALSE merchant colours: creep up (they stay calm), get in range, then open fire.
+    tw.setColours('merchant');
+    tw.step(0.3); // let the NPC AI refresh — clears any stale flee flags from the black phase
+    const infamyBefore = tw.state.infamy;
+    tw.press('w');
+    let engaged = false, foeName = null, treacheryAtEngage = false, fledWhileDisguised = false;
+    for (let i = 0; i < 2500 && !engaged; i++) {
+      const { best, bd } = nearest(); if (!best) break;
+      if (tw.npcs.some((n) => n.fleeing)) fledWhileDisguised = true;
+      if (bd <= 180) { engaged = tw.openFire(); if (engaged) { treacheryAtEngage = tw.cannons.treachery; foeName = tw.cannons.foeName; } break; }
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    let result = null;
+    if (engaged) for (let r = 0; r < 20 && tw.cannons.active; r++) { tw.cannonFire(0); result = tw.cannons.result; }
+    tw.step(0.2);
+    const infamyGain = tw.state.infamy - infamyBefore;
+    const hasTreacheryDeed = tw.voyageLog.some((e) => e.type === 'cannon' && e.treachery === true);
+    const balladHasTreachery = /merchant colours|treachery/i.test(tw.ballad);
+
+    tw.newVoyage(); tw.step(0.1);
+    tw.setColours('merchant'); // leave the disguise up so the gallery shot shows the chip
+    return { fresh, blackFlee, merchantFlee, sawFlee, engaged, fledWhileDisguised, treacheryAtEngage, foeName, result, infamyGain, hasTreacheryDeed, balladHasTreachery };
+  });
+  if (falseColours.fresh.id !== 'black') fail(`false colours: a fresh voyage should fly black (got ${falseColours.fresh.id})`);
+  if (falseColours.fresh.deceptive) fail('false colours: true black colours should not be a disguise');
+  if (!falseColours.blackFlee) fail('false colours: a feared captain under true black colours should make NPCs flee');
+  if (falseColours.merchantFlee) fail('false colours: false merchant colours should NOT make NPCs flee (the disguise works)');
+  if (!falseColours.sawFlee) fail('false colours: no NPC fled the dread captain flying true black colours');
+  if (falseColours.engaged) {
+    if (falseColours.fledWhileDisguised) fail('false colours: an NPC fled while we approached under a disguise (the disguise failed)');
+    if (!falseColours.treacheryAtEngage) fail('false colours: opening fire under false colours was not flagged as treachery');
+    if (falseColours.result !== 'win') fail(`false colours: the treacherous attack did not resolve to a win (result=${falseColours.result})`);
+    if (!(falseColours.infamyGain > 0)) fail(`false colours: the treacherous win awarded no infamy (gain=${falseColours.infamyGain})`);
+    if (!falseColours.hasTreacheryDeed) fail('false colours: the treacherous strike did not record a treachery deed in the voyage log');
+    if (!falseColours.balladHasTreachery) fail('false colours: the ballad did not sing the false-colours verse');
+  }
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -688,7 +772,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, bump, daynight, landfall, ballad, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, bump, daynight, landfall, ballad, falseColours, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

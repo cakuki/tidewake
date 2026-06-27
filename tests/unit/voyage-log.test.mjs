@@ -154,3 +154,28 @@ test('composeBallad accepts a custom title and tolerates a junk log', () => {
   assert.ok(b.text.startsWith('My Log'));
   assert.ok(b.text.includes('Tankard Rock'));
 });
+
+// ---- False Colours treachery (#79) ----------------------------------------------------
+
+test('sanitizeEvent stamps treachery only when true (back-compatible shape)', () => {
+  // honest fight: no treachery field at all (so legacy entries stay byte-identical)
+  assert.deepEqual(
+    sanitizeEvent({ type: 'cannon', foe: 'Old Thunderbottom', infamy: 100, coins: 50 }),
+    { type: 'cannon', foe: 'Old Thunderbottom', infamy: 100, coins: 50 },
+  );
+  // treacherous fight: the flag is recorded
+  assert.deepEqual(
+    sanitizeEvent({ type: 'duel', foe: 'Greta the Gull', infamy: 90, coins: 40, treachery: true }),
+    { type: 'duel', foe: 'Greta the Gull', infamy: 90, coins: 40, treachery: true },
+  );
+});
+
+test('composeBallad sings a distinct treacherous verse for a false-colours strike', () => {
+  const honest = composeBallad([{ type: 'cannon', foe: 'Old Thunderbottom', infamy: 100, coins: 50 }]);
+  const treacherous = composeBallad([{ type: 'cannon', foe: 'Old Thunderbottom', infamy: 100, coins: 50, treachery: true }]);
+  // both name the foe, but the treacherous verse reads of the disguise/merchant colours
+  assert.ok(honest.text.includes('Old Thunderbottom'));
+  assert.ok(treacherous.text.includes('Old Thunderbottom'));
+  assert.notEqual(honest.text, treacherous.text);
+  assert.ok(/merchant colours|treachery/i.test(treacherous.text));
+});

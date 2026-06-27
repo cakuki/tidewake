@@ -20,6 +20,7 @@
 // from any existing game. Family-friendly, salt-crusted, a little daft.
 
 import { CHALLENGE_RANGE } from './duel.js';
+import { isDeceptive, treacheryBonus, surpriseDamage, DEFAULT_COLOURS } from './colours.js';
 
 export const MAX_HULL = 100;
 
@@ -189,7 +190,7 @@ export function fireQuip(outcome, rng = Math.random) {
 //   onEnd       : ({result, reward?, penalty?, foeName}) -> announce (toast)
 //   sfx         : (kind)    -> optional audio sting (reuses the duel bus kinds)
 
-export function createCannons({ npcs, getShipPos, applyReward, applyPenalty, onEnd, sfx, rng = Math.random } = {}) {
+export function createCannons({ npcs, getShipPos, getColours, applyReward, applyPenalty, onEnd, sfx, rng = Math.random } = {}) {
   // A sting must never break the fight, so every audio call is swallowed.
   function ping(kind) {
     try { if (sfx) sfx(kind); } catch { /* a sting must never sink the duel */ }
@@ -206,8 +207,10 @@ export function createCannons({ npcs, getShipPos, applyReward, applyPenalty, onE
     lastOutcome: '',
     result: null, // 'win' | 'lose' | null
     round: 0,
+    treachery: false, // were the guns run out under FALSE colours? (#79)
   };
   let foe = null;
+  let engagedColours = DEFAULT_COLOURS; // the colours flown the instant the fight opened
 
   // Nearest NPC within range, or -1. Positions are [x,z]; ship pos is [x,z] too.
   function nearestInRange() {
@@ -232,11 +235,16 @@ export function createCannons({ npcs, getShipPos, applyReward, applyPenalty, onE
     const idx = nearestInRange();
     if (idx === -1) return false;
     foe = makeFoe(rng);
+    // False Colours (#79): if you opened fire while flying a disguise, this is a treacherous
+    // ambush — the foe starts weakened (a surprise opening volley) and the win pays a perfidy
+    // bonus to Infamy. Captured at the instant of attack, before the colours can change.
+    engagedColours = (getColours && getColours()) || DEFAULT_COLOURS;
+    state.treachery = isDeceptive(engagedColours);
     state.active = true;
     state.foeIndex = idx;
     state.foeName = foe.name;
     state.playerHull = MAX_HULL;
-    state.enemyHull = MAX_HULL;
+    state.enemyHull = clampHull(MAX_HULL - surpriseDamage(engagedColours), MAX_HULL);
     state.maxHull = MAX_HULL;
     state.lastLine = fireOpener(rng);
     state.lastOutcome = '';
@@ -277,6 +285,11 @@ export function createCannons({ npcs, getShipPos, applyReward, applyPenalty, onE
     if (result === 'win') {
       state.lastLine = defeatLine(rng);
       reward_ = spoils({ playerHull: state.playerHull, enemyMaxHull: state.maxHull });
+      // Treachery payoff (#79): a kill under false colours pays a perfidy bonus to Infamy.
+      if (state.treachery) {
+        const bonus = treacheryBonus(reward_.infamy, engagedColours);
+        reward_ = { ...reward_, infamy: reward_.infamy + bonus, treachery: true, treacheryBonus: bonus };
+      }
       if (applyReward) applyReward(reward_);
       if (npcs && npcs.respawn) npcs.respawn(state.foeIndex); // the wreck clears; a new sail wanders in
     } else {
@@ -304,6 +317,7 @@ export function createCannons({ npcs, getShipPos, applyReward, applyPenalty, onE
       lastOutcome: state.lastOutcome,
       result: state.result,
       round: state.round,
+      treachery: state.treachery, // fighting under false colours (#79)
       inRange: inRange(),
       options: AIMS.map((a, i) => ({ i, aim: a, label: AIM_LABELS[a] })),
     };

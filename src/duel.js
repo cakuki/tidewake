@@ -13,6 +13,10 @@
 //
 // All insults + comebacks are ORIGINAL to Tidewake — invented for this slice, never
 // lifted from any existing game. Family-friendly, swashbuckling, slightly daft.
+//
+// (The pure resolution helpers below import nothing on purpose; the colours import is only
+// used by the controller at the bottom — the False-Colours treachery payoff, #79.)
+import { isDeceptive, treacheryBonus, surpriseDamage, DEFAULT_COLOURS } from './colours.js';
 
 export const MAX_MORALE = 100;
 
@@ -181,7 +185,7 @@ export function opener(rng = Math.random) {
 
 export const CHALLENGE_RANGE = 200; // metres the player must be within to hail an NPC
 
-export function createDuel({ npcs, getShipPos, applyReward, applyPenalty, onEnd, sfx, rng = Math.random } = {}) {
+export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPenalty, onEnd, sfx, rng = Math.random } = {}) {
   // Fire a procedural duel stinger (audio.playDuelHit) if one was wired in. Audio
   // must never break a duel, so every call is swallowed.
   function ping(kind) {
@@ -201,8 +205,10 @@ export function createDuel({ npcs, getShipPos, applyReward, applyPenalty, onEnd,
     lastOutcome: '',
     result: null, // 'win' | 'lose' | null
     round: 0,
+    treachery: false, // was the duel opened under FALSE colours? (#79)
   };
   let enemy = null;
+  let engagedColours = DEFAULT_COLOURS; // the colours flown the instant the hail went up
 
   // Nearest NPC within range, or -1. Positions are [x,z]; ship pos is [x,z] too.
   function nearestInRange() {
@@ -227,13 +233,18 @@ export function createDuel({ npcs, getShipPos, applyReward, applyPenalty, onEnd,
     const idx = nearestInRange();
     if (idx === -1) return false;
     enemy = makeEnemy(rng);
+    // False Colours (#79): hailing under a disguise is a treacherous opening — the enemy crew
+    // is caught off guard (starts with morale already dented) and the win pays a perfidy bonus
+    // to Infamy. Captured the instant the colours go up, before they can be changed.
+    engagedColours = (getColours && getColours()) || DEFAULT_COLOURS;
+    state.treachery = isDeceptive(engagedColours);
     state.active = true;
     state.enemyIndex = idx;
     state.enemyName = enemy.name;
     state.enemyWeakTo = enemy.weakTo;
     state.enemyGuard = enemy.guard;
     state.playerMorale = MAX_MORALE;
-    state.enemyMorale = MAX_MORALE;
+    state.enemyMorale = clampMorale(MAX_MORALE - surpriseDamage(engagedColours), MAX_MORALE);
     state.maxMorale = MAX_MORALE;
     state.options = pickOptions(rng, enemy, 4);
     state.enemyLine = opener(rng);
@@ -275,6 +286,12 @@ export function createDuel({ npcs, getShipPos, applyReward, applyPenalty, onEnd,
     let reward_ = null, penalty_ = null;
     if (result === 'win') {
       reward_ = reward({ playerMorale: state.playerMorale, enemyMaxMorale: state.maxMorale });
+      // Treachery payoff (#79): a win under false colours pays a perfidy bonus to Infamy
+      // (the duel's `renown` field IS infamy — combat is the pirate pole, #45).
+      if (state.treachery) {
+        const bonus = treacheryBonus(reward_.renown, engagedColours);
+        reward_ = { ...reward_, renown: reward_.renown + bonus, treachery: true, treacheryBonus: bonus };
+      }
       if (applyReward) applyReward(reward_);
       if (npcs && npcs.respawn) npcs.respawn(state.enemyIndex); // beaten foe sails off elsewhere
     } else {
@@ -304,6 +321,7 @@ export function createDuel({ npcs, getShipPos, applyReward, applyPenalty, onEnd,
       lastOutcome: state.lastOutcome,
       result: state.result,
       round: state.round,
+      treachery: state.treachery, // dueling under false colours (#79)
       inRange: inRange(),
       options: state.options.map((o) => ({ id: o.id, category: o.category, line: o.line })),
     };

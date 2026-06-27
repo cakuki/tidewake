@@ -16,15 +16,21 @@
 import { GOODS, HOLD_CAP, START_COINS } from './economy.js';
 import { normalizeFlags, freshFlags, completedFlags } from './onboarding.js';
 import { sanitizeLog } from './voyage-log.js';
+import { COLOURS, DEFAULT_COLOURS } from './colours.js';
+
+// The set of colours ids we'll accept back from storage (#79). Anything else loads as the
+// honest default rather than rejecting the whole save (flag choice is flavour, not physics).
+const KNOWN_COLOUR_IDS = new Set(COLOURS.map((c) => c.id));
 
 export const SAVE_KEY = 'tidewake.save.v1';
 // v2 added the economy fields (coins + cargo); v3 added renown (the Captain's Ledger);
 // v4 split renown into two poles — infamy (pirate) + standing (governor) (#45); v5 added
 // the earned endgame legends ({pirate, governor} crowns, #46); v6 added the invisible-
 // onboarding progress flags (seeded goal + first-win beats, fired once per captain, #60);
-// v7 added the voyage log — the deeds the Ballad of Your Voyage is composed from (#78).
+// v7 added the voyage log — the deeds the Ballad of Your Voyage is composed from (#78);
+// v8 added the displayed colours — true black vs false merchant flag (#79 False Colours).
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -83,6 +89,8 @@ export function serialize(state) {
   // Voyage log (#78): the deeds the Ballad is composed from. Sanitised on the way out so
   // only clean, known entries are stored; a pre-ballad caller simply records an empty log.
   const voyageLog = sanitizeLog(state.voyageLog);
+  // Displayed colours (#79): the chosen flag, validated to a known id; junk → honest black.
+  const colours = KNOWN_COLOUR_IDS.has(state.colours) ? state.colours : DEFAULT_COLOURS;
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -96,6 +104,7 @@ export function serialize(state) {
     legends,
     onboarding,
     voyageLog,
+    colours,
   });
 }
 
@@ -185,6 +194,10 @@ export function deserialize(raw) {
   // rejecting an otherwise-valid save (fail open). Absent → an empty log (a fresh tale).
   const voyageLog = sanitizeLog(obj.voyageLog);
 
+  // Displayed colours (save v8, #79): flavour, not load-bearing physics — an absent or
+  // unknown value loads as the honest black default rather than rejecting the save.
+  const colours = KNOWN_COLOUR_IDS.has(obj.colours) ? obj.colours : DEFAULT_COLOURS;
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -197,6 +210,7 @@ export function deserialize(raw) {
     legends,
     onboarding,
     voyageLog,
+    colours,
     renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }
