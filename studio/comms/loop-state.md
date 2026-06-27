@@ -3,7 +3,7 @@
 Single source of truth for the never-stopping delivery loop. The orchestrator
 updates this each loop so progress survives context resets.
 
-- **Current loop:** 19 (polish batch shipped; next: duel audio juice, then Retro 4 (due), deep-learning #2 (~loop 20))
+- **Current loop:** 20 (duel audio shipped; Retro 4 running + mobile #17; deep-learning #2 due ~next)
 - **Loops since last retro:** 0 (Retro 3 DONE — reset; covered cycles 7,8,9,11)
 - **Cycles since last deep-learning loop:** 0 (Deep-learning loop #1 DONE — all 9 agents refreshed; filed #32-#40)
 - **Research backlog (prioritise):** #43 (port reputation reactions, #39-followup) port reputation reactions (NEXT), #32 glTF ship, #33 Insult Broadside combat, #16 minimap, #35 cannon SFX, #36 fixed-timestep, #37 visual-diff QA, #40 adaptive music, #25 actions bump ( #34 contract step ADOPTED into runbook/PARALLEL.md)
@@ -42,6 +42,7 @@ updates this each loop so progress survives context resets.
 | 16 | KEYSTONE: renown two-poles — Infamy(pirate)↔Standing(governor) | #45 | v0.0.20260627085452 | 155 tests; diverging titles, pole-aware port reactions, persisted |
 | 17 | Endgame milestones — become THE pirate/governor (legend overlay) | #46 | v0.0.20260627100354 | 180 tests; persisted legends, sandbox continues |
 | 18 | Polish batch: legend overlay persists, HUD/title overlap, Node-24 actions | #47,#41,#25 | v0.0.20260627102844 | 180 tests; CI annotation cleared |
+| 19 | Duel audio juice — procedural SFX stings | #48 | v0.0.20260627104334 | 182 tests; playtest now wins a full duel |
 | — | Retro 3 (subagent) | — | — | Fantasy now legible (sail→trade→renown rank, NPCs). Adopted #34 shared-contract step + re-dispatch-glitched-subagent rule + QA nav/timing gotchas into runbook; new guardrail "reactive verbs over inert content". Next = #43 (port reputation reactions, #39-followup) reputation reactions + #32 glTF ship (parallel, contract'd) |
 
 ## Hourly Telegram log
