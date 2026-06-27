@@ -19,3 +19,10 @@ Durable testing lessons, known issues, and regression notes. Grows over time; ke
   (await `transitionend`, or `animations:'disabled'`); `stable` misses fades.
 - 2026-06-27 (Research) — **Perf budget = 16.6 ms/frame; judge the 1% low (p99 frame time), not
   average FPS** — micro-stutters hide behind a healthy mean. Sample rAF deltas, assert p99.
+- 2026-06-27 (Retro 3) — **Coordinate spaces differ**: `port.pos = [x, z]` (2D ground plane),
+  ship `state.pos = [x, y, z]` (3D). Autopilot maps `port.pos[0]→x`, `port.pos[1]→z`, ignores `y`.
+  Mis-indexing the axis sails to nowhere — use a shared `sailToPort(name)` helper, don't re-derive.
+- 2026-06-27 (Retro 3) — **`step()` ≠ wall-clock → CSS fades need real time**: synchronous
+  `tw.step()` advances the sim, not the clock, so `#trade.show` opacity reads mid-transition.
+  Wait ~600 ms (or `transitionend`) before asserting fade visibility. This produced false bug #30
+  (a timing artifact, not a defect) — settle before filing.

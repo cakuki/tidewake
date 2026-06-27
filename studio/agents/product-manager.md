@@ -79,6 +79,14 @@ game code; buildable wildcards become backlog issues.
   into "earn," gives a stateable goal, and is the spend-side prerequisite for combat/crew/
   governance. Sequence reward-for-the-verb immediately after the verb, before new verbs. Pair it
   with **activating the Musician** (#27) so the next block advances *feel*, not just mechanics.
+- 2026-06-27 (Retro 3) — **A number on the player isn't a story — make the world react**: loops
+  7-11 made the fantasy legible (sail → trade → climb a named renown rank, NPCs giving the sea
+  life), but renown is still just a number with no consequences. The highest-leverage next beat is
+  **port reputation reacting to the player** (#39-followup): ports greet/price by rank, a
+  harbourmaster remembers you, pirate ranks make merchants flee and a navy take interest. One
+  mechanic dramatizes the whole north-star and carries the comedy. **Bias the roadmap toward
+  reactive verbs (a world that responds) over more inert content (more ports/goods/ships).** Then
+  the CC0 glTF hull (#32) for charm, then Insult Broadside (#33) for authored fun.
 
 ## Research log
 

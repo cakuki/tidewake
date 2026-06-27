@@ -6,6 +6,35 @@ architecture) are raised as `owner-decision` GitHub issues and recorded here onc
 
 ---
 
+### 2026-06-27 — Retro 3: adopt the shared-contract step before any parallel batch (#34)
+**Decision.** No parallel dispatch across a **shared state/save/event seam** without a one-line
+**contract artifact** (*name · shape · owner · consumers*) written down first — in
+`comms/PARALLEL.md` §3a and on the issues — and **both slices assert against it** (a tiny shared
+fixture/test). Disjoint *files* is not enough if two slices read/write the same `state` shape or
+save schema. Added to `docs/runbook/LOOP.md` (PLAN step) and `PARALLEL.md`.
+**Why.** The #29 trade-seam bug was a `state.port` getter + buy-by-name mismatch between two
+parallel slices — and the PM's own deep-learning research had written exactly this lesson the same
+night. A lesson that isn't operationalised into the runbook gets repeated; this closes that gap
+(lightweight consumer-driven contract testing).
+
+### 2026-06-27 — Retro 3: re-dispatch glitched (0-tool-use) subagents
+**Decision.** A subagent that returns having used **0 tools** (empty / no-op) is a **transient
+failure, not a result**: the orchestrator **auto-re-dispatches the same brief once** (twice at
+most) and always confirms a subagent actually did the work (a release tag, files changed, a real
+summary) before advancing. Added to the context-optimization discipline in `LOOP.md`.
+**Why.** The glitch is silent; banked as "done," it stalls a cycle. A named standard response
+beats ad-hoc rescue.
+
+### 2026-06-27 — Retro 3: bias toward reactive verbs over inert content
+**Decision.** The next block prioritises **the world reacting to the player** — port reputation
+that reacts to renown (#39-followup) — ahead of more static content, then the CC0 glTF ship (#32)
+for charm, then Insult Broadside (#33). Added as a runbook guardrail; PM/Game Designer practices
+updated.
+**Why.** Loops 7-11 made the fantasy legible (sail → trade → climb a named rank, NPCs giving the
+sea life) but the rank is just a number with no consequences. The world doesn't yet *know the
+player's name* — and reactivity is where both the drama and the comedy live. We've been adding
+nouns faster than reactions.
+
 ### 2026-06-27 — Retro 2: creative roles drive every cycle (CREATIVE SPARK beat)
 **Decision.** Every slice — even "technical" ones — names a **creative driver** (Game Designer
 or Musician) and carries a 2-3 line **CREATIVE SPARK**: one authored charm/fun/feel beat

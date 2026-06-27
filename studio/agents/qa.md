@@ -107,6 +107,16 @@ read **new + classic**, then record 2–4 takeaways and **one wildcard idea** bo
   The diff is now **enforced**: for any visible change, archiving a `gallery/<version-tag>.png`
   shot is a Definition-of-Done item the cycle-runner **fails on** if missing. "0 escaped bugs"
   without a visual pass is luck, not a gate — close that gap.
+- 2026-06-27 (Retro 3) — **Know the coordinate spaces before you autopilot**: `port.pos` is
+  `[x, z]` (2D ground plane); ship `state.pos` is `[x, y, z]` (3D). Map `port.pos[0]→x`,
+  `port.pos[1]→z` (skip `y`) — mis-indexing sails the test to nowhere. Prefer a shared
+  `sailToPort(name)` helper over re-deriving navigation each pass (the coordinate trap cost real
+  time in loops 7-8).
+- 2026-06-27 (Retro 3) — **Don't flag a transition as a bug — `step()` isn't wall-clock**:
+  synchronous `tw.step()` advances the sim but not the wall clock, so CSS fade-ins read mid-flight.
+  Wait real time (~600 ms) or await `transitionend` before asserting opacity-based visibility.
+  Loops 7-8 filed #30 as a "bug" that was a transition-timing artifact — a false positive that
+  cost a cycle. Confirm a defect survives a real-time settle before filing it.
 
 ## Research log
 

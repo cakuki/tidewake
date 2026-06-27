@@ -42,6 +42,21 @@ slice in the same batch.
 B waits until A is on `main`. The PM names dependencies before parallel dispatch (see the
 Project Manager doc) and only fans out slices that are truly independent.
 
+## 3a. Shared-contract rule (Retro 3, #34) — disjoint files isn't enough
+Non-overlapping *files* doesn't make two slices independent if they read/write the same
+**state shape, save schema, or event/getter name**. Before dispatching a batch that crosses
+such a seam, the **PM writes the contract down first** and both slices assert against it:
+
+```
+Contract — <name> · shape: <fields/shape> · owner: <slice> · consumers: <slices>
+```
+
+Post it here (a thin, ephemeral `Contracts` block at the top of this file) and on the issues
+*before* dispatch; retire it when both sides have merged. Each side adds a tiny shared
+fixture/test that asserts the shape. **No parallel dispatch across a shared seam without a
+contract artifact both sides assert.** Retro 3: the #29 trade-seam bug was a `state.port` getter
++ buy-by-name mismatch between two parallel slices — exactly the seam this rule guards.
+
 ## 4. Open a PR; the CI playtest gate must pass
 ```bash
 git push -u origin slice/<issue>-<slug>

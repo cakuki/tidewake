@@ -79,6 +79,13 @@ buildable wildcards become backlog issues.
   has a mandatory CREATIVE SPARK beat. Three loops shipped with me dark; that was a process bug.
   Each slice — even "technical" ones — gets one authored charm/fun/feel beat from me or the
   Musician (port personalities, harbourmaster banter, a comic price event, a game-feel touch).
+- 2026-06-27 (Retro 3) — **Ship reactions, not just nouns; charm-per-byte is a real lever**:
+  loops 7-11 added ports, goods, NPC ships, and a renown ladder — lots of nouns, little *response*.
+  The next fun beats are **the world reacting to the player** (ports/NPCs that read your renown —
+  greetings, prices, fleeing merchants) and the **CC0 glTF hull (#32)**, the single biggest
+  charm-per-byte upgrade (every screenshot improves the moment the box becomes a real ship — pair
+  the swap with a gallery shot). Then **Insult Broadside (#33)** as the marquee authored-fun beat
+  once NPC encounters have stakes. Realism in the hull/world; comedy in the reactions.
 
 ## Research log
 

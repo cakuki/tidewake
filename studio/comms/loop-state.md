@@ -3,10 +3,11 @@
 Single source of truth for the never-stopping delivery loop. The orchestrator
 updates this each loop so progress survives context resets.
 
-- **Current loop:** 12 (next: art polish / glTF ship #32; Retro 3 due)
-- **Loops since last retro:** 4 (Retro 3 DUE NOW — after cycles 7,8,9,11)
+- **Current loop:** 12 (Retro 3 DONE; next batch: #43 (port reputation reactions, #39-followup) reputation reactions + #32 glTF ship)
+- **Loops since last retro:** 0 (Retro 3 DONE — reset; covered cycles 7,8,9,11)
 - **Cycles since last deep-learning loop:** 0 (Deep-learning loop #1 DONE — all 9 agents refreshed; filed #32-#40)
-- **Research backlog (prioritise):** #39 notoriety, #32 glTF ship, #33 Insult Broadside combat, #35 cannon SFX, #36 fixed-timestep, #37 visual-diff QA, #34 contract lane, #40 adaptive music, #25 actions bump
+- **Research backlog (prioritise):** #43 (port reputation reactions, #39-followup) port reputation reactions (NEXT), #32 glTF ship, #33 Insult Broadside combat, #16 minimap, #35 cannon SFX, #36 fixed-timestep, #37 visual-diff QA, #40 adaptive music, #25 actions bump ( #34 contract step ADOPTED into runbook/PARALLEL.md)
+- **Next slices (Retro 3, priority):** (1) #43 (port reputation reactions, #39-followup) ports/NPCs react to renown — reactivity; (2) #32 CC0 glTF hull — charm; PARALLEL BATCH candidate (#43 (port reputation reactions, #39-followup) edits reputation/state, #32 edits ship mesh — disjoint files; CONTRACT: renown/reputation read API — name·shape·owner before dispatch). Then (3) #33 Insult Broadside (bigger, after stakes exist); (4) #16 minimap as a batch B-side.
 - **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions (e.g. #trade .show opacity) read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
 - **Last Telegram update (UTC):** 2026-06-27T00:50 (hourly #2 + clearer video)
 - **Next hourly update due (UTC):** ~2026-06-27T01:50
@@ -33,6 +34,7 @@ updates this each loop so progress survives context resets.
 | 9 | Wandering NPC ships + persist economy (parallel) | #28,#31 | v0.0.20260627012517 | 96 tests; 3 AI vessels; save v2 (coins/cargo) |
 | 10 | Deep-learning research loop #1 (9 agents, web research) | — | — | Filed #32-#40; agents' identities refreshed |
 | 11 | Captain's Ledger — renown/rank ladder (TDD) | #39 | v0.0.20260627014341 | 114 tests; Bilge-rat→Terror of the Tidewake; persisted |
+| — | Retro 3 (subagent) | — | — | Fantasy now legible (sail→trade→renown rank, NPCs). Adopted #34 shared-contract step + re-dispatch-glitched-subagent rule + QA nav/timing gotchas into runbook; new guardrail "reactive verbs over inert content". Next = #43 (port reputation reactions, #39-followup) reputation reactions + #32 glTF ship (parallel, contract'd) |
 
 ## Hourly Telegram log
 

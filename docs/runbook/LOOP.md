@@ -27,6 +27,16 @@ the Project Manager edits it after each retro (see Changelog at the bottom).
    slices to their epic. Pick the **top 1–3 small slices** for this loop (each shippable in
    one increment). Update `studio/comms/board.md`: move chosen cards into **To do** with
    issue numbers and owners.
+   **Shared-contract step before any parallel batch (Retro 3, #34):** if two slices in the
+   batch will touch a **shared state/save/event seam** (the `state` shape, the save schema,
+   an event/getter name, a panel's data contract), the **PM writes the contract down *first***
+   — *name · shape · owner · consumers* — as a one-line entry in `studio/comms/PARALLEL.md`
+   (and on the issues), and **both slices assert against it** (a tiny shared fixture/test).
+   **No parallel dispatch across a shared seam without a contract artifact both sides assert.**
+   Retro 3: the #29 trade-seam bug (a `state.port` getter + buy-by-name mismatch between two
+   parallel slices) was *exactly* this — and the lesson was already in PM research the same
+   night. A written-down contract turns "we both assumed the shape" into a checkable artifact
+   (consumer-driven contract testing, lightweight).
 
 2. **DESIGN + CREATIVE SPARK** — *Game Designer / Musician / Graphic Designer.*
    Add design/art detail to the chosen slice(s): crisp **acceptance criteria**, references,
@@ -62,6 +72,16 @@ the Project Manager edits it after each retro (see Changelog at the bottom).
    **fails the cycle** if no gallery shot was archived for this release — the per-release diff is
    a gate, not an aspiration. (Retro 1 made it a habit; loops 4-6 skipped it and the gallery
    stayed empty, so it now has teeth.)
+   **QA navigation & timing gotchas (Retro 3) — solve once, don't re-learn:**
+   - **Coordinate mismatch.** `port.pos` is **`[x, z]`** (2D ground plane); ship `state.pos` is
+     **`[x, y, z]`** (3D). When autopiloting the ship toward a port, map `port.pos[0]→x` and
+     `port.pos[1]→z` (skip `y`); indexing the wrong axis sails you to nowhere. Prefer a shared
+     QA navigation helper (e.g. `sailToPort(name)`) over re-deriving the math each pass.
+   - **Synchronous `step()` ≠ wall-clock.** `tw.step(seconds)` advances the **sim** but not the
+     wall clock, so **CSS fade-in transitions** (e.g. `#trade.show` opacity) read mid-flight.
+     Before asserting opacity-based visibility, **wait real time (~600 ms)** or await
+     `transitionend` — or disable animations for baselines. (Retro 3: this cost us false bug #30,
+     a transition-timing artifact mistaken for a defect.)
 
 6. **RELEASE** — *Software Developer + QA.*
    Commit the game-code change to `main`. CI runs the headless playtest gate, stamps the
@@ -220,6 +240,12 @@ The main orchestrator must stay **lean** so the never-stopping loop survives con
   slice and serialises the merges (`comms/PARALLEL.md`).
 - After each delegated unit, the orchestrator updates `loop-state.md` (counters incl.
   *Cycles since last deep-learning loop* and *Loops since last retro*) and moves on.
+- **Re-dispatch a glitched (0-tool-use) subagent (Retro 3).** A transient glitch occasionally
+  makes a dispatched subagent **return having used 0 tools** (empty / did nothing). Treat an
+  empty or no-op return as a **transient failure, not a result**: **automatically re-dispatch the
+  same brief once** (twice at most) before investigating. The glitch is silent — if the
+  orchestrator banks the empty return as "done," a cycle stalls — so always confirm a subagent
+  *actually did the work* (a release tag, files changed, a real summary) before advancing.
 
 ---
 
@@ -251,7 +277,14 @@ The main orchestrator must stay **lean** so the never-stopping loop survives con
 - **Default to a parallel batch now `main.js` is modular** — `src/systems/` retired the wiring
   hotspot (#24), so the *default* unit of work is a small **parallel batch** on disjoint files,
   not a lone serial slice — unless a real dependency forces serialisation. Prove the
-  modularisation by collecting its payoff (Retro 2).
+  modularisation by collecting its payoff (Retro 2). **But: a parallel batch that crosses a
+  shared state/save/event seam needs a written contract first (Step 1, Retro 3 / #34)** — disjoint
+  *files* isn't enough if both slices read/write the same `state` shape or save schema.
+- **Bias toward reactive verbs over inert content (Retro 3)** — the world now has plenty of
+  *nouns* (ports, goods, NPC ships, a renown rank) but the rank is just a number on the player.
+  Favour slices that make **the world respond to who the player is becoming** (ports greet/price
+  by reputation, NPCs react to your legend) over adding more static content, until the world
+  visibly *knows the player's name*. Reactivity is where both the drama and the comedy live.
 - **Keep CI actions current** — when GitHub annotates a deprecated runtime (e.g. Node-20), raise
   a `tech`/`chore` issue and bump the action versions promptly; a deprecation becomes a hard CI
   failure later and stalls the whole loop.
@@ -294,6 +327,18 @@ curl -sI https://cakuki.github.io/tidewake/
 
 ## Changelog
 
+- **2026-06-27 — Retro 3 (loops 7-11):** the core fantasy is now legible — sail → trade for
+  profit → climb a named renown rank, with wandering NPC ships giving the sea life; first music
+  (#27) and first deep-learning research loop (#32-#40) both landed. Headline finding was a
+  *process* one: the #29 trade integration-seam bug was a **known, unadopted lesson** (the PM's own
+  #34 contract takeaway, written the same night). Changes: **adopted the #34 shared-contract step**
+  into PLAN/PARALLEL (no parallel dispatch across a state/save/event seam without a one-line
+  contract both sides assert); added a **re-dispatch rule for glitched 0-tool-use subagents**;
+  added **QA navigation/timing gotchas** (`port.pos [x,z]` vs ship `[x,y,z]`; synchronous
+  `step()` ≠ wall-clock → wait real time for CSS fades, the #30 false-bug lesson); new guardrail
+  **bias toward reactive verbs over inert content**. Next block: port reputation reacting to renown
+  (#39-followup) + the CC0 glTF ship (#32). See `studio/retros/2026-06-27-retro-3.md`,
+  `studio/agents/{product-manager,game-designer,qa,project-manager}.md`, `studio/comms/PARALLEL.md`.
 - **2026-06-27 — Retro 2 (loops 4-6):** first verb + persistence shipped, but the two creative
   roles (Game Designer, Musician) stayed dark and the gallery-diff habit lapsed. Changes: added a
   mandatory **CREATIVE SPARK** beat to the loop (every slice names a creative driver + one

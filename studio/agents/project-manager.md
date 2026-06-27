@@ -110,6 +110,17 @@ world — read **new + classic**, then record 2–4 takeaways and **one wildcard
   cycle time, scope, and blocked cards every cycle and between cycles; re-prioritise, split a
   card, or unblock the moment a signal appears, instead of waiting for the retro (Kanban flow
   management + Andon-cord / stop-the-line discipline).
+- 2026-06-27 (Retro 3) — **A lesson isn't adopted until it's in the runbook**: my own #34
+  shared-contract takeaway was written the same night the #29 trade-seam bug shipped — we *had* the
+  fix and still paid for the bug because it wasn't operationalised. Now: **no parallel dispatch
+  across a state/save/event seam without a one-line contract both sides assert** (in `LOOP.md` PLAN
+  + `PARALLEL.md` §3a). Research that stays in a memory file is just reading; route every reusable
+  lesson straight into the loop the same cycle.
+- 2026-06-27 (Retro 3) — **Treat a 0-tool-use subagent return as a transient failure, re-dispatch
+  it**: a few cycle-runner/research subagents came back having used 0 tools (silent no-ops). Banked
+  as "done," that stalls a cycle. Standard response: confirm a subagent actually did the work (a
+  tag, files changed, a real summary) and **auto-re-dispatch once** on an empty return before
+  investigating (added to the orchestrator discipline in `LOOP.md`).
 
 ## Research log
 
