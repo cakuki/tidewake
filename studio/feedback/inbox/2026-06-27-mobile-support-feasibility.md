@@ -29,3 +29,6 @@ Mobile support? I know the game is for desktop now and targeting two different s
   (https://github.com/cakuki/tidewake/issues/56) holding the feasibility report; BUILD parked pending
   owner go. status → accepted (report). Added to ROADMAP M4 as a decision marker. PM to send the
   feasibility report to the owner via Telegram.
+- 2026-06-27T00:00Z — Owner DECISION update: **"Go for mobile Phase 0 too."** Phase 0 (the real-device
+  measurement spike) accepted → issue #62 created (https://github.com/cakuki/tidewake/issues/62),
+  linked from #56. The full mobile build stays parked under owner-decision #56 pending Phase 0 numbers.

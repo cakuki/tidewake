@@ -36,7 +36,8 @@ await loop **PM + TL sign-off**. `from-owner` issues:
 | [#53](https://github.com/cakuki/tidewake/issues/53) | Standard: self-contained, self-tested UI components | M9 / tech, ongoing | P2 |
 | [#54](https://github.com/cakuki/tidewake/issues/54) | Toggleable bigger map for route planning (MVP) | M2 / M4 | P2 |
 | [#55](https://github.com/cakuki/tidewake/issues/55) | Research: art-asset sourcing strategy + budget | Art & Audio direction | P2 |
-| [#56](https://github.com/cakuki/tidewake/issues/56) | Owner-decision: mobile support (feasibility done, build parked) | M4 — Touch the Horizon | P2 |
+| [#56](https://github.com/cakuki/tidewake/issues/56) | Owner-decision: mobile support (feasibility done, full build parked) | M4 — Touch the Horizon | P2 |
+| [#62](https://github.com/cakuki/tidewake/issues/62) | Mobile **Phase 0** — real-device spike (FPS/heat/UX) to de-risk the build | M4 — Touch the Horizon | P2 |
 | [#61](https://github.com/cakuki/tidewake/issues/61) | Sunny/holiday **Caribbean sea-surface** — turquoise palette + sun glint + subtle detail (original shader, no franchise sampling) | M1 / 🌊 realism | P1 |
 
 ---
