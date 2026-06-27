@@ -10,10 +10,14 @@ the Project Manager edits it after each retro (see Changelog at the bottom).
 
 - The loop **never stops**. We ship **several releases per hour** — tiny, always-playable
   increments.
-- A **retrospective every 3–4 loops** (Section 4) feeds improvements back into this file.
-- **Mind free GitHub Actions minutes.** Releases trigger **only** on game-code changes
-  (`src/`, `index.html`). Docs/`studio/`/`*.md` edits do **not** burn minutes — batch them.
-  Keep each cycle small and green on the first try; a failed CI run is wasted budget.
+- A **retrospective every ~7–8 loops** (Section 4) feeds improvements back into this file.
+  (Relaxed from every 3–4 in Retro 8 — at minutes-apart cycles a 3–4-loop retro became ceremony
+  that competed with shipping. The deep-learning research loop stays every ~10 cycles.)
+- **Mind free GitHub Actions minutes.** Releases trigger **only** on game-code changes — enforced by
+  an **allow-list** `paths: ['src/**', 'index.html']` in `release.yml` (Retro 8 / #89). Docs/`studio/`/
+  `scripts/`/`tests/`/`.github/`/`*.md` edits do **not** burn minutes and **no longer need `[skip ci]`**
+  — batch them freely. (Editing `release.yml` itself won't release either; use `workflow_dispatch` for a
+  manual run.) Keep each cycle small and green on the first try; a failed CI run is wasted budget.
 
 ---
 
@@ -202,7 +206,13 @@ The hourly heartbeat is one part of a **two-way** link. The full protocol lives 
 
 ---
 
-## 4. Retrospective ritual (every 3–4 loops, run AS A SUBAGENT)
+## 4. Retrospective ritual (every ~7–8 loops, run AS A SUBAGENT)
+
+> **Cadence (Retro 8).** Run a retro **every ~7–8 cycles**, not every 3–4. In a minutes-apart
+> self-paced loop, retros at 3–4 fired three times in ~14 cycles (Retros 6/7/8) with shrinking
+> deltas and started competing with shipping. ~7–8 keeps the ritual substantive without over-running
+> it. The *spirit* is unchanged — a scheduled ritual that is **never perpetually deferred** (the HARD
+> trigger below still bites, just at 7). The deep-learning research loop stays **every ~10 cycles**.
 
 The retro runs in its **own subagent**, not in the main orchestrator context (Retro 1 already
 ran this way as a background subagent). The orchestrator dispatches one retro subagent, hands it
@@ -354,14 +364,16 @@ trusts the headless playtest + the perf budget gate. When it must open the live 
   Lean on headless/puppeteer wherever possible.
 
 **Rituals run as subagents, scheduled — never deferred into nothing.**
-- **Retro every 3–4 cycles**, **deep-learning research loop every 10 cycles** — each dispatched as
+- **Retro every ~7–8 cycles**, **deep-learning research loop every 10 cycles** — each dispatched as
   its own subagent (the orchestrator keeps only the summary).
-- **HARD TRIGGER (Retro 6) — the counter must BITE, not just count.** When *Loops since last retro*
-  reaches **4** or *Cycles since last deep-learning loop* reaches **10**, the **NEXT dispatch IS the
-  ritual subagent** — not the next feature slice — **unless a `from-owner` P1 preempts** (P1 first,
-  then the ritual, then the agenda). "Run it between ships" was losing to every fresh owner request:
-  Retro 6 ran late and DL #2 went ~22 cycles overdue. A countdown that never fires is a wish, not a
-  schedule — so the overdue ritual jumps ahead of the queue's top *work* item.
+- **HARD TRIGGER (Retro 6, threshold relaxed in Retro 8) — the counter must BITE, not just count.**
+  When *Loops since last retro* reaches **7** or *Cycles since last deep-learning loop* reaches **10**,
+  the **NEXT dispatch IS the ritual subagent** — not the next feature slice — **unless a `from-owner`
+  P1 preempts** (P1 first, then the ritual, then the agenda). "Run it between ships" was losing to
+  every fresh owner request: Retro 6 ran late and DL #2 went ~22 cycles overdue. A countdown that never
+  fires is a wish, not a schedule — so the overdue ritual jumps ahead of the queue's top *work* item.
+  (Retro 8 lifted the retro threshold 4 → **7**: at 4 the ritual fired three times in ~14 cycles and
+  competed with shipping. The DL threshold stays 10.)
 - **Do NOT run a docs-writing subagent concurrently with a `git add -A` cycle-runner** — the runner
   sweeps the docs into its commit. (This is also why cycle-runners add specific paths only.) If a
   ritual/docs subagent and a cycle-runner must overlap, the cycle-runner adds named paths.
@@ -470,6 +482,27 @@ curl -sI https://cakuki.github.io/tidewake/
 
 ## Changelog
 
+- **2026-06-27 — Retro 8 (loops 37–40): the game is now genuinely rich; relax the retro cadence and
+  fix the release trigger.** Shipped the final phase of the arcade-collision system (#76 a2 tangential
+  slide → **#76 CLOSED**, all four phases), named islands + comedic landfall lines + map labels (#19),
+  and the first DL #2 charm slice — "The Ballad of Your Voyage," an auto-composed shareable Captain's
+  Log with clipboard sharing + save schema v7 (#78). 3 releases, **332 → 348 tests**, perf gate green
+  throughout; latest **v0.0.20260627210918** (~42 releases). Top GAME finding: the build crossed from
+  "landable/complete arc" to **genuinely rich** — complete collision, atmosphere (day-night), a named
+  world, and shareable stories. Recommended next direction: pull one more DL #2 charm/reactivity slice
+  — **#79 False Colours & Letters of Marque (deception-as-a-verb)** — which feeds both renown poles and
+  gives the Ballad richer deeds, **then** bank the hero-asset visual leap (**#55 art research → #32
+  glTF hull**). Two process mandates landed: **(1) relaxed the retro cadence 3–4 → ~7–8 cycles** and
+  lifted the HARD-trigger threshold **4 → 7** (Retros 6/7/8 fired within ~14 cycles with shrinking
+  deltas and competed with shipping; DL stays every ~10) — edited §1, §4, the HARD-trigger section.
+  **(2) Fixed #89** — `release.yml` used `paths-ignore` so `scripts/**`/`tests/**`/`.github/**` wrongly
+  triggered releases (worked around with `[skip ci]`); switched the push trigger to an **allow-list**
+  `paths: ['src/**', 'index.html']` so the policy IS the mechanism (no more `[skip ci]` for non-game
+  commits; editing the workflow itself won't release; `workflow_dispatch` for manual runs). YAML
+  validated; **#89 closed**. Noted on the workflow: unit tests run only inside the release job, so
+  script/test-only changes are now un-CI-checked on push — proper home is the **#38 PR-validation gate**
+  (not built here). Retro 7 hardening held (no 0-tool-use/injected glitch, clean trees, hard trigger
+  fired on schedule). See `studio/retros/2026-06-27-retro-8.md`.
 - **2026-06-27 — Retro 7 (loops 33–36): serving an owner field-testing on a real iPhone, and learning
   to SEE what he sends.** Shipped a bigger island hitbox + first iOS audio unlock (#77/#76), an iOS bug
   batch (#86 ocean "void", #77 capture-phase audio, #87 no-text-select), ship-vs-ship collision (#76 b),

@@ -1,15 +1,23 @@
 name: Release
 
 # Ships a play-tested build to GitHub Pages and tags it v0.0.YYYYMMDDHHmmSS.
-# Triggered on every push to main, or manually. Several releases per hour are fine;
-# the concurrency group serialises them so deploys never collide.
+# Triggered on a push to main that touches GAME CODE, or manually. Several releases
+# per hour are fine; the concurrency group serialises them so deploys never collide.
+#
+# Release policy (Retro 8, #89): releases trigger ONLY on game code via an allow-list
+# `paths:` — src/** and index.html. Everything else (studio/**, docs/**, scripts/**,
+# tests/**, .github/**, package*.json, manifest.webmanifest, *.md) does NOT release, so
+# tooling/doc/test commits no longer need a `[skip ci]` workaround. Editing this workflow
+# itself also won't trigger a release (it isn't in the allow-list) — use workflow_dispatch
+# for a manual run. NOTE: unit tests currently run only inside this release job, so
+# script/test-only changes are now un-CI-checked on push; the proper home for that is a
+# PR-validation gate (#38), not this workflow.
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'studio/**'
-      - 'docs/**'
-      - '**/*.md'
+    paths:
+      - 'src/**'
+      - 'index.html'
   workflow_dispatch:
 
 permissions:

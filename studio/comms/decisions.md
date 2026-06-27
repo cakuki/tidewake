@@ -6,6 +6,43 @@ architecture) are raised as `owner-decision` GitHub issues and recorded here onc
 
 ---
 
+### 2026-06-27 — Retro 8 (loops 37–40): relax the retro cadence + fix the release trigger (#89)
+**Decision.** Two process mandates with the normal game+process review. **(1) Relaxed the retro
+cadence 3–4 → ~7–8 cycles** and lifted the HARD-trigger threshold **4 → 7**. Retros 6, 7, and 8 fired
+within ~14 cycles; at minutes-apart self-paced cycles a 3–4-loop retro became low-value ceremony that
+competed with shipping and produced shrinking deltas (this block had no new process friction — the
+Retro 5–7 hardening is holding). The *spirit* (a scheduled ritual that is never perpetually deferred)
+is kept — the HARD trigger still bites, now at 7. The deep-learning research loop stays every ~10
+cycles. Edited `docs/runbook/LOOP.md` §1, §4 (heading + body), the HARD-trigger section, and the
+Changelog. **(2) Fixed #89** — `release.yml` used `paths-ignore` (`studio/**`, `docs/**`, `**/*.md`),
+so a push touching `scripts/**`, `tests/**`, `.github/**`, `package*.json`, or `manifest.webmanifest`
+DID trigger a release despite the "src/ + index.html only" policy (worked around with `[skip ci]`).
+Switched the push trigger to an **allow-list** `paths: ['src/**', 'index.html']` — the stated policy is
+now the mechanism. Tooling/doc/test commits no longer release and no longer need `[skip ci]`; editing
+`release.yml` itself won't release (use `workflow_dispatch`). YAML validated. **#89 closed.** Caveat
+noted on the workflow and referenced to **#38**: unit tests currently run only inside the release job,
+so script/test-only changes are now un-CI-checked on push — the proper home is the #38 PR-validation
+gate (not built here).
+**Why.** A countdown that fires too often is as much a process smell as one that never fires: the
+ritual should be substantive, not a tax on a fast loop. And the Actions budget is a core constraint —
+the release policy and its implementation had quietly diverged since the workflow was written; an
+allow-list makes them the same thing, removing the `[skip ci]` workaround entirely.
+
+### 2026-06-27 — Retro 8: the game is genuinely rich — next, deception-as-a-verb then the hero-ship art leap
+**Decision.** Loops 37–40 took the build from "landable/complete arc" to **genuinely rich**: the
+arcade-collision system closed out (#76 a2 slide → all four phases done), the world got named (#19
+island names + comedic landfall lines + map labels), and the studio pulled its first DL #2 charm slice
+(#78 "The Ballad of Your Voyage" — an auto-composed, shareable Captain's Log with clipboard sharing +
+save v7). 3 releases, 348 tests, perf gate green. Recommended next product direction: **pull one more
+DL #2 charm/reactivity slice — #79 False Colours & Letters of Marque (deception-as-a-verb)** — which
+feeds both renown poles (Infamy ↔ Standing), is pure-logic + asset-free, and gives the just-shipped
+Ballad richer deeds to record; **then** bank the hero-asset visual leap — **#55 art research → #32 glTF
+hull** — since the boat anchors every screenshot/clip. Cannon depth (#72) and polish (#66/#15) are good
+fillers but not the leading edge. Breadth stays ~zero.
+**Why.** With a complete, atmospheric, named, narratable spine, the remaining leverage is charm and
+deception (which compound the systems just finished) and then making the hero ship look as good as the
+world it sails — not another engineering-grade system or more nouns.
+
 ### 2026-06-27 — Retro 7 (loops 33–36): SEE the owner's media + verify visual bugs before fixing
 **Decision.** Serving an owner field-testing on a real iPhone surfaced an owner-signal-fidelity gap, so:
 **(1) `owner-channel.sh photo` subcommand** — a first-class `scripts/owner-channel.sh photo
