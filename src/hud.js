@@ -226,6 +226,7 @@ export function createHud() {
   // crown; the sandbox keeps playing beneath it. Dismiss with any key (or it fades on its
   // own). A persistent corner badge then remembers the crown.
   let legendTimer = null;
+  let legendShownAt = 0;
   function hideLegend() {
     if (!$legend) return;
     $legend.classList.remove('show');
@@ -249,11 +250,25 @@ export function createHud() {
       + `<div class="legend-help">The sea is still yours — press <b>any key</b> to sail on, or <b>N</b> for a new voyage</div>`
       + `</div>`;
     $legend.classList.add('show');
+    legendShownAt = Date.now();
+    // Safety net only: the overlay persists until the player acts (key / click). The long
+    // auto-timer just guarantees it can never get permanently stuck if input is lost.
     if (legendTimer) clearTimeout(legendTimer);
     legendTimer = setTimeout(hideLegend, 12000);
   }
+  // Dismiss on the player's next deliberate input — a fresh keydown or a click/tap.
+  // We ignore OS key-repeat (e.repeat) so a *held* throttle key (W/A/S/D, often down the
+  // instant the crown is earned) doesn't blow the proclamation away before it's read, and
+  // a short grace window absorbs the very keystroke that crossed the threshold.
+  function dismissLegend(e) {
+    if (!$legend || !$legend.classList.contains('show')) return;
+    if (e && e.type === 'keydown' && e.repeat) return;
+    if (Date.now() - legendShownAt < 350) return;
+    hideLegend();
+  }
   if (typeof window !== 'undefined' && window.addEventListener) {
-    window.addEventListener('keydown', () => { if ($legend && $legend.classList.contains('show')) hideLegend(); });
+    window.addEventListener('keydown', dismissLegend);
+    window.addEventListener('pointerdown', dismissLegend);
   }
 
   // Persistent corner badge: once a crown is earned it stays shown in the HUD.
