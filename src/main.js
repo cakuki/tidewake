@@ -122,7 +122,15 @@ const cannons = createCannons({
 
 // Audio: procedural sea ambience + adaptive sailing theme (start on first user gesture).
 // The music shares the audio engine's one context + master bus + mute toggle.
-const audio = createAudio();
+// CREATIVE SPARK (#76 follow-up): the very first time the audio unlocks (the first tap — the
+// moment iOS finally lets the sea be heard), the shanty band "tunes up" with a one-time quip.
+const audio = createAudio({
+  onUnlock: () => {
+    try {
+      if (!audio.isMuted()) hud.flashBanner('🎶 The shanty band tunes up…', 'A scrape of the fiddle, a tap of the boot — and we’re away!');
+    } catch { /* a flourish must never break the boot */ }
+  },
+});
 const music = createMusic();
 audio.attachMusic(music);
 audio.init();

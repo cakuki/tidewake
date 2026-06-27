@@ -277,15 +277,32 @@ test('#76 beach fix: a hull sitting ON the visible sand is pushed back past the 
     `hull edge ${(d - SHIP_RADIUS).toFixed(2)} must clear the waterline ${waterline.toFixed(2)}`);
 });
 
-test('#76 beach fix: the solid boundary reaches the visible coastline (hull edge stops at the sand)', () => {
-  // The hull's leading edge should come to rest at/just outside the waterline on a head-on stop.
+test('#76 beach fix: the solid boundary reaches the visible coastline (hull edge stops just off the sand)', () => {
+  // The hull's leading edge should come to rest just OUTSIDE the waterline on a head-on stop —
+  // a clear hull's-width off the sand (#76 owner follow-up), but not so far out it walls open sea.
   const r = 90;
   const isle = { x: 0, z: 0, r };
   const res = resolveCircleCollision({ x: 1, z: 0 }, [isle]); // driven deep, head-on along +x
-  const edge = Math.hypot(res.x, res.z) - SHIP_RADIUS;
+  const edge = Math.hypot(res.x, res.z) - SHIP_RADIUS;        // == r * ISLAND_HITBOX
   const waterline = WATERLINE_FACTOR * r;
-  assert.ok(edge >= waterline - 1e-6, `edge ${edge.toFixed(2)} should reach the sand ${waterline.toFixed(2)}`);
-  assert.ok(edge <= waterline + 2, `edge ${edge.toFixed(2)} should stop AT the coast, not far out in the water`);
+  const standoff = edge - waterline;                          // intended clear-water gap
+  assert.ok(standoff >= 0, `edge ${edge.toFixed(2)} should clear the sand ${waterline.toFixed(2)}`);
+  assert.ok(standoff <= 0.12 * r, `edge ${edge.toFixed(2)} should stop just off the coast, not far out (standoff ${standoff.toFixed(1)} of r=${r})`);
+});
+
+test('#76 owner follow-up: the hull bow clears the sand on the SMALLEST island (no more beaching)', () => {
+  // Owner: "I can still go into a bit of sand." Root cause: the visible bow reaches ~8 ahead of
+  // centre (ship.js L=16 → halfLen 8) while the collision circle only guards SHIP_RADIUS=7, so the
+  // bow tip pokes ~1 unit past the collision boundary. The hitbox must clear the BOW of the
+  // waterline even on the smallest island (r=60, world.js spots) — the worst case for beaching.
+  const BOW_HALF = 8;            // ship.js: L = 16 → halfLen 8
+  const r = 60;                  // smallest island in world.js
+  const isle = { x: 0, z: 0, r };
+  const res = resolveCircleCollision({ x: 1, z: 0 }, [isle]);   // driven head-on into the coast
+  const centreDist = Math.hypot(res.x, res.z);                  // == r*ISLAND_HITBOX + SHIP_RADIUS
+  const bowTip = centreDist - BOW_HALF;                         // nearest the visible bow gets in
+  const waterline = WATERLINE_FACTOR * r;
+  assert.ok(bowTip > waterline, `bow tip ${bowTip.toFixed(1)} must stop OUTSIDE the sand ${waterline.toFixed(1)}`);
 });
 
 test('#76 beach fix: squashed island is solid on BOTH the narrow and wide axes (ellipse footprint)', () => {

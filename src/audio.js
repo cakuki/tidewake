@@ -67,6 +67,28 @@ export function semitoneToFreq(semitonesFromA4, a4 = 440) {
   return a4 * Math.pow(2, semitonesFromA4 / 12);
 }
 
+/**
+ * The user-gesture events that can unlock WebAudio. iOS Safari (tab AND installed PWA) only
+ * resumes a suspended AudioContext inside a REAL gesture handler, and historically wants a
+ * touch event specifically — so we listen broadly (touch + pointer + mouse + click + key) and
+ * unlock on whichever fires first. Pure + exported so the set is unit-testable.
+ * @returns {string[]} event names to bind for the first-gesture unlock
+ */
+export function unlockEventNames() {
+  return ['touchstart', 'touchend', 'pointerdown', 'mousedown', 'click', 'keydown'];
+}
+
+/**
+ * Given an AudioContext's `state`, does it still need an unlock attempt? 'running' is unlocked;
+ * 'suspended' / 'interrupted' (iOS) / anything unknown still needs a gesture-driven resume. Pure
+ * so the iOS unlock-state logic can be unit-tested without a real AudioContext.
+ * @param {string|undefined} state  ctx.state
+ * @returns {boolean}
+ */
+export function needsUnlock(state) {
+  return state !== 'running';
+}
+
 // ---- Audio system (browser-only; nothing here runs at import time) ----
 
 const MUTE_KEY = 'tidewake.muted';
@@ -81,7 +103,11 @@ const MUTE_KEY = 'tidewake.muted';
  * Every method is a clean no-op until a real user gesture has created the context,
  * and resilient if called before init(). Guarded so a headless run never throws.
  */
-export function createAudio() {
+export function createAudio(opts = {}) {
+  // One-time charm beat when the audio first unlocks (#76 follow-up creative spark). Optional.
+  const onUnlock = typeof opts.onUnlock === 'function' ? opts.onUnlock : null;
+  let unlockedOnce = false;
+  let gestureBound = false;
   let ctx = null;
   let master = null;
   let waveGainNode = null;
@@ -429,7 +455,8 @@ export function createAudio() {
     }
   }
 
-  // Bring the engine up on the first real user gesture (autoplay gate).
+  // Build the engine once (graph + ambience + music). Does NOT resume — unlock() drives the
+  // gesture-bound resume/unlock so the iOS policy is satisfied inside a real gesture handler.
   function start() {
     if (started) return;
     try {
@@ -437,7 +464,6 @@ export function createAudio() {
       if (!AC) return; // no WebAudio (headless) — stay inert, no error
       ctx = new AC();
       buildGraph();
-      if (ctx.state === 'suspended' && ctx.resume) ctx.resume().catch(() => {});
       started = true;
       scheduleGull();
       // Bring the music up on the same gesture, sharing this graph + master bus.
@@ -452,6 +478,69 @@ export function createAudio() {
       ctx = null;
       master = null;
       started = false;
+    }
+  }
+
+  // iOS WebAudio unlock: a 1-sample silent buffer played INSIDE the user gesture satisfies
+  // Safari's unlock (belt-and-braces alongside resume()). Works in a Safari tab and an installed
+  // PWA alike. Guarded; a no-op in headless (no ctx) and never throws.
+  function playSilentBuffer() {
+    if (!ctx) return;
+    try {
+      const buf = ctx.createBuffer(1, 1, ctx.sampleRate || 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      (src.start || src.noteOn)?.call(src, 0);
+    } catch {
+      /* ignore — the resume() below is the primary path */
+    }
+  }
+
+  function removeGestureListeners() {
+    if (!gestureBound) return;
+    try {
+      for (const ev of unlockEventNames()) globalThis.removeEventListener?.(ev, onGesture);
+    } catch {
+      /* ignore */
+    }
+    gestureBound = false;
+  }
+
+  function notifyUnlocked() {
+    if (unlockedOnce) return;
+    unlockedOnce = true;
+    try {
+      onUnlock?.();
+    } catch {
+      /* a creative beat must never break audio */
+    }
+  }
+
+  // Bring the engine up AND unlock it on a real user gesture. Idempotent and safe to call on
+  // every gesture: builds the graph once, then resumes + plays the silent buffer until the
+  // context is actually 'running' (iOS can hand back 'suspended'/'interrupted' the first time,
+  // so we keep the listeners bound and retry on the next gesture until it sticks).
+  function onGesture() {
+    try {
+      start(); // one-time graph build (no-op once started)
+      if (!ctx) return; // headless / no WebAudio — nothing to unlock
+      if (needsUnlock(ctx.state)) {
+        playSilentBuffer(); // iOS: silent buffer on the gesture
+        const settle = () => {
+          if (ctx && ctx.state === 'running') {
+            removeGestureListeners();
+            notifyUnlocked();
+          }
+        };
+        if (ctx.resume) ctx.resume().then(settle).catch(() => {});
+        else settle();
+      } else {
+        removeGestureListeners();
+        notifyUnlocked();
+      }
+    } catch {
+      /* never throw from a gesture handler */
     }
   }
 
@@ -530,14 +619,27 @@ export function createAudio() {
 
   function init() {
     try {
-      const onGesture = () => {
-        start();
-        // After the first gesture the resume is settled; drop the one-shot.
-        globalThis.removeEventListener?.('pointerdown', onGesture);
-        globalThis.removeEventListener?.('keydown', onGesture);
-      };
-      globalThis.addEventListener?.('pointerdown', onGesture, { passive: true });
-      globalThis.addEventListener?.('keydown', onGesture);
+      // First-gesture unlock. Bind BROADLY (touch + pointer + mouse + click + key) so iOS Safari
+      // and an installed iOS PWA both resume + unlock inside a real gesture, whichever fires first.
+      for (const ev of unlockEventNames()) {
+        globalThis.addEventListener?.(ev, onGesture, { passive: true });
+      }
+      gestureBound = true;
+
+      // iOS suspends audio when the tab/PWA is backgrounded; re-resume when it returns to the
+      // foreground so the music doesn't stay dead after switching apps.
+      globalThis.document?.addEventListener?.('visibilitychange', () => {
+        try {
+          if (
+            globalThis.document.visibilityState === 'visible' &&
+            started && ctx && needsUnlock(ctx.state)
+          ) {
+            ctx.resume?.().catch(() => {});
+          }
+        } catch {
+          /* ignore */
+        }
+      });
 
       // 'm' toggles mute (independent of the gesture gate).
       globalThis.addEventListener?.('keydown', (e) => {

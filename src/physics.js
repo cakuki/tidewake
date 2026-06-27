@@ -164,14 +164,22 @@ export function dockingUpdate(prevDockedName, pos, ports, radius) {
 // scales the beach by sx,sz per island); when those scales are supplied the resolver follows
 // the ellipse, so the coast is solid on every bearing without walling open water on the
 // narrow axis. Circles (no sx/sz) reduce to the original radial case.
+//
+// #76 owner follow-up: "I can still go into a bit of sand — increase the collision model a bit
+// more." The catch is the BOW: the hull's visible bow reaches ~8 ahead of centre (ship.js
+// halfLen) while the collision circle only guards SHIP_RADIUS=7, so at 1.12·r the bow tip still
+// kissed the waterline (1.107·r + bow overhang) on the smaller isles. Nudged the factor to
+// 1.18·r so the hull EDGE rests a clear hull's-width off the sand and the visible bow stops in
+// the water on every island — without it feeling like an invisible wall out in open sea.
 
 /** Ship's forgiving collision radius (world units). The hull is ~16 long / 6 abeam; a single
  *  circle a touch over the half-beam keeps grazes fair and snag-free. */
 export const SHIP_RADIUS = 7;
 /** Multiplier on an island's `r` giving its SOLID visible shoreline. world.js's beach cylinder
- *  reaches ~1.107·r at the waterline; 1.12 adds a hair of margin so the hull edge clears the
- *  sand rather than kissing it. (If the beach geometry in world.js changes, retune this.) */
-export const ISLAND_HITBOX = 1.12;
+ *  reaches ~1.107·r at the waterline; 1.18 keeps a clear hull's-width of water so the bow stops
+ *  OFF the sand (the bow overhangs the collision circle — see the #76 follow-up note above),
+ *  not so far out it walls open water. (If the beach geometry in world.js changes, retune this.) */
+export const ISLAND_HITBOX = 1.18;
 
 /**
  * Push a point out of any overlapping island footprints to their solid shoreline boundary.

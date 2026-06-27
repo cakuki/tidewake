@@ -6,9 +6,37 @@ import {
   windGain,
   nextGullDelay,
   semitoneToFreq,
+  unlockEventNames,
+  needsUnlock,
 } from '../../src/audio.js';
 
 const MAX = 55;
+
+// ---- iOS WebAudio unlock logic (#76 follow-up) ----------------------------
+// iOS Safari (tab AND installed PWA) only resumes a suspended AudioContext inside a real
+// gesture; the pure helpers below decide WHICH gestures to bind and WHETHER a context still
+// needs unlocking, so the unlock state machine is testable without a real AudioContext.
+
+test('unlockEventNames: covers touch (iOS), pointer, mouse, click and key gestures', () => {
+  const ev = unlockEventNames();
+  assert.ok(Array.isArray(ev) && ev.length > 0, 'returns a non-empty list');
+  // iOS specifically wants a touch event — both touchstart and touchend must be there.
+  assert.ok(ev.includes('touchstart'), 'binds touchstart (iOS unlock)');
+  assert.ok(ev.includes('touchend'), 'binds touchend (iOS unlock)');
+  // Desktop / non-touch must still unlock.
+  for (const e of ['pointerdown', 'mousedown', 'click', 'keydown']) {
+    assert.ok(ev.includes(e), `binds ${e}`);
+  }
+  // No duplicate listeners.
+  assert.equal(new Set(ev).size, ev.length, 'no duplicate event names');
+});
+
+test('needsUnlock: only a running context is considered unlocked', () => {
+  assert.equal(needsUnlock('running'), false, 'running == unlocked');
+  assert.equal(needsUnlock('suspended'), true, 'suspended needs a gesture resume');
+  assert.equal(needsUnlock('interrupted'), true, 'iOS "interrupted" needs re-resume');
+  assert.equal(needsUnlock(undefined), true, 'unknown/just-created needs unlock');
+});
 
 test('clamp01: clamps to [0,1]', () => {
   assert.equal(clamp01(-3), 0);
