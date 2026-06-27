@@ -2,14 +2,14 @@ import * as THREE from 'three';
 
 // Sky dome + a scatter of islands so there are landmarks to sail toward.
 export function createWorld(scene) {
-  // Warm "age of sail" sky gradient via a big inverted sphere — the horizon
-  // band warms to a weathered paper tone so it ties into the ocean's ink-wash.
+  // Bright sunny Caribbean sky via a big inverted sphere — a clear blue up high
+  // softening to a warm, bright haze at the horizon that ties into the sunny sea.
   const skyGeo = new THREE.SphereGeometry(3000, 32, 16);
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     uniforms: {
-      top: { value: new THREE.Color(0x2f6fa6) },
-      bottom: { value: new THREE.Color(0xe5d8bd) }, // warm hazy horizon
+      top: { value: new THREE.Color(0x2f8fd8) },    // clear sunny sky-blue up high
+      bottom: { value: new THREE.Color(0xe6eef0) }, // bright warm horizon haze
     },
     vertexShader: `varying vec3 vp; void main(){ vp = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);} `,
     fragmentShader: `varying vec3 vp; uniform vec3 top; uniform vec3 bottom;
@@ -17,8 +17,9 @@ export function createWorld(scene) {
   });
   scene.add(new THREE.Mesh(skyGeo, skyMat));
 
-  // Warm, weathered horizon fog (matches the ocean ink-wash + sky band).
-  scene.fog = new THREE.Fog(0xc9bf9e, 600, 2600);
+  // Bright sunny horizon haze (matches the ocean haze + sky band). Pushed back a
+  // touch so the foreground water stays vividly turquoise.
+  scene.fog = new THREE.Fog(0xbfe8e6, 800, 2800);
 
   const islands = new THREE.Group();
   // Shared palette — a couple of sand/grass/rock tones to blend beach into hill.

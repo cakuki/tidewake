@@ -30,15 +30,16 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 app.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x9ec6d8); // horizon haze — never show void black
+scene.background = new THREE.Color(0xbfe8e6); // bright sunny sea-haze — never show void black
 const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.5, 6000);
 camera.position.set(0, 40, -70);
 
-// Lights
-const sun = new THREE.DirectionalLight(0xfff2d6, 2.0);
+// Lights — bright tropical day: a warm sun + a brighter sky-blue hemisphere fill so
+// the whole scene reads sunlit (pairs with the sunny ocean/sky in world.js + ocean.js).
+const sun = new THREE.DirectionalLight(0xfff4de, 2.2);
 sun.position.set(300, 500, 120);
 scene.add(sun);
-scene.add(new THREE.HemisphereLight(0xbfe0ee, 0x2e4a40, 0.8));
+scene.add(new THREE.HemisphereLight(0xd2effb, 0x3a5a4c, 0.95));
 
 // World + scene objects
 const world = createWorld(scene);
