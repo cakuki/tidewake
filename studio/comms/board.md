@@ -20,6 +20,7 @@ Keep `Doing` small (limit WIP). Cards: `#issue — short title — owner`.
 
 ## Done
 - Loop 0: v0 shipped — playable build + auto-release + studio structure.
+- Loop 27: #59 Cannon Broadside — open fire (G) alongside the Insult Broadside duel; closed, depth follow-up #72 filed (v0.0.20260627130215).
 
 ## Blocked
 - _(empty)_

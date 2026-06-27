@@ -73,6 +73,8 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 | 26 | Invisible onboarding — seeded first goal + juicy first-win beats, no tutorial wall | #60 | v0.0.20260627115834 | 229 tests; latest release; cheapest retention lever now the arc is reachable |
 | — | Retro 5 (subagent) | — | — | **Arc now LANDABLE** (tuned reachable + onboarded + sunny + perf-gated). Owner-feedback sprint: all owner P1s + P2s #53/#54 shipped same session. Process headline (owner ask): added **Lean orchestrator protocol (post-compact)** — per cycle = read `queue.md` top → dispatch one self-sufficient cycle-runner → read <10-line report; cycle-runners own ALL bookkeeping & `git add <specific files>` (never `-A`); live QA only for owner visuals (cache-bust, park tab on about:blank); rituals as scheduled subagents. Created `queue.md`. Next direction: thin depth (cannon #59) + polish (#19/#15/#20/#21), gated by owner-decisions #56/#58. DL #2 overdue. **LOOP STOPPED for compaction.** |
 
+| 27 | Cannon Broadside — open fire (G) as a teeth-y alternative to the Insult Broadside duel; deterministic seedable exchange, two aims, coin+Infamy on a sinking | #59 | v0.0.20260627130215 | 242 tests (+13); `src/cannons.js` pure+TDD mirrors duel.js; fire-orange HUD panel; QA hook .cannons/.openFire/.cannonFire; playtest drives a cannon win. Closed #59, filed depth follow-up #72 |
+
 ## Hourly Telegram log
 
 | UTC | Version | What changed | Media |
