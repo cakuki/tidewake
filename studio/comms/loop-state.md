@@ -11,26 +11,25 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 > orchestrator does not edit this file per cycle. Full protocol: "Lean orchestrator protocol
 > (post-compact)" in `docs/runbook/LOOP.md`.
 
-- **Current loop:** 32 done → next is **33** (read `queue.md` top). Loops 27–32 this session: #59
-  cannon combat → #63 mobile PWA → PWA notch safe-area fix → #73 settings/toggles panel → #76 a1
-  island collision → #76 c harbour/fight slow-to-stop.
-- **Loops since last retro:** **0** (Retro 6 just covered 27–32; Retro 5 covered 20–26). Next retro
-  due at loop 36 (every 3–4).
-- **Cycles since last deep-learning loop:** **0** — ✅ **DL #2 DONE 2026-06-27** (subagent): all 9
-  agents refreshed (web research, new + classic) in `studio/agents/*` ## Research log + `studio/memory/*`;
-  filed 8 buildable wildcards **#78–#85**. (#1 at loop 10 filed #32–#40.) Next DL due at ~cycle 43.
-- **State:** core arc COMPLETE + tuned reachable + onboarded + sunny + perf-gated; **+ cannon combat
-  (#59), + installable mobile PWA with heat-aware DPR cap (#63), + PWA safe-area-top (part of #75),
-  + settings/toggles panel (#73), + arcade island collision (#76 a1) + harbour/fight slow-to-stop (#76 c).**
-- **Next dispatch (per HARD ritual trigger):** **DL loop #2** (ritual, ~22 cycles overdue) — then the
-  `queue.md` top *work* item resumes: **#76 remaining phases** (b ship-vs-ship collision, a2 slide
-  polish) → **#58** weather (OPTIONAL toggle, plugs into #73 panel registry, sunny default) → **#55**
-  art research → depth #72 cannon-followup / #32 glTF; polish #66 docked-touch-overlap, rest of #75.
-- **Owner-decisions ANSWERED (Telegram 2026-06-27):** #56 mobile = **GO (shipped #63)**; #58 weather =
-  **GO as optional toggle**. Owner-steered #73 toggles UI + #76 collision/slow-down both **SHIPPED**
-  (Loops 30/31/32). #76 priority delegated to PM+TL → set P1, shipped a1+c; b/a2 remain.
-- **⏳ Pending owner question:** _(none open.)_ The #76-priority question was resolved 2026-06-27
-  (owner delegated to PM+TL; see `OWNER-CHANNEL.md` → Pending questions + `decisions.md`).
+- **Current loop:** 36 done → next is **37** (read `queue.md` top). This session (loops 27–36): #59
+  cannon combat → #63 mobile PWA → #75 PWA notch → #73 settings/toggles panel → #76 a1 island
+  collision → #76 c harbour/fight slow-stop → Retro 6 → DL #2 → #77/#87 iOS fix batch → #76 b
+  ship-vs-ship collision → #58 optional day-night toggle.
+- **Loops since last retro:** **4** (Retro 6 covered 27–32; loops 33–36 since) — **🟡 RETRO 7 DUE** (every 3–4).
+- **Cycles since last deep-learning loop:** ~4 — DL #2 DONE 2026-06-27 (filed #78–#85). Next DL ~cycle 43.
+- **State:** core arc COMPLETE + tuned + onboarded + sunny + perf-gated; **+ cannon combat (#59), +
+  mobile PWA w/ heat-aware DPR (#63), + PWA safe-area (#75 partial), + settings/toggles panel (#73),
+  + arcade collision: islands (#76 a1) + harbour/fight slow-stop (#76 c) + ship-vs-ship (#76 b), +
+  iOS shader hardening/fallback (#86) + iOS audio capture-phase unlock (#77) + no-text-select (#87),
+  + OPTIONAL day-night toggle (#58, sunny stays default).**
+- **Next dispatch:** **Retro 7** (due, per HARD trigger) — then `queue.md` work: **#76 a2** slide
+  polish (closes #76) → **#55** art research → depth #72 cannon-followup / #32 glTF / #88 full weather
+  → polish #66 docked-touch-overlap, rest of #75 → DL backlog #78–#85.
+- **Owner-decisions ANSWERED:** #56 mobile = GO (shipped #63); #58 weather = GO optional toggle (SHIPPED #58).
+  #76 priority delegated to PM+TL → P1, shipped a1+c+b; a2 remains. Prioritization is PM+TL's call.
+- **⏳ Awaiting owner re-test (iOS, on his iPhone):** **#77 audio** (capture-phase unlock — reopened,
+  unconfirmed) + **#87 no-text-select** — both need his confirmation on the reloaded build (v…192458+).
+  #86 ocean "void" was a zoom-in, NOT a bug (closed; hardening retained). Latest live = v…195729.
 - **Comms:** **two-way owner channel LIVE** (`OWNER-CHANNEL.md` + `scripts/owner-channel.sh`) — report
   out on every release/roadmap change; smart intent-routing in (pending-answer / thread-reaction /
   small ad-hoc inline / planning→PM-desk). Poll `owner-channel.sh peek` each cycle (step 0).
@@ -41,7 +40,7 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
   QA; Game Designer owns balance/tuning; from-owner P1s jump the queue.)
 - **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions
   read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
-- **Latest release:** **v0.0.20260627182358** (#76 c harbour/fight slow-to-stop). ~34 releases, **~284 tests**.
+- **Latest release:** **v0.0.20260627195729** (optional day-night toggle, #58). ~37 releases, **310 tests**.
 - **Live:** https://cakuki.github.io/tidewake/
 - **Open enablers:** #37 deterministic visual-diff (schedule — open since cycle 10); #38 PR-validation
   CI gate; #36 fixed-timestep.
