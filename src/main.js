@@ -13,9 +13,9 @@ import { createMinimap } from './minimap.js';
 import { createSailing } from './sailing.js';
 import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
-import { initEconomy } from './economy.js';
+import { initEconomy, syncRenown } from './economy.js';
 import { VERSION } from './version.js';
-import { greetPlayer } from './renown.js';
+import { greetPlayer, dominantPole, titleFor } from './renown.js';
 
 // main.js is a thin bootstrap: it builds the renderer/scene/camera/lights, spins up
 // the world + game systems (input, sailing, hud, ports, wake, audio, persistence),
@@ -61,17 +61,18 @@ const sailing = createSailing({ ship, ocean, camera, input });
 const state = sailing.state;
 const persistence = createPersistence(state);
 
-// Insult Broadside (#33): hail a nearby NPC and duel it with wit. Coins + renown on
-// a win; a small coin setback on a loss. Reward/penalty land on the shared state.
+// Insult Broadside (#33): hail a nearby NPC and duel it with wit. Coins + INFAMY on
+// a win (#45 — combat is the pirate pole); a small coin setback on a loss. Reward/penalty
+// land on the shared state, and renown (the spine) is kept in step.
 const duel = createDuel({
   npcs,
   getShipPos: () => [state.pos.x, state.pos.z],
-  applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.renown += r.renown; },
+  applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.renown; syncRenown(state); },
   applyPenalty: (p) => { initEconomy(state); state.coins = Math.max(0, state.coins - p.coins); },
   onEnd: ({ result, reward, penalty, enemyName }) => {
     if (result === 'win') {
       hud.flashBanner('⚔ They strike their colours!',
-        `${enemyName} sails off jeering — but you pocket ${reward.coins}c and ${reward.renown} renown for the sharper tongue.`);
+        `${enemyName} sails off jeering — but you pocket ${reward.coins}c and ${reward.renown} infamy for the sharper tongue.`);
     } else {
       hud.flashBanner('🏴 Out-jeered!',
         `${enemyName}'s crew howls with laughter. You fumble ${penalty.coins} coins overboard and slink away.`);
@@ -160,7 +161,18 @@ function loop() {
 window.__tidewake = {
   version: VERSION,
   ready: false,
-  get state() { return { heading: state.heading, speed: state.speed, throttle: state.throttle, pos: state.pos.toArray(), port: state.port ?? null, renown: state.renown ?? 0, coins: state.coins ?? 0 }; },
+  get state() {
+    const infamy = state.infamy ?? 0, standing = state.standing ?? 0;
+    return {
+      heading: state.heading, speed: state.speed, throttle: state.throttle,
+      pos: state.pos.toArray(), port: state.port ?? null,
+      coins: state.coins ?? 0,
+      // Two poles (#45) + their derived total, plus the current pole-aware title.
+      infamy, standing, renown: state.renown ?? (infamy + standing),
+      title: titleFor(infamy, standing).title,
+      pole: dominantPole(infamy, standing),
+    };
+  },
   get ports() { return ports.ports; },
   get npcs() { return npcs.snapshot(); },
   get docked() { return ports.docked; },
@@ -172,10 +184,14 @@ window.__tidewake = {
   release(k) { input.keys.delete(k); },
   save() { persistence.write(); },
   newVoyage() { newVoyage(); },
-  // QA affordances for the renown-reaction check (#43): nudge renown directly and
-  // read the deterministic (first-line) harbourmaster greeting for a given renown.
-  setRenown(n) { state.renown = Math.max(0, Number(n) || 0); return state.renown; },
-  greet(renown = state.renown ?? 0) { return greetPlayer(renown, ports.docked || ports.ports[0]?.name || 'the port', () => 0); },
+  // QA affordances (#43/#45): nudge a pole directly and read the deterministic
+  // (first-line) harbourmaster greeting for the captain's current legend + lean.
+  setRenown(n) { initEconomy(state); state.standing = Math.max(0, Number(n) || 0); syncRenown(state); return state.renown; },
+  setInfamy(n) { initEconomy(state); state.infamy = Math.max(0, Number(n) || 0); syncRenown(state); return state.infamy; },
+  setStanding(n) { initEconomy(state); state.standing = Math.max(0, Number(n) || 0); syncRenown(state); return state.standing; },
+  greet(renown = state.renown ?? 0, pole = dominantPole(state.infamy, state.standing)) {
+    return greetPlayer(renown, ports.docked || ports.ports[0]?.name || 'the port', () => 0, pole);
+  },
   step(seconds) {
     const fixed = 1 / 60;
     let acc = seconds;

@@ -5,7 +5,7 @@
 import { pointOfSail } from './physics.js';
 import { VERSION } from './version.js';
 import { GOODS, PORTS, HOLD_CAP, market, buy, sell, cargoUsed } from './economy.js';
-import { rankForRenown, renownTier } from './renown.js';
+import { rankForRenown, renownTier, titleFor, dominantPole } from './renown.js';
 
 const RAD2DEG = 180 / Math.PI;
 
@@ -18,7 +18,8 @@ export function createHud() {
   const $toast = document.getElementById('toast');
   const $coins = document.getElementById('coins');
   const $cargo = document.getElementById('cargo');
-  const $renown = document.getElementById('renown');
+  const $infamy = document.getElementById('infamy');
+  const $standing = document.getElementById('standing');
   const $rank = document.getElementById('rank');
   const $rankprog = document.getElementById('rankprog');
   const $trade = document.getElementById('trade');
@@ -28,10 +29,10 @@ export function createHud() {
 
   let lastPosLabel = '', lastPosBand = '';
   let toastTimer = null;
-  // Captain's Ledger: only re-touch the DOM when renown changes, and flash on rank-up.
+  // Captain's Ledger: only re-touch the DOM when a pole changes, and flash on rank-up.
   // `lastRankIndex` starts null so the first frame (incl. a restored voyage) just adopts
   // the current rank silently — we only celebrate a rank the player *climbs into*.
-  let lastRenown = -1, lastRankIndex = null;
+  let lastLedgerSig = '', lastRankIndex = null;
 
   // ---- Trade panel + keyboard trading ---------------------------------------
   // We can't touch input.js/main.js, so the HUD owns a small, self-contained keydown
@@ -88,14 +89,19 @@ export function createHud() {
     }
     const renown = Number.isFinite(state.renown) ? state.renown : 0;
     const tier = renownTier(renown);
-    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + flash;
+    const pole = dominantPole(state.infamy, state.standing);
+    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash;
     if (sig === lastTradeSig && $trade.classList.contains('show')) return;
     lastTradeSig = sig;
 
     const info = PORTS[port] || {};
     const cryer = (info.cryers && info.cryers[(Math.floor(Date.now() / 6000)) % info.cryers.length]) || '';
-    // Standing badge (#43): how this port reckons you — and the trade-terms perk it earns.
-    const standing = tier.tier > 0 ? ` · <span class="trade-standing">${tier.label} — terms in your favour</span>` : '';
+    // Standing badge (#43/#45): how this port reckons you. The trade-terms perk is the
+    // same, but a FEARED captain gets a wary note rather than a warm one.
+    const badgeNote = pole === 'pirate'
+      ? "they'd sooner you sailed on — but trade quick"
+      : 'terms in your favour';
+    const standing = tier.tier > 0 ? ` · <span class="trade-standing">${tier.label} — ${badgeNote}</span>` : '';
     const rows = market(port, renown).map((row, i) => {
       const held = (state.cargo && state.cargo[row.id]) || 0;
       const spec = info.speciality === row.id ? ' spec' : (info.craving === row.id ? ' crave' : '');
@@ -120,21 +126,28 @@ export function createHud() {
     renderLedger(state);
   }
 
-  // Captain's Ledger: current rank title + renown + a hint of progress to the next rung.
+  // Captain's Ledger (#45): both poles — ⚔ Infamy + ⚖ Standing — plus the current
+  // pole-aware title and a hint of which way you lean and how far to the next rung.
   // Fires a celebratory toast the moment the player climbs into a new rank.
   function renderLedger(state) {
-    const renown = Number.isFinite(state.renown) ? state.renown : 0;
-    const rank = rankForRenown(renown);
-    if (lastRankIndex !== null && rank.index > lastRankIndex) showRankUp(rank.title);
+    const infamy = Number.isFinite(state.infamy) ? state.infamy : 0;
+    const standing = Number.isFinite(state.standing) ? state.standing : 0;
+    const total = infamy + standing;
+    const t = titleFor(infamy, standing);
+    const rank = rankForRenown(total);
+    if (lastRankIndex !== null && rank.index > lastRankIndex) showRankUp(t.title);
     lastRankIndex = rank.index;
-    if (renown === lastRenown) return; // nothing to repaint
-    lastRenown = renown;
-    if ($renown) $renown.textContent = renown;
-    if ($rank) $rank.textContent = rank.title;
+    const sig = `${infamy}|${standing}|${t.title}`;
+    if (sig === lastLedgerSig) return; // nothing to repaint
+    lastLedgerSig = sig;
+    if ($infamy) $infamy.textContent = infamy;
+    if ($standing) $standing.textContent = standing;
+    if ($rank) $rank.textContent = t.title;
     if ($rankprog) {
+      const lean = t.pole === 'neutral' ? 'balanced' : t.leaning;
       $rankprog.textContent = rank.nextAt === null
-        ? ' · top of the ledger ★'
-        : ` · ${rank.nextAt - renown} to ${rank.nextTitle}`;
+        ? ` · ${lean} · top of the ledger ★`
+        : ` · ${lean} · ${rank.nextAt - total} to next`;
     }
   }
 

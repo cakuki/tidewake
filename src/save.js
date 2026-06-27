@@ -4,20 +4,22 @@
 // just leans on these functions for the shape, versioning, and sanity-checks.
 //
 // Contract: a "save" is a tiny JSON object
-//   { v, heading, speed, throttle, pos, coins, cargo, renown }
+//   { v, heading, speed, throttle, pos, coins, cargo, infamy, standing }
 // where pos is a [x, y, z] array, coins is a finite number >= 0, cargo is a
-// {goodId: qty} map over known goods (total within HOLD_CAP), and renown is a finite
-// number >= 0 (the Captain's Ledger; an absent renown loads as 0). Anything that doesn't
-// match — wrong version, missing/partial fields, non-finite numbers, absurd
-// positions, unknown/over-capacity cargo — deserialises to `null` so the caller can
-// simply start a fresh voyage. Never throws.
+// {goodId: qty} map over known goods (total within HOLD_CAP), and infamy + standing are
+// finite numbers >= 0 (the two poles of the Captain's Ledger; absent poles load as 0,
+// and renown is derived as their sum, not stored). Anything that doesn't match — wrong
+// version, missing/partial fields, non-finite numbers, absurd positions,
+// unknown/over-capacity cargo — deserialises to `null` so the caller can simply start a
+// fresh voyage. Never throws.
 
 import { GOODS, HOLD_CAP, START_COINS } from './economy.js';
 
 export const SAVE_KEY = 'tidewake.save.v1';
-// v2 added the economy fields (coins + cargo); v3 added renown (the Captain's Ledger).
+// v2 added the economy fields (coins + cargo); v3 added renown (the Captain's Ledger);
+// v4 split renown into two poles — infamy (pirate) + standing (governor) (#45).
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -62,8 +64,10 @@ export function serialize(state) {
   // Economy: persist the purse + hold. A live state always carries these (economy.js
   // initialises them), but default defensively so a pre-economy caller still round-trips.
   const coins = isFiniteNumber(state.coins) && state.coins >= 0 ? state.coins : START_COINS;
-  // Renown: a lifetime legend score; default 0 for a pre-renown caller.
-  const renown = isFiniteNumber(state.renown) && state.renown >= 0 ? state.renown : 0;
+  // Two poles (#45): infamy (pirate) + standing (governor); each defaults to 0 for a
+  // pre-pole caller. Renown is derived (infamy + standing) on load, so it isn't stored.
+  const infamy = isFiniteNumber(state.infamy) && state.infamy >= 0 ? state.infamy : 0;
+  const standing = isFiniteNumber(state.standing) && state.standing >= 0 ? state.standing : 0;
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -72,7 +76,8 @@ export function serialize(state) {
     pos: [pos[0], pos[1], pos[2]],
     coins,
     cargo: cleanCargoForSave(state.cargo),
-    renown,
+    infamy,
+    standing,
   });
 }
 
@@ -125,12 +130,16 @@ export function deserialize(raw) {
   }
   if (held > HOLD_CAP) return null;
 
-  // Renown (save v3): an absent field loads as 0 (a leaner older v3 shape stays valid),
-  // but a present-but-corrupt renown — negative or non-finite — fails the whole save.
-  let renown = 0;
-  if (obj.renown !== undefined) {
-    if (!isFiniteNumber(obj.renown) || obj.renown < 0) return null;
-    renown = obj.renown;
+  // Two poles (save v4): each absent pole loads as 0 (a leaner v4 shape stays valid),
+  // but a present-but-corrupt pole — negative or non-finite — fails the whole save.
+  let infamy = 0, standing = 0;
+  if (obj.infamy !== undefined) {
+    if (!isFiniteNumber(obj.infamy) || obj.infamy < 0) return null;
+    infamy = obj.infamy;
+  }
+  if (obj.standing !== undefined) {
+    if (!isFiniteNumber(obj.standing) || obj.standing < 0) return null;
+    standing = obj.standing;
   }
 
   return {
@@ -140,6 +149,8 @@ export function deserialize(raw) {
     pos: [pos[0], pos[1], pos[2]],
     coins,
     cargo: cleanCargo,
-    renown,
+    infamy,
+    standing,
+    renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }

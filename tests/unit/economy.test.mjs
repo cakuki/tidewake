@@ -190,6 +190,37 @@ test('sell: a renowned captain is paid more than an unknown one', () => {
   assert.ok(renowned.coins > unknown.coins, `renowned got ${renowned.coins}, unknown ${unknown.coins}`);
 });
 
+// ---- Two poles (#45): commerce builds STANDING, not infamy -----------------
+
+test('initEconomy: seeds infamy + standing to 0 and derives renown = infamy + standing', () => {
+  const s = {};
+  initEconomy(s);
+  assert.equal(s.infamy, 0);
+  assert.equal(s.standing, 0);
+  assert.equal(s.renown, 0);
+});
+
+test('initEconomy: derives renown from existing poles, idempotently', () => {
+  const s = { infamy: 300, standing: 700 };
+  initEconomy(s);
+  assert.equal(s.renown, 1000, 'renown is the sum of the two poles');
+  // idempotent — does not clobber poles
+  initEconomy(s);
+  assert.equal(s.infamy, 300);
+  assert.equal(s.standing, 700);
+});
+
+test('sell: a profitable trade raises STANDING (the governor pole), not infamy', () => {
+  const s = freshState({ cargo: { rum: 4 } });
+  const beforeStanding = s.standing;
+  const beforeInfamy = s.infamy;
+  const r = sell(s, 'rum', 4, "Gullet's Rest");
+  assert.equal(r.ok, true);
+  assert.ok(s.standing > beforeStanding, 'commerce builds standing');
+  assert.equal(s.infamy, beforeInfamy, 'commerce never touches infamy');
+  assert.equal(s.renown, s.infamy + s.standing, 'renown stays the derived total');
+});
+
 test('arbitrage loop: buy low, sail, sell high → net profit', () => {
   const s = freshState();
   buy(s, 'rum', 4, 'Barnacle Bottom');   // cheap rum

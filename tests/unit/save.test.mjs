@@ -174,47 +174,57 @@ test('deserialize accepts good economy data right up to hold capacity', () => {
   assert.equal(restored.coins, good.coins);
 });
 
-// ---- Renown persistence (the Captain's Ledger, save v3) ----
+// ---- Two-pole persistence: Infamy + Standing (save v4, #45) ----
 
-test('serialize → deserialize round-trips renown', () => {
-  const s = { ...economyState(), renown: 2400 };
+test('serialize → deserialize round-trips infamy + standing, deriving renown', () => {
+  const s = { ...economyState(), infamy: 1500, standing: 900 };
   const restored = deserialize(serialize(s));
-  assert.equal(restored.renown, 2400);
+  assert.equal(restored.infamy, 1500);
+  assert.equal(restored.standing, 900);
+  assert.equal(restored.renown, 2400, 'renown is the derived sum of both poles');
 });
 
-test('serialize stamps renown into the save object', () => {
-  const obj = JSON.parse(serialize({ ...economyState(), renown: 750 }));
-  assert.equal(obj.renown, 750);
+test('serialize stamps both poles into the save object', () => {
+  const obj = JSON.parse(serialize({ ...economyState(), infamy: 200, standing: 550 }));
+  assert.equal(obj.infamy, 200);
+  assert.equal(obj.standing, 550);
 });
 
-test('serialize defaults a missing renown to 0', () => {
-  const obj = JSON.parse(serialize(economyState())); // no renown field
-  assert.equal(obj.renown, 0);
+test('serialize defaults missing poles to 0 (old/pre-pole caller still round-trips)', () => {
+  const obj = JSON.parse(serialize(economyState())); // no poles
+  assert.equal(obj.infamy, 0);
+  assert.equal(obj.standing, 0);
   const restored = deserialize(serialize(economyState()));
+  assert.equal(restored.infamy, 0);
+  assert.equal(restored.standing, 0);
   assert.equal(restored.renown, 0);
 });
 
-test('serialize defaults a negative / non-finite renown to 0', () => {
-  assert.equal(JSON.parse(serialize({ ...economyState(), renown: -5 })).renown, 0);
-  assert.equal(JSON.parse(serialize({ ...economyState(), renown: Infinity })).renown, 0);
+test('serialize defaults negative / non-finite poles to 0', () => {
+  const o = JSON.parse(serialize({ ...economyState(), infamy: -5, standing: Infinity }));
+  assert.equal(o.infamy, 0);
+  assert.equal(o.standing, 0);
 });
 
-test('deserialize defaults an absent renown to 0 (older v3 shape stays valid)', () => {
+test('deserialize defaults absent poles to 0 (a leaner save stays valid)', () => {
   const good = JSON.parse(serialize(economyState()));
-  delete good.renown;
+  delete good.infamy; delete good.standing;
   const restored = deserialize(JSON.stringify(good));
-  assert.ok(restored, 'a save without renown should still load');
-  assert.equal(restored.renown, 0);
+  assert.ok(restored, 'a save without poles should still load');
+  assert.equal(restored.infamy, 0);
+  assert.equal(restored.standing, 0);
 });
 
-test('deserialize rejects a present-but-corrupt renown', () => {
+test('deserialize rejects present-but-corrupt poles', () => {
   const good = JSON.parse(serialize(economyState()));
-  assert.equal(deserialize(JSON.stringify({ ...good, renown: -1 })), null);
-  assert.equal(deserialize(JSON.stringify({ ...good, renown: 'famous' })), null);
-  assert.equal(deserialize(JSON.stringify({ ...good, renown: null })), null);
+  assert.equal(deserialize(JSON.stringify({ ...good, infamy: -1 })), null);
+  assert.equal(deserialize(JSON.stringify({ ...good, standing: 'famous' })), null);
+  assert.equal(deserialize(JSON.stringify({ ...good, infamy: null })), null);
 });
 
-test('deserialize rejects an old pre-renown (v2) save', () => {
+test('deserialize rejects old pre-pole saves (v2 economy, v3 renown)', () => {
   const v2 = { v: 2, heading: 1, speed: 5, throttle: 0.4, pos: [10, 0, -5], coins: 100, cargo: {} };
   assert.equal(deserialize(JSON.stringify(v2)), null);
+  const v3 = { v: 3, heading: 1, speed: 5, throttle: 0.4, pos: [10, 0, -5], coins: 100, cargo: {}, renown: 500 };
+  assert.equal(deserialize(JSON.stringify(v3)), null);
 });

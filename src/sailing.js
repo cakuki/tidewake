@@ -27,15 +27,19 @@ export function createSailing({ ship, ocean, camera, input }) {
     // Economy (persisted since save v2) — apply if present; initEconomy fills any gaps.
     if (typeof saved.coins === 'number') state.coins = saved.coins;
     if (saved.cargo && typeof saved.cargo === 'object') state.cargo = { ...saved.cargo };
-    // Renown (the Captain's Ledger, persisted since save v3).
-    if (typeof saved.renown === 'number') state.renown = saved.renown;
+    // Two poles of the Captain's Ledger (persisted since save v4): infamy + standing.
+    // Renown is the derived total, recomputed from whatever poles loaded.
+    if (typeof saved.infamy === 'number') state.infamy = saved.infamy;
+    if (typeof saved.standing === 'number') state.standing = saved.standing;
+    state.renown = (state.infamy || 0) + (state.standing || 0);
   }
 
   // Respawn at the origin, dead in the water. Clear economy so initEconomy re-seeds defaults.
   function reset() {
     state.heading = 0; state.speed = 0; state.throttle = 0;
     state.pos.set(0, 0, 0);
-    delete state.coins; delete state.cargo; delete state.renown;
+    delete state.coins; delete state.cargo;
+    delete state.infamy; delete state.standing; delete state.renown;
   }
 
   function step(dt, t) {

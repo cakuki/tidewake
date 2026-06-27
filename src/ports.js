@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { dockingUpdate } from './physics.js';
 import { initEconomy, market, buy, sell, cargoUsed, HOLD_CAP } from './economy.js';
-import { greetPlayer } from './renown.js';
+import { greetPlayer, dominantPole } from './renown.js';
 
 // Ports give the horizon a destination — the first rung of the "one boat → pirate
 // or governor" climb. Each port is *data* ({ name, x, z }) plus a small procedural
@@ -15,13 +15,15 @@ export const DOCK_RADIUS = 90;
 // Original, charming, slightly comedic age-of-sail port names (not from any game).
 const PORT_NAMES = ['Saltpurse Quay', 'Barnacle Bottom', "Gullet's Rest"];
 
-// Harbourmaster greetings now REACT to the player's renown (#43): the world knows your
-// name. The line pools + tier logic are pure in renown.js (greetPlayer) so they unit-test;
-// here we just feed in the current renown and the docked port. Lower tier = comically
-// dismissive; higher tier = warm + by title. See the TWO-POLES SEAM in renown.js for how
-// these reactions will later diverge (feared pirate vs respected governor).
-function harbourmasterLine(portName, renown) {
-  return greetPlayer(renown, portName);
+// Harbourmaster greetings REACT to the player's legend (#43) and now to which POLE leads
+// it (#45): the world knows your name AND whether to fear or cheer it. The line pools +
+// tier logic are pure in renown.js (greetPlayer) so they unit-test; here we feed in the
+// current renown, the docked port, and the dominant pole (feared pirate vs respected
+// governor). Lower tier = comically dismissive; higher tier = warm/cheering or nervously
+// deferential depending on lean.
+function harbourmasterLine(portName, state) {
+  const pole = dominantPole(state.infamy, state.standing);
+  return greetPlayer(state.renown, portName, Math.random, pole);
 }
 
 // Build one port marker: a stubby plank jetty reaching out to sea and a buoy with
@@ -106,6 +108,8 @@ export function createPorts(world) {
     return {
       coins: state.coins,
       renown: state.renown,
+      infamy: state.infamy,
+      standing: state.standing,
       cargo: { ...state.cargo },
       used: cargoUsed(state.cargo),
       capacity: HOLD_CAP,
@@ -138,7 +142,7 @@ export function createPorts(world) {
       // that hud.js reads to render the panel and route key-driven buys/sells.
       state.port = dockedName;
       if (arrived && typeof onArrive === 'function') {
-        onArrive(dockedName, harbourmasterLine(dockedName, state.renown));
+        onArrive(dockedName, harbourmasterLine(dockedName, state));
       }
       // Expose the economy for QA/playtest once window.__tidewake exists (main.js
       // assigns it after createPorts, so we attach lazily from inside the loop).

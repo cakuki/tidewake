@@ -1,17 +1,20 @@
 // Renown — the Captain's Ledger. PURE, DOM-free and three.js-free legend math so the
-// whole reputation track unit-tests under `node --test`. Renown is a single ascending
-// score: your legend only ever grows. You earn it by *doing* — chiefly turning a profit
-// in the port economy (economy.js bumps it on every sale) — and you climb a ladder of
-// titles the world will (one day) say aloud when you make port.
+// whole reputation track unit-tests under `node --test`. Your legend only ever grows,
+// but it now grows toward one of TWO POLES (#45):
+//   * INFAMY   — the pirate path, earned by WINNING DUELS / aggression (duel.js reward).
+//   * STANDING — the governor path, earned by PROFITABLE TRADES / commerce (economy.js sell).
+// The shared spine is the TOTAL: renown = infamy + standing. That total picks your RUNG
+// on the ladder; the *dominant pole* picks which titles that rung reads (piratical vs
+// civic), and how harbourmasters react when you make port (feared vs respected).
 //
-// TWO-POLES SEAM: for v1 this is a single pirate-leaning ladder. The north-star splits
-// into feared **pirate** ↔ respected **governor**. When deeds gain an alignment, branch
-// here: keep `index`/`progress` as the shared spine and swap the *title* per pole (e.g.
-// a governor-lean "Harbour Lord / Magistrate / Governor" mirror of the dread ladder).
-// Nothing downstream (HUD, save) needs to change — they read {title, index, progress}.
+// ENDGAME SEAM (not built yet): the very top of each pole is the fantasy's payoff —
+// become THE feared pirate (Terror of the Tidewake) or THE respected governor (Governor
+// of the Tidewake). A future slice can turn those top rungs into real milestone events
+// (a coronation / a bounty, a win-state). For now they're just the proudest titles.
 
-// The ladder. Thresholds are lifetime-renown gates; titles are original to Tidewake and
-// tuned so a first profitable round-trip already lifts a green hand off the bilge.
+// The ladder. Thresholds are lifetime-renown (= infamy + standing) gates; the RANKS
+// titles are the canonical spine kept for back-compat. Per-pole titles live in LADDERS
+// below and are swapped in by titleFor() according to which pole dominates.
 export const RANKS = [
   { at: 0,     title: 'Bilge-rat' },
   { at: 120,   title: 'Deckhand' },
@@ -22,6 +25,71 @@ export const RANKS = [
   { at: 6400,  title: 'Dread Captain' },
   { at: 12800, title: 'Terror of the Tidewake' },
 ];
+
+// ---- Two diverging title ladders + a neutral middle path (#45) ---------------
+// Each ladder is as deep as RANKS (one title per rung). The dominant pole selects
+// which ladder a given rung reads. All titles original to Tidewake, ascending.
+//   pirate   — you are FEARED: a name whispered with a glance over the shoulder.
+//   governor — you are RESPECTED: a name spoken with a tip of the hat.
+//   neutral  — a free captain who has not yet leaned hard either way.
+export const LADDERS = {
+  neutral: [
+    'Bilge-rat', 'Deckhand', 'Bosun', 'Quartermaster',
+    'First Mate', 'Sea Captain', 'Free Captain', 'Legend of the Tidewake',
+  ],
+  pirate: [
+    'Bilge-rat', 'Cutpurse', 'Brigand', 'Reaver',
+    'Marauder', 'Corsair', 'Dread Captain', 'Terror of the Tidewake',
+  ],
+  governor: [
+    'Bilge-rat', 'Dock Clerk', 'Tradesmaster', 'Portwarden',
+    'Merchant Prince', 'Harbourmaster', 'Magistrate', 'Governor of the Tidewake',
+  ],
+};
+
+// How balanced the two poles must be to still read "neutral". A pole only takes over
+// once it holds more than (50 + 10)% of your total legend — a 60/40 lean still feels
+// undecided. Below that band you're a free captain.
+const BALANCE_BAND = 0.2;
+
+// Short human word for a pole's flavour — surfaced in the HUD as a leaning hint.
+const LEANING = { pirate: 'feared', governor: 'respected', neutral: 'balanced' };
+
+function poleScore(n) {
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+/**
+ * Which pole dominates a captain's ledger.
+ * @param {number} infamy   pirate-path score (junk → 0)
+ * @param {number} standing governor-path score (junk → 0)
+ * @returns {'pirate'|'governor'|'neutral'}
+ */
+export function dominantPole(infamy, standing) {
+  const i = poleScore(infamy), s = poleScore(standing);
+  const total = i + s;
+  if (total <= 0) return 'neutral';
+  const tilt = (i - s) / total; // -1 = pure governor … +1 = pure pirate
+  if (tilt > BALANCE_BAND) return 'pirate';
+  if (tilt < -BALANCE_BAND) return 'governor';
+  return 'neutral';
+}
+
+/**
+ * The captain's current TITLE, chosen by total renown (the rung) and dominant pole
+ * (which ladder that rung reads). This is the keystone of the two-poles fantasy.
+ * @param {number} infamy
+ * @param {number} standing
+ * @returns {{title:string, pole:'pirate'|'governor'|'neutral', leaning:string, index:number}}
+ */
+export function titleFor(infamy, standing) {
+  const i = poleScore(infamy), s = poleScore(standing);
+  const pole = dominantPole(i, s);
+  const { index } = rankForRenown(i + s);
+  const ladder = LADDERS[pole] || LADDERS.neutral;
+  const title = ladder[index] || ladder[ladder.length - 1];
+  return { title, pole, leaning: LEANING[pole], index };
+}
 
 /**
  * Resolve a renown score to its place on the ladder.
@@ -53,11 +121,10 @@ export function rankForRenown(renown) {
 // greeting and trade terms without a line per rung. Three reactions: the world doesn't
 // know you (Unknown), is starting to (Known), or rolls out the barrel (Renowned).
 //
-// TWO-POLES SEAM (see top of file): today a single pirate-leaning scale. When deeds gain
-// an alignment, the *reaction* should diverge even at the same tier — a feared Infamy
-// captain gets nervous, cowering ports; a respected Standing captain gets honoured ones.
-// Branch the GREETINGS pools (e.g. GREETINGS.renowned.pirate / .governor) and let
-// renownTier carry the pole; tiers + price favour can stay shared. Don't build it now.
+// TWO POLES (#45): at the top (Renowned) tier the reaction DIVERGES by dominant pole —
+// a feared Infamy captain gets nervous, deferential ports that would rather you sailed
+// on; a respected Standing captain gets warm, cheering ones. The tier buckets + the
+// price favour stay shared; only the greeting pool swaps (greetPlayer carries the pole).
 
 /**
  * Bucket a renown score into one of three reaction tiers.
@@ -103,20 +170,46 @@ export const GREETINGS = {
     "{port} stands a little straighter today: the {title} is in. Fetch the good grog!",
     'Word ran ahead of your sails, {title}. {port} is yours — try not to buy it outright.',
   ],
+  // Renowned + FEARED (infamy-led): the harbourmaster is nervously deferential and would,
+  // all things considered, prefer you bought your barrel and left before nightfall.
+  renowned_feared: [
+    "Oh. {title}. We— we weren't expecting you. Berth's yours. Everyone's berth is yours.",
+    '{port} welcomes you, {title}. *gulps* The grog is on the house. All of it. Please.',
+    "Word ran ahead of your sails, {title}, and the town locked its shutters out of respect. Purely respect.",
+    'Easy now, {title} — no trouble at {port} today, eh? Trade quick and we part friends.',
+  ],
+  // Renowned + RESPECTED (standing-led): the port throws the doors open and cheers.
+  renowned_respected: [
+    'Three cheers for {title}! {port} has saved you the finest berth and the warmest welcome.',
+    "Welcome home, {title}! {port} prospers when your sails crest the horizon — the council sends its regards.",
+    'Ring the harbour bell — the {title} is in! {port} is yours, and gladly so.',
+    'A friend of {port} returns! Mind the bunting, {title}, the children hung it for you.',
+  ],
 };
 
 /**
  * Pick the harbourmaster's arrival greeting for the player's current tier, with {port}
- * and {title} substituted. Pure + injectable RNG so it unit-tests deterministically.
- * @param {number} renown
+ * and {title} substituted. At the Renowned tier the reaction diverges by dominant
+ * `pole` (feared pirate vs respected governor). Pure + injectable RNG so it unit-tests
+ * deterministically.
+ * @param {number} renown   total renown (infamy + standing)
  * @param {string} portName
  * @param {() => number} [rnd]  defaults to Math.random
+ * @param {'pirate'|'governor'|'neutral'} [pole]  the captain's leaning (default neutral)
  * @returns {string}
  */
-export function greetPlayer(renown, portName, rnd = Math.random) {
+export function greetPlayer(renown, portName, rnd = Math.random, pole = 'neutral') {
   const { key } = renownTier(renown);
-  const pool = GREETINGS[key];
-  const title = rankForRenown(renown).title;
+  // The world only fears/cheers a captain it actually knows — pole diverges at the top tier.
+  let poolKey = key;
+  if (key === 'renowned') {
+    if (pole === 'pirate') poolKey = 'renowned_feared';
+    else if (pole === 'governor') poolKey = 'renowned_respected';
+  }
+  const pool = GREETINGS[poolKey] || GREETINGS[key];
+  const { index } = rankForRenown(renown);
+  const ladder = LADDERS[pole] || LADDERS.neutral;
+  const title = ladder[index] || ladder[ladder.length - 1];
   const line = pool[Math.floor(rnd() * pool.length) % pool.length] || pool[0];
   return line.replace(/\{port\}/g, portName).replace(/\{title\}/g, title);
 }

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   RANKS, rankForRenown, renownForSale,
   renownTier, standingPriceModifier, greetPlayer, GREETINGS,
+  dominantPole, titleFor, LADDERS,
 } from '../../src/renown.js';
 
 test('RANKS is a non-empty ladder starting at 0 with strictly ascending thresholds', () => {
@@ -157,4 +158,88 @@ test('greetPlayer: every greeting in every pool resolves cleanly for any tier', 
       assert.ok(line.length > 0 && !/\{port\}|\{title\}/.test(line));
     });
   }
+});
+
+// ---- Two poles: Infamy (pirate) vs Standing (governor) (#45) -----------------
+
+test('LADDERS: three pole ladders (pirate/governor/neutral), each as deep as RANKS', () => {
+  for (const pole of ['pirate', 'governor', 'neutral']) {
+    assert.ok(Array.isArray(LADDERS[pole]), `missing ladder for ${pole}`);
+    assert.ok(LADDERS[pole].length >= RANKS.length, `${pole} ladder must cover every rung`);
+    LADDERS[pole].forEach((t) => assert.ok(typeof t === 'string' && t.length > 0));
+  }
+  // Pirate and governor top rungs read distinctly (no accidental overlap up high).
+  assert.notEqual(LADDERS.pirate.at(-1), LADDERS.governor.at(-1));
+});
+
+test('dominantPole: infamy-dominant → pirate, standing-dominant → governor', () => {
+  assert.equal(dominantPole(1000, 100), 'pirate');
+  assert.equal(dominantPole(100, 1000), 'governor');
+});
+
+test('dominantPole: a near-balanced ledger reads neutral', () => {
+  assert.equal(dominantPole(0, 0), 'neutral');
+  assert.equal(dominantPole(500, 500), 'neutral');
+  assert.equal(dominantPole(520, 480), 'neutral'); // small lead stays balanced
+});
+
+test('dominantPole: junk inputs are treated as zero (neutral, no crash)', () => {
+  for (const bad of [NaN, Infinity, -Infinity, undefined, null, 'x']) {
+    assert.equal(dominantPole(bad, bad), 'neutral');
+  }
+  assert.equal(dominantPole(1000, NaN), 'pirate'); // bad standing → 0
+  assert.equal(dominantPole(NaN, 1000), 'governor');
+});
+
+test('titleFor: an infamy-dominant captain wears a piratical title', () => {
+  const { title, pole, leaning } = titleFor(8000, 200); // Dread tier, infamy-led
+  assert.equal(pole, 'pirate');
+  assert.ok(LADDERS.pirate.includes(title), `"${title}" should be a pirate title`);
+  assert.ok(typeof leaning === 'string' && leaning.length > 0);
+});
+
+test('titleFor: a standing-dominant captain wears a civic title', () => {
+  const { title, pole } = titleFor(200, 8000); // governor-led
+  assert.equal(pole, 'governor');
+  assert.ok(LADDERS.governor.includes(title), `"${title}" should be a civic title`);
+});
+
+test('titleFor: a balanced captain wears a neutral title', () => {
+  const { title, pole } = titleFor(4000, 4000);
+  assert.equal(pole, 'neutral');
+  assert.ok(LADDERS.neutral.includes(title));
+});
+
+test('titleFor: rung climbs with total renown (infamy + standing)', () => {
+  const low = titleFor(50, 0).index;
+  const high = titleFor(9000, 0).index;
+  assert.ok(high > low, 'a bigger total reaches a higher rung');
+  // total drives the rung: same total, same rung, regardless of split
+  assert.equal(titleFor(1000, 1000).index, rankForRenown(2000).index);
+});
+
+test('titleFor: junk inputs default to the lowest neutral rung without crashing', () => {
+  const { title, pole, index } = titleFor(NaN, undefined);
+  assert.equal(index, 0);
+  assert.equal(pole, 'neutral');
+  assert.equal(title, LADDERS.neutral[0]);
+});
+
+test('greetPlayer: a feared (pirate) port reaction differs from a respected (governor) one at the top tier', () => {
+  const hi = RANKS[6].at; // renowned tier
+  const feared = greetPlayer(hi, 'Saltpurse Quay', () => 0, 'pirate');
+  const respected = greetPlayer(hi, 'Saltpurse Quay', () => 0, 'governor');
+  assert.notEqual(feared, respected, 'fear and respect should not greet you the same');
+  assert.ok(!/\{port\}|\{title\}/.test(feared) && !/\{port\}|\{title\}/.test(respected));
+  // the feared captain is greeted by a piratical title; the respected by a civic one
+  assert.ok(feared.includes(titleFor(hi, 0).title));
+  assert.ok(respected.includes(titleFor(0, hi).title));
+});
+
+test('greetPlayer: pole defaults to neutral and stays back-compatible', () => {
+  const first = () => 0;
+  const neutral = greetPlayer(RANKS[5].at, 'Saltpurse Quay', first);
+  assert.equal(neutral, GREETINGS.renowned[0]
+    .replace(/\{port\}/g, 'Saltpurse Quay')
+    .replace(/\{title\}/g, titleFor(RANKS[5].at / 2, RANKS[5].at / 2).title));
 });

@@ -154,9 +154,24 @@ export function initEconomy(state) {
   if (!state) return state;
   if (typeof state.coins !== 'number' || !Number.isFinite(state.coins)) state.coins = START_COINS;
   if (!state.cargo || typeof state.cargo !== 'object') state.cargo = {};
-  // Renown (the Captain's Ledger) — a lifetime score that only ever climbs. Seeds to 0.
-  if (typeof state.renown !== 'number' || !Number.isFinite(state.renown) || state.renown < 0) state.renown = 0;
+  // Two poles of legend (#45): infamy (pirate path) + standing (governor path). Both
+  // only ever climb. Seed each to 0; renown is their derived TOTAL.
+  if (typeof state.infamy !== 'number' || !Number.isFinite(state.infamy) || state.infamy < 0) state.infamy = 0;
+  if (typeof state.standing !== 'number' || !Number.isFinite(state.standing) || state.standing < 0) state.standing = 0;
+  // Renown (the Captain's Ledger) — the shared spine, = infamy + standing. We only seed
+  // it when missing/corrupt so a caller that set renown directly (e.g. a price-modifier
+  // probe) isn't clobbered; the real earning paths recompute it explicitly via syncRenown.
+  if (typeof state.renown !== 'number' || !Number.isFinite(state.renown) || state.renown < 0) {
+    state.renown = state.infamy + state.standing;
+  }
   return state;
+}
+
+/** Recompute the derived renown total after a pole changes. Keeps the spine coherent. */
+export function syncRenown(state) {
+  state.renown = (Number.isFinite(state.infamy) ? state.infamy : 0)
+               + (Number.isFinite(state.standing) ? state.standing : 0);
+  return state.renown;
 }
 
 // A trade result. `ok:false` always leaves `state` untouched and gives a `reason`.
@@ -208,8 +223,10 @@ export function sell(state, goodId, qty, portName = state && state.port) {
   const unit = priceAt(portName, goodId, state.renown).sell;
   const proceeds = unit * qty;
   state.coins += proceeds;
-  // Every sale writes a line in the Captain's Ledger: bigger hauls grow a bigger legend.
-  state.renown += renownForSale(proceeds);
+  // Commerce builds STANDING — the governor pole (#45). Bigger hauls grow a bigger civic
+  // name; renown (the total spine) is kept in step. Combat builds infamy instead (duel.js).
+  state.standing += renownForSale(proceeds);
+  syncRenown(state);
   state.cargo[goodId] = held - qty;
   if (state.cargo[goodId] === 0) delete state.cargo[goodId];
   return result(true, state);
