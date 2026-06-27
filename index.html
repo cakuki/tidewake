@@ -22,7 +22,10 @@
     canvas { display: block; }
 
     #hud {
-      position: fixed; left: 12px; top: 12px; z-index: 10; max-width: 320px;
+      /* Safe-area (#75): pad the top-left corner clear of the notch / status bar in
+         standalone PWA. The inset is 0 on desktop & non-notch devices, so it collapses. */
+      position: fixed; left: calc(12px + env(safe-area-inset-left, 0px));
+      top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 10; max-width: 320px;
       color: #cfe8ff; text-shadow: 0 1px 3px rgba(0,0,0,.8);
       font-size: 13px; line-height: 1.5; pointer-events: none;
       background: rgba(7, 22, 38, .35); border: 1px solid rgba(120,180,230,.25);
@@ -79,7 +82,8 @@
        transform against a mismatched transform-box/transform-origin, making the arrow orbit
        off-centre on each turn (#50). The heading updates per frame, so motion stays smooth. */
     #title {
-      position: fixed; left: 0; right: 0; top: 18px; z-index: 10; text-align: center;
+      position: fixed; left: 0; right: 0; top: calc(18px + env(safe-area-inset-top, 0px));
+      z-index: 10; text-align: center;
       color: #eaf6ff; letter-spacing: .35em; font-size: 14px; text-shadow: 0 2px 8px rgba(0,0,0,.7);
       pointer-events: none;
     }
@@ -91,7 +95,8 @@
     /* Perf overlay (#52): measurement read-out, hidden by default. Toggle with P (or ?perf).
        Reuses the HUD's glass panel; tabular numerals so the values don't jitter the width. */
     #perf {
-      position: fixed; right: 10px; top: 54px; z-index: 12; display: none;
+      position: fixed; right: calc(10px + env(safe-area-inset-right, 0px));
+      top: calc(54px + env(safe-area-inset-top, 0px)); z-index: 12; display: none;
       color: #cfe8ff; font-size: 11px; letter-spacing: .02em; font-variant-numeric: tabular-nums;
       background: rgba(7, 22, 38, .42); border: 1px solid rgba(120,180,230,.3);
       border-radius: 8px; padding: 4px 9px; backdrop-filter: blur(3px); pointer-events: none;
@@ -217,7 +222,8 @@
     /* Big route-planning map (#54): a toggleable full-screen chart, HUD glass over a
        dimmed sea. Hidden until opened (Tab / the 🗺 button); the game plays underneath. */
     #map-toggle {
-      position: fixed; right: 54px; top: 12px; z-index: 11; pointer-events: auto;
+      position: fixed; right: calc(54px + env(safe-area-inset-right, 0px));
+      top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 11; pointer-events: auto;
       width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
       font-size: 16px; line-height: 1; color: #cfe8ff;
       background: rgba(7, 22, 38, .35); border: 1px solid rgba(120,180,230,.25);
@@ -243,7 +249,8 @@
     }
     #bigmap-cap b { color: #ffd98a; }
     #audio-toggle {
-      position: fixed; right: 12px; top: 12px; z-index: 11; pointer-events: auto;
+      position: fixed; right: calc(12px + env(safe-area-inset-right, 0px));
+      top: calc(12px + env(safe-area-inset-top, 0px)); z-index: 11; pointer-events: auto;
       width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
       font-size: 16px; line-height: 1; color: #cfe8ff;
       background: rgba(7, 22, 38, .35); border: 1px solid rgba(120,180,230,.25);
@@ -283,7 +290,7 @@
     #touch-controls .tc-f.on { background: rgba(140,90,45,.62); border-color: rgba(255,200,150,.8); color: #fff; }
     /* On touch, keyboard hints make no sense and the corner panels get out of the way. */
     body.touch #help { display: none; }
-    body.touch #minimap { left: auto; right: 12px; top: 54px; bottom: auto; }
+    body.touch #minimap { left: auto; right: calc(12px + env(safe-area-inset-right, 0px)); top: calc(54px + env(safe-area-inset-top, 0px)); bottom: auto; }
     body.touch #version { left: 50%; right: auto; transform: translateX(-50%); bottom: 5px; }
     body.touch #trade { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
     /* Make the trade/duel panels tappable only while shown, so the center of the
@@ -293,7 +300,7 @@
     body.touch #challenge-prompt { bottom: calc(170px + env(safe-area-inset-bottom, 0px)); }
     @media (max-width: 560px) {
       #hud { font-size: 11px; max-width: 64vw; padding: 6px 9px; }
-      #title { font-size: 11px; letter-spacing: .22em; top: 12px; }
+      #title { font-size: 11px; letter-spacing: .22em; top: calc(12px + env(safe-area-inset-top, 0px)); }
       #trade { width: min(82vw, 290px); }
       #minimap { width: 112px; height: 112px; }
     }
