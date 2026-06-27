@@ -118,3 +118,5 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 | 00:10 | v0.0.2026...0101 | Wake, sail, audio, wind compass (5 releases) | video |
 | 00:50 | v0.0.2026...4415 | Ports + save/load + modularise (clearer video) | video |
 | 01:48 | v0.0.2026...4341 | Economy, NPCs, persistence, deep-learning loop, Captain's Ledger | screenshot |
+
+| 42 | #55 art-sourcing research (no release) | #55 | — | report → docs/art-sourcing.md; #32 ready |

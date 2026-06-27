@@ -27,3 +27,13 @@ Durable art-direction decisions and asset notes. Grows over time; keep entries s
   sea-chart (parchment grain, inked coastlines, drifting watercolour sea, compass rose, a self-writing
   dotted rhumb-line wake). Separate render target = freedom to be painterly without breaking world
   realism; realism outside, painted chart within. → filed.
+
+- 2026-06-27 (#55 sourcing research) — **Art-sourcing call: CC0-first, verified.** Go-to CC0
+  3D = **Quaternius** + **Kenney** Pirate Kits (both confirmed CC0, glTF, no attribution
+  required); HDRI/sky = **Poly Haven**; PBR surfaces = **ambientCG**; aggregator = **Poly Pizza**
+  (MIXED CC0/CC-BY — check each model). **Sketchfab is mostly CC-BY** (attribution-bound) — the
+  prominent "Low-Poly Pirate Ship" is CC-BY *and* 73.2k tris (too heavy); filter to CC0 + light.
+  Hero ship (#32) = swap to a Quaternius/Kenney CC0 ship via `GLTFLoader` (already in the import
+  map), match the contract (bow +Z, length ~16, re-attach `userData.flag`), procedural ship stays
+  as fallback. Always add a `CREDITS.md` even for CC0 (manners + future CC-BY safety). Full report:
+  `docs/art-sourcing.md`. Effort S–M. Caveat: public repo → CC0/self-made only for core art.

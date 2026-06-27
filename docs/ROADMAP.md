@@ -35,7 +35,7 @@ await loop **PM + TL sign-off**. `from-owner` issues:
 | [#52](https://github.com/cakuki/tidewake/issues/52) | Performance: measurement-first budget gate, then cull/LOD/shaders | M4 + ongoing 🌊/tech | P1 |
 | [#53](https://github.com/cakuki/tidewake/issues/53) | Standard: self-contained, self-tested UI components | M9 / tech, ongoing | P2 |
 | [#54](https://github.com/cakuki/tidewake/issues/54) | Toggleable bigger map for route planning (MVP) | M2 / M4 | P2 |
-| [#55](https://github.com/cakuki/tidewake/issues/55) | Research: art-asset sourcing strategy + budget | Art & Audio direction | P2 |
+| [#55](https://github.com/cakuki/tidewake/issues/55) | ✅ Research done → [`docs/art-sourcing.md`](https://github.com/cakuki/tidewake/blob/main/docs/art-sourcing.md): CC0-first (Quaternius/Kenney Pirate Kits); hero-ship swap ready in [#32](https://github.com/cakuki/tidewake/issues/32) | Art & Audio direction | P2 (closed) |
 | [#56](https://github.com/cakuki/tidewake/issues/56) | Owner-decision: mobile support (feasibility done, full build parked) | M4 — Touch the Horizon | P2 |
 | [#62](https://github.com/cakuki/tidewake/issues/62) | Mobile **Phase 0** — real-device spike (FPS/heat/UX) to de-risk the build | M4 — Touch the Horizon | P2 |
 | [#63](https://github.com/cakuki/tidewake/issues/63) | **iOS via WebView/PWA** (Approach 1) — wrap the web build for the App Store; native renderer parked | M4 — Touch the Horizon | P2 |
