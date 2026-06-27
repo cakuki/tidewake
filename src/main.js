@@ -4,10 +4,17 @@ import { createShip } from './ship.js';
 import { createWorld } from './world.js';
 import { createWake } from './wake.js';
 import { createPorts } from './ports.js';
-import { targetSpeed, approach, steerRate, pointOfSail } from './physics.js';
 import { createAudio } from './audio.js';
-import { serialize, deserialize, SAVE_KEY } from './save.js';
+import { createInput } from './input.js';
+import { createHud } from './hud.js';
+import { createSailing } from './sailing.js';
+import { createPersistence } from './persistence.js';
 import { VERSION } from './version.js';
+
+// main.js is a thin bootstrap: it builds the renderer/scene/camera/lights, spins up
+// the world + game systems (input, sailing, hud, ports, wake, audio, persistence),
+// wires the update() + render loop, and exposes the window.__tidewake test hook.
+// The per-system logic lives in its own module so future slices touch small files.
 
 const app = document.getElementById('app');
 
@@ -27,6 +34,7 @@ sun.position.set(300, 500, 120);
 scene.add(sun);
 scene.add(new THREE.HemisphereLight(0xbfe0ee, 0x2e4a40, 0.8));
 
+// World + scene objects
 const world = createWorld(scene);
 const ocean = createOcean();
 scene.add(ocean.mesh);
@@ -37,71 +45,31 @@ scene.add(wake.points);
 const ports = createPorts(world);
 scene.add(ports.group);
 
-// ---- Ship state (simple arcade sailing) ----
-const state = {
-  heading: 0,        // radians, 0 = +Z
-  speed: 0,          // world units / sec
-  throttle: 0,       // 0..1 target
-  pos: new THREE.Vector3(0, 0, 0),
-  windDir: Math.PI * 0.25,
-  windName: 'NE breeze',
-};
-const MAX_SPEED = 55;
+// Game systems
+const input = createInput(renderer.domElement);
+const hud = createHud();
+const sailing = createSailing({ ship, ocean, camera, input });
+const state = sailing.state;
+const persistence = createPersistence(state);
 
-// ---- Voyage persistence (localStorage) ----
-// All storage access is guarded: a private-mode / disabled / full localStorage
-// must never crash the game — it just sails on without persistence.
-function loadSave() {
-  try { return deserialize(localStorage.getItem(SAVE_KEY)); } catch { return null; }
-}
-function writeSave() {
-  try { localStorage.setItem(SAVE_KEY, serialize(state)); } catch { /* storage unavailable — sail on */ }
-}
-function clearSave() {
-  try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
-}
-
-// Restore a prior voyage before the loop starts. Corrupt/old/missing → fresh start.
-const saved = loadSave();
-if (saved) {
-  state.heading = saved.heading;
-  state.speed = saved.speed;
-  state.throttle = saved.throttle;
-  state.pos.set(saved.pos[0], saved.pos[1], saved.pos[2]);
-}
-
-// Quiet auto-save: periodically and whenever the tab is hidden or closed.
-setInterval(writeSave, 2000);
-addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') writeSave(); });
-addEventListener('pagehide', writeSave);
-
-// 'n' — new voyage: wipe the save and respawn at the origin, dead in the water.
-function newVoyage() {
-  clearSave();
-  state.heading = 0; state.speed = 0; state.throttle = 0;
-  state.pos.set(0, 0, 0);
-}
-addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'n') newVoyage(); });
-
-// ---- Audio: procedural sea ambience (starts on first user gesture) ----
+// Audio: procedural sea ambience (starts on first user gesture)
 const audio = createAudio();
 audio.init();
 
-// ---- Input ----
-const keys = new Set();
-addEventListener('keydown', (e) => { keys.add(e.key.toLowerCase()); });
-addEventListener('keyup', (e) => { keys.delete(e.key.toLowerCase()); });
+hud.setWind(state.windName);
 
-// drag-to-look camera orbit offset
-let camYaw = Math.PI, camPitch = 0.32, dragging = false, lastX = 0, lastY = 0;
-renderer.domElement.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
-addEventListener('pointerup', () => { dragging = false; });
-addEventListener('pointermove', (e) => {
-  if (!dragging) return;
-  camYaw -= (e.clientX - lastX) * 0.005;
-  camPitch = Math.max(0.05, Math.min(0.9, camPitch + (e.clientY - lastY) * 0.003));
-  lastX = e.clientX; lastY = e.clientY;
-});
+// Restore a prior voyage before the loop starts. Corrupt/old/missing → fresh start.
+const saved = persistence.load();
+if (saved) sailing.restore(saved);
+
+// Quiet auto-save: periodically and whenever the tab is hidden or closed.
+setInterval(persistence.write, 2000);
+addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persistence.write(); });
+addEventListener('pagehide', persistence.write);
+
+// 'n' — new voyage: wipe the save and respawn at the origin, dead in the water.
+function newVoyage() { persistence.clear(); sailing.reset(); }
+addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'n') newVoyage(); });
 
 addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -109,90 +77,16 @@ addEventListener('resize', () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-// HUD
-const $heading = document.getElementById('heading');
-const $speed = document.getElementById('speed');
-const $wind = document.getElementById('wind');
-const $windArrow = document.getElementById('windarrow');
-const $pos = document.getElementById('pos');
-document.getElementById('version').textContent = VERSION;
-$wind.textContent = state.windName;
-
-// Arrival toast — a non-blocking banner that auto-dismisses. Reaching a port shows
-// "⚓ Made port at <Name>" plus a rotating harbourmaster greeting.
-const $toast = document.getElementById('toast');
-let toastTimer = null;
-function showArrival(portName, line) {
-  $toast.innerHTML = `<div class="toast-title">⚓ Made port at ${portName}</div><div class="toast-line">${line}</div>`;
-  $toast.classList.add('show');
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => $toast.classList.remove('show'), 5000);
-}
-
-// Wind indicator + point-of-sail state (kept across frames to avoid churning
-// the DOM when nothing changed — the hot path stays allocation-free).
-const RAD2DEG = 180 / Math.PI;
-let lastPosLabel = '', lastPosBand = '';
-
 const clock = new THREE.Clock();
 let booted = false;
 
 function update(dt, t) {
-  // throttle / steer
-  if (keys.has('w') || keys.has('arrowup')) state.throttle = Math.min(1, state.throttle + dt * 0.8);
-  if (keys.has('s') || keys.has('arrowdown')) state.throttle = Math.max(0, state.throttle - dt * 1.2);
-  const steer = (keys.has('a') || keys.has('arrowleft') ? 1 : 0) - (keys.has('d') || keys.has('arrowright') ? 1 : 0);
-
-  // wind modifies achievable speed: sailing with the wind is faster
-  const target = targetSpeed(state.throttle, MAX_SPEED, state.heading, state.windDir);
-  state.speed = approach(state.speed, target, dt, 1.5);
-
-  // steering scales with speed
-  state.heading += steer * dt * steerRate(state.speed);
-
-  // integrate position
-  state.pos.x += Math.sin(state.heading) * state.speed * dt;
-  state.pos.z += Math.cos(state.heading) * state.speed * dt;
-
-  // place ship on the swell with bob + roll
-  const h = ocean.sampleHeight(state.pos.x, state.pos.z, t);
-  ship.position.set(state.pos.x, h, state.pos.z);
-  ship.rotation.y = state.heading;
-  const hF = ocean.sampleHeight(state.pos.x + Math.sin(state.heading) * 8, state.pos.z + Math.cos(state.heading) * 8, t);
-  ship.rotation.x = (hF - h) * 0.03;
-  ship.rotation.z = Math.sin(t * 1.3) * 0.04 + steer * 0.05;
-  if (ship.userData.flag) ship.userData.flag.rotation.z = Math.sin(t * 4) * 0.3;
-
-  // camera follow with orbit offset
-  const dist = 95, height = 42;
-  const cx = state.pos.x - Math.sin(state.heading + camYaw) * dist;
-  const cz = state.pos.z - Math.cos(state.heading + camYaw) * dist;
-  camera.position.lerp(new THREE.Vector3(cx, h + height * (0.4 + camPitch), cz), Math.min(1, dt * 3));
-  camera.lookAt(state.pos.x, h + 8, state.pos.z);
-
+  sailing.step(dt, t);                         // throttle/steer/wind, integrate, place ship, follow camera
   ocean.update(t, camera.position);
-
-  // ports: detect arrival (fires once per visit) and animate the buoys
-  ports.update(state, showArrival, t);
-
-  // bow wake + trailing foam (rides the swell, scales with speed)
-  state.maxSpeed = MAX_SPEED;
-  wake.update(dt, state, t);
-
-  // HUD
-  let deg = Math.round((state.heading * 180 / Math.PI) % 360); if (deg < 0) deg += 360;
-  $heading.textContent = deg;
-  $speed.textContent = (state.speed / MAX_SPEED * 18).toFixed(1);
-
-  // Wind indicator: arrow swings to the wind's bearing relative to the bow (the
-  // dial is ship-relative, bow up). Point-of-sail label + colour follow the angle.
-  $windArrow.setAttribute('transform', `rotate(${(state.windDir - state.heading) * RAD2DEG} 24 24)`);
-  const sail = pointOfSail(state.heading, state.windDir);
-  if (sail.label !== lastPosLabel) { $pos.textContent = sail.label; lastPosLabel = sail.label; }
-  if (sail.band !== lastPosBand) { $pos.className = 'pos-' + sail.band; lastPosBand = sail.band; }
-
-  // sea/wind ambience tracks speed (no-op until audio is started by a gesture)
-  audio.update({ speed: state.speed, maxSpeed: MAX_SPEED });
+  ports.update(state, hud.showArrival, t);     // arrival detection (fires once) + buoy bob
+  wake.update(dt, state, t);                   // bow wake + trailing foam
+  hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
+  audio.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
 }
 
 let simT = 0;
@@ -220,9 +114,9 @@ window.__tidewake = {
   get state() { return { heading: state.heading, speed: state.speed, throttle: state.throttle, pos: state.pos.toArray() }; },
   get ports() { return ports.ports; },
   get docked() { return ports.docked; },
-  press(k) { keys.add(k); },
-  release(k) { keys.delete(k); },
-  save() { writeSave(); },
+  press(k) { input.keys.add(k); },
+  release(k) { input.keys.delete(k); },
+  save() { persistence.write(); },
   newVoyage() { newVoyage(); },
   step(seconds) {
     const fixed = 1 / 60;
