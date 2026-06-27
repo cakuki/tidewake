@@ -3,7 +3,7 @@
 // the hull on the live swell with bob/roll, and follows with the camera. This is the
 // arcade-sailing heart that used to live inline in main.js's update().
 import * as THREE from 'three';
-import { targetSpeed, approach, steerRate, sweepIslandCollision, settledTargetSpeed, SETTLE_RATE } from './physics.js';
+import { targetSpeed, approach, steerRate, sweepIslandCollision, sweepShipCollision, shipCircles, settledTargetSpeed, SETTLE_RATE } from './physics.js';
 
 export const MAX_SPEED = 55;
 
@@ -17,7 +17,18 @@ const SCRAPES = [
   'A crunch of coral. The cook drops the stew. Morale: damp.',
 ];
 
-export function createSailing({ ship, ocean, camera, input, world, onRunAground }) {
+// CREATIVE SPARK (#76 b): graze another captain's hull and the crew hollers across the water —
+// the sea is suddenly crowded. A bump, not a brick wall; throttled so it never spams, rotated so
+// it never gets stale.
+const BUMPS = [
+  'Timbers groan — mind the other captain!',
+  'You shoulder her hull. "Oi! Watch the paintwork!" drifts back over the swell.',
+  'A scrape of gunwales — both crews glare, neither yields the lane.',
+  '"Right of way, ye barnacle!" the other bosun bellows as you bump past.',
+  'Hull kisses hull. Someone aboard the other ship spills their grog. Rude.',
+];
+
+export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAground, onBump }) {
   // Distil islands to flat {x,z,r} circles once — the arcade collision hitboxes (#76 a1).
   // Same reduction npc.js uses; islands never move, so we snapshot them at construction.
   const islands = [];
@@ -30,6 +41,7 @@ export function createSailing({ ship, ocean, camera, input, world, onRunAground 
     }
   }
   let lastScrapeT = -10; // throttle the run-aground quip so a long scrape doesn't spam
+  let lastBumpT = -10;   // throttle the ship-vs-ship bump quip the same way (#76 b)
 
   // ---- Ship state (simple arcade sailing) ----
   const state = {
@@ -133,6 +145,32 @@ export function createSailing({ ship, ocean, camera, input, world, onRunAground 
               onRunAground(SCRAPES[Math.floor((Math.abs(t * 7.3)) % SCRAPES.length)]);
             }
             state.speed = achieved;
+          }
+        }
+      }
+    }
+
+    // Arcade ship-vs-ship collision (#76 b): the player BUMPS other vessels instead of phasing
+    // through them. Resolve the swept hull motion (this step's start → its island-resolved
+    // position) against the live NPC circles — player-only, so the wander AI stays deterministic.
+    // A head-on shoulder bleeds speed to the ground speed actually made (a soft pile-up); a
+    // glancing bump slides along and keeps its way on, just like the coast.
+    if (npcs && typeof npcs.snapshot === 'function') {
+      const ships = shipCircles(npcs.snapshot());
+      if (ships.length) {
+        const sx = state.pos.x, sz = state.pos.z; // post-island start of the ship-vs-ship sweep
+        const rs = sweepShipCollision({ x: px0, z: pz0 }, { x: sx, z: sz }, ships);
+        if (rs.hit) {
+          state.pos.x = rs.x; state.pos.z = rs.z;
+          if (dt > 1e-6) {
+            const achieved = Math.hypot(state.pos.x - px0, state.pos.z - pz0) / dt;
+            if (achieved < state.speed) {
+              if (typeof onBump === 'function' && state.speed > 12 && achieved < state.speed * 0.5 && (t - lastBumpT) > 5) {
+                lastBumpT = t;
+                onBump(BUMPS[Math.floor((Math.abs(t * 5.1)) % BUMPS.length)]);
+              }
+              state.speed = achieved;
+            }
           }
         }
       }

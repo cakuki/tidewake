@@ -17,6 +17,7 @@ import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
 import { createCannons } from './cannons.js';
 import { initEconomy, syncRenown } from './economy.js';
+import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown } from './renown.js';
 import { BUDGET, formatPerf, pixelRatioCap } from './perf.js';
@@ -72,9 +73,11 @@ const minimap = createMinimap({ world, ports, npcs });
 // Bigger route-planning chart (#54): same world data, zoomed way out + ports labelled.
 const bigmap = createBigMap({ world, ports, npcs });
 const sailing = createSailing({
-  ship, ocean, camera, input, world,
+  ship, ocean, camera, input, world, npcs,
   // Arcade island collision (#76 a1): a hard run-aground earns a comic harbour-banner quip.
   onRunAground: (quip) => hud.flashBanner('⚓ Hard aground!', quip),
+  // Arcade ship-vs-ship collision (#76 b): shouldering another vessel earns a comic bump quip.
+  onBump: (quip) => hud.flashBanner('🛶 Hulls collide!', quip),
 });
 const state = sailing.state;
 const persistence = createPersistence(state);
@@ -439,6 +442,9 @@ window.__tidewake = {
   get bigmap() { return { open: bigmap.open }; },
   mapToggle() { bigmap.toggle(); syncMapToggle(); return bigmap.open; },
   get npcs() { return npcs.snapshot(); },
+  // Ship-vs-ship collision (#76 b) QA surface: the forgiving hull radii so a headless playtest
+  // can drive the player into an NPC and assert the hulls don't interpenetrate (bound = sum).
+  get collisionRadii() { return { ship: SHIP_RADIUS, npc: NPC_RADIUS, bound: SHIP_RADIUS + NPC_RADIUS }; },
   // Island collision (#76 a1) QA surface: the flat {x,z,r} circles the hull collides against,
   // so a headless playtest can drive the ship at the coast and assert it doesn't pass through.
   get islands() { return world.islands.children.map((i) => ({ x: i.position.x, z: i.position.z, r: i.userData.radius || 80 })); },

@@ -487,6 +487,45 @@ try {
     if (!settle.fight.fightEnded) fail('slow-to-stop: fight did not resolve so control could return');
   }
 
+  // 2i) Ship-vs-ship collision (#76 b): the player BUMPS other vessels, never sailing clean
+  // through them. Pursue the nearest NPC at full throttle and assert (1) the hulls actually MET
+  // (closest approach reached the combined boundary) and (2) the player was NEVER let deep inside
+  // the other hull — arcade-soft bump, not phasing. Deterministic via tw.step(); a small drift
+  // tolerance covers the NPC moving between the player's resolve and the snapshot read.
+  const bump = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    const bound = tw.collisionRadii.bound;
+    tw.newVoyage(); tw.step(0.1);
+    function nearestNpc() {
+      const s = tw.state.pos;
+      let best = null, bd = Infinity;
+      for (const n of tw.npcs) { const d = Math.hypot(n.pos[0] - s[0], n.pos[1] - s[2]); if (d < bd) { bd = d; best = n; } }
+      return { best, bd };
+    }
+    tw.press('w');
+    let minDist = Infinity, contact = false;
+    for (let i = 0; i < 4000; i++) {
+      const { best, bd } = nearestNpc();
+      if (!best) break;
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]); // steer at the vessel
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+      const { bd: nd } = nearestNpc();
+      if (nd < minDist) minDist = nd;
+      if (nd <= bound + 4) contact = true;
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    tw.newVoyage(); tw.step(0.1); // clean slate for the screenshot
+    return { bound, minDist, contact };
+  });
+  if (!(bump.contact)) fail(`ship-vs-ship: the player never reached another vessel (minDist=${bump.minDist?.toFixed(1)}, bound=${bump.bound})`);
+  // The hulls met but were NEVER allowed to interpenetrate beyond a small NPC-drift tolerance.
+  if (!(bump.minDist >= bump.bound - 3)) fail(`ship-vs-ship: the player phased into another hull (minDist=${bump.minDist?.toFixed(1)} < ${bump.bound - 3})`);
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -509,7 +548,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, bump, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

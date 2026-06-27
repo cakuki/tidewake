@@ -258,6 +258,55 @@ export function sweepIslandCollision(prev, next, circles, opts = {}) {
   return { x, z, hit };
 }
 
+// ---- Arcade ship-vs-ship collision (#76 b) --------------------------------------------
+// The player ship should BUMP other vessels, not sail clean through them. We reuse the exact
+// circle-hitbox push-out/slide the island resolver uses — an NPC is just a moving circle. The
+// boundary is the two hulls' forgiving radii summed (SHIP_RADIUS + NPC_RADIUS), so the hulls
+// come to rest gunwale-to-gunwale instead of interpenetrating; a head-on charge piles up and
+// bleeds speed (arcade-soft, not a brick wall) while a glancing approach slides along and keeps
+// most of its way on. PLAYER-ONLY resolution keeps the NPC wander AI deterministic and untouched
+// — the player is shoved off the other captain, the other captain sails on. Pure: numbers in,
+// numbers out, so the whole bump model unit-tests under node. Research-backed feel (Game
+// Developer): forgiving circle hitboxes beat precise ones, and a collision should graze/recover,
+// never dead-stop.
+
+/** Forgiving collision radius for an NPC vessel (world units). NPC hulls are ~12 long; a single
+ *  circle a touch over the half-length keeps ship-vs-ship bumps fair and snag-free, matching the
+ *  player's own SHIP_RADIUS. Summed with SHIP_RADIUS the two hulls rest gunwale-to-gunwale. */
+export const NPC_RADIUS = 9;
+
+/**
+ * Build flat collision circles from NPC snapshots (`{ pos:[x,z] }`, as `npcs.snapshot()` returns).
+ * Pure. Skips any malformed entry so a transient missing vessel never throws in the sim step.
+ * @param {Array<{pos:[number,number]}>} npcs
+ * @param {number} [r=NPC_RADIUS]  forgiving per-vessel radius
+ * @returns {Array<{x:number,z:number,r:number}>}
+ */
+export function shipCircles(npcs, r = NPC_RADIUS) {
+  const out = [];
+  if (!npcs) return out;
+  for (const n of npcs) {
+    if (n && Array.isArray(n.pos) && n.pos.length >= 2) out.push({ x: n.pos[0], z: n.pos[1], r });
+  }
+  return out;
+}
+
+/**
+ * Swept arcade ship-vs-ship collision. Resolves the PLAYER hull's motion from `prev` to `next`
+ * against other vessels (circles), pushing it out + sliding it along — a thin wrapper over
+ * `sweepIslandCollision` with a `hitbox` of 1, because an NPC circle's `r` already IS its
+ * forgiving radius (no shoreline inflation): the solid boundary is exactly `r + shipR`. The
+ * sweep's sub-stepping still forbids a fast charge tunnelling clean through a smaller vessel.
+ * @param {{x:number,z:number}} prev  position before this step
+ * @param {{x:number,z:number}} next  integrated position (pre-collision)
+ * @param {Array<{x:number,z:number,r:number}>} ships  other vessels' circles (shipCircles())
+ * @param {{shipR?:number, maxStep?:number}} [opts]
+ * @returns {{x:number, z:number, hit:boolean}}
+ */
+export function sweepShipCollision(prev, next, ships, opts = {}) {
+  return sweepIslandCollision(prev, next, ships, { hitbox: 1, ...opts });
+}
+
 // ---- Arcade slow-to-stop for harbouring & fighting (#76 c) ----------------------------
 // Arriving at a berth or squaring up for a fight should FEEL like the ship carries momentum:
 // it coasts in and settles, it doesn't teleport-freeze. The decel is an EASE — approach()
