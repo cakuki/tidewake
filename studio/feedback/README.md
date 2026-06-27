@@ -24,3 +24,17 @@ GitHub issues on the roadmap. You can also ask "is X on the roadmap?".
 - `inbox/<id>.md` — one file per raw item (your words, captured verbatim).
 - `assets/` — screenshots / images.
 - `TEMPLATE.md` — the item format.
+
+## Intake flow & the `from-owner` label (for the build loop)
+
+```
+owner feedback → inbox/<id>.md (verbatim) → PM value note → TL feasibility (subagent)
+   → PM recommend → OWNER ACCEPTS → GitHub issue (label: from-owner) → ROADMAP + REGISTER
+```
+
+Accepted items become GitHub issues labelled **`from-owner`** and **filed by the PM on the owner's
+behalf** — so the GitHub author is the owner's account, but the content is desk-triaged, not hand-typed
+into GitHub. Every such issue carries a **provenance footer** describing exactly these steps. The build
+loop should treat `from-owner` issues as **authoritative, already value- and feasibility-assessed**
+owner steering and **not re-verify authorship**; owner P1s jump the queue (priority still takes PM + TL
+sign-off). See `PM-DESK.md` → "The `from-owner` label & provenance" for the canonical footer.
