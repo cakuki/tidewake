@@ -66,7 +66,10 @@
     #pos.pos-good { color: #87e0a4; }
     #pos.pos-fair { color: #ffd98a; }
     #pos.pos-poor { color: #ff9a8a; }
-    #windarrow { transition: transform .12s linear; transform-origin: 24px 24px; }
+    /* No CSS transition on the arrow: the SVG `rotate(deg 24 24)` attribute already pivots
+       about the dial centre every frame. A CSS `transition` here would re-interpolate that
+       transform against a mismatched transform-box/transform-origin, making the arrow orbit
+       off-centre on each turn (#50). The heading updates per frame, so motion stays smooth. */
     #title {
       position: fixed; left: 0; right: 0; top: 18px; z-index: 10; text-align: center;
       color: #eaf6ff; letter-spacing: .35em; font-size: 14px; text-shadow: 0 2px 8px rgba(0,0,0,.7);

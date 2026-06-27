@@ -28,8 +28,11 @@ export function createInput(domElement) {
   addEventListener('keydown', (e) => { keys.add(e.key.toLowerCase()); });
   addEventListener('keyup', (e) => { keys.delete(e.key.toLowerCase()); });
 
-  // drag-to-look camera orbit offset
-  let camYaw = Math.PI, camPitch = 0.32, dragging = false, lastX = 0, lastY = 0;
+  // drag-to-look camera orbit offset. Defaults put the camera ASTERN looking forward
+  // over the bow (#49): sailing.js places it at -(heading+camYaw), so camYaw = 0 sits
+  // it directly behind the ship — the expected chase view from the very first frame.
+  const CAM_YAW_DEFAULT = 0, CAM_PITCH_DEFAULT = 0.32;
+  let camYaw = CAM_YAW_DEFAULT, camPitch = CAM_PITCH_DEFAULT, dragging = false, lastX = 0, lastY = 0;
   domElement.addEventListener('pointerdown', (e) => { dragging = true; lastX = e.clientX; lastY = e.clientY; });
   addEventListener('pointerup', () => { dragging = false; });
   addEventListener('pointermove', (e) => {
@@ -57,6 +60,9 @@ export function createInput(domElement) {
     touch,
     get camYaw() { return camYaw; },
     get camPitch() { return camPitch; },
+    // Restore the default astern framing — called on a new voyage (#49) so a reset
+    // always reopens over the bow, no matter where the player last dragged the view.
+    resetView() { camYaw = CAM_YAW_DEFAULT; camPitch = CAM_PITCH_DEFAULT; },
   };
 }
 

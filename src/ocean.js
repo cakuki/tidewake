@@ -1,4 +1,11 @@
 import * as THREE from 'three';
+import { WAVES, MAX_SWELL, swellHeight } from './swell.js';
+
+// Re-export so existing importers (and the swell unit test) can read the crest height.
+export { MAX_SWELL };
+
+// Format a JS number as a GLSL float literal (always with a decimal point).
+const glf = (n) => (Number.isInteger(n) ? n.toFixed(1) : String(n));
 
 // A large animated ocean plane. Uses a vertex shader for Gerstner-style waves
 // so the GPU does the work and the CPU loop stays cheap.
@@ -31,9 +38,9 @@ export function createOcean() {
         return amp * sin(dot(normalize(dir), p) * freq + uTime * speed);
       }
       float swell(vec2 p) {
-        return wave(p, vec2( 1.0, 0.6), 0.012, 1.1, 6.0)
-             + wave(p, vec2(-0.7, 1.0), 0.020, 1.6, 3.5)
-             + wave(p, vec2( 0.3,-0.9), 0.045, 2.2, 1.4);
+        return ${WAVES.map(([dx, dz, f, s, a]) =>
+          `wave(p, vec2(${glf(dx)}, ${glf(dz)}), ${glf(f)}, ${glf(s)}, ${glf(a)})`
+        ).join('\n             + ')};
       }
 
       void main() {
@@ -87,18 +94,9 @@ export function createOcean() {
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.y = 0;
 
-  // CPU-side wave sampler so the ship can bob on the same swell the shader draws.
-  function sampleHeight(x, z, t) {
-    const w = (dx, dy, freq, speed, amp) => {
-      const len = Math.hypot(dx, dy);
-      return amp * Math.sin(((x * dx + z * dy) / len) * freq + t * speed);
-    };
-    return (
-      w(1.0, 0.6, 0.012, 1.1, 6.0) +
-      w(-0.7, 1.0, 0.020, 1.6, 3.5) +
-      w(0.3, -0.9, 0.045, 2.2, 1.4)
-    );
-  }
+  // CPU-side wave sampler so the ship can bob on the same swell the shader draws —
+  // delegates to the shared pure swellHeight() (same WAVES the GLSL is generated from).
+  const sampleHeight = swellHeight;
 
   return {
     mesh,

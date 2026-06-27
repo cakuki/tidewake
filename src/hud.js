@@ -9,6 +9,17 @@ import { rankForRenown, renownTier, titleFor, dominantPole, legendBeat } from '.
 
 const RAD2DEG = 180 / Math.PI;
 
+// Pure helper (#50): the wind arrow's rotation in DEGREES, normalised to (-180, 180].
+// The dial is ship-relative (bow up), so the arrow shows the wind's bearing RELATIVE to
+// the heading. Normalising keeps the emitted angle bounded no matter how far `heading`
+// has accumulated, so the value handed to the SVG `rotate()` stays sane on every turn.
+export function windArrowDeg(heading, windDir) {
+  let deg = (windDir - heading) * RAD2DEG;
+  deg = ((deg % 360) + 360) % 360; // -> [0, 360)
+  if (deg > 180) deg -= 360;       // -> (-180, 180]
+  return deg;
+}
+
 export function createHud() {
   const $heading = document.getElementById('heading');
   const $speed = document.getElementById('speed');
@@ -328,8 +339,10 @@ export function createHud() {
     $speed.textContent = (state.speed / maxSpeed * 18).toFixed(1);
 
     // Wind indicator: arrow swings to the wind's bearing relative to the bow (the
-    // dial is ship-relative, bow up). Point-of-sail label + colour follow the angle.
-    $windArrow.setAttribute('transform', `rotate(${(state.windDir - state.heading) * RAD2DEG} 24 24)`);
+    // dial is ship-relative, bow up). The explicit pivot `24 24` (the dial centre) keeps
+    // the arrow rotating about the centre at every heading; the angle is normalised so it
+    // never drifts as `heading` accumulates (#50). Point-of-sail label/colour follow it.
+    $windArrow.setAttribute('transform', `rotate(${windArrowDeg(state.heading, state.windDir)} 24 24)`);
     const sail = pointOfSail(state.heading, state.windDir);
     if (sail.label !== lastPosLabel) { $pos.textContent = sail.label; lastPosLabel = sail.label; }
     if (sail.band !== lastPosBand) { $pos.className = 'pos-' + sail.band; lastPosBand = sail.band; }

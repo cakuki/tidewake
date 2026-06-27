@@ -46,6 +46,7 @@ export function createSailing({ ship, ocean, camera, input }) {
     delete state.coins; delete state.cargo;
     delete state.infamy; delete state.standing; delete state.renown;
     delete state.legends; // a new voyage starts legend-less; the crowns are yet to earn
+    if (input && typeof input.resetView === 'function') input.resetView(); // reopen astern (#49)
   }
 
   function step(dt, t) {

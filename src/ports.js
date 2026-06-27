@@ -36,9 +36,10 @@ function buildMarker(angle) {
   const buoyMat = new THREE.MeshStandardMaterial({ color: 0xd23b2e, roughness: 0.7 });
   const flagMat = new THREE.MeshStandardMaterial({ color: 0xffd98a, roughness: 0.9, side: THREE.DoubleSide });
 
-  // Jetty deck: a low plank reaching seaward.
+  // Jetty deck: a low plank reaching seaward. Sits at y=2.4 (underside ~1.7) so it stays
+  // clearly above the calmed swell (MAX_SWELL ~1.4) and never goes awash (#51).
   const deck = new THREE.Mesh(new THREE.BoxGeometry(8, 1.4, 38), plankMat);
-  deck.position.set(0, 1.5, 19);
+  deck.position.set(0, 2.4, 19);
   g.add(deck);
   // A couple of pilings under it.
   for (const z of [6, 20, 32]) {
