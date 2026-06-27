@@ -22,6 +22,7 @@ Keep `Doing` small (limit WIP). Cards: `#issue — short title — owner`.
 - Loop 0: v0 shipped — playable build + auto-release + studio structure.
 - Loop 27: #59 Cannon Broadside — open fire (G) alongside the Insult Broadside duel; closed, depth follow-up #72 filed (v0.0.20260627130215).
 - Loop 28: #63 Mobile MVP — installable PWA (manifest + brass-anchor icons, Add-to-Home-Screen) + heat-aware DPR cap atop existing touch controls/responsive HUD; closed. Follow-ups #74 (SW offline) + #75 (safe-area/landscape/low-end polish); docked overlap tracked in #66 (v0.0.20260627131832).
+- Loop 29: PWA top-notch safe-area (owner request, §3c) — swept `env(safe-area-inset-*)` onto every top-anchored HUD element so nothing hides under the notch/status bar in standalone; also fixed the ≤560px media-query `#title` rule. #75 safe-area-top item done (partial; landscape/home-indicator/low-end remain) (v0.0.20260627133536).
 
 ## Blocked
 - _(empty)_
