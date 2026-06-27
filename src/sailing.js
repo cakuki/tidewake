@@ -3,7 +3,7 @@
 // the hull on the live swell with bob/roll, and follows with the camera. This is the
 // arcade-sailing heart that used to live inline in main.js's update().
 import * as THREE from 'three';
-import { targetSpeed, approach, steerRate, sweepIslandCollision, sweepShipCollision, shipCircles, slideVelocity, settledTargetSpeed, SETTLE_RATE } from './physics.js';
+import { targetSpeed, approach, steerRate, easeRudder, sweepIslandCollision, sweepShipCollision, shipCircles, slideVelocity, settledTargetSpeed, SETTLE_RATE } from './physics.js';
 
 export const MAX_SPEED = 55;
 
@@ -58,6 +58,7 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     heading: 0,        // radians, 0 = +Z
     speed: 0,          // world units / sec
     throttle: 0,       // 0..1 target
+    rudder: 0,         // -1..1 eased helm (#20): swings toward steer input, never snaps
     pos: new THREE.Vector3(0, 0, 0),
     windDir: Math.PI * 0.25,
     windName: 'NE breeze',
@@ -94,7 +95,7 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
 
   // Respawn at the origin, dead in the water. Clear economy so initEconomy re-seeds defaults.
   function reset() {
-    state.heading = 0; state.speed = 0; state.throttle = 0;
+    state.heading = 0; state.speed = 0; state.throttle = 0; state.rudder = 0;
     state.pos.set(0, 0, 0);
     delete state.coins; delete state.cargo;
     delete state.infamy; delete state.standing; delete state.renown;
@@ -131,8 +132,13 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     state.settling = settling;
     state.speed = approach(state.speed, target, dt, settling ? SETTLE_RATE : 1.5);
 
-    // steering scales with speed
-    state.heading += steer * dt * steerRate(state.speed);
+    // steering (#20): ease the RUDDER toward the steer input instead of yawing at a constant
+    // rate the instant a key is held — the turn accelerates in as you hold and settles smoothly
+    // on release (a weighty wheel, not a switch). The applied yaw is the eased rudder times the
+    // speed-scaled steerRate, so turn authority still firms up with speed. While fighting/settling
+    // steer is 0, so the rudder eases back amidships on its own — the helm goes quiet for the guns.
+    state.rudder = easeRudder(state.rudder, steer, dt);
+    state.heading += state.rudder * dt * steerRate(state.speed);
 
     // integrate position
     const px0 = state.pos.x, pz0 = state.pos.z; // pre-collision, for the swept resolve
@@ -202,7 +208,10 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     ship.rotation.y = state.heading;
     const hF = ocean.sampleHeight(state.pos.x + Math.sin(state.heading) * 8, state.pos.z + Math.cos(state.heading) * 8, t);
     ship.rotation.x = (hF - h) * 0.03;
-    ship.rotation.z = Math.sin(t * 1.3) * 0.04 + steer * 0.05;
+    // bank/lean into the turn (#20, visual only): heel with the EASED rudder so the hull rolls
+    // into a turn and rights itself smoothly as the helm centres — and lean harder the faster you
+    // go (a standing-still pivot barely heels). Cheap (one rotation), no collision/perf impact.
+    ship.rotation.z = Math.sin(t * 1.3) * 0.04 + state.rudder * 0.09 * Math.min(1, state.speed / 22);
     if (ship.userData.flag) ship.userData.flag.rotation.z = Math.sin(t * 4) * 0.3;
 
     // camera follow with orbit offset

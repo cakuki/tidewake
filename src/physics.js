@@ -51,6 +51,36 @@ export function steerRate(speed) {
   return 0.9 * Math.min(1, speed / 12 + 0.15);
 }
 
+// ---- Eased rudder (#20) ----------------------------------------------------------------
+// CREATIVE SPARK (Game Designer): the helm should feel like a real wheel, not a switch. Hold
+// the rudder over and the turn ACCELERATES in (the bow swings harder the longer you hold);
+// let go and it SETTLES smoothly back amidships. The yaw a step applies is the eased rudder
+// times the speed-scaled steerRate — so the turn-in and turn-out are gentle ramps, never the
+// old instant constant-yaw snap. (A soft wheel-creak SFX as the rudder swings is the natural
+// audio companion — noted for the Sound Engineer, not built here.) Pure + frame-rate
+// independent: it reuses approach()'s clamped exponential ease, so a big frame hitch can never
+// fling the rudder past the input. Research-backed feel: "ease state with rates, don't snap it."
+
+/** How fast the rudder swings toward the held steer input (per second). Tuned weighty-but-
+ *  responsive: a quick tap nudges the bow, holding hard-over reaches near-full rudder in ~0.8s,
+ *  releasing centres it just as smoothly. (If turning feels twitchy/sluggish, retune here.) */
+export const RUDDER_RATE = 3.5;
+
+/**
+ * Ease a rudder value toward the held steer input. `input` is the raw steer command in [-1,1]
+ * (1 = hard a-port, -1 = hard a-starboard, 0 = released/neutral); `rudder` is the current eased
+ * position. Holding an input ramps the rudder IN toward it; releasing (input 0) settles it back
+ * to neutral. Never overshoots the input (clamped step via approach()), so it's safe at any dt.
+ * @param {number} rudder  current eased rudder position in [-1,1]
+ * @param {number} input   commanded steer in [-1,1]
+ * @param {number} dt      timestep in seconds
+ * @param {number} [rate]  easing rate per second (defaults to RUDDER_RATE)
+ * @returns {number} the eased rudder position
+ */
+export function easeRudder(rudder, input, dt, rate = RUDDER_RATE) {
+  return approach(rudder, input, dt, rate);
+}
+
 /**
  * Smallest angle between the ship's heading and the wind's "downwind" direction
  * (the way windDir points). 0 = sailing dead downwind (running), PI = pointed

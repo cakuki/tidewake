@@ -594,6 +594,7 @@ window.__tidewake = {
     const infamy = state.infamy ?? 0, standing = state.standing ?? 0;
     return {
       heading: state.heading, speed: state.speed, throttle: state.throttle,
+      rudder: state.rudder ?? 0, // eased helm (#20): observable for QA / future input polish
       pos: state.pos.toArray(), port: state.port ?? null,
       // Slow-to-stop (#76 c): true while the ship is easing to a near-stop for a fight or a
       // harbour approach — the playtest asserts speed drops near a port / at fight start.
