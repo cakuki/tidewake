@@ -3,17 +3,18 @@
 Single source of truth for the never-stopping delivery loop. The orchestrator
 updates this each loop so progress survives context resets.
 
-- **Current loop:** 12 (Retro 3 DONE; next batch: #43 (port reputation reactions, #39-followup) reputation reactions + #32 glTF ship)
+- **Current loop:** 13 (art polish #42 shipped; next: #43 port/NPC reactions to renown)
 - **Loops since last retro:** 0 (Retro 3 DONE — reset; covered cycles 7,8,9,11)
 - **Cycles since last deep-learning loop:** 0 (Deep-learning loop #1 DONE — all 9 agents refreshed; filed #32-#40)
 - **Research backlog (prioritise):** #43 (port reputation reactions, #39-followup) port reputation reactions (NEXT), #32 glTF ship, #33 Insult Broadside combat, #16 minimap, #35 cannon SFX, #36 fixed-timestep, #37 visual-diff QA, #40 adaptive music, #25 actions bump ( #34 contract step ADOPTED into runbook/PARALLEL.md)
 - **Next slices (Retro 3, priority):** (1) #43 (port reputation reactions, #39-followup) ports/NPCs react to renown — reactivity; (2) #32 CC0 glTF hull — charm; PARALLEL BATCH candidate (#43 (port reputation reactions, #39-followup) edits reputation/state, #32 edits ship mesh — disjoint files; CONTRACT: renown/reputation read API — name·shape·owner before dispatch). Then (3) #33 Insult Broadside (bigger, after stakes exist); (4) #16 minimap as a batch B-side.
 - **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions (e.g. #trade .show opacity) read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
-- **Last Telegram update (UTC):** 2026-06-27T00:50 (hourly #2 + clearer video)
-- **Next hourly update due (UTC):** ~2026-06-27T01:50
-- **Latest release:** v0.0.20260627004415 (main.js modularised; save/load before that)
+- **Last Telegram update (UTC):** 2026-06-27T07:35 (morning catch-up + art screenshot)
+- **Next hourly update due (UTC):** ~2026-06-27T08:35
+- **Latest release:** v0.0.20260627072700 (art polish: carved hull, richer islands, ink-wash)
 - **Live:** https://cakuki.github.io/tidewake/
-- **Open enablers:** #25 bump Actions off Node-20 (#24 modularise DONE); next slices #26 port economy, #27 Musician sailing theme, #28 NPC ship, #13 glTF ship
+- **Note:** session hit usage limit ~01:43-07:20 UTC (paused), resumed on owner "continue".
+- **Open enablers:** #25 bump Actions off Node-20; #41 HUD/title overlap (P3)
 
 ## Loop log
 
@@ -34,6 +35,7 @@ updates this each loop so progress survives context resets.
 | 9 | Wandering NPC ships + persist economy (parallel) | #28,#31 | v0.0.20260627012517 | 96 tests; 3 AI vessels; save v2 (coins/cargo) |
 | 10 | Deep-learning research loop #1 (9 agents, web research) | — | — | Filed #32-#40; agents' identities refreshed |
 | 11 | Captain's Ledger — renown/rank ladder (TDD) | #39 | v0.0.20260627014341 | 114 tests; Bilge-rat→Terror of the Tidewake; persisted |
+| 12 | Art polish: carved hull + richer islands + ink-wash horizon | #42 | v0.0.20260627072700 | 114 tests; procedural, no assets |
 | — | Retro 3 (subagent) | — | — | Fantasy now legible (sail→trade→renown rank, NPCs). Adopted #34 shared-contract step + re-dispatch-glitched-subagent rule + QA nav/timing gotchas into runbook; new guardrail "reactive verbs over inert content". Next = #43 (port reputation reactions, #39-followup) reputation reactions + #32 glTF ship (parallel, contract'd) |
 
 ## Hourly Telegram log
