@@ -3,7 +3,7 @@
 Single source of truth for the never-stopping delivery loop. The orchestrator
 updates this each loop so progress survives context resets.
 
-- **Current loop:** 17 (KEYSTONE two-poles split shipped; next: combat juice / endgame milestones / glTF ship #32 / actions bump #25)
+- **Current loop:** 18 (endgame milestones shipped; next: combat juice #35 / glTF ship #32 / adaptive music #40 / mobile #17)
 - **Loops since last retro:** 0 (Retro 3 DONE — reset; covered cycles 7,8,9,11)
 - **Cycles since last deep-learning loop:** 0 (Deep-learning loop #1 DONE — all 9 agents refreshed; filed #32-#40)
 - **Research backlog (prioritise):** #43 (port reputation reactions, #39-followup) port reputation reactions (NEXT), #32 glTF ship, #33 Insult Broadside combat, #16 minimap, #35 cannon SFX, #36 fixed-timestep, #37 visual-diff QA, #40 adaptive music, #25 actions bump ( #34 contract step ADOPTED into runbook/PARALLEL.md)
@@ -40,6 +40,7 @@ updates this each loop so progress survives context resets.
 | 14 | Insult Broadside — comedic insult-duel combat vs NPCs | #33 | v0.0.20260627080427 | 134 tests; morale duel, 14 jabs, coin+renown reward; cleaned stray branch, filed #44 |
 | 15 | Minimap radar (islands/ports/NPCs, north-up) | #16 | v0.0.20260627083006 | 141 tests; bottom-left, plots world |
 | 16 | KEYSTONE: renown two-poles — Infamy(pirate)↔Standing(governor) | #45 | v0.0.20260627085452 | 155 tests; diverging titles, pole-aware port reactions, persisted |
+| 17 | Endgame milestones — become THE pirate/governor (legend overlay) | #46 | v0.0.20260627100354 | 180 tests; persisted legends, sandbox continues |
 | — | Retro 3 (subagent) | — | — | Fantasy now legible (sail→trade→renown rank, NPCs). Adopted #34 shared-contract step + re-dispatch-glitched-subagent rule + QA nav/timing gotchas into runbook; new guardrail "reactive verbs over inert content". Next = #43 (port reputation reactions, #39-followup) reputation reactions + #32 glTF ship (parallel, contract'd) |
 
 ## Hourly Telegram log
