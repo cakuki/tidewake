@@ -3,9 +3,10 @@
 Single source of truth for the never-stopping delivery loop. The orchestrator
 updates this each loop so progress survives context resets.
 
-- **Current loop:** 10 (DEEP-LEARNING RESEARCH LOOP running — all 9 agents researching the world)
-- **Loops since last retro:** 3 (Retro 3 due soon)
-- **Cycles since last deep-learning loop:** 0 (running now at ~cycle 10)
+- **Current loop:** 11 (next: #39 Captain's Ledger notoriety — make the fantasy legible)
+- **Loops since last retro:** 3 (Retro 3 due soon — after this cycle)
+- **Cycles since last deep-learning loop:** 0 (Deep-learning loop #1 DONE — all 9 agents refreshed; filed #32-#40)
+- **Research backlog (prioritise):** #39 notoriety, #32 glTF ship, #33 Insult Broadside combat, #35 cannon SFX, #36 fixed-timestep, #37 visual-diff QA, #34 contract lane, #40 adaptive music, #25 actions bump
 - **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions (e.g. #trade .show opacity) read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
 - **Last Telegram update (UTC):** 2026-06-27T00:50 (hourly #2 + clearer video)
 - **Next hourly update due (UTC):** ~2026-06-27T01:50
@@ -30,6 +31,7 @@ updates this each loop so progress survives context resets.
 | 7 | Port economy (5 goods, 3 ports, arbitrage, trade panel) + Musician sailing theme — parallel | #26,#27 | v0.0.20260627010038 | 73 tests; QA found trade bug #29 |
 | 8 | Fix trade (state.port getter + buy-by-name) | #29 | v0.0.20260627011026 | 76 tests; trade verified live (Rum buy coins 100→34). #30 filed→closed non-bug |
 | 9 | Wandering NPC ships + persist economy (parallel) | #28,#31 | v0.0.20260627012517 | 96 tests; 3 AI vessels; save v2 (coins/cargo) |
+| 10 | Deep-learning research loop #1 (9 agents, web research) | — | — | Filed #32-#40; agents' identities refreshed |
 
 ## Hourly Telegram log
 
