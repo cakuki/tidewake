@@ -47,6 +47,9 @@ await loop **PM + TL sign-off**. `from-owner` issues:
 | [#70](https://github.com/cakuki/tidewake/issues/70) | Ocean micro-details + sail-over delight; **standing rule: 1-2 per loop/retro** | 🪶 Humour (ongoing) | P2 |
 | [#71](https://github.com/cakuki/tidewake/issues/71) | Islands TLC — palette/variety/props polish (coord w/ #61) | Art & Audio / 🌊 | P2 |
 | [#61](https://github.com/cakuki/tidewake/issues/61) | Sunny/holiday **Caribbean sea-surface** — turquoise palette + sun glint + subtle detail (original shader, no franchise sampling) | M1 / 🌊 realism | P1 |
+| [#76](https://github.com/cakuki/tidewake/issues/76) | **Solidify the sea** — island + ship collision + arcade slow-to-stop for harbour/fighting (soft graze not brick wall; pure physics.js; phased a1 push-out→c ease-down→b ship-vs-ship→a2 slide polish) | M1 / 🌊 realism · M2 #67 · M6 #59 | P1* |
+
+\* #76 priority P1 **pending owner nod** (asked over Telegram 2026-06-27) + loop PM+TL sign-off.
 
 ---
 

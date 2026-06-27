@@ -1,0 +1,35 @@
+---
+id: 2026-06-27-collision-and-harbour-slowdown
+date: 2026-06-27
+type: feature        # bug | feature | idea | feedback
+status: raw          # raw | triaging | needs-clarification | assessed | accepted | parked | declined
+value: "Believability-pillar gap: ship phases through islands & NPCs, which the shipped combat (#59) and auto-harbor (#67) now expose; collision + arcade slow-to-stop gives the sea solidity & the heft those moments imply. High value."
+feasibility: "TL: all logic lands in pure physics.js (node-testable, no new geometry, draw calls untouched). (a) island collision S→M — pure resolveCircles(pos, circles, shipR) push-out called in sailing.js step() after integration, feed islands as {x,z,r} (under-radius to graze not wall); risk=false positives from squashed isle footprints, mitigated by slightly-under radius. (b) ship-vs-ship S (after a) — same resolver vs npcs.snapshot(), resolve PLAYER ONLY (stays deterministic). (c) arcade decel S — harborSlowFactor(dist,DOCK_RADIUS) into targetSpeed + approach(speed,0,…) glide-to-stop on fight instead of today's instant freeze; reuses approach()/nearestPort(), ties auto-harbor #67. Phasing: a1 push-out → c ease-down (biggest feel win, cheapest) → b ship-vs-ship → a2 tangential slide+speed-bleed polish."
+decision: "ACCEPT-LEANING (recommend accept). Believability-pillar gap exposed by shipped combat/harbour work; small always-working first slice (a1) exists; cheap, pure, reversible. Proposed P1 (jumps queue) — pending owner nod + loop PM+TL sign-off."
+issue: "https://github.com/cakuki/tidewake/issues/76"   # filed pre-acceptance; priority P1 pending owner nod
+assets: []           # paths under studio/feedback/assets/
+---
+
+## Raw (owner's words — verbatim, never edited)
+
+> "I think we are getting closer to address Lack of Island and ship collision. Ship probably should slow down and stop for harboring and fighting. Check with other games maybe there are fun ways to keep arcade feeling."
+
+## Triage log (newest at the bottom)
+
+- 2026-06-27T15:10Z — Captured verbatim from the Telegram owner channel (§3d planning item). status: raw. Confirmed "logged as 2026-06-27-collision-and-harbour-slowdown" to the owner over Telegram.
+
+- 2026-06-27T15:20Z — **PM value note.** This serves both halves of the north-star (believable sea + arcade fun) and reads as a believability **pillar gap**, not polish. Today the player ship sails straight *through* islands (palms, rocks, huts) and through NPC ships — and now that cannon combat (#59) and staged auto-harbor (#67) have shipped, that weightlessness is loud: a fight where hulls interpenetrate and a harbour you glide through undercut the very moments meant to feel like they have stakes and mass. Collision gives the world *solidity* (a coast you can run aground on, a hull you can shoulder) — the physical foundation boarding, blockades and ramming all build on. The slow-to-stop is the game-feel half: arriving and fighting should *decelerate*, so the player feels the ship carries momentum and the beat has weight, instead of teleport-snapping between sailing and docked/fighting. Player value: the sea stops being a backdrop you phase through and becomes a place with edges and consequence — every screenshot/clip gets more believable, and combat/harbour gain the heft the recent work implied. **High value.** Epics: #1 Sailing & World, #3 Ship Combat; ties #67 auto-harbor and #59 combat.
+
+- 2026-06-27T15:25Z — **Light research pass ("check with other games" — arcade collision that stays fun, not punishing).** Takeaways, citable:
+  1. **Soft collision, not a brick wall.** Arcade racers deflect/bounce the player and grant quick recovery instead of dead-stopping — "in real life a collision means the end of the race… games create an artificially quick recovery so players get right back into the action" (Game Developer, *Implementing Racing Games*). For Tidewake: a coast should *graze and bleed speed / slide the hull along the shoreline*, not halt it dead. Run-aground = a nudge + a comic lurch, not a fail state.
+  2. **Forgiving, simple hitboxes beat precise ones.** Rocket League ships a single box collider — "precise collisions would have made the game feel more random and complicated" (Psyonix GDC, via Game Developer). For us: collide vs an island's existing `userData.radius` (circle) and a simple ship circle/capsule, **not** the jagged mesh — cheaper AND feels fairer (no snagging on a stray palm).
+  3. **Ease speed with forces, don't snap state.** Arcade feel comes from "artificially applying forces / hacking behaviour to make manoeuvres feel good" (Game Developer). Slowing for harbour/fight should be a smooth deceleration — we already have `approach()` easing in `physics.js` — so the ship *glides* to a stop rather than freezing. This is exactly auto-harbor #67's slow phase, extended to combat.
+  4. **Hitting things can be a toy, not only a tax.** Speed-boat arcade racers (e.g. Hydro Thunder) turn the environment into ramps/jumps and reward bold lines — collision is occasionally *fun to do*, not just punished.
+  - **🧭 Wildcard — "Ramming speed" as a verb, not a fail.** Let a fast bow-on hit into a smaller NPC ship become a *deliberate, comedic ramming move* (shove it off course, stagger its crew with a yelp line, maybe a chip of morale) instead of a dead stop. Forgiving for the player, comedic for the world, and it rides straight on cannon combat (#59) + Insult Broadside (#33) as another authored-fun lever — collision becomes content, not just a wall.
+  - Sources: Game Developer — *Implementing Racing Games: an intro to different approaches and their game design trade-offs* (https://www.gamedeveloper.com/design/implementing-racing-games-an-intro-to-different-approaches-and-their-game-design-trade-offs); MP Amusement — *Hydro Thunder* arcade boat racing (https://mpamusement.com/products/hydro-thunder-arcade-boat-racing-game).
+
+- 2026-06-27T15:35Z — **TL feasibility verdict** (subagent, read physics.js/sailing.js/main.js/npc.js/ports.js/duel.js/cannons.js). Recorded in `feasibility:` above. Key seam: position is integrated in `src/sailing.js` `step()` right before `ship.position.set` — the one hook all three features share; `npc.js` already reduces islands to `{x,z,r}` circles and exposes `npcs.snapshot()`; combat already gates sailing via `!duel.active && !cannons.active` in main.js (today an instant freeze — the jarring bit (c) smooths). status → assessed.
+
+- 2026-06-27T15:40Z — **PM recommendation: ACCEPT, proposed P1.** Rationale: collision is a believability-pillar gap the recent combat (#59) + auto-harbor (#67) work *exposed* — cheap, pure, reversible, with a small always-working first slice (a1: no sailing through land). Phase per TL. Owner already steered toward it ("we are getting closer to address…"), so accept-leaning — but the desk never self-accepts priority: filing the issue now (ask unambiguous), priority **pending owner nod**. Sent recommendation + a P1-vs-P2 decision to the owner over Telegram; logged under OWNER-CHANNEL.md → Pending questions. Build loop keeps moving.
+</content>
+</invoke>

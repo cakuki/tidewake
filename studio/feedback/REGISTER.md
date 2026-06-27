@@ -36,3 +36,4 @@ with the item files in `inbox/`. Raw items are never deleted — only their stat
 | 2026-06-27-per-town-music | feature | accepted | Distinct per-town music; transposition-first, rides #67 | [#69](https://github.com/cakuki/tidewake/issues/69) |
 | 2026-06-27-ocean-fun-microdetails | idea | accepted | Ocean sail-over delight + standing '1-2 per loop/retro' rule | [#70](https://github.com/cakuki/tidewake/issues/70) |
 | 2026-06-27-islands-tlc | feature | accepted | Island palette/variety/props polish, coord w/ #61 | [#71](https://github.com/cakuki/tidewake/issues/71) |
+| 2026-06-27-collision-and-harbour-slowdown | feature | assessed | Island + ship collision and arcade slow-to-stop for harbour/fight; believability-pillar gap exposed by combat #59 — filed P1 (pending owner nod) | [#76](https://github.com/cakuki/tidewake/issues/76) |

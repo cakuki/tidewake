@@ -145,4 +145,4 @@ row once executed._
 
 | Asked (UTC) | Asker | Question | Awaiting |
 |-------------|-------|----------|----------|
-| _(none — #56 & #58 answered 2026-06-27 14:52: mobile GO now; weather GO as optional toggle. See decisions.md.)_ | | | |
+| 2026-06-27 15:45 | PM desk | Collision + slow-to-stop (#76): accept-leaning; **priority P1 (jump queue) or P2 (after current)?** | Owner's P1/P2 pick — his next reply replaced the tap with a separate PWA-notch note (see orchestrator handoff), so this is still open. Default if silent: hold at filed-P1 pending PM+TL sign-off; do NOT preempt the queue until confirmed. |
