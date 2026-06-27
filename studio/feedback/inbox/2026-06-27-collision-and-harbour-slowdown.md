@@ -2,10 +2,10 @@
 id: 2026-06-27-collision-and-harbour-slowdown
 date: 2026-06-27
 type: feature        # bug | feature | idea | feedback
-status: raw          # raw | triaging | needs-clarification | assessed | accepted | parked | declined
+status: accepted     # raw | triaging | needs-clarification | assessed | accepted | parked | declined
 value: "Believability-pillar gap: ship phases through islands & NPCs, which the shipped combat (#59) and auto-harbor (#67) now expose; collision + arcade slow-to-stop gives the sea solidity & the heft those moments imply. High value."
 feasibility: "TL: all logic lands in pure physics.js (node-testable, no new geometry, draw calls untouched). (a) island collision S→M — pure resolveCircles(pos, circles, shipR) push-out called in sailing.js step() after integration, feed islands as {x,z,r} (under-radius to graze not wall); risk=false positives from squashed isle footprints, mitigated by slightly-under radius. (b) ship-vs-ship S (after a) — same resolver vs npcs.snapshot(), resolve PLAYER ONLY (stays deterministic). (c) arcade decel S — harborSlowFactor(dist,DOCK_RADIUS) into targetSpeed + approach(speed,0,…) glide-to-stop on fight instead of today's instant freeze; reuses approach()/nearestPort(), ties auto-harbor #67. Phasing: a1 push-out → c ease-down (biggest feel win, cheapest) → b ship-vs-ship → a2 tangential slide+speed-bleed polish."
-decision: "ACCEPT-LEANING (recommend accept). Believability-pillar gap exposed by shipped combat/harbour work; small always-working first slice (a1) exists; cheap, pure, reversible. Proposed P1 (jumps queue) — pending owner nod + loop PM+TL sign-off."
+decision: "ACCEPTED — built & shipped. Loop PM+TL signed off P1 and the build loop delivered all four phases (a1 islands / c slow-to-stop / b ship-vs-ship / a2 slide polish); Loop 38 CLOSED #76. Desk's P1 recommendation adopted; owner nod overtaken by delivery."
 issue: "https://github.com/cakuki/tidewake/issues/76"   # filed pre-acceptance; priority P1 pending owner nod
 assets: []           # paths under studio/feedback/assets/
 ---
@@ -31,5 +31,7 @@ assets: []           # paths under studio/feedback/assets/
 - 2026-06-27T15:35Z — **TL feasibility verdict** (subagent, read physics.js/sailing.js/main.js/npc.js/ports.js/duel.js/cannons.js). Recorded in `feasibility:` above. Key seam: position is integrated in `src/sailing.js` `step()` right before `ship.position.set` — the one hook all three features share; `npc.js` already reduces islands to `{x,z,r}` circles and exposes `npcs.snapshot()`; combat already gates sailing via `!duel.active && !cannons.active` in main.js (today an instant freeze — the jarring bit (c) smooths). status → assessed.
 
 - 2026-06-27T15:40Z — **PM recommendation: ACCEPT, proposed P1.** Rationale: collision is a believability-pillar gap the recent combat (#59) + auto-harbor (#67) work *exposed* — cheap, pure, reversible, with a small always-working first slice (a1: no sailing through land). Phase per TL. Owner already steered toward it ("we are getting closer to address…"), so accept-leaning — but the desk never self-accepts priority: filing the issue now (ask unambiguous), priority **pending owner nod**. Sent recommendation + a P1-vs-P2 decision to the owner over Telegram; logged under OWNER-CHANNEL.md → Pending questions. Build loop keeps moving.
+
+- 2026-06-28 — **DELIVERED & CLOSED (overtaken by the build loop).** While this sat awaiting the owner's P1 nod, the loop's PM+TL signed off P1 and built all four phases, all TDD'd + playtested + live: **a1** island collision (Loop 31, hitbox widened Loop 33), **c** harbour/fight slow-to-stop (Loop 32), **b** ship-vs-ship bump (Loop 35), **a2** tangential slide polish (Loop 38, which **closed #76**). status → **accepted** (delivered). `decision:` = the loop adopted the desk's P1 recommendation. No owner action needed — the "blessing" is moot; it's already in the live build.
 </content>
 </invoke>

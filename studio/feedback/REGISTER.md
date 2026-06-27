@@ -36,5 +36,10 @@ with the item files in `inbox/`. Raw items are never deleted — only their stat
 | 2026-06-27-per-town-music | feature | accepted | Distinct per-town music; transposition-first, rides #67 | [#69](https://github.com/cakuki/tidewake/issues/69) |
 | 2026-06-27-ocean-fun-microdetails | idea | accepted | Ocean sail-over delight + standing '1-2 per loop/retro' rule | [#70](https://github.com/cakuki/tidewake/issues/70) |
 | 2026-06-27-islands-tlc | feature | accepted | Island palette/variety/props polish, coord w/ #61 | [#71](https://github.com/cakuki/tidewake/issues/71) |
-| 2026-06-27-collision-and-harbour-slowdown | feature | assessed | Island + ship collision and arcade slow-to-stop for harbour/fight; believability-pillar gap exposed by combat #59 — filed P1 (pending owner nod) | [#76](https://github.com/cakuki/tidewake/issues/76) |
-| 2026-06-27-shipwheel-mobile-nav | idea | needs-clarification | Mobile nav more fun/easy; ship's-wheel touch steering (owner will explain more) |  |
+| 2026-06-27-collision-and-harbour-slowdown | feature | accepted | **DELIVERED & CLOSED** — island + ship collision + arcade slow-to-stop; loop built all 4 phases (a1/c/b/a2) | [#76](https://github.com/cakuki/tidewake/issues/76) |
+| 2026-06-27-shipwheel-mobile-nav | idea | triaging | Replace L/R buttons w/ a draggable ship's-wheel widget in a fixed HUD spot (not full-screen — that's camera) |  |
+| 2026-06-28-living-sea-fauna | idea | raw | Living world: flying seagulls, jumping dolphins, other sea/land animals (extends #68) |  |
+| 2026-06-28-approach-town-music-cue | feature | raw | Tavern/city music fades up from a distance as you near a port — diegetic wayfinding hint |  |
+| 2026-06-28-town-mode-trade-view | feature | raw | Town as a distinct MODE (harbour→disembark→market), leave only via a button; fix mobile market overlap; more to do in town |  |
+| 2026-06-28-arcade-battle-modes | idea | raw | Designer brief: arcade battle mode (SM Pirates), cannon/ammo loadout from workshops, boarding→crew fight/captain duel; keep verbal duel but expand jabs |  |
+| 2026-06-28-multiple-bg-music | feature | raw | Multiple sailing tracks rotating over time + distinct city music (music-system theme w/ #69) |  |
