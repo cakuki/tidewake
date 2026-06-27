@@ -195,3 +195,15 @@ anyone can read and run the source directly.
 **Why.** Direct owner steering over the two-way Telegram channel; both pending questions answered.
 Mobile reach + atmospheric depth without sacrificing the signature sunny look, and a reusable home
 for optional toggles as the game grows.
+
+### 2026-06-27 — Owner delegates prioritization to PM + TL (value · complexity · dependencies)
+**Decision (owner, Telegram).** "PM and TL should prioritize, considering value, complexity, and
+dependencies. I don't mind." The owner delegates priority calls (incl. P1-vs-P2) to the PM + Tech
+Lead, judged on **value · complexity · dependencies**. He still steers *what* matters; the team
+sequences *when*.
+**Applied now — #76 (collision + arcade harbour slow-to-stop):** PM+TL set it **P1, next up**. Value:
+high (believability pillar; makes the just-shipped cannon combat #59 + harbouring feel weighty).
+Complexity: low (pure `physics.js`, phased — island push-out first). Dependencies: none. → It ranks
+**ahead of the optional weather toggle (#58)**, which stays queued right after (it's charm, optional,
+and already unblocked by the #73 panel).
+**Why.** Trust the team to sequence; spend the owner's attention on direction, not micro-priority.

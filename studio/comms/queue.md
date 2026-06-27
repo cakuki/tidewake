@@ -24,28 +24,31 @@ _Updated 2026-06-27 14:55: #56 & #58 owner-decisions ANSWERED via Telegram (mobi
 as an **optional toggle**, sunny stays default). #59 cannon combat SHIPPED (Loop 27, v…130215). New
 owner-steered work un-gated below._
 
+_Updated 2026-06-27 15:45: #63 mobile, #73 toggles UI both SHIPPED (Loops 28, 30). #76 priority
+delegated by owner to PM+TL → set **P1, next** (high value, low complexity, no deps)._
+
 ## Top of queue (do in order)
 
-1. **#63 — mobile build (PWA/WebView), smallest always-working increment.** Owner said **"now"**
-   (#56 GO). Device spike #62 done. Make the live build genuinely phone-playable: responsive
-   viewport/layout, touch controls (steer/throttle/dock/fire), installable PWA manifest. File
-   follow-ups for the rest. — _why: explicit owner "now"; widens reach; spike already de-risked it._
+1. **#76 — collision + arcade harbour/fight slow-to-stop (P1, owner-steered).** Phase smallest-first
+   per TL feasibility: **(a1) island push-out** (pure `physics.js`, the smallest always-working
+   slice) → **(c) ease speed down for harbouring/fighting** → **(b) ship-vs-ship collision** →
+   **(a2) slide polish**. Keep the **arcade feel** (soft graze/bounce, forgiving circle hitboxes, no
+   brick wall — see the research in `studio/feedback/inbox/2026-06-27-collision-and-harbour-slowdown.md`).
+   — _why: believability pillar; makes the shipped cannon combat (#59) + harbouring feel weighty;
+   cheap, pure, reversible._
 
-2. **#73 — settings panel with feature toggles (early-phase options UI).** Owner: "build a ui for
-   [toggles]." A self-contained `src/ui/` panel (per #53) hosting feature toggles, persisted, defaults
-   keep the current look. — _why: owner-steered; the home #58 needs; reusable as the game grows._
+2. **#58 — weather & day-night, OPTIONAL & toggle-off (sunny default).** Plugs into the #73 panel's
+   toggle registry (one `register({id:'weather',default:false,apply})` line; see `src/ui/README.md`).
+   Never undo the sunny vibe. — _why: owner GO; biggest charm-depth, now safely optional._
 
-3. **#58 — weather & day-night, OPTIONAL & toggle-off (sunny default).** Build it behind a toggle in
-   #73; never undo the sunny vibe. — _why: owner GO; biggest charm-depth, now safely optional._
-
-4. **#55 — art-asset sourcing strategy + budget (research).** The last open owner P2 that is *not* a
+3. **#55 — art-asset sourcing strategy + budget (research).** The last open owner P2 that is *not* a
    decision. Research-only: CC0/glTF sources, licensing, cost-vs-effectiveness, a recommendation.
    Writes to backlog/docs; no game code. — _why: owner P2, unblocks #32 glTF hull and the art path._
 
-5. **Deep-learning research loop #2 (ritual, ~19 cycles overdue).** Fan out role subagents (web
-   research → 2–4 takeaways + 1 wildcard each → write to `agents/` + `memory/`, file backlog ideas).
-   Research-only, never touches `src/`. — _why: the creativity refill; loops 11–27 all mined loop
-   #1; the well is nearly dry. Run soon, between build slices._
+4. **Retro 6 + Deep-learning research loop #2 (rituals, overdue).** Retro 6 (4 loops since Retro 5 —
+   capture this session's wins: two-way owner channel, smart intent-routing, 5 ships). DL #2 (~21
+   cycles overdue) — fan out role subagents (web research → takeaways + wildcard → `agents/`+`memory/`,
+   file ideas; never touches `src/`). — _why: process + creativity refresh; run between build slices._
 
 ## Depth (a thin layer, gated by perf budget — prefer over breadth)
 

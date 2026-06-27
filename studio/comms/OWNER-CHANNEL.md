@@ -145,4 +145,8 @@ row once executed._
 
 | Asked (UTC) | Asker | Question | Awaiting |
 |-------------|-------|----------|----------|
-| 2026-06-27 15:45 | PM desk | Collision + slow-to-stop (#76): accept-leaning; **priority P1 (jump queue) or P2 (after current)?** | Owner's P1/P2 pick — his next reply replaced the tap with a separate PWA-notch note (see orchestrator handoff), so this is still open. Default if silent: hold at filed-P1 pending PM+TL sign-off; do NOT preempt the queue until confirmed. |
+| _(none open.)_ | | | |
+
+_Resolved 2026-06-27 15:43 — #76 priority: owner delegated to PM+TL ("considering value, complexity,
+and dependencies. I don't mind"). PM+TL set **#76 = P1, next up** (high value, low complexity, no
+deps), ahead of the optional weather toggle #58. See `decisions.md`._
