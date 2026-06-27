@@ -22,6 +22,25 @@ of truth for what's actually in flight; this file is the map.
 
 ---
 
+## 📥 Owner feedback — accepted at the PM desk (2026-06-27)
+
+Intake + triage session with the owner. All value- and feasibility-assessed; proposed priorities
+await loop **PM + TL sign-off**. `from-owner` issues:
+
+| Issue | Slice | Target | Prio |
+|-------|-------|--------|------|
+| [#49](https://github.com/cakuki/tidewake/issues/49) | Camera opens astern (over the bow) each session | M1 — Feel the Wind | P1 |
+| [#50](https://github.com/cakuki/tidewake/issues/50) | Fix compass wind-indicator drift on turn | M1 — Feel the Wind | P1 |
+| [#51](https://github.com/cakuki/tidewake/issues/51) | Tame oversized swell so coasts/docks stop submerging | M1 / 🌊 realism | P1 |
+| [#52](https://github.com/cakuki/tidewake/issues/52) | Performance: measurement-first budget gate, then cull/LOD/shaders | M4 + ongoing 🌊/tech | P1 |
+| [#53](https://github.com/cakuki/tidewake/issues/53) | Standard: self-contained, self-tested UI components | M9 / tech, ongoing | P2 |
+| [#54](https://github.com/cakuki/tidewake/issues/54) | Toggleable bigger map for route planning (MVP) | M2 / M4 | P2 |
+| [#55](https://github.com/cakuki/tidewake/issues/55) | Research: art-asset sourcing strategy + budget | Art & Audio direction | P2 |
+| [#56](https://github.com/cakuki/tidewake/issues/56) | Owner-decision: mobile support (feasibility done, build parked) | M4 — Touch the Horizon | P2 |
+| [#61](https://github.com/cakuki/tidewake/issues/61) | Sunny/holiday **Caribbean sea-surface** — turquoise palette + sun glint + subtle detail (original shader, no franchise sampling) | M1 / 🌊 realism | P1 |
+
+---
+
 ## v0 — Set Sail ✅ SHIPPED
 
 A playable prototype, live at https://cakuki.github.io/tidewake/.
