@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import {
+  L, halfLen, topY, nStations, profile, DECK_INSET,
+  beamAt, depthAt, sheerAt, SOLE_Y, soleOutline,
+} from './hull.js';
 
 // The player's sloop — still 100% procedural (no external art), but carved from
 // shaped geometry rather than a stack of boxes. createShip() returns a THREE.Group
@@ -20,31 +24,9 @@ export function createShip() {
   // Parametric hull: a normalized cross-section (port gunwale -> keel -> stbd
   // gunwale) swept along the keel, tapering to a pointed bow and a narrower
   // transom stern, with a raised sheer at the ends for a jaunty, lively profile.
-  const L = 16, halfLen = L / 2;
-  const maxBeam = 3.0;      // half-beam amidships (full beam 6, matches old hull)
-  const maxDepth = 3.3;     // hull depth (gunwale -> keel)
-  const topY = 2.0;         // gunwale base height
-  const profile = [
-    [-1.00, 0.00], [-0.98, -0.30], [-0.82, -0.62], [-0.45, -0.90],
-    [0.00, -1.00],
-    [0.45, -0.90], [0.82, -0.62], [0.98, -0.30], [1.00, 0.00],
-  ];
+  // Parametric hull constants + station functions now live in src/hull.js (a pure,
+  // node-testable module — the single source of truth shared with the unit tests).
   const K = profile.length;
-  const nStations = 18;
-
-  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
-  const beamAt = (t) => {
-    let b = maxBeam;
-    if (t > 0.5) b *= clamp(1 - Math.pow((t - 0.5) / 0.5, 1.4), 0.04, 1); // pointed bow
-    if (t < 0.18) b *= 0.55 + 0.45 * (t / 0.18);                          // narrow transom
-    return b;
-  };
-  const depthAt = (t) => maxDepth * (0.55 + 0.45 * Math.sin(Math.PI * clamp(t, 0, 1)));
-  const sheerAt = (t) => {
-    let y = topY + 0.95 * Math.pow(Math.abs(t - 0.5) * 2, 2.2);
-    if (t > 0.5) y += 0.6 * Math.pow((t - 0.5) / 0.5, 2); // extra-proud bow
-    return y;
-  };
 
   const verts = [];
   for (let i = 0; i < nStations; i++) {
@@ -99,15 +81,14 @@ export function createShip() {
 
   // --- Shaped deck (matches the hull plan) -----------------------------------
   const deckShape = new THREE.Shape();
-  const inset = 0.86;
-  deckShape.moveTo(beamAt(0) * inset, -halfLen);
+  deckShape.moveTo(beamAt(0) * DECK_INSET, -halfLen);
   for (let i = 1; i < nStations; i++) {
     const t = i / (nStations - 1);
-    deckShape.lineTo(beamAt(t) * inset, -halfLen + t * L);
+    deckShape.lineTo(beamAt(t) * DECK_INSET, -halfLen + t * L);
   }
   for (let i = nStations - 1; i >= 0; i--) {
     const t = i / (nStations - 1);
-    deckShape.lineTo(-beamAt(t) * inset, -halfLen + t * L);
+    deckShape.lineTo(-beamAt(t) * DECK_INSET, -halfLen + t * L);
   }
   const deckGeo = new THREE.ShapeGeometry(deckShape);
   deckGeo.rotateX(-Math.PI / 2);
@@ -115,6 +96,24 @@ export function createShip() {
   deck.position.y = topY + 0.02;
   deck.receiveShadow = true;
   group.add(deck);
+
+  // --- Interior sole / bilge cap (occludes the sea through the open gunwale ring, #65) -
+  // The hull is an open-topped bowl whose interior floor dips below the waterline, so the
+  // single ocean plane (y≈0) used to show *inside* the boat through the ring between the
+  // inset deck and the gunwale — "water in the hull." One opaque cap (the hull's own
+  // interior cross-section at SOLE_Y, above the waterline + swell margin) closes that view
+  // in ~1 draw call. The ship is NOT raised, so sampleHeight/wake/follow-camera stay put.
+  // A holystoned sole: scrubbed pale by the watch on a quiet forenoon.
+  const soleShape = new THREE.Shape();
+  const solePts = soleOutline();
+  soleShape.moveTo(solePts[0][0], solePts[0][1]);
+  for (let i = 1; i < solePts.length; i++) soleShape.lineTo(solePts[i][0], solePts[i][1]);
+  const soleGeo = new THREE.ShapeGeometry(soleShape);
+  soleGeo.rotateX(-Math.PI / 2);
+  const sole = new THREE.Mesh(soleGeo, woodHull);
+  sole.position.y = SOLE_Y;
+  sole.receiveShadow = true;
+  group.add(sole);
 
   // a few darker plank seams across the deck for texture-free grain
   for (let s = -6; s <= 6; s += 2) {

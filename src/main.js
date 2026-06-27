@@ -564,11 +564,28 @@ function checkOnboarding() {
 }
 
 let simT = 0;
+let qaCamera = null; // lazily-built top-down inspection camera (#65 visual DoD)
 function loop() {
   const dt = Math.min(clock.getDelta(), 0.05);
   simT = clock.elapsedTime;
   update(dt, simT);
-  renderer.render(scene, camera);
+  // QA visual-DoD override (#65): when a top-down inspection camera is requested, render
+  // the live scene straight down on the ship so a screenshot can verify no sea shows
+  // inside the hull and nothing pokes past the gunwale. Sim/state are untouched.
+  let renderCam = camera;
+  const qa = window.__tidewake?._qaCam;
+  if (qa) {
+    if (!qaCamera) qaCamera = new THREE.PerspectiveCamera(45, camera.aspect, 0.5, 6000);
+    qaCamera.aspect = camera.aspect;
+    // `back` (default 0 = straight down) pulls the camera astern for a high-oblique deck
+    // view that clears the mainsail; height is the elevation above the ship.
+    const back = qa.back ?? 0;
+    qaCamera.position.set(ship.position.x, ship.position.y + qa.height, ship.position.z - back);
+    qaCamera.lookAt(ship.position.x, ship.position.y + 2, ship.position.z);
+    qaCamera.updateProjectionMatrix();
+    renderCam = qaCamera;
+  }
+  renderer.render(scene, renderCam);
   updatePerf(dt * 1000);       // refresh the deterministic perf snapshot (#52)
   if (!booted) {
     booted = true;
@@ -693,6 +710,10 @@ window.__tidewake = {
   setColours(id) { if (colourById(id).id === id) { state.colours = id; applyColoursToShip(); hud.renderColours(state.colours); fooledArmed = true; persistence.write(); } return state.colours; },
   press(k) { input.keys.add(k); },
   release(k) { input.keys.delete(k); },
+  // QA visual-DoD camera (#65): force a top-down inspection view over the ship (and back).
+  _qaCam: null,
+  qaTopDown(height = 70, back = 0) { this._qaCam = { height, back }; return true; },
+  qaFollow() { this._qaCam = null; return true; },
   save() { persistence.write(); },
   newVoyage() { newVoyage(); },
   // QA affordances (#43/#45): nudge a pole directly and read the deterministic
