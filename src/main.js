@@ -16,6 +16,7 @@ import { createDuel } from './duel.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend } from './renown.js';
+import { BUDGET, formatPerf } from './perf.js';
 
 // main.js is a thin bootstrap: it builds the renderer/scene/camera/lights, spins up
 // the world + game systems (input, sailing, hud, ports, wake, audio, persistence),
@@ -126,6 +127,34 @@ addEventListener('resize', () => {
 const clock = new THREE.Clock();
 let booted = false;
 
+// Perf snapshot (#52, measurement-first): deterministic renderer counters (draw calls /
+// triangles / geometries / textures / programs) plus fps + ms/frame, refreshed each frame
+// and exposed on window.__tidewake.perf. The counters are GPU-independent (identical on
+// swiftshader and a real GPU), so they make the reliable CI budget gate; fps/ms are for
+// on-device measurement. Cheap: a few field reads, no allocation in the hot path.
+const perf = { fps: 0, ms: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0, programs: 0 };
+const $perf = document.getElementById('perf');
+let perfOn = new URLSearchParams(location.search).has('perf');
+let perfMs = 0; // rolling ms/frame (EMA) so the read-out doesn't jitter
+function syncPerfOverlay() { if ($perf) $perf.classList.toggle('show', perfOn); }
+syncPerfOverlay();
+// Toggle the overlay: 'P' on desktop; tap the panel to dismiss on touch; ?perf to boot shown.
+addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'p') { perfOn = !perfOn; syncPerfOverlay(); } });
+if ($perf) $perf.addEventListener('click', () => { perfOn = false; syncPerfOverlay(); });
+
+function updatePerf(frameMs) {
+  const info = renderer.info;
+  perfMs = perfMs ? perfMs * 0.9 + frameMs * 0.1 : frameMs;
+  perf.fps = window.__tidewake?.fps ?? 0;
+  perf.ms = perfMs;
+  perf.drawCalls = info.render.calls;
+  perf.triangles = info.render.triangles;
+  perf.geometries = info.memory.geometries;
+  perf.textures = info.memory.textures;
+  perf.programs = info.programs ? info.programs.length : 0;
+  if (perfOn && $perf) $perf.textContent = formatPerf(perf);
+}
+
 function update(dt, t) {
   // During an insult duel the ship holds station and sailing input is ignored —
   // the captains are too busy trading barbs to mind the helm.
@@ -174,6 +203,7 @@ function loop() {
   simT = clock.elapsedTime;
   update(dt, simT);
   renderer.render(scene, camera);
+  updatePerf(dt * 1000);       // refresh the deterministic perf snapshot (#52)
   if (!booted) {
     booted = true;
     const b = document.getElementById('boot');
@@ -204,6 +234,11 @@ window.__tidewake = {
       legends: { pirate: !!state.legends?.pirate, governor: !!state.legends?.governor },
     };
   },
+  // Deterministic perf snapshot (#52): draw calls / triangles / geometries / textures /
+  // programs from renderer.info, plus fps + rolling ms/frame. The counters gate CI; the
+  // budget ceilings travel with it so tooling can self-check without re-deriving them.
+  get perf() { return { ...perf }; },
+  get perfBudget() { return { ...BUDGET }; },
   get ports() { return ports.ports; },
   get npcs() { return npcs.snapshot(); },
   get docked() { return ports.docked; },

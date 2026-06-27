@@ -80,6 +80,17 @@
       color: #9fc4e6; font-size: 12px; text-shadow: 0 1px 3px rgba(0,0,0,.8); pointer-events: none;
     }
     #version { position: fixed; right: 10px; bottom: 10px; z-index: 10; color: #6f97b8; font-size: 11px; pointer-events: none; }
+    /* Perf overlay (#52): measurement read-out, hidden by default. Toggle with P (or ?perf).
+       Reuses the HUD's glass panel; tabular numerals so the values don't jitter the width. */
+    #perf {
+      position: fixed; right: 10px; top: 54px; z-index: 12; display: none;
+      color: #cfe8ff; font-size: 11px; letter-spacing: .02em; font-variant-numeric: tabular-nums;
+      background: rgba(7, 22, 38, .42); border: 1px solid rgba(120,180,230,.3);
+      border-radius: 8px; padding: 4px 9px; backdrop-filter: blur(3px); pointer-events: none;
+      text-shadow: 0 1px 3px rgba(0,0,0,.8); white-space: nowrap;
+    }
+    #perf.show { display: block; pointer-events: auto; cursor: pointer; }
+    body.touch #perf { top: auto; bottom: 24px; right: 12px; }
     #toast {
       position: fixed; left: 50%; top: 64px; z-index: 12; transform: translate(-50%, -14px);
       min-width: 240px; max-width: min(90vw, 460px); text-align: center; pointer-events: none;
@@ -246,8 +257,11 @@
   <div id="legend" role="dialog" aria-live="polite"></div>
   <canvas id="minimap" width="150" height="150" aria-label="Minimap of nearby islands, ports and ships"></canvas>
   <button id="audio-toggle" type="button" aria-pressed="false" aria-label="Mute" title="Mute (m)">🔊</button>
-  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; F duel a ship (1–4 to jab) &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; M mute &nbsp;·&nbsp; N new voyage</div>
+  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; F duel a ship (1–4 to jab) &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; M mute &nbsp;·&nbsp; P perf &nbsp;·&nbsp; N new voyage</div>
   <div id="version">v0.0.0-dev</div>
+  <!-- Perf overlay (#52): fps · ms/frame · draw calls · triangles. Hidden until toggled
+       with P (or booted via ?perf); tap to dismiss on touch. For on-device measurement. -->
+  <div id="perf" role="status" aria-live="off" title="Toggle with P — fps · ms · draw calls · triangles"></div>
 
   <!-- On-screen touch controls (#17): hold to throttle/steer, tap to hail. Shown only
        on touch / coarse-pointer devices via the `touch` class on <body> (input.js). They

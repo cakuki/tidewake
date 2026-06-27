@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { BUDGET, checkBudget } from '../src/perf.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
@@ -68,6 +69,9 @@ try {
     return {
       version: tw.version,
       fps: tw.fps,
+      // Perf budget gate (#52): deterministic renderer counters, read after a stack of
+      // frames has rendered. GPU-independent, so they're trustworthy under swiftshader.
+      perf: tw.perf,
       startSpeed: start.speed,
       movingSpeed: moving.speed,
       distance: Math.hypot(moving.pos[0] - start.pos[0], moving.pos[2] - start.pos[2]),
@@ -133,7 +137,17 @@ try {
   if (!(result.minimap.w > 0 && result.minimap.h > 0)) fail(`minimap has zero size (${result.minimap.w}x${result.minimap.h})`);
   if (!(result.minimap.frames > 0)) fail('minimap never rendered a frame');
 
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, duel, errors }, null, 2));
+  // Perf budget gate (#52): assert the deterministic scene cost stays within the documented
+  // ceilings (src/perf.js). These counters are GPU-independent, so this is a reliable CI gate
+  // — a future change that blows up draw calls / triangles fails here before it ships. We do
+  // NOT gate on fps (swiftshader is far too slow for a meaningful floor); see result.perf.fps.
+  const perf = result.perf || {};
+  const budget = checkBudget(perf, BUDGET);
+  if (!(perf.drawCalls > 0)) fail(`perf counters unpopulated (drawCalls=${perf.drawCalls}); cannot gate budget`);
+  for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
+
+  console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

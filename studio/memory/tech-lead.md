@@ -20,6 +20,14 @@ Durable architecture decisions and engineering lessons. Grows over time; keep en
   that's node:test-able. Instance only repeated meshes (NPC debris/gulls), not the hero hull;
   LOD islands; ECS stays overkill — keep the simple `src/systems/` registry. Determinism unlocks
   a record/replay golden-trace CI gate (wildcard, defer until the loop lands).
+- 2026-06-27 (#52) — **Performance budget gate (measurement-first)**: `src/perf.js` holds the
+  ceilings (`BUDGET`) + pure `checkBudget`/`formatPerf`; `main.js` updates `window.__tidewake.perf`
+  (`drawCalls, triangles, geometries, textures, programs, fps, ms`) each frame from `renderer.info`.
+  An in-game overlay (`#perf`, toggle **P** / `?perf`, tap-to-dismiss) shows fps·ms·draws·tris for
+  on-device measurement. The playtest gate asserts `drawCalls`/`triangles` ≤ budget — **deterministic
+  counters, NOT fps** (swiftshader is too slow for an fps floor). Measured current scene: 77 draws,
+  ~85.2k tris → ceilings **130 draws / 150k tris** (~70% headroom). Raise the ceiling only with a
+  measurement; if a metric blows it, that's the cue for the deferred culling/LOD/instancing work.
 - 2026-06-27 (Research) — **CI gap**: Release runs the playtest gate only post-merge, no PR gate.
   Backlog: lightweight PR-validation workflow (tests + headless playtest, no deploy) with
   `cancel-in-progress: true` to gate trunk pre-merge and save free-tier minutes; deploy
