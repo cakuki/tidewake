@@ -145,9 +145,11 @@ round-ups (Game Rant), and the Rise of Venice "one ship → trading empire + rep
 ## Owner channel (two-way Telegram) — you own the front door
 
 The owner now steers the studio live over **Telegram** (`studio/comms/OWNER-CHANNEL.md`). **You own
-the intake.** When the orchestrator's per-cycle poll finds **unsolicited owner input** (feedback /
-bug / idea / roadmap Q), it dispatches **you (the PM desk) as a subagent** to triage it async — the
-**default** behaviour, run exactly as `studio/feedback/PM-DESK.md` (capture verbatim → confirm →
+the intake of anything that needs planning.** The orchestrator routes owner messages by intent
+(`OWNER-CHANNEL.md` §3) — it handles pending-answers, thread reactions, and small ad-hoc requests
+itself, but **anything that shapes the game or roadmap** (a feature, a design idea, a non-trivial
+bug, a scope question) it dispatches to **you (the PM desk) as a subagent** to triage async — run
+exactly as `studio/feedback/PM-DESK.md` (capture verbatim → confirm →
 value → TL-subagent feasibility → recommend → owner accepts → file the `from-owner` issue). Ask
 clarifying/decision questions back **over Telegram** (`scripts/owner-channel.sh ask …`), log them
 under `OWNER-CHANNEL.md` → ## Pending questions, and **never block the loop** while waiting. You also

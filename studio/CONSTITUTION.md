@@ -60,9 +60,11 @@ over grim simulation. Fun first.
 - `studio/comms/inbox/<role>.md` — messages/asks addressed to a role.
 - `studio/comms/OWNER-CHANNEL.md` — the **two-way owner link over Telegram** (the protocol);
   `scripts/owner-channel.sh` is its entrypoint. The studio **reports out** on every release and
-  roadmap change, and **takes input in** each cycle: a reply to a pending question is routed to the
-  asker and executed; **unsolicited owner input is triaged by the PM desk** (`PM-DESK.md`) as the
-  **default**. The owner (**@cakuki**, id `347889561`) is authorized to direct/decide over it.
+  roadmap change, and **takes input in** each cycle, routed smartly by intent (`OWNER-CHANNEL.md`
+  §3): a reply to a pending question → routed to the asker + executed; a reaction/reply in a thread →
+  continue that thread; a small ad-hoc request → done inline; **anything needing planning → triaged
+  by the PM desk** (`PM-DESK.md`). The owner (**@cakuki**, id `347889561`) is authorized to
+  direct/decide over it.
 - Each role keeps long-term learning in `studio/memory/<role>.md`.
 - Agents pass concrete data through these files so context stays lean between cycles.
 

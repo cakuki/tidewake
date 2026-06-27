@@ -176,11 +176,12 @@ The hourly heartbeat is one part of a **two-way** link. The full protocol lives 
 - **Report OUT on every release and every roadmap change** (not only hourly): the cycle-runner that
   ships sends a release report (tag + one line + live URL + a shot/clip if visible) via
   `scripts/owner-channel.sh report …`; any accept/park/decline or re-prioritisation is reported too.
-- **Take input IN every cycle:** the orchestrator runs `owner-channel.sh peek` as **step 0** of the
-  Lean protocol. A reply that answers a **pending question** is routed to the asker and executed; any
-  **unsolicited** message (feedback / bug / idea / roadmap Q) is handled by a **PM-desk-triage
-  subagent** exactly as `scripts/pm-desk.sh` would — that is the **default** behaviour. A
-  `from-owner` **P1** that triage files preempts `queue.md`.
+- **Take input IN every cycle:** the orchestrator runs `owner-channel.sh peek` as **step 0** and
+  routes by the §3 decision tree — *answers a pending question* → route + execute; *a reaction/reply
+  to a recent thread* → continue that thread; *a small ad-hoc request* → just do it inline; *anything
+  that needs planning* (feature / idea / non-trivial bug) → a **PM-desk-triage subagent** exactly as
+  `scripts/pm-desk.sh` would. Read messages smartly, match intent to the lightest path; a `from-owner`
+  **P1** that triage files preempts `queue.md`.
 - The owner (**@cakuki**, id `347889561`) is authorized to direct and decide over this channel; the
   bot is owner-locked to him.
 
@@ -288,11 +289,13 @@ _Added Retro 5 (owner ask: keep the main context lean so loops after a **compact
 After a compact, the orchestrator must NOT re-derive priorities, re-read the whole backlog, or do
 per-cycle bookkeeping by hand. Its per-cycle job shrinks to **four moves**:
 
-0. **Poll the owner channel — `scripts/owner-channel.sh peek` (a couple of seconds).** Any new
-   Telegram message from the owner? **None** → proceed. **Answers a pending question** (a row in
-   `studio/comms/OWNER-CHANNEL.md` → ## Pending questions) → route it to the asker, execute, clear
-   the row. **Unsolicited** → dispatch a **PM-desk-triage subagent** (default behaviour, §3b of
-   `OWNER-CHANNEL.md`), then resume the agenda. Never block: triage + decisions run async.
+0. **Poll the owner channel — `scripts/owner-channel.sh peek` (a couple of seconds).** Read each new
+   message *in thread context* and route by the `OWNER-CHANNEL.md` §3 decision tree: **none** →
+   proceed; **answers a pending question** → route to the asker, execute, clear the row (§3a);
+   **reaction/reply to a recent thread** → match the referent and act in that context (§3b); **small
+   ad-hoc request** → just do it inline and report back (§3c, no PM-desk); **needs planning**
+   (feature / idea / non-trivial bug) → dispatch a **PM-desk-triage subagent** (§3d), then resume the
+   agenda. Be a smart chief-of-staff, not a ticket robot. Never block: triage + decisions run async.
 1. **Read the TOP unblocked item of `studio/comms/queue.md`.** That file is the prioritised
    next-slice queue — the orchestrator's single starting point. (`studio/comms/loop-state.md` stays
    the *resume brain*: current loop, counters, latest release, loop log, DL-due flag.)

@@ -50,49 +50,71 @@ Keep captions **< 1024 chars**; prefer one strong shot/clip over many.
 
 ---
 
-## 3. Taking input IN — routing the owner's messages
+## 3. Taking input IN — routing the owner's messages (read it like a person would)
 
-The orchestrator **polls the owner inbox at the start of every cycle** (`owner-channel.sh peek`) and
-in the gaps between rituals. Every owner message is routed by **one question**: *is there an
-outstanding question we asked him?*
+The orchestrator **polls the owner inbox at the start of every cycle** (`owner-channel.sh peek`).
+**Don't cold-triage every message into PM-desk** — read each one *in the context of the recent
+thread* and route it the way a thoughtful chief-of-staff would. Walk this decision tree top-down and
+take the **first** branch that fits:
 
-### 3a. Routed answer — a question is pending
-If the orchestrator **or a named agent (TL / PM / PjM / Game Designer …) has an open question** to
-the owner (logged under **## Pending questions** below), his next reply is **the answer to that
-question**. Route it to the asking party and **execute** the consequence immediately:
-- a decision (e.g. #56 mobile go/no-go, #58 weather scope) → record the decision in
-  `studio/comms/decisions.md`, update the relevant issue/`queue.md`, and queue the now-unblocked work;
-- an answer to a clarifying question from PM-desk triage → advance that feedback item's triage.
+### 3a. It answers a pending question → route to the asker, execute
+If a question is open under **## Pending questions** (asked by the orchestrator or a named agent —
+TL / PM / PjM / Game Designer) and this reply answers it, that reply **is** the answer. Route it to
+the asker and **execute the consequence now**:
+- a decision (e.g. #56 mobile, #58 weather scope) → record it in `studio/comms/decisions.md`, update
+  the issue / `queue.md`, queue the now-unblocked work;
+- an answer to a PM-desk clarifying question → hand it back to that triage thread and advance it.
 
-Clear the item from **## Pending questions** once executed.
+Then **clear the row**.
 
-### 3b. Default — PM-DESK intake (no question pending)
-**Unsolicited owner input — feedback, a bug report, an idea, a roadmap question — is handled exactly
-as `scripts/pm-desk.sh` / `studio/feedback/PM-DESK.md` would handle it**, but **asynchronously over
-Telegram instead of in the worktree session.** This is the **default communication behaviour.**
+### 3b. It's a reaction / contextual reply to a recent thread → match it and act in that context
+Telegram is conversational: a message is often a **reaction, correction, confirmation, or follow-up**
+to something the studio *just sent or did* ("yes do that", "no, the other one", "👍", "actually make
+it bigger", "that screenshot looks dark"). **Resolve the referent against the recent thread first**
+— which release / question / request / screenshot it's reacting to — and act inside that context
+(adjust the thing, confirm, continue). Only fall through to 3c/3d if it introduces genuinely new
+intent. *Never* treat a clear reply as a brand-new cold ticket.
 
-The orchestrator **dispatches a PM-desk-triage subagent** (briefed with `studio/feedback/PM-DESK.md`)
-— it never triages inline. That subagent:
+### 3c. It's an ad-hoc small request → act on it right away (orchestrator does it inline)
+A small, clear, low-risk, do-it-now request — a read/inspection, a quick capture, a status check, a
+one-step file/git/Chrome action, a tiny reversible tweak — the orchestrator **just does it** and
+reports back. **No PM-desk, no issue, no funnel** — that ceremony would be slower than the task.
+*Rule of thumb for "small":* reversible, no roadmap/design impact, finishable in one step right now,
+and unambiguous. (e.g. "show last 5 commits", "screenshot the live game", "what's the current
+version", "bump that copy".) When in genuine doubt about scope or intent, ask one quick clarifying
+question over Telegram rather than guessing big.
+
+### 3d. It needs planning → summon the PM and run PM-desk
+Anything that **shapes the game or the roadmap** — a feature, a design idea, a non-trivial bug, a
+"what if we…", a scope/priority question — needs value + feasibility thinking, so the orchestrator
+**dispatches a PM-desk-triage subagent** (briefed with `studio/feedback/PM-DESK.md`); it never
+triages this inline. That subagent:
 1. **Captures verbatim** to `studio/feedback/inbox/<YYYY-MM-DD-slug>.md`, `status: raw`, adds a
-   `REGISTER.md` row, and **confirms capture** to the owner over Telegram ("logged as `<id>`").
-2. Runs the discovery funnel (clarify → value → **TL-subagent feasibility** → recommend). If it
-   needs the owner to clarify or decide, it **asks over Telegram** (`owner-channel.sh ask …` for a
-   choice, or a plain question) and logs the open question under **## Pending questions** — it does
-   **not** block the build loop while waiting (momentum: the loop never stops for a question; we
-   service the interrupt, then resume the agenda).
-3. On owner acceptance, files the GitHub issue with the **`from-owner` provenance footer** + labels
-   (`from-owner`, a priority). Updates `REGISTER.md` + `docs/ROADMAP.md`.
+   `REGISTER.md` row, and **confirms capture** over Telegram ("logged as `<id>`").
+2. Runs the funnel (clarify → value → **TL-subagent feasibility** → recommend). Needs the owner to
+   clarify/decide? It **asks over Telegram** and logs the open question under **## Pending
+   questions** — it does **not** block the loop while waiting (momentum: service the interrupt, then
+   resume the agenda).
+3. On owner acceptance, files the GitHub issue with the **`from-owner` provenance footer** + labels.
+   Updates `REGISTER.md` + `docs/ROADMAP.md`.
 4. Reports a one-line outcome to the owner and a <10-line summary to the orchestrator.
 
-**Preemption (unchanged, now also fed by Telegram):** a `from-owner` **P1** that triage files
-**jumps to the top of `studio/comms/queue.md`** — owner P1s preempt, then the agenda resumes.
+**Preemption (now also fed by Telegram):** a `from-owner` **P1** that triage files **jumps to the
+top of `studio/comms/queue.md`** — owner P1s preempt, then the agenda resumes.
 
-### 3c. Classifying intent
-The triage subagent classifies, but the rule of thumb: *"it sails wrong / it looks broken"* → **bug**
-(fast-lane, likely P1); *"can it also…/what if…"* → **feature/idea**; *"is X on the roadmap / what's
-next"* → **roadmap Q&A** (answer from `ROADMAP.md` + issues + `REGISTER.md`, no issue filed). A direct
-instruction ("do X next", "stop doing Y") is **owner steering** — treat as an authoritative
-direction, act on it, and confirm.
+> **The spirit:** be a smart chief-of-staff, not a ticket robot. Pending answer → route it. A reply
+> in an ongoing thread → continue that thread. A quick ask → just do it. Something that needs
+> planning → summon the PM. Match intent to the lightest path that handles it well.
+
+### Intent cues (help pick the branch)
+- *"it sails wrong / it looks broken"* → **bug**. A small visible glitch can be a 3c quick-fix; a
+  non-trivial one is a 3d PM-desk item, fast-laned (likely `from-owner` P1).
+- *"can it also… / what if…"* → **feature/idea** → 3d PM-desk.
+- *"is X on the roadmap / what's next"* → **roadmap Q&A** — answer inline from `ROADMAP.md` + issues +
+  `REGISTER.md` (3c), no issue filed.
+- *"do X next / stop doing Y / re-prioritise Z"* → **owner steering** — authoritative; act on it and
+  confirm. If it just re-orders existing work, do it inline (3c); if it introduces new scope, PM-desk
+  it (3d).
 
 ---
 
@@ -102,10 +124,12 @@ Adds **one cheap move** to the front of the lean per-cycle loop (`docs/runbook/L
 orchestrator protocol):
 
 ```
-0. owner-channel.sh peek         # any new owner message?
-   ├─ none                       → proceed to the normal cycle
-   ├─ answers a pending question → route to the asker, execute, clear it (§3a)
-   └─ unsolicited                → dispatch a PM-desk-triage subagent (§3b); resume the agenda
+0. owner-channel.sh peek                  # any new owner message? route by §3 decision tree:
+   ├─ none                                → proceed to the normal cycle
+   ├─ answers a pending question          → route to the asker, execute, clear it      (§3a)
+   ├─ reaction/reply to a recent thread   → match the referent, act in that context    (§3b)
+   ├─ small ad-hoc request                → orchestrator does it inline, reports back   (§3c)
+   └─ needs planning (feature/idea/bug)   → dispatch a PM-desk-triage subagent          (§3d)
 1. read queue.md top → dispatch ONE cycle-runner → read its <10-line report   (unchanged)
 ```
 
