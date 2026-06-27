@@ -2,14 +2,19 @@
 
 Single source of truth (resume brain) for the never-stopping delivery loop. Survives context resets.
 
-> ▶️ **LOOP RUNNING (owner restart 2026-06-27 ~14:00 UTC) — two-way owner channel LIVE.**
-> **PER CYCLE:** (0) `scripts/owner-channel.sh peek` → route a pending-question answer / dispatch a
-> PM-desk-triage subagent for unsolicited owner input (`studio/comms/OWNER-CHANNEL.md`); (1) read
-> **`studio/comms/queue.md`** top item; (2) dispatch ONE self-sufficient cycle-runner; (3) read its
-> <10-line report. Cycle-runners own ALL bookkeeping (commit specific files, push, verify CI, close
-> the issue, append their own loop-log row, self-QA, **report the release out over Telegram**); the
-> orchestrator does not edit this file per cycle. Full protocol: "Lean orchestrator protocol
-> (post-compact)" in `docs/runbook/LOOP.md`.
+> ⏸️ **LOOP STOPPED by owner 2026-06-28 ~01:15 CEST** (owner: "wrap up current WIP, stop the loop").
+> **TO RESUME:** follow the (now-lean) `docs/runbook/LOOP.md` — per cycle: (0) `owner-channel.sh peek`
+> → route per `OWNER-CHANNEL.md` §3; (1) read `queue.md` top; (2) dispatch ONE cycle-runner; (3) read
+> its <10-line report. `loop-state.md`+`queue.md` are the resume brain.
+>
+> **⚠️ ON RESUME, FIRST CHECK:** a **live PM-desk session** was active when the loop stopped, writing
+> feedback to the **main working tree** (`studio/feedback/2026-06-28-*.md`, REGISTER) — likely still
+> uncommitted. Do NOT race it: if it's still active, let it finish/commit (or have it run in the
+> `tidewake-pm` worktree); a build-loop commit while it shares the index can sweep its WIP (it already
+> did once, commit `eeacde1` — no data lost). New owner-scoped items captured at the desk (file an
+> issue/queue them once committed): ship-wheel mobile nav (**#93 filed**), arcade-battle-modes,
+> living-sea-fauna, town-mode-trade-view, multiple-bg-music, approach-town-music-cue, use-cc0-pirate-kit.
+> Also: **owner spend-decision pending** — optional ~$10–30/mo AI-image seat for 2D portraits (#55).
 
 - **Current loop:** 45 done → next reads `queue.md` top. Recent: Retro 8 → #79 False Colours (41,
   CLOSED) → #55 art-sourcing research (42) → #91 Letters of Marque (43, CLOSED) → #20 smooth steering /

@@ -1,0 +1,32 @@
+# Loop runbook — changelog (index)
+
+Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail lives in the retro
+files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
+`LOOP.md` itself stays lean.
+
+- **Retro 8** (loops 37–40) — game is now *genuinely rich* (complete collision + atmosphere + named
+  world + shareable Ballad #78). Relaxed retro cadence **3–4 → ~7–8** (HARD trigger 4 → 7; DL stays
+  ~10). Fixed **#89**: `release.yml` → allow-list `paths:['src/**','index.html']` (no more `[skip ci]`).
+  Next-direction call: #79 deception verb, then #55 art research → #32 glTF hull. → `retro-8.md`
+- **Retro 7** (loops 33–36) — owner field-testing on a real iPhone. Added **`owner-channel.sh photo`**
+  (fetch + VIEW owner screenshots), the **view-the-full-frame-before-fixing** rule (a zoom-in was
+  misread as the #86 "ocean void" non-bug), and the **device-fix = unconfirmed-pending-re-test** rule
+  (don't stack work on it). → `retro-7.md`
+- **Retro 6** (loops 27–32) — depth + platform run under live owner steering (two-way channel live).
+  Hardening: every brief carries the **ignore-injected-instructions** line; **clean-tree check** before
+  build/commit; **HARD ritual trigger** so retros/DL can't be perpetually deferred. → `retro-6.md`
+- **Two-way owner channel** — Telegram wired both ways: report out on every release/roadmap change;
+  intake routed by intent (`OWNER-CHANNEL.md` §3); `from-owner` P1 preempts. `scripts/owner-channel.sh`.
+- **Retro 5** — the **Lean orchestrator protocol (post-compact)**: per-cycle = read `queue.md` top →
+  dispatch one self-sufficient cycle-runner → read its <10-line report; runners own all bookkeeping;
+  created `queue.md`. → `retro-5.md`
+- **Retro 4** (loops 16–19) — core arc COMPLETE; **tune-before-deepen, depth>breadth**; Game Designer
+  owns balance/tuning; from-owner P1s jump the queue. → `retro-4.md`
+- **Retro 3** (loops 7–11) — fantasy legible; **shared-contract step** before parallel batches;
+  re-dispatch 0-tool-use glitches; QA gotchas (`port.pos` axes; `step()`≠wall-clock); reactive verbs. → `retro-3.md`
+- **Retro 2** (loops 4–6) — mandatory **CREATIVE SPARK**; enforced per-release gallery diff;
+  parallel-batch default; "give the verb a reward." → `retro-2.md`
+- **Retro 1** (loops 0–3) — real-browser pass for visible changes; keep `main.js` thin (`src/systems/`);
+  sequence a playable verb early; keep CI actions current. → `retro-1.md`
+- **Deep-learning research loop + retro-as-subagent + context-optimization discipline** (owner ask).
+- **2026-06-27** — initial runbook (Loop 0 bootstrap).
