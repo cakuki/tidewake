@@ -3,7 +3,7 @@
 Single source of truth for the never-stopping delivery loop. The orchestrator
 updates this each loop so progress survives context resets.
 
-- **Current loop:** 22 (mobile #17 + owner P1 fixes #50/#51/#49 shipped; pivoted to OWNER backlog; next: #61 Caribbean water, #57 tuning, #52 perf)
+- **Current loop:** 24 (owner P1s landing: #61 water, #57 tuning done; next #52 perf, then P2 owner items + depth)
 - **Loops since last retro:** 0 (Retro 4 DONE — reset; covered cycles 16,17,18,19)
 - **Cycles since last deep-learning loop:** ~9 — **#2 DUE NOW** (run before the well runs dry; #1 filed #32-#40)
 - **Research backlog (prioritise):** #57 tune renown curve (NEXT), #50/#51 from-owner P1 bugs (FAST-LANE), #58 weather & day-night, #59 ship-vs-ship cannon combat, #60 invisible onboarding, #49 camera astern (P1), #32 glTF hull, #35 cannon SFX, #37 deterministic visual-diff (schedule — owned since cycle 10), #52 perf budget (P1), #40 adaptive music, #36 fixed-timestep, #53 self-tested UI components
