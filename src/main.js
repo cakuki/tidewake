@@ -24,7 +24,7 @@ import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat } from './renown.js';
-import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine } from './colours.js';
+import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES } from './colours.js';
 import { BUDGET, formatPerf, pixelRatioCap } from './perf.js';
 import { isTouchDevice } from './input.js';
 import { GOAL, applyEvent, shouldShowGoal, normalizeFlags, currentStep } from './onboarding.js';
@@ -122,7 +122,9 @@ const duel = createDuel({
   npcs,
   getShipPos: () => [state.pos.x, state.pos.z],
   getColours: () => state.colours, // False Colours (#79): hailing under a disguise = treachery
-  applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.renown; syncRenown(state); },
+  // #45/#79/#91: combat is the pirate pole (Infamy); a LAWFUL win (honest colours vs a pirate)
+  // also pays the governor pole (Standing) — or fines it for picking on an innocent. Clamped ≥ 0.
+  applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.renown; if (r.standing) state.standing = Math.max(0, (state.standing || 0) + r.standing); syncRenown(state); },
   applyPenalty: (p) => { initEconomy(state); state.coins = Math.max(0, state.coins - p.coins); },
   // Procedural audio juice (#48): challenge horn, cut/backfire/glance stings, win/lose
   // flourishes — all routed through the one shared audio bus + mute (declared below).
@@ -133,11 +135,19 @@ const duel = createDuel({
         // The smug last-second reveal — the foe's betrayed splutter (#79 CREATIVE SPARK).
         hud.flashBanner('🏴 The black flag snaps up!',
           `“${pickLine(REVEAL_LINES)}” You out-jeer ${enemyName} for ${reward.coins}c and ${reward.renown} infamy — ${reward.treacheryBonus} of it pure treachery.`);
+      } else if (reward.lawful) {
+        // Letters of Marque (#91 CREATIVE SPARK): the grateful port nod for a lawful pirate-hunt.
+        hud.flashBanner('⚖ A lawful prize!',
+          `${pickLine(LAWFUL_LINES)} You out-jeer the outlaw ${enemyName} for ${reward.coins}c and +${reward.standing} standing.`);
+      } else if (reward.standing < 0) {
+        // Honest colours, innocent target — that's piracy. The wince (#91 CREATIVE SPARK).
+        hud.flashBanner('⚖ The ports will tut…',
+          `${pickLine(PIRACY_LINES)} You best ${enemyName} for ${reward.coins}c, but lose ${-reward.standing} standing for the bullying.`);
       } else {
         hud.flashBanner('⚔ They strike their colours!',
           `${enemyName} sails off jeering — but you pocket ${reward.coins}c and ${reward.renown} infamy for the sharper tongue.`);
       }
-      logDeed({ type: 'duel', foe: enemyName, infamy: reward.renown, coins: reward.coins, treachery: !!reward.treachery }); // #78/#79
+      logDeed({ type: 'duel', foe: enemyName, infamy: reward.renown, coins: reward.coins, treachery: !!reward.treachery, lawful: !!reward.lawful }); // #78/#79/#91
     } else {
       hud.flashBanner('🏴 Out-jeered!',
         `${enemyName}'s crew howls with laughter. You fumble ${penalty.coins} coins overboard and slink away.`);
@@ -153,7 +163,9 @@ const cannons = createCannons({
   npcs,
   getShipPos: () => [state.pos.x, state.pos.z],
   getColours: () => state.colours, // False Colours (#79): opening fire under a disguise = ambush
-  applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.infamy; syncRenown(state); },
+  // #45/#79/#91: sinking pays Infamy; a LAWFUL kill (honest colours vs a pirate) also pays
+  // Standing (the governor pole) — or fines it for sinking an innocent merchant. Clamped ≥ 0.
+  applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.infamy; if (r.standing) state.standing = Math.max(0, (state.standing || 0) + r.standing); syncRenown(state); },
   applyPenalty: (p) => { initEconomy(state); state.coins = Math.max(0, state.coins - p.coins); },
   sfx: (kind) => audio.playDuelHit(kind),
   onEnd: ({ result, reward, penalty, foeName }) => {
@@ -161,11 +173,19 @@ const cannons = createCannons({
       if (reward.treachery) {
         hud.flashBanner('🏴 You strike your true colours!',
           `“${pickLine(REVEAL_LINES)}” ${foeName} goes down betrayed — ${reward.coins}c and ${reward.infamy} infamy, ${reward.treacheryBonus} of it for the perfidy.`);
+      } else if (reward.lawful) {
+        // Letters of Marque (#91 CREATIVE SPARK): the lawful privateer's prize — ports cheer.
+        hud.flashBanner('⚖ Pirate sunk, lawfully!',
+          `${pickLine(LAWFUL_LINES)} You haul ${reward.coins}c from the wreck and earn +${reward.standing} standing.`);
+      } else if (reward.standing < 0) {
+        // Honest colours, innocent target — piracy. The wince (#91 CREATIVE SPARK).
+        hud.flashBanner('⚖ That was no pirate…',
+          `${pickLine(PIRACY_LINES)} You haul ${reward.coins}c, but lose ${-reward.standing} standing for the deed.`);
       } else {
         hud.flashBanner('🔥 You sink her!',
           `${foeName} slips beneath the waves — you haul ${reward.coins}c from the wreckage and your legend gains ${reward.infamy} infamy.`);
       }
-      logDeed({ type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins, treachery: !!reward.treachery }); // #78/#79
+      logDeed({ type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins, treachery: !!reward.treachery, lawful: !!reward.lawful }); // #78/#79/#91
     } else {
       hud.flashBanner('💥 Hull breached!',
         `${foeName} rakes you stem to stern — you break off and limp away, ${penalty.coins} coins lighter for the repairs.`);
@@ -223,6 +243,22 @@ function applyColoursToShip() {
 // Track when a fooled NPC has been crept up on under false colours, so the smug "they
 // bought it" beat fires once per approach (re-arms when you leave range or drop the disguise).
 let fooledArmed = true;
+// Seen-through (#91): the disguise gets riskier the more notorious you are. We roll the
+// detection ONCE per approach and latch the verdict; if pierced, the vessel reacts to your
+// true renown (flees) and the smug "they bought it" beat becomes a "rumbled!" reveal.
+let seenThroughLatched = false;
+// A small seeded RNG (mulberry32) so the bluff's risk is DETERMINISTIC + reproducible — same
+// voyage, same rolls. Reset on a new voyage so a fresh run gets a clean, repeatable sequence.
+function makeDetectRng() {
+  let a = 0x10 ^ 0x9e3779b9;
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let detectRng = makeDetectRng();
 
 // Hoist a new set of colours: cycle, tint the ship, applaud the bluff, and persist the choice.
 function cycleColours() {
@@ -260,6 +296,8 @@ function newVoyage() {
   applyColoursToShip();
   hud.renderColours(state.colours);
   fooledArmed = true;
+  seenThroughLatched = false;
+  detectRng = makeDetectRng(); // a fresh voyage rolls the bluff's risk from a clean, repeatable seed (#91)
   obsStanding = undefined;
   obsRankIndex = undefined;
 }
@@ -402,22 +440,29 @@ function update(dt, t) {
   }
   sailing.step(dt, t, { fighting, harbourDistance, harbourRadius: DOCK_RADIUS });
   if (!fighting) {
-    // False Colours (#79): NPCs react to the colours SHOWN. Fly your true black flag while
-    // feared and nearby vessels scatter; fly false merchant colours and they stay calm and
-    // let you approach — even an infamous captain. The disposition math is pure (colours.js).
-    const flee = npcFlees({ colours: state.colours, infamy: state.infamy ?? 0 });
-    npcs.update(dt, t, { playerPos: [state.pos.x, state.pos.z], flee });
-  }
-
-  // The smug "they bought it" beat (#79 CREATIVE SPARK): the first time you drift within
-  // hailing range of a vessel while disguised, the crew revels in the deception. Fires once
-  // per approach; re-arms when you leave range or strike your true colours.
-  if (!fighting && isDeceptive(state.colours)) {
-    if (duel.inRange()) {
-      if (fooledArmed) { hud.flashBanner('🏳 They wave you in…', pickLine(FOOLED_LINES)); fooledArmed = false; }
-    } else {
-      fooledArmed = true;
+    // False Colours (#79) + Seen-through (#91): NPCs react to the colours SHOWN. Fly your true
+    // black flag while feared and nearby vessels scatter; fly false merchant colours and they
+    // stay calm — UNLESS, at high Infamy, the disguise is rumbled on approach (then they read
+    // your true renown and flee anyway). The disposition + risk math is pure (colours.js).
+    let seenThrough = false;
+    if (isDeceptive(state.colours)) {
+      if (duel.inRange()) {
+        // First frame in range this approach: roll the bluff's risk ONCE and latch it, then fire
+        // the matching beat — the smug "they bought it" (#79), or the "rumbled!" reveal (#91).
+        if (fooledArmed) {
+          fooledArmed = false;
+          seenThroughLatched = isSeenThrough(state.infamy ?? 0, state.colours, detectRng);
+          if (seenThroughLatched) hud.flashBanner('🕵 Rumbled!', pickLine(SEEN_THROUGH_LINES));
+          else hud.flashBanner('🏳 They wave you in…', pickLine(FOOLED_LINES));
+        }
+        seenThrough = seenThroughLatched;
+      } else {
+        fooledArmed = true;       // out of range → the next approach re-rolls the risk
+        seenThroughLatched = false;
+      }
     }
+    const flee = npcFlees({ colours: state.colours, infamy: state.infamy ?? 0, seenThrough });
+    npcs.update(dt, t, { playerPos: [state.pos.x, state.pos.z], flee });
   }
 
   // CREATIVE SPARK (#76 c): one light arcade beat as the ship squares up for a fight or coasts
@@ -637,6 +682,10 @@ window.__tidewake = {
       short: colourById(state.colours).short,
       deceptive: isDeceptive(state.colours),
       flee: npcFlees({ colours: state.colours, infamy: state.infamy ?? 0 }),
+      // Seen-through (#91): the latched detection verdict for the current approach + the pure
+      // probability the disguise is pierced at the current infamy (0 honest / low, rises, capped).
+      seenThrough: seenThroughLatched,
+      seenThroughChance: seenThroughChance(state.infamy ?? 0, state.colours),
     };
   },
   cycleColours() { cycleColours(); return state.colours; },

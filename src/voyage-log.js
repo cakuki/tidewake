@@ -51,12 +51,14 @@ export function sanitizeEvent(ev) {
       if (!isStr(ev.foe)) return null;
       const out = { type: 'duel', foe: String(ev.foe).trim(), infamy: nonNegInt(ev.infamy), coins: nonNegInt(ev.coins) };
       if (ev.treachery) out.treachery = true; // struck under false colours (#79) — only stamped when true
+      else if (ev.lawful) out.lawful = true;  // a lawful privateer win over a pirate (#91) — honest road
       return out;
     }
     case 'cannon': {
       if (!isStr(ev.foe)) return null;
       const out = { type: 'cannon', foe: String(ev.foe).trim(), infamy: nonNegInt(ev.infamy), coins: nonNegInt(ev.coins) };
       if (ev.treachery) out.treachery = true; // an ambush under false colours (#79)
+      else if (ev.lawful) out.lawful = true;  // a sanctioned pirate-hunt under true colours (#91)
       return out;
     }
     case 'legend':
@@ -151,6 +153,20 @@ const TREACHERY_NARRATORS = {
   ],
 };
 
+// Lawful privateer wins (#91) get an honest verse — the comic pride of a pirate doing GOOD,
+// hunting an outlaw under true colours while the ports cheer. Chosen over the honest pool
+// whenever the deed carries `lawful: true`.
+const LAWFUL_NARRATORS = {
+  duel: [
+    (e) => `You hailed the outlaw ${e.foe} under your own true colours and shamed them off the sea — lawful work, and the harbourmaster filed it under "miracles". ${e.coins} coins and a clean conscience.`,
+    (e) => `${e.foe} flew the blood-dark flag of a pirate; you flew yours honest, and out-jeered them anyway. A magistrate somewhere is delighted, and frankly so are you.`,
+  ],
+  cannon: [
+    (e) => `You ran down the pirate ${e.foe} under honest colours and sent her under — no lie, no bluff, just lawful thunder. ${e.coins} coins from the wreck and a nod from every port that fears her name.`,
+    (e) => `Old ${e.foe} was an outlaw, fair game, and you took her square under your true flag. The privateer's road: feared by pirates, toasted by governors, ${e.coins} coins the richer.`,
+  ],
+};
+
 const OPENING = 'Gather round and hear it sung — the ballad of a captain, a small boat, and a sea with opinions.';
 
 function tally(events) {
@@ -193,8 +209,11 @@ export function composeBallad(events, opts = {}) {
     lines = [OPENING];
     const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0 };
     for (const e of log) {
-      // A treacherous fight sings a false-colours verse; everything else, the honest pool.
-      const pool = (e.treachery && TREACHERY_NARRATORS[e.type]) || NARRATORS[e.type];
+      // A treacherous fight sings a false-colours verse; a lawful pirate-hunt sings the
+      // privateer verse; everything else, the honest pool.
+      const pool = (e.treachery && TREACHERY_NARRATORS[e.type])
+        || (e.lawful && LAWFUL_NARRATORS[e.type])
+        || NARRATORS[e.type];
       if (!pool) continue;
       const i = seen[e.type]++ % pool.length;
       lines.push(pool[i](e));

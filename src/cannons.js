@@ -20,7 +20,7 @@
 // from any existing game. Family-friendly, salt-crusted, a little daft.
 
 import { CHALLENGE_RANGE } from './duel.js';
-import { isDeceptive, treacheryBonus, surpriseDamage, DEFAULT_COLOURS } from './colours.js';
+import { isDeceptive, treacheryBonus, surpriseDamage, DEFAULT_COLOURS, lawfulStanding } from './colours.js';
 
 export const MAX_HULL = 100;
 
@@ -208,9 +208,11 @@ export function createCannons({ npcs, getShipPos, getColours, applyReward, apply
     result: null, // 'win' | 'lose' | null
     round: 0,
     treachery: false, // were the guns run out under FALSE colours? (#79)
+    targetKind: 'merchant', // the struck vessel's disposition — pirate/merchant (#91)
   };
   let foe = null;
   let engagedColours = DEFAULT_COLOURS; // the colours flown the instant the fight opened
+  let engagedKind = 'merchant';         // the target's kind the instant the fight opened (#91)
 
   // Nearest NPC within range, or -1. Positions are [x,z]; ship pos is [x,z] too.
   function nearestInRange() {
@@ -240,6 +242,11 @@ export function createCannons({ npcs, getShipPos, getColours, applyReward, apply
     // bonus to Infamy. Captured at the instant of attack, before the colours can change.
     engagedColours = (getColours && getColours()) || DEFAULT_COLOURS;
     state.treachery = isDeceptive(engagedColours);
+    // Letters of Marque (#91): capture the target's disposition now, so an HONEST kill of a
+    // pirate pays Standing (lawful privateering) while gunning down an innocent merchant fines it.
+    const snaps = (npcs && npcs.snapshot && npcs.snapshot()) || [];
+    engagedKind = (snaps[idx] && snaps[idx].kind) || 'merchant';
+    state.targetKind = engagedKind;
     state.active = true;
     state.foeIndex = idx;
     state.foeName = foe.name;
@@ -290,6 +297,12 @@ export function createCannons({ npcs, getShipPos, getColours, applyReward, apply
         const bonus = treacheryBonus(reward_.infamy, engagedColours);
         reward_ = { ...reward_, infamy: reward_.infamy + bonus, treachery: true, treacheryBonus: bonus };
       }
+      // Letters of Marque (#91): an HONEST kill pays the lawful pole — Standing for hunting a
+      // pirate, a fine for sinking an innocent. The opposing mirror of the treachery bonus.
+      const standing = lawfulStanding(reward_.infamy, engagedColours, engagedKind);
+      if (standing !== 0) {
+        reward_ = { ...reward_, standing, targetKind: engagedKind, lawful: standing > 0 };
+      }
       if (applyReward) applyReward(reward_);
       if (npcs && npcs.respawn) npcs.respawn(state.foeIndex); // the wreck clears; a new sail wanders in
     } else {
@@ -318,6 +331,7 @@ export function createCannons({ npcs, getShipPos, getColours, applyReward, apply
       result: state.result,
       round: state.round,
       treachery: state.treachery, // fighting under false colours (#79)
+      targetKind: state.targetKind, // the foe's disposition — pirate/merchant (#91)
       inRange: inRange(),
       options: AIMS.map((a, i) => ({ i, aim: a, label: AIM_LABELS[a] })),
     };

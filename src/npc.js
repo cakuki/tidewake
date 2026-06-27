@@ -2,6 +2,11 @@ import * as THREE from 'three';
 import {
   wrapAngle, steerToward, headingTo, pickWaypoint, hasArrived, avoidObstacles,
 } from './npc-ai.js';
+import { vesselKind, isOutlaw } from './colours.js';
+
+// Letters of Marque (#91): outlaw/pirate hulls fly a sullen blood-dark flag so a lawful
+// privateer can pick a fair target on the horizon — honest colours vs THIS one earns Standing.
+const OUTLAW_FLAG = 0x2a0d0d;
 
 // The first other sails on the sea. A handful of AI vessels wander believable
 // routes between waypoints scattered across the play area, bobbing on the same
@@ -112,7 +117,11 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   const ships = [];
   for (let i = 0; i < count; i++) {
     const p = palettes[i % palettes.length];
-    const mesh = makeVessel(p.hull, p.sail, p.flag, p.scale);
+    // Letters of Marque (#91): a deterministic disposition per slot — an outlaw flies a
+    // blood-dark flag so it reads as fair game for a lawful privateer.
+    const kind = vesselKind(i);
+    const flagColor = isOutlaw(kind) ? OUTLAW_FLAG : p.flag;
+    const mesh = makeVessel(p.hull, p.sail, flagColor, p.scale);
     group.add(mesh);
 
     // Spread spawns out, well clear of the player's origin and of land.
@@ -128,6 +137,7 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
     const heading = rng() * Math.PI * 2 - Math.PI;
     const s = {
       mesh,
+      kind, // pirate/merchant disposition for the lawful Standing path (#91)
       x: spawn.x,
       z: spawn.z,
       heading,
@@ -202,7 +212,7 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   }
 
   function snapshot() {
-    return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading, fleeing: !!s.fleeing }));
+    return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading, fleeing: !!s.fleeing, kind: s.kind }));
   }
 
   // Relocate ship `i` far away — a beaten foe slinking off over the horizon (#33).

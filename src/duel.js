@@ -16,7 +16,7 @@
 //
 // (The pure resolution helpers below import nothing on purpose; the colours import is only
 // used by the controller at the bottom — the False-Colours treachery payoff, #79.)
-import { isDeceptive, treacheryBonus, surpriseDamage, DEFAULT_COLOURS } from './colours.js';
+import { isDeceptive, treacheryBonus, surpriseDamage, DEFAULT_COLOURS, lawfulStanding } from './colours.js';
 
 export const MAX_MORALE = 100;
 
@@ -206,9 +206,11 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
     result: null, // 'win' | 'lose' | null
     round: 0,
     treachery: false, // was the duel opened under FALSE colours? (#79)
+    targetKind: 'merchant', // the hailed vessel's disposition — pirate/merchant (#91)
   };
   let enemy = null;
   let engagedColours = DEFAULT_COLOURS; // the colours flown the instant the hail went up
+  let engagedKind = 'merchant';         // the target's kind the instant the hail went up (#91)
 
   // Nearest NPC within range, or -1. Positions are [x,z]; ship pos is [x,z] too.
   function nearestInRange() {
@@ -238,6 +240,11 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
     // to Infamy. Captured the instant the colours go up, before they can be changed.
     engagedColours = (getColours && getColours()) || DEFAULT_COLOURS;
     state.treachery = isDeceptive(engagedColours);
+    // Letters of Marque (#91): capture the target's disposition now — an honest win over a
+    // pirate earns Standing (lawful), over an innocent merchant it fines it.
+    const snaps = (npcs && npcs.snapshot && npcs.snapshot()) || [];
+    engagedKind = (snaps[idx] && snaps[idx].kind) || 'merchant';
+    state.targetKind = engagedKind;
     state.active = true;
     state.enemyIndex = idx;
     state.enemyName = enemy.name;
@@ -292,6 +299,12 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
         const bonus = treacheryBonus(reward_.renown, engagedColours);
         reward_ = { ...reward_, renown: reward_.renown + bonus, treachery: true, treacheryBonus: bonus };
       }
+      // Letters of Marque (#91): an honest win pays the lawful pole — Standing for besting a
+      // pirate, a fine for picking on an innocent. (The duel's `renown` field IS infamy.)
+      const standing = lawfulStanding(reward_.renown, engagedColours, engagedKind);
+      if (standing !== 0) {
+        reward_ = { ...reward_, standing, targetKind: engagedKind, lawful: standing > 0 };
+      }
       if (applyReward) applyReward(reward_);
       if (npcs && npcs.respawn) npcs.respawn(state.enemyIndex); // beaten foe sails off elsewhere
     } else {
@@ -322,6 +335,7 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
       result: state.result,
       round: state.round,
       treachery: state.treachery, // dueling under false colours (#79)
+      targetKind: state.targetKind, // the foe's disposition — pirate/merchant (#91)
       inRange: inRange(),
       options: state.options.map((o) => ({ id: o.id, category: o.category, line: o.line })),
     };

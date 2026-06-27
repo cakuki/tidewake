@@ -684,8 +684,9 @@ try {
     tw.newVoyage(); tw.step(0.1);
     const fresh = { id: tw.colours.id, deceptive: tw.colours.deceptive };
 
-    // Make the captain feared, then read the pure flee verdict for each set of colours.
-    tw.setInfamy(5000);
+    // Make the captain feared — but kept BELOW the seen-through floor (#91) so the disguise here
+    // stays a reliable free pass; the high-Infamy "rumbled" risk is exercised in section 2n.
+    tw.setInfamy(800);
     tw.setColours('black');
     const blackFlee = tw.colours.flee;     // true — the world fears the dread captain
     tw.setColours('merchant');
@@ -750,6 +751,95 @@ try {
     if (!falseColours.balladHasTreachery) fail('false colours: the ballad did not sing the false-colours verse');
   }
 
+  // 2n) Letters of Marque (#91): the LAWFUL pole + the seen-through risk — the opposing mirror
+  // of #79. Two halves, both deterministic:
+  //   • LAWFUL PRIVATEERING — under your TRUE colours, hunt a PIRATE vessel and the win pays
+  //     STANDING (the governor pole), not just Infamy. (Innocent merchants are spared — fined,
+  //     not rewarded; that's covered by the unit tests.)
+  //   • SEEN-THROUGH — at high Infamy a false-colours approach is rumbled on a seeded roll: the
+  //     vessel reads your true renown and flees, so the bluff is a real risk at the top.
+  const marque = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    function nearestOfKind(kind) {
+      const s = tw.state.pos; // [x, y, z]
+      let best = null, bd = Infinity;
+      for (const n of tw.npcs) {
+        if (kind && n.kind !== kind) continue;
+        const dx = n.pos[0] - s[0], dz = n.pos[1] - s[2]; const d = Math.hypot(dx, dz);
+        if (d < bd) { bd = d; best = n; }
+      }
+      return { best, bd };
+    }
+
+    // --- LAWFUL pirate-hunt under TRUE colours ---
+    tw.newVoyage(); tw.step(0.1);
+    tw.setColours('black');        // honest colours = lawful service
+    tw.setInfamy(0);               // low infamy so the pirate doesn't flee — we can run her down
+    const fleetKinds = tw.npcs.map((n) => n.kind);
+    const standingBefore = tw.state.standing;
+    tw.press('w');
+    let engaged = false, targetKind = null;
+    for (let i = 0; i < 3000 && !engaged; i++) {
+      const { best, bd } = nearestOfKind('pirate'); if (!best) break;
+      if (bd <= 180) { engaged = tw.openFire(); if (engaged) { targetKind = tw.cannons.targetKind; } break; }
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    let result = null;
+    if (engaged) for (let r = 0; r < 20 && tw.cannons.active; r++) { tw.cannonFire(0); result = tw.cannons.result; }
+    tw.step(0.2);
+    const standingGain = tw.state.standing - standingBefore;
+    const hasLawfulDeed = tw.voyageLog.some((e) => e.type === 'cannon' && e.lawful === true);
+    const balladHasLawful = /pirate|outlaw|lawful|privateer/i.test(tw.ballad);
+    const lawful = { engaged, targetKind, result, standingGain, hasLawfulDeed, balladHasLawful };
+
+    // --- SEEN-THROUGH at high Infamy under FALSE colours ---
+    tw.newVoyage(); tw.step(0.1);
+    tw.setInfamy(5000);            // notorious — the disguise is now risky
+    tw.setColours('merchant');
+    const chanceHigh = tw.colours.seenThroughChance; // rises with infamy, capped < 1
+    tw.press('w');
+    let sawSeenThrough = false, fled = false;
+    for (let i = 0; i < 2500 && !sawSeenThrough; i++) {
+      const { best, bd } = nearestOfKind(null); if (!best) break;
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+      if (tw.colours.seenThrough) sawSeenThrough = true;
+      if (tw.npcs.some((n) => n.fleeing)) fled = true;
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    const seen = { chanceHigh, sawSeenThrough, fled };
+
+    tw.newVoyage(); tw.step(0.1);
+    return { fleetKinds, lawful, seen };
+  });
+  // The fleet carries both a pirate to hunt and a merchant to spare (the lawful path is meaningful).
+  if (!marque.fleetKinds.includes('pirate')) fail('letters of marque: no pirate vessel in the fleet to hunt lawfully');
+  if (marque.lawful.engaged) {
+    if (marque.lawful.targetKind !== 'pirate') fail(`letters of marque: lawful test did not engage a pirate (kind=${marque.lawful.targetKind})`);
+    if (marque.lawful.result !== 'win') fail(`letters of marque: the lawful pirate-hunt did not resolve to a win (result=${marque.lawful.result})`);
+    if (!(marque.lawful.standingGain > 0)) fail(`letters of marque: hunting a pirate under true colours awarded no Standing (gain=${marque.lawful.standingGain})`);
+    if (!marque.lawful.hasLawfulDeed) fail('letters of marque: the lawful pirate-hunt did not record a lawful deed in the voyage log');
+    if (!marque.lawful.balladHasLawful) fail('letters of marque: the ballad did not sing the lawful privateer verse');
+  } else {
+    fail('letters of marque: never engaged a pirate to prove the lawful Standing path');
+  }
+  // Seen-through: the chance must be a real, sub-certain risk at high infamy, and it must fire.
+  if (!(marque.seen.chanceHigh > 0)) fail(`seen-through: a notorious captain's disguise should be at risk (chance=${marque.seen.chanceHigh})`);
+  if (!(marque.seen.chanceHigh < 1)) fail(`seen-through: the bluff should never be a dead certainty (chance=${marque.seen.chanceHigh})`);
+  if (!marque.seen.sawSeenThrough) fail('seen-through: a notorious captain under false colours was never rumbled on approach');
+  if (!marque.seen.fled) fail('seen-through: a rumbled disguise did not make the vessel react to true renown (flee)');
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -772,7 +862,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, bump, daynight, landfall, ballad, falseColours, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, bump, daynight, landfall, ballad, falseColours, marque, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

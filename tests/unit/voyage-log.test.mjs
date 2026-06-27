@@ -179,3 +179,27 @@ test('composeBallad sings a distinct treacherous verse for a false-colours strik
   assert.notEqual(honest.text, treacherous.text);
   assert.ok(/merchant colours|treachery/i.test(treacherous.text));
 });
+
+// ---- Letters of Marque lawful verse (#91) ---------------------------------------------
+
+test('sanitizeEvent stamps lawful only when true (and never alongside treachery)', () => {
+  // a lawful pirate-hunt under honest colours: the flag is recorded
+  assert.deepEqual(
+    sanitizeEvent({ type: 'cannon', foe: 'the Black Gannet', infamy: 100, coins: 50, lawful: true }),
+    { type: 'cannon', foe: 'the Black Gannet', infamy: 100, coins: 50, lawful: true },
+  );
+  // treachery wins the flag if both are (impossibly) set — a lie is never lawful
+  const both = sanitizeEvent({ type: 'cannon', foe: 'x', infamy: 10, coins: 5, treachery: true, lawful: true });
+  assert.equal(both.treachery, true);
+  assert.equal(both.lawful, undefined);
+});
+
+test('composeBallad sings a distinct LAWFUL privateer verse for an honest pirate-hunt', () => {
+  const honest = composeBallad([{ type: 'cannon', foe: 'the Black Gannet', infamy: 100, coins: 50 }]);
+  const lawful = composeBallad([{ type: 'cannon', foe: 'the Black Gannet', infamy: 100, coins: 50, lawful: true }]);
+  assert.ok(lawful.text.includes('the Black Gannet'));
+  assert.notEqual(honest.text, lawful.text);
+  // the lawful verse reads of pirates / honest colours / lawful service — never of treachery
+  assert.ok(/pirate|outlaw|lawful|honest colours|true (flag|colours)/i.test(lawful.text));
+  assert.ok(!/merchant colours|treachery/i.test(lawful.text));
+});
