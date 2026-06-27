@@ -6,6 +6,7 @@ import { createWake } from './wake.js';
 import { createPorts } from './ports.js';
 import { targetSpeed, approach, steerRate, pointOfSail } from './physics.js';
 import { createAudio } from './audio.js';
+import { serialize, deserialize, SAVE_KEY } from './save.js';
 import { VERSION } from './version.js';
 
 const app = document.getElementById('app');
@@ -46,6 +47,41 @@ const state = {
   windName: 'NE breeze',
 };
 const MAX_SPEED = 55;
+
+// ---- Voyage persistence (localStorage) ----
+// All storage access is guarded: a private-mode / disabled / full localStorage
+// must never crash the game — it just sails on without persistence.
+function loadSave() {
+  try { return deserialize(localStorage.getItem(SAVE_KEY)); } catch { return null; }
+}
+function writeSave() {
+  try { localStorage.setItem(SAVE_KEY, serialize(state)); } catch { /* storage unavailable — sail on */ }
+}
+function clearSave() {
+  try { localStorage.removeItem(SAVE_KEY); } catch { /* ignore */ }
+}
+
+// Restore a prior voyage before the loop starts. Corrupt/old/missing → fresh start.
+const saved = loadSave();
+if (saved) {
+  state.heading = saved.heading;
+  state.speed = saved.speed;
+  state.throttle = saved.throttle;
+  state.pos.set(saved.pos[0], saved.pos[1], saved.pos[2]);
+}
+
+// Quiet auto-save: periodically and whenever the tab is hidden or closed.
+setInterval(writeSave, 2000);
+addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') writeSave(); });
+addEventListener('pagehide', writeSave);
+
+// 'n' — new voyage: wipe the save and respawn at the origin, dead in the water.
+function newVoyage() {
+  clearSave();
+  state.heading = 0; state.speed = 0; state.throttle = 0;
+  state.pos.set(0, 0, 0);
+}
+addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'n') newVoyage(); });
 
 // ---- Audio: procedural sea ambience (starts on first user gesture) ----
 const audio = createAudio();
@@ -186,6 +222,8 @@ window.__tidewake = {
   get docked() { return ports.docked; },
   press(k) { keys.add(k); },
   release(k) { keys.delete(k); },
+  save() { writeSave(); },
+  newVoyage() { newVoyage(); },
   step(seconds) {
     const fixed = 1 / 60;
     let acc = seconds;
