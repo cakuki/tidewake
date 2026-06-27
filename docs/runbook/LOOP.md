@@ -265,6 +265,53 @@ The main orchestrator must stay **lean** so the never-stopping loop survives con
 
 ---
 
+## Lean orchestrator protocol (post-compact)
+
+_Added Retro 5 (owner ask: keep the main context lean so loops after a **compaction** are cheap)._
+
+After a compact, the orchestrator must NOT re-derive priorities, re-read the whole backlog, or do
+per-cycle bookkeeping by hand. Its per-cycle job shrinks to **three moves**:
+
+1. **Read the TOP unblocked item of `studio/comms/queue.md`.** That file is the prioritised
+   next-slice queue — the orchestrator's single starting point. (`studio/comms/loop-state.md` stays
+   the *resume brain*: current loop, counters, latest release, loop log, DL-due flag.)
+2. **Dispatch ONE self-sufficient cycle-runner subagent** for that item (re-dispatch once if it
+   returns 0-tool-use / empty).
+3. **Read its <10-line report and move on.** Don't hold the transcript.
+
+That's the whole cycle. No re-prioritising, no manual loop-state editing per cycle.
+
+**Cycle-runners own ALL bookkeeping (not the orchestrator).** A cycle-runner goes end-to-end and
+self-services everything:
+- **Self-ships:** commits its **own specific files** (`git add <named paths>` — **NEVER `git add -A`**,
+  which sweeps up concurrent docs/other work), pushes, and **verifies CI is green** (`gh run watch`,
+  live URL = 200).
+- **Self-closes the GitHub issue** with the release tag and updates `board.md`.
+- **Self-appends its own loop-log row** to `studio/comms/loop-state.md` (Loop · Slice · Issue ·
+  Release · Notes) — the orchestrator stops manually editing loop-state each cycle.
+- **Self-QAs** via the headless playtest + perf gate; captures a **gallery shot only when a real
+  in-browser visual matters**, and returns the visual verdict in its report.
+- **Reports <10 lines** (slice, creative spark, release tag, CI status, QA/perf verdict, follow-ups).
+
+**Orchestrator AVOIDS live-Chrome QA** except for **owner-facing VISUAL changes**; otherwise it
+trusts the headless playtest + the perf budget gate. When it must open the live build:
+- **cache-bust the reload (`ignoreCache`)** — ES modules cache, so a stale bundle will fool QA;
+- capture **one** shot;
+- then **park the tab on `about:blank`** — a running WebGL render loop heats the owner's machine.
+  Lean on headless/puppeteer wherever possible.
+
+**Rituals run as subagents, scheduled — never deferred into nothing.**
+- **Retro every 3–4 cycles**, **deep-learning research loop every 10 cycles** — each dispatched as
+  its own subagent (the orchestrator keeps only the summary).
+- **Do NOT run a docs-writing subagent concurrently with a `git add -A` cycle-runner** — the runner
+  sweeps the docs into its commit. (This is also why cycle-runners add specific paths only.) If a
+  ritual/docs subagent and a cycle-runner must overlap, the cycle-runner adds named paths.
+
+**Telegram (lean comms).** Batch updates ~hourly (respect quiet hours 01:00–07:00). Keep captions
+**< 1024 chars**. Prefer **one strong shot or short clip** over many; the video recipe is in §3.
+
+---
+
 ## 5. Definition of Done & guardrails
 
 **Definition of Done (a loop):**
@@ -357,6 +404,26 @@ curl -sI https://cakuki.github.io/tidewake/
 
 ## Changelog
 
+- **2026-06-27 — Retro 5 + lean-orchestrator protocol (owner ask: keep main context lean
+  post-compact).** Block 20–26 made the complete arc *landable*: from-owner P1 batch (camera-astern
+  #49 / compass-drift #50 / swell-submerging-ports #51), sunny Caribbean water (#61), the renown
+  curve **tuned reachable** (`LEGEND_AT 2400`, #57), a measurement-first **perf budget gate** the
+  playtest now asserts (#52), a bigger-map chart (#54), the first self-tested `src/ui/` component
+  (#53), and **invisible onboarding** (#60). 28 releases, **229 tests**, gate green throughout.
+  Headline process change (owner ask): added the **"Lean orchestrator protocol (post-compact)"** —
+  the orchestrator's per-cycle job shrinks to *read the top of `studio/comms/queue.md` → dispatch
+  one self-sufficient cycle-runner → read its <10-line report*; **cycle-runners own ALL bookkeeping**
+  (self-commit **specific files, never `git add -A`** + push + verify CI, self-close the issue,
+  self-append their loop-log row, self-QA), the orchestrator stops editing loop-state per cycle and
+  avoids live-Chrome QA except for owner-facing visuals (cache-bust, one shot, then park the tab on
+  `about:blank` so the machine doesn't heat). Baked the session's hard lessons: no docs-subagent
+  concurrent with a `git add -A` runner; re-dispatch 0-tool-use glitches; rituals run as subagents,
+  scheduled not deferred; Telegram batched hourly, captions <1024 chars. Created
+  `studio/comms/queue.md` (the post-compact priority queue) — owner P2 #55 (art research) is the top
+  *work* item; #56 (mobile) and #58 (weather vs. the sunny vibe) are surfaced as **owner-decisions**;
+  deep-learning loop **#2 is ~18 cycles overdue** and scheduled. Next product direction: a thin layer
+  of depth-with-drama (cannon combat #59) + polish (#19/#15/#20/#21), gated by the two owner-decisions.
+  See `studio/retros/2026-06-27-retro-5.md`, `studio/comms/queue.md`.
 - **2026-06-27 — Retro 4 (loops 16-19): the core fantasy arc is now COMPLETE.** Shipped the
   KEYSTONE two-pole renown split (Infamy ↔ Standing, #45), endgame legend milestones (crowned THE
   Terror / THE Governor, #46), a polish batch (#47/#41/#25 — #47's real root cause was OS

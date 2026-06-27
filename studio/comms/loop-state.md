@@ -1,22 +1,37 @@
 # Loop state (orchestrator)
 
-Single source of truth for the never-stopping delivery loop. The orchestrator
-updates this each loop so progress survives context resets.
+Single source of truth (resume brain) for the never-stopping delivery loop. Survives context resets.
 
-- **Current loop:** 26 (ALL owner P1s done; P2: #54 map done, next #53 UI-std, #55 art-research; #56 mobile=owner-decision; Retro 5 + DL#2 due soon)
-- **Loops since last retro:** 0 (Retro 4 DONE — reset; covered cycles 16,17,18,19)
-- **Cycles since last deep-learning loop:** ~9 — **#2 DUE NOW** (run before the well runs dry; #1 filed #32-#40)
-- **Research backlog (prioritise):** #57 tune renown curve (NEXT), #50/#51 from-owner P1 bugs (FAST-LANE), #58 weather & day-night, #59 ship-vs-ship cannon combat, #60 invisible onboarding, #49 camera astern (P1), #32 glTF hull, #35 cannon SFX, #37 deterministic visual-diff (schedule — owned since cycle 10), #52 perf budget (P1), #40 adaptive music, #36 fixed-timestep, #53 self-tested UI components
-- **Next slices (Retro 4, priority):** (1) **#57 tune the renown/legend curve** — the arc is complete but the ~12,800 grind is unreachable in a ~4.45-min web session; most shareable, highest-leverage slice. (2) **from-owner P1 bug fast-lane #51 (swell submerges ports/docks) + #50 (compass drift)** — visible breakage, cheap, cleans every capture; PARALLEL-BATCH candidate (disjoint: #57 tunes renown numbers, #50/#51 touch sea/compass — but #51+#58 share the water/swell, contract first). (3) **#58 weather & day-night** — biggest charm-per-pixel depth, asset-free, shareable. (4) **#59 ship-vs-ship cannon combat** — depth that complements the Insult Broadside duel (design-first, after the curve is tuned). Then #60 onboarding + #49 camera-astern as a follow-on batch; build #37 deterministic visual diff.
-- **Process (Retro 4):** cycle-runner's QA step now OWNS the Chrome-MCP gallery capture + diff (orchestrator stops manual visual QA); Game Designer owns a per-block balance/tuning pass; from-owner P1 bugs jump the feature queue.
-- **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions (e.g. #trade .show opacity) read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
-- **Last Telegram update (UTC):** 2026-06-27T07:35 (morning catch-up + art screenshot)
-- **Next hourly update due (UTC):** ~2026-06-27T08:35
-- **Latest release:** v0.0.20260627072700 (art polish: carved hull, richer islands, ink-wash)
+> ⏸️ **LOOP STOPPED for compaction (owner request 2026-06-27 ~12:00 UTC).**
+> **TO RESUME:** read **`studio/comms/queue.md`** top item and follow the
+> **"Lean orchestrator protocol (post-compact)"** in `docs/runbook/LOOP.md` — per cycle: read the
+> queue's top → dispatch ONE self-sufficient cycle-runner → read its <10-line report. Cycle-runners
+> own ALL bookkeeping (commit specific files, push, verify CI, close the issue, append their own
+> loop-log row, self-QA). The orchestrator no longer edits this file per cycle.
+
+- **Current loop:** 26 done → next is **27** (read `queue.md` to pick the slice)
+- **Loops since last retro:** 0 (**Retro 5 DONE — reset**; covered loops 20–26)
+- **Cycles since last deep-learning loop:** ~18 — **🔴 DL #2 BADLY OVERDUE** (trigger is every 10; #1
+  at loop 10 filed #32–#40; loops 11–26 all mined it — refill the well). Scheduled in `queue.md`.
+- **State:** core arc COMPLETE + **tuned reachable** (`LEGEND_AT 2400`, #57) + invisible onboarding
+  (#60) + sunny Caribbean water (#61) + perf budget gate (#52). **ALL owner P1s & P2s #53/#54 done.**
+- **Next slices:** see **`studio/comms/queue.md`** (the prioritised queue). Top: **[ask owner]** #56
+  mobile go/no-go + #58 weather (owner-decisions, don't auto-do); then **#55** art-sourcing research
+  (owner P2, the top *work* item); **DL loop #2** (overdue ritual); then depth #59 cannon combat /
+  #32 glTF hull and polish #19/#15/#20/#21.
+- **Owner P2 still open:** #55 (do — research), **#56 mobile (OWNER-DECISION — ask)**, **#58 weather
+  (OWNER-DECISION — ask; do NOT undo the sunny vibe)**.
+- **Process (Retro 5):** lean orchestrator protocol live; cycle-runners own ALL bookkeeping &
+  `git add <specific files>` (NEVER `git add -A`); no docs-subagent concurrent with a `git add -A`
+  runner; live QA only for owner visuals (cache-bust `ignoreCache`, one shot, then park tab on
+  `about:blank`); rituals run as scheduled subagents. (Retro 4 still holds: cycle-runner owns visual
+  QA; Game Designer owns balance/tuning; from-owner P1s jump the queue.)
+- **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions
+  read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
+- **Latest release:** **v0.0.20260627115834** (invisible onboarding, #60). 28 releases, 229 tests.
 - **Live:** https://cakuki.github.io/tidewake/
-- **OWNER filed issues (from-owner label, P1 first):** #50/#51/#49 DONE; #61 Caribbean water, #57 renown tuning, #52 perf, #53 UI-component std, #54 bigger map, #55 art-sourcing, #56 mobile-go owner-decision
-- **Note:** session hit usage limit ~01:43-07:20 UTC (paused), resumed on owner "continue".
-- **Open enablers:** #37 deterministic visual-diff (schedule); #52 perf-budget gate (P1, gates #58 weather)
+- **Open enablers:** #37 deterministic visual-diff (schedule — open since cycle 10); #38 PR-validation
+  CI gate; #36 fixed-timestep.
 
 ## Loop log
 
@@ -47,6 +62,14 @@ updates this each loop so progress survives context resets.
 | 19 | Duel audio juice — procedural SFX stings | #48 | v0.0.20260627104334 | 182 tests; playtest now wins a full duel |
 | — | Retro 3 (subagent) | — | — | Fantasy now legible (sail→trade→renown rank, NPCs). Adopted #34 shared-contract step + re-dispatch-glitched-subagent rule + QA nav/timing gotchas into runbook; new guardrail "reactive verbs over inert content". Next = #43 (port reputation reactions, #39-followup) reputation reactions + #32 glTF ship (parallel, contract'd) |
 | — | Retro 4 (subagent) | — | — | **Core fantasy arc COMPLETE** (two poles #45 → crowned a legend #46). Depth-vs-breadth: TUNE the arc to be reachable first (#57, the ~12,800 grind is unreachable in a web session), then depth (weather #58, cannon combat #59) over breadth. Process: cycle-runner QA step owns the gallery capture+diff (not orchestrator); Game Designer owns balance/tuning; from-owner P1 bugs jump the queue; build #37 diff. Filed #57-#60. Deep-learning #2 due. Next = #57 tune curve, then #51/#50 P1-bug fast-lane |
+| 20 | from-owner P1 batch: camera opens astern + centre/stabilise wind compass + calm swell (ports/docks stop submerging) | #49,#50,#51 | v0.0.20260627110811 | Owner P1 fast-lane; cleaned every capture |
+| 21 | Sunny Caribbean holiday water — palette, sun glint, micro-detail (owner's signature vibe) | #61 | v0.0.20260627111728 | Most shareable visual of the night; do NOT undo |
+| 22 | Tune renown/legend curve for a single web session — fast early ranks, reachable legend | #57 | v0.0.20260627112714 | LEGEND_AT 2400 (was ~12,800); Game-Designer tuning pass; arc now *felt* in a sitting |
+| 23 | Measurement-first perf budget gate — src/perf.js ceilings + P overlay; playtest asserts draws/tris | #52 | v0.0.20260627113504 | Owner P1; 130 draws/150k tris (~70% headroom); deterministic counters, not fps |
+| 24 | Bigger-map route-planning chart of the whole archipelago (Tab toggle) | #54 | v0.0.20260627114207 | Owner P2; complements the minimap |
+| 25 | Self-contained, self-tested wind compass UI component (first src/ui/ component) | #53 | v0.0.20260627114757 | Owner P2; the UI-component standard made real |
+| 26 | Invisible onboarding — seeded first goal + juicy first-win beats, no tutorial wall | #60 | v0.0.20260627115834 | 229 tests; latest release; cheapest retention lever now the arc is reachable |
+| — | Retro 5 (subagent) | — | — | **Arc now LANDABLE** (tuned reachable + onboarded + sunny + perf-gated). Owner-feedback sprint: all owner P1s + P2s #53/#54 shipped same session. Process headline (owner ask): added **Lean orchestrator protocol (post-compact)** — per cycle = read `queue.md` top → dispatch one self-sufficient cycle-runner → read <10-line report; cycle-runners own ALL bookkeeping & `git add <specific files>` (never `-A`); live QA only for owner visuals (cache-bust, park tab on about:blank); rituals as scheduled subagents. Created `queue.md`. Next direction: thin depth (cannon #59) + polish (#19/#15/#20/#21), gated by owner-decisions #56/#58. DL #2 overdue. **LOOP STOPPED for compaction.** |
 
 ## Hourly Telegram log
 

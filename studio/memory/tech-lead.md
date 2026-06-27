@@ -28,6 +28,14 @@ Durable architecture decisions and engineering lessons. Grows over time; keep en
   counters, NOT fps** (swiftshader is too slow for an fps floor). Measured current scene: 77 draws,
   ~85.2k tris → ceilings **130 draws / 150k tris** (~70% headroom). Raise the ceiling only with a
   measurement; if a metric blows it, that's the cue for the deferred culling/LOD/instancing work.
+- 2026-06-27 (Retro 5 / session wrap) — **Perf gate (#52) is live and asserted.** Playtest now fails
+  on a draw/triangle regression (130 draws / 150k tris, ~70% headroom) — deterministic counters, not
+  fps. First `src/ui/` component landed (self-tested wind compass, #53) — the UI-component standard
+  to follow. Modules now: input/hud/sailing/persistence/ocean/ship/world/wake/ports/economy/renown/
+  duel/npc/minimap/bigmap/perf/onboarding/swell + `src/ui/compass.js` + pure physics/swell. Open
+  enablers to schedule: **#37** deterministic visual-diff (since cycle 10), **#38** PR-validation CI
+  gate (pre-merge tests+playtest, no deploy), **#36** fixed-timestep. Engineering lesson: cycle-
+  runners `git add` named paths only — a `git add -A` swept a concurrent docs subagent's files in.
 - 2026-06-27 (Research) — **CI gap**: Release runs the playtest gate only post-merge, no PR gate.
   Backlog: lightweight PR-validation workflow (tests + headless playtest, no deploy) with
   `cancel-in-progress: true` to gate trunk pre-merge and save free-tier minutes; deploy

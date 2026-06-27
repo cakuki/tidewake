@@ -14,6 +14,13 @@ Durable implementation lessons and gotchas. Grows over time; keep entries short.
   accumulator → N×update(DT) → render with alpha) makes the sim hardware-independent and lets
   unit tests assert exact state from a fixed DT/intent sequence. Use Command-pattern intents in a
   thin `input.js` boundary so logic is driven by data, not DOM. (See agents/ Research log.)
+- 2026-06-27 (Retro 5 / session wrap) — **As a cycle-runner I now own the whole cycle.** Self-ship:
+  `git add <named files ONLY>` (NEVER `git add -A` — it swept a concurrent docs subagent's files into
+  a slice commit), push, `gh run watch` green, live URL 200; then self-close the issue, append my own
+  loop-log row to `loop-state.md`, self-QA (headless playtest + perf gate; gallery shot only for real
+  visual changes), report <10 lines. Latest build: 229 tests; `src/ui/compass.js` is the first
+  self-tested UI component — mirror it for new UI. Perf budget asserted by the gate (don't blow
+  draws/tris without re-measuring `src/perf.js` ceilings).
 - 2026-06-27 — **Scaling levers when needed**: keep three.js objects "humble" (draw-only, no
   branching); push spawn/collision/score into pure modules. For many identical props use one
   InstancedMesh (1 draw call, cull via `.count`, share materials); watch `renderer.info.render.calls`.

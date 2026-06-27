@@ -19,6 +19,15 @@ Durable lessons about the loop, flow, and process. Grows over time; keep entries
   state-contract integration bug two parallel devs hit. Cap WIP tightest on review/integrate and
   swarm-to-merge before starting new code (Little's Law). Never cancel the retro; cap to 1–2
   experiment-shaped actions with a next-loop check. Wildcard: a `Contracts` board lane.
+- 2026-06-27 (Retro 5 / session wrap) — **Owner ask = keep the orchestrator LEAN so loops after a
+  compact are cheap.** Adopted the **Lean orchestrator protocol** (`LOOP.md`): per cycle = read
+  `studio/comms/queue.md` top → dispatch ONE self-sufficient cycle-runner → read its <10-line report.
+  **Cycle-runners own ALL bookkeeping** (commit *specific files* — never `git add -A` — push, verify
+  CI, close the issue, append their own loop-log row, self-QA). New `queue.md` is the post-compact
+  starting point. Session lessons baked in: no docs-subagent concurrent with a `git add -A` runner;
+  re-dispatch 0-tool-use glitches; live QA only for owner visuals (cache-bust, park tab on
+  about:blank); rituals run as scheduled subagents. **DL loop #2 is ~18 cycles overdue** — schedule
+  it. Block 20–26: 7 clean slices, all owner P1/P2s same-session, 229 tests.
 - 2026-06-27 (Retro 4) — **The core fantasy arc is COMPLETE** (two poles #45 → crowned a legend
   #46). Priorities flip with a finished spine: **tune it to be reachable before deepening it,
   prefer depth over breadth** (the ~12,800 legend grind is unreachable in a ~4.45-min web session).

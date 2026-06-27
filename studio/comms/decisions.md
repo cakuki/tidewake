@@ -6,6 +6,43 @@ architecture) are raised as `owner-decision` GitHub issues and recorded here onc
 
 ---
 
+### 2026-06-27 — Retro 5 / session wrap: Lean orchestrator protocol (post-compact) + cycle-runners own all bookkeeping
+**Decision.** At the owner's request (keep the main context lean so loops after a **compaction** are
+cheap), the orchestrator's per-cycle job shrinks to: **read the top of `studio/comms/queue.md` →
+dispatch ONE self-sufficient cycle-runner → read its <10-line report.** **Cycle-runners own ALL
+bookkeeping**: self-commit *specific files* (**never `git add -A`**) + push + verify CI green,
+self-close the issue, self-append their own loop-log row to `loop-state.md`, self-QA (headless +
+perf gate; gallery shot only for real visual changes). The orchestrator stops editing loop-state per
+cycle and avoids live-Chrome QA except for owner-facing visuals (then cache-bust `ignoreCache`, one
+shot, park the tab on `about:blank`). Rituals (retro every 3–4, deep-learning every 10) run as
+scheduled subagents. Added the **"Lean orchestrator protocol (post-compact)"** section + Changelog
+to `docs/runbook/LOOP.md`; created `studio/comms/queue.md`.
+**Why.** Block 20–26 showed the orchestrator still did per-cycle bookkeeping and live QA — exactly
+the context-heavy work that makes a loop expensive across a compact. Pushing it all into the
+cycle-runner keeps the resume-after-compact cost to "read one queue item, dispatch, read a summary."
+
+### 2026-06-27 — Retro 5 / session wrap: bake the session's process lessons
+**Decision.** (1) Cycle-runners `git add` **named paths only** — a `git add -A` swept a concurrent
+docs subagent's files into a slice commit; **never run a docs subagent concurrent with a `git add -A`
+runner.** (2) Live-browser QA must **cache-bust (`ignoreCache`)** — ES modules cache and fool a stale
+reload. (3) **Park the live WebGL tab on `about:blank` after QA** — a running render loop heats the
+owner's machine; prefer headless/puppeteer. (4) Re-dispatch 0-tool-use glitched subagents (Retro 3
+rule recurred — keep enforcing). (5) Telegram batched ~hourly, captions <1024 chars, one strong
+shot/clip. Recorded in `LOOP.md`.
+**Why.** These cost real friction this session (a polluted commit, a stale-bundle QA pass, machine
+heat) and are cheap to prevent once written down.
+
+### 2026-06-27 — Retro 5 / session wrap: #56 mobile and #58 weather are OWNER-DECISIONS; #55 is research; arc is landable
+**Decision.** The complete arc is now **landable** — tuned reachable (`LEGEND_AT 2400`, #57),
+onboarded (#60), sunny (#61), perf-gated (#52); all owner P1s + P2s #53/#54 shipped same session.
+Remaining owner P2s: **#55 art-asset sourcing is research to DO**; **#56 mobile go/no-go** and **#58
+weather & day-night** are **owner-decisions to ASK** (never auto-adopt; #58 must not undo the sunny
+vibe). Next product direction = a *thin* layer of depth-with-drama (cannon combat #59) + cheap polish
+(#19/#15/#20/#21); breadth ~zero. Deep-learning loop #2 is ~18 cycles overdue — scheduled. Captured
+in `studio/comms/queue.md`.
+**Why.** With a finished, reachable spine the leverage is drama and atmosphere, not more nouns — but
+atmosphere and platform are owner calls, especially right after the owner set a deliberate sunny look.
+
 ### 2026-06-27 — Retro 4: the core arc is complete — tune it before deepening; depth over breadth
 **Decision.** The north-star arc now exists end-to-end (one boat → trade/fight → climb either pole
 #45 → crowned a legend #46). Priorities invert: **(1) tune the renown/reward curve so a fresh
