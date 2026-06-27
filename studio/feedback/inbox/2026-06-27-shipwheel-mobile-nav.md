@@ -1,10 +1,12 @@
 ---
 id: 2026-06-27-shipwheel-mobile-nav
 type: idea
-status: triaging
+status: accepted
 source: owner channel (Telegram), 2026-06-27 16:18
 assets: []
-issue: 
+issue: https://github.com/cakuki/tidewake/issues/98
+value: "Mobile feel: a draggable brass wheel is both easier (one continuous control vs two taps) and more fun/on-theme than L/R buttons — lifts the phone experience now the PWA installs. High value."
+feasibility: "TL: S–M, risk Low. Camera-coexistence (owner's worry) is already structurally solved — orbit binds pointerdown on the canvas, touch controls live in a separate #touch-controls layer that preventDefault(), so a wheel placed there owns its region for free. src/ui/wheel.js per #53 (pure angle→rudder helper + thin DOM factory) replacing the data-hold a/d cluster; setPointerCapture + preventDefault; first slice maps drag to existing held a/d keys (zero physics change), proportional steerAxis as fast follow."
 ---
 
 ## Raw (verbatim)
@@ -26,6 +28,9 @@ issue:
     region and not fight the camera.
   - Visual: an actual **wheel image** that rotates with the drag (readable, on-theme brass/wood).
   status → `triaging`.
+- 2026-06-28 — **TL feasibility + owner GO.** TL confirmed camera coexistence is already solved by the
+  DOM-layer separation (low risk). Owner's blanket GO (2026-06-28, "unblock all topics") covers mobile
+  nav. **ACCEPTED P2** → **#98**. status → accepted.
 
 ## Value (preliminary)
 Mobile feel is a fresh owner focus now the PWA is installable; better touch steering directly lifts

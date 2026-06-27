@@ -37,9 +37,9 @@ with the item files in `inbox/`. Raw items are never deleted — only their stat
 | 2026-06-27-ocean-fun-microdetails | idea | accepted | Ocean sail-over delight + standing '1-2 per loop/retro' rule | [#70](https://github.com/cakuki/tidewake/issues/70) |
 | 2026-06-27-islands-tlc | feature | accepted | Island palette/variety/props polish, coord w/ #61 | [#71](https://github.com/cakuki/tidewake/issues/71) |
 | 2026-06-27-collision-and-harbour-slowdown | feature | accepted | **DELIVERED & CLOSED** — island + ship collision + arcade slow-to-stop; loop built all 4 phases (a1/c/b/a2) | [#76](https://github.com/cakuki/tidewake/issues/76) |
-| 2026-06-27-shipwheel-mobile-nav | idea | triaging | Replace L/R buttons w/ a draggable ship's-wheel widget in a fixed HUD spot (not full-screen — that's camera) |  |
-| 2026-06-28-living-sea-fauna | idea | raw | Living world: flying seagulls, jumping dolphins, other sea/land animals (extends #68) |  |
-| 2026-06-28-approach-town-music-cue | feature | raw | Tavern/city music fades up from a distance as you near a port — diegetic wayfinding hint |  |
-| 2026-06-28-town-mode-trade-view | feature | raw | Town as a distinct MODE (harbour→disembark→market), leave only via a button; fix mobile market overlap; more to do in town |  |
-| 2026-06-28-arcade-battle-modes | idea | raw | Designer brief: arcade battle mode (SM Pirates), cannon/ammo loadout from workshops, boarding→crew fight/captain duel; keep verbal duel but expand jabs |  |
-| 2026-06-28-multiple-bg-music | feature | raw | Multiple sailing tracks rotating over time + distinct city music (music-system theme w/ #69) |  |
+| 2026-06-27-shipwheel-mobile-nav | idea | accepted | Draggable ship's-wheel touch steering; camera-coexistence solved by DOM layering | [#98](https://github.com/cakuki/tidewake/issues/98) |
+| 2026-06-28-living-sea-fauna | idea | accepted | Living world: gulls/dolphins/animals, instanced + culled (extends #68) | [#97](https://github.com/cakuki/tidewake/issues/97) |
+| 2026-06-28-approach-town-music-cue | feature | accepted | Proximity crossfade 'port nearby' cue — first slice of the sound-system epic | [#94](https://github.com/cakuki/tidewake/issues/94) |
+| 2026-06-28-town-mode-trade-view | feature | accepted | Town as a real MODE (harbour→market, leave via button) + mobile-overlap fix; split mode/town | [#95](https://github.com/cakuki/tidewake/issues/95) + [#96](https://github.com/cakuki/tidewake/issues/96) |
+| 2026-06-28-arcade-battle-modes | idea | raw | HELD for Game Designer Telegram brief (08:00 2026-06-29); scenario blocked, mode-switch infra → #95 | [#100](https://github.com/cakuki/tidewake/issues/100) |
+| 2026-06-28-multiple-bg-music | feature | accepted | Unified sound system: multiple sailing/town/battle tracks + crossfade (absorbs #69; future zones #99) | [#94](https://github.com/cakuki/tidewake/issues/94) |

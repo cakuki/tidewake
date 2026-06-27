@@ -47,9 +47,25 @@ await loop **PM + TL sign-off**. `from-owner` issues:
 | [#70](https://github.com/cakuki/tidewake/issues/70) | Ocean micro-details + sail-over delight; **standing rule: 1-2 per loop/retro** | 🪶 Humour (ongoing) | P2 |
 | [#71](https://github.com/cakuki/tidewake/issues/71) | Islands TLC — palette/variety/props polish (coord w/ #61) | Art & Audio / 🌊 | P2 |
 | [#61](https://github.com/cakuki/tidewake/issues/61) | Sunny/holiday **Caribbean sea-surface** — turquoise palette + sun glint + subtle detail (original shader, no franchise sampling) | M1 / 🌊 realism | P1 |
-| [#76](https://github.com/cakuki/tidewake/issues/76) | **Solidify the sea** — island + ship collision + arcade slow-to-stop for harbour/fighting (soft graze not brick wall; pure physics.js; phased a1 push-out→c ease-down→b ship-vs-ship→a2 slide polish) | M1 / 🌊 realism · M2 #67 · M6 #59 | P1* |
+| [#76](https://github.com/cakuki/tidewake/issues/76) | **Solidify the sea** — island + ship collision + arcade slow-to-stop (a1/c/b/a2) — ✅ **DELIVERED & CLOSED** | M1 / 🌊 realism · M2 #67 · M6 #59 | P1 |
 
-\* #76 priority P1 **pending owner nod** (asked over Telegram 2026-06-27) + loop PM+TL sign-off.
+### Second intake (2026-06-28) — accepted
+
+| Issue | Slice | Target | Prio |
+|-------|-------|--------|------|
+| [#94](https://github.com/cakuki/tidewake/issues/94) | **Unified sound & music system** — multiple rotating sailing tracks + per-town/city themes + battle music + proximity crossfade ("port nearby" cue). Absorbs #69; resolver built context-shaped for future zones #99 | M9 audio / 🌊, ongoing | P1 |
+| [#95](https://github.com/cakuki/tidewake/issues/95) | **Mode system** — sailing/town/battle modes; player sailing pauses while NPCs keep moving; + battle-mode switch plumbing. Shared spine for #94 (battle/town music) & #96 | M2 / M6 / tech | P1 |
+| [#96](https://github.com/cakuki/tidewake/issues/96) | **Town/city mode** — harbour→disembark→market as a deliberate mode left via a button (not a pop-up); fixes mobile market overlap (#66); room for town activities | M2 / M3 / M8 | P1 |
+| [#97](https://github.com/cakuki/tidewake/issues/97) | **Living sea fauna** — flying gulls, jumping dolphins, ambient animals (instanced + culled; extends #68) | Art & Audio / 🌊 | P2 |
+| [#98](https://github.com/cakuki/tidewake/issues/98) | **Ship's-wheel touch steering** — replace L/R buttons with a draggable wheel widget; camera-orbit coexistence solved by DOM layering | M4 / UX | P2 |
+| [#99](https://github.com/cakuki/tidewake/issues/99) | **Sail zones** (future) — invisible regions driving sailing music; later hostility/weather. Producer of #94's `zoneId` context | later / 🌊 | P3 |
+| [#100](https://github.com/cakuki/tidewake/issues/100) | **Game Designer: battle-modes research + owner brief** (arcade combat / loadouts from workshops / boarding→crew fight/captain duel; keep verbal duel, expand jabs). *owner-decision — 08:00 2026-06-29 Telegram brief; not yet an accepted build* | M6 | — |
+
+> **#69 per-town music** is now the per-town-themes slice of the unified sound system **#94** (folded in, not a separate build).
+> **Carve-outs from the 2026-06-28 GO:** iOS/native renderer stays parked (#56/#62/#63 unchanged); battle **scenario** waits for the #100 brief — only the battle **switch** infra (#95) proceeds now.
+> **Sequencing the owner set:** fix the open owner bugs first (#65 hull water, #66 mobile overlap), then build #95 → #94 → #98 → #97 → #96, with the loop's PM+TL confirming priorities.
+
+\* #76 ✅ delivered. All second-intake priorities are **proposed, pending loop PM + TL sign-off**.
 
 ---
 
