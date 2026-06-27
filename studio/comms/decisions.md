@@ -181,3 +181,17 @@ semver bookkeeping — and we must respect free GitHub Actions limits.
 files, deployed to GitHub Pages. No bundler/framework until a real pain demands one.
 **Why.** Fastest path to "always shippable," trivial local run, minimal CI, maximum openness —
 anyone can read and run the source directly.
+
+### 2026-06-27 — Owner decisions via Telegram: mobile GO + weather-as-optional + a toggles UI
+**Decision (routed from the owner channel).**
+- **#56 Mobile — GO now.** Owner: "1 now". The device spike (#62) is done; build the mobile slice
+  now via the PWA/WebView path (#63). Smallest always-working increment first.
+- **#58 Weather & day-night — YES, but OPTIONAL & toggle-off, sunny stays the default.** Owner: "2
+  sounds cool. As optional which can be toggled off." Build it behind a feature toggle; never undo
+  the sunny vibe.
+- **NEW — Early-phase feature-toggles UI.** Owner: "We will have these toggles in early phases so
+  build a ui for this." Build a lightweight in-game **settings/options panel** that hosts feature
+  toggles (weather/day-night the first inhabitant). Filed as a new issue.
+**Why.** Direct owner steering over the two-way Telegram channel; both pending questions answered.
+Mobile reach + atmospheric depth without sacrificing the signature sunny look, and a reusable home
+for optional toggles as the game grows.

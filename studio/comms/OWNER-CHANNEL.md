@@ -145,5 +145,4 @@ row once executed._
 
 | Asked (UTC) | Asker | Question | Awaiting |
 |-------------|-------|----------|----------|
-| 2026-06-27 14:46 | Orchestrator/PM | **#56 mobile** — ship the mobile build now or defer? | go / defer |
-| 2026-06-27 14:46 | Orchestrator/PM | **#58 weather/day-night** — gentle time-of-day keeping sunny default, or hold off? | gentle-tod / hold |
+| _(none — #56 & #58 answered 2026-06-27 14:52: mobile GO now; weather GO as optional toggle. See decisions.md.)_ | | | |

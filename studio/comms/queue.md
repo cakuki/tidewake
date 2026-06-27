@@ -20,51 +20,60 @@ sunny Caribbean look; 28 releases, 229 tests, perf gate live. Latest `v0.0.20260
 
 ---
 
+_Updated 2026-06-27 14:55: #56 & #58 owner-decisions ANSWERED via Telegram (mobile GO now; weather GO
+as an **optional toggle**, sunny stays default). #59 cannon combat SHIPPED (Loop 27, v…130215). New
+owner-steered work un-gated below._
+
 ## Top of queue (do in order)
 
-1. **[OWNER-DECISION] #56 — mobile support go/no-go.** Feasibility + Phase-0 device-spike (#62) are
-   done; the *build* needs the owner's go. **Ask, don't decide.** Surface with options (ship the
-   PWA/WebView wrapper #63 now vs. defer). — _why: owner-decision, can't auto-adopt; cheap to ask._
+1. **#63 — mobile build (PWA/WebView), smallest always-working increment.** Owner said **"now"**
+   (#56 GO). Device spike #62 done. Make the live build genuinely phone-playable: responsive
+   viewport/layout, touch controls (steer/throttle/dock/fire), installable PWA manifest. File
+   follow-ups for the rest. — _why: explicit owner "now"; widens reach; spike already de-risked it._
 
-2. **[OWNER-DECISION] #58 — weather & day-night.** Biggest charm-per-pixel depth, BUT the owner just
-   set a deliberate **sunny** vibe (#61). **Confirm scope before any work** — e.g. "gentle time-of-
-   day that keeps the sunny default" vs. full rain/storm/night. Do NOT undo the sunny look. — _why:
-   high charm, but risks reversing a fresh owner decision; ask first._
+2. **#73 — settings panel with feature toggles (early-phase options UI).** Owner: "build a ui for
+   [toggles]." A self-contained `src/ui/` panel (per #53) hosting feature toggles, persisted, defaults
+   keep the current look. — _why: owner-steered; the home #58 needs; reusable as the game grows._
 
-3. **#55 — art-asset sourcing strategy + budget (research).** The last open owner P2 that is *not* a
+3. **#58 — weather & day-night, OPTIONAL & toggle-off (sunny default).** Build it behind a toggle in
+   #73; never undo the sunny vibe. — _why: owner GO; biggest charm-depth, now safely optional._
+
+4. **#55 — art-asset sourcing strategy + budget (research).** The last open owner P2 that is *not* a
    decision. Research-only: CC0/glTF sources, licensing, cost-vs-effectiveness, a recommendation.
    Writes to backlog/docs; no game code. — _why: owner P2, unblocks #32 glTF hull and the art path._
 
-4. **Deep-learning research loop #2 (ritual, ~18 cycles overdue).** Fan out 9 role subagents (web
+5. **Deep-learning research loop #2 (ritual, ~19 cycles overdue).** Fan out role subagents (web
    research → 2–4 takeaways + 1 wildcard each → write to `agents/` + `memory/`, file backlog ideas).
-   Research-only, never touches `src/`. — _why: the creativity refill; loops 11–26 all mined loop
-   #1; the well is nearly dry. Run before more depth._
+   Research-only, never touches `src/`. — _why: the creativity refill; loops 11–27 all mined loop
+   #1; the well is nearly dry. Run soon, between build slices._
 
 ## Depth (a thin layer, gated by perf budget — prefer over breadth)
 
-5. **#59 — ship-vs-ship cannon combat.** A real gun-port option alongside the Insult Broadside duel,
-   so a fight is a genuine choice (talk them down OR open fire). Gives Infamy a teeth-y path. Design-
-   first. — _why: the single highest-leverage depth beat; makes combat a choice, not a gimmick._
-6. **#32 — CC0 low-poly glTF hull** (pairs with #55 research and #59's now-firing ship). — _why:
+- ~~**#59 — ship-vs-ship cannon combat.**~~ ✅ **SHIPPED Loop 27** (v0.0.20260627130215): "Open fire"
+  (G) choice alongside the Insult Broadside, seedable cannon resolution, Infamy reward. Depth
+  follow-up filed as **#72** (hull-damage visuals, multi-round tactics, fleeing, cannon audio).
+6. **#72 — cannon-combat depth follow-up** (hull visuals, multi-round, fleeing, audio). — _why: turns
+   the MVP exchange into a richer fight; sequence after the owner-steered mobile/toggles/weather run._
+7. **#32 — CC0 low-poly glTF hull** (pairs with #55 research and the now-firing ship). — _why:
    the biggest charm upgrade to the hero asset; clean ship seam already exists._
-7. **#40 — adaptive music tension layer** (Klezmer 'freygish' for combat/menace). — _why: deepens
+8. **#40 — adaptive music tension layer** (Klezmer 'freygish' for combat/menace). — _why: deepens
    the duel/cannon mood; asset-free; from the deep-learning backlog._
 
 ## Polish (cheap, charming, compounds shareability — natural between-depth fillers)
 
-8. **#19 — name the islands with flavour text on approach.** — _why: world gains character per
+9. **#19 — name the islands with flavour text on approach.** — _why: world gains character per
    capture; tiny._
-9. **#15 — comedic loading-tip line pool.** — _why: humour surface, near-zero cost._
-10. **#20 — smooth steering & input polish.** — _why: feel; every session benefits._
-11. **#21 — HUD coins placeholder + cleaner layout.** — _why: legibility; sets up future HUD work._
+10. **#15 — comedic loading-tip line pool.** — _why: humour surface, near-zero cost._
+11. **#20 — smooth steering & input polish.** — _why: feel; every session benefits._
+12. **#21 — HUD coins placeholder + cleaner layout.** — _why: legibility; sets up future HUD work._
 
 ## Enablers / tech debt (schedule, don't let them perpetually lose)
 
-12. **#37 — tolerance-based deterministic visual diff.** Open since cycle 10; turns the eyeball
+13. **#37 — tolerance-based deterministic visual diff.** Open since cycle 10; turns the eyeball
     gallery pass into a real automated gate. — _why: removes the last manual visual-QA step._
-13. **#38 — lightweight PR-validation CI gate** (tests + headless playtest, no deploy). — _why:
+14. **#38 — lightweight PR-validation CI gate** (tests + headless playtest, no deploy). — _why:
     catch breakage pre-merge, save Actions minutes._
-14. **#36 — fixed-timestep accumulator loop.** — _why: determinism unlocks record/replay golden-
+15. **#36 — fixed-timestep accumulator loop.** — _why: determinism unlocks record/replay golden-
     trace testing; foundational but not urgent._
 
 ---
