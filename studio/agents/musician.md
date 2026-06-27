@@ -78,3 +78,9 @@ world — study **new + classic**, then record 2–4 takeaways and **one wildcar
   (cartoon/"Mickey-mousing" scoring practice).
 - 2026-06-27 — **Mix to sit under**: music supports, SFX leads; leave headroom and duck
   (game-audio mix-hierarchy practice).
+- 2026-06-27 (Retro 2) — **Ship the first cue — a silent sea is a missing role**: loops 0-6
+  shipped zero music; the heart of the studio was dark. First activation (#27): one original
+  (or CC-licensed) seamless **sailing theme** through the existing `src/audio.js` master bus,
+  respecting the mute toggle, tiny file, attributed in `assets/`. Build it **adaptive-ready** —
+  one layer now, but document the transition/duck rules so port/combat/calm layers crossfade in
+  later (vertical layering). Charm-per-byte beats any visual slice this block.

@@ -6,6 +6,39 @@ architecture) are raised as `owner-decision` GitHub issues and recorded here onc
 
 ---
 
+### 2026-06-27 — Retro 2: creative roles drive every cycle (CREATIVE SPARK beat)
+**Decision.** Every slice — even "technical" ones — names a **creative driver** (Game Designer
+or Musician) and carries a 2-3 line **CREATIVE SPARK**: one authored charm/fun/feel beat
+(banter, comic event, music sting, game-feel touch). Added as a mandatory loop step in
+`docs/runbook/LOOP.md`; the cycle-runner reports the spark in its summary.
+**Why.** Loops 4-6 shipped competent engineering with our two designated creative roles **dark** —
+zero authored fun, zero music. That's a process bug: throughput was optimised at the cost of
+creative surprise. The Spark makes authored character a first-class output, not a garnish.
+
+### 2026-06-27 — Retro 2: give the verb a reward — port economy is next
+**Decision.** Next highest-leverage slice is a **simple port economy** (#26): coins +
+buy-low/sell-high cargo with per-port price spreads. Game Designer is the creative driver; pair
+it with **activating the Musician** for a first adaptive-ready sailing theme (#27). Filed an NPC
+ship (#28) as a P2 follow-on / parallel candidate.
+**Why.** We shipped the first verb (arrive at a named port) and persistence, but arriving still
+*pays nothing* — a door to an empty room. A coin economy converts "arrive" into "earn," gives a
+stateable goal ("get rich enough to win a town"), and is the spend-side prerequisite for combat,
+crew, and governance. Feel (music) and reward (economy) are the block's theme, not more polish.
+
+### 2026-06-27 — Retro 2: parallel batches are the default now `main.js` is modular
+**Decision.** With #24 done (`src/systems/` retired the wiring hotspot), the **default** unit of
+work is a small **parallel batch** on disjoint files, not a lone serial slice — unless a real
+dependency forces serialisation. Next block (#26 economy + #27 sailing theme) runs as one batch.
+**Why.** Modularisation's whole point was to unlock parallel dev; loops 4-6 kept shipping serial
+slices and left that payoff uncollected. Default-to-parallel proves and uses the investment.
+
+### 2026-06-27 — Retro 2: the per-release gallery diff is now an enforced gate
+**Decision.** For any **visible** change, archiving a `studio/qa/gallery/<version-tag>.png` shot
+and diffing it against the previous release is a Definition-of-Done item the **cycle-runner fails
+on** if missing — no shot, no release. Updated `docs/runbook/LOOP.md` and `studio/agents/qa.md`.
+**Why.** Retro 1 made it a "habit"; loops 4-6 skipped it and the gallery stayed empty. An
+aspirational habit decays — "0 escaped bugs" without a visual pass is luck, not a gate. Teeth.
+
 ### 2026-06-27 — Retro 1: modularise `main.js` into `src/systems/`
 **Decision.** Refactor `main.js` from a growing wiring file into a thin bootstrap plus a small
 `src/systems/` registry where each feature self-registers (`init`/`update`). Reversible, no new

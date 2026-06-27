@@ -70,3 +70,12 @@ buildable wildcards become backlog issues.
   (Valve / Schell *The Art of Game Design* lenses).
 - 2026-06-27 — **Meaningful choices, not grind**: progression should branch player identity
   (pirate vs governor), not pad time (systems-design / player-agency practice).
+- 2026-06-27 (Retro 2) — **A verb needs a reward, or it's a door to an empty room**: loops 4-6
+  shipped "arrive at a port" with no payoff. The first *interesting decision* (Sid Meier) is a
+  port economy — buy-low/sell-high cargo with per-port price spreads so a route has a profit and
+  the player can finally state a goal ("get rich enough to win a town"). Drive #26: own the price
+  spread + hold size so a first profitable loop is discoverable in <2 min.
+- 2026-06-27 (Retro 2) — **I am a creative driver of every cycle, not an on-call**: the loop now
+  has a mandatory CREATIVE SPARK beat. Three loops shipped with me dark; that was a process bug.
+  Each slice — even "technical" ones — gets one authored charm/fun/feel beat from me or the
+  Musician (port personalities, harbourmaster banter, a comic price event, a game-feel touch).

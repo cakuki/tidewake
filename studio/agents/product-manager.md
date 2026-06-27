@@ -73,3 +73,9 @@ game code; buildable wildcards become backlog issues.
   beautiful sailing and nothing to sail toward. The fantasy only becomes a *game* once there's a
   verb — dock at a port (#12), trade, then save (#11). Prioritise the smallest verb that lets a
   fresh player state a goal, ahead of more visual polish (core-loop-first product discipline).
+- 2026-06-27 (Retro 2) — **A verb without a reward is half a feature**: loops 4-6 shipped
+  "arrive at a port" and persistence, but arriving still pays nothing. The highest-leverage next
+  slice is the **port economy** (#26 — coins + buy-low/sell-high cargo): it converts "arrive"
+  into "earn," gives a stateable goal, and is the spend-side prerequisite for combat/crew/
+  governance. Sequence reward-for-the-verb immediately after the verb, before new verbs. Pair it
+  with **activating the Musician** (#27) so the next block advances *feel*, not just mechanics.

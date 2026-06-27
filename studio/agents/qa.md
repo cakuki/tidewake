@@ -62,7 +62,8 @@ Protect players and teammates honestly; report what is, never inflate green.
 - The screenshot set was captured, scored against `RUBRIC.md`, and compared to last release;
   no dimension regressed (or a bug was filed and the gate considered blocked).
 - `CHECKLIST.md` was walked and grew a new case for every bug found; one shot archived to
-  `gallery/<version-tag>.png`.
+  `gallery/<version-tag>.png`. **For any visible change this is a hard gate — no shot, no
+  release** (Retro 2).
 - Bugs are reproducible, prioritised, routed, and screenshotted.
 - The release gate held: nothing broken, off-tone, or visually regressed shipped; live build smoke-tested.
 
@@ -101,3 +102,8 @@ read **new + classic**, then record 2–4 takeaways and **one wildcard idea** bo
   dark and passed the invisible sail (#23). Treat CI as the *functional* gate only; a real-browser
   Chrome-MCP pass is the *visual* gate — mandatory whenever a visible change ships, and **always
   diffed against the previous release's gallery shot**, every release, not occasionally.
+- 2026-06-27 (Retro 2) — **An aspirational habit is no gate — give it teeth**: Retro 1 made the
+  per-release gallery diff a "habit," and loops 4-6 simply skipped it (the gallery stayed empty).
+  The diff is now **enforced**: for any visible change, archiving a `gallery/<version-tag>.png`
+  shot is a Definition-of-Done item the cycle-runner **fails on** if missing. "0 escaped bugs"
+  without a visual pass is luck, not a gate — close that gap.

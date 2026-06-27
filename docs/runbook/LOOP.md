@@ -28,10 +28,16 @@ the Project Manager edits it after each retro (see Changelog at the bottom).
    one increment). Update `studio/comms/board.md`: move chosen cards into **To do** with
    issue numbers and owners.
 
-2. **DESIGN** — *Game Designer / Graphic Designer (as needed).*
+2. **DESIGN + CREATIVE SPARK** — *Game Designer / Musician / Graphic Designer.*
    Add design/art detail to the chosen slice(s): crisp **acceptance criteria**, references,
-   humour/tone notes, and any **assets** (models, textures, palettes) into `assets/`. Skip
-   if the slice is purely technical.
+   humour/tone notes, and any **assets** (models, textures, palettes) into `assets/`.
+   **Every slice — even a "technical" one — names a creative driver (Game Designer or
+   Musician) and a 2-3 line CREATIVE SPARK:** one charm/fun/feel beat the slice will carry
+   (a line of harbourmaster banter, a comic price event, a music sting, a juicy bit of
+   game-feel). This beat is **not optional and not skipped as "just technical"** — Retro 2
+   found we shipped competent engineering with the two creative roles dark; the Spark exists
+   so authored character rides along with mechanics. Cut it only if a creative driver
+   explicitly says this slice carries none (rare).
 
 3. **TECH PLAN** — *Tech Lead.*
    For each slice write a short technical plan: **approach**, **files to touch**, **test
@@ -52,6 +58,10 @@ the Project Manager edits it after each retro (see Changelog at the bottom).
    mandatory, not optional, whenever a visible change shipped. **Every release**, archive one
    shot to `studio/qa/gallery/<version-tag>.png` and diff it against the previous release's shot;
    any regressed dimension → file a bug and consider blocking the gate (Retro 1).
+   **Enforced (Retro 2):** for any slice with a **visible** change, the cycle-runner subagent
+   **fails the cycle** if no gallery shot was archived for this release — the per-release diff is
+   a gate, not an aspiration. (Retro 1 made it a habit; loops 4-6 skipped it and the gallery
+   stayed empty, so it now has teeth.)
 
 6. **RELEASE** — *Software Developer + QA.*
    Commit the game-code change to `main`. CI runs the headless playtest gate, stamps the
@@ -203,8 +213,11 @@ The main orchestrator must stay **lean** so the never-stopping loop survives con
 - **Only summaries return to main.** A subagent does the heavy reading/building and returns a
   concise summary; the orchestrator keeps that, not the transcript.
 - **Prefer one self-contained cycle-runner subagent per slice** that goes end-to-end:
-  **plan → build (TDD) → playtest → commit → verify CI green → QA → update the board**, and
-  returns a **5-line summary** (slice, release tag, CI status, QA verdict, follow-ups).
+  **plan → creative spark → build (TDD) → playtest (+ archive gallery shot) → commit → verify CI
+  green → QA → update the board**, and returns a **5-line summary** (slice, the creative
+  spark/charm beat, release tag, CI status, QA verdict, follow-ups). When the block is a
+  **parallel batch** (the default post-#24), the orchestrator fans out one runner per disjoint
+  slice and serialises the merges (`comms/PARALLEL.md`).
 - After each delegated unit, the orchestrator updates `loop-state.md` (counters incl.
   *Cycles since last deep-learning loop* and *Loops since last retro*) and moves on.
 
@@ -229,6 +242,16 @@ The main orchestrator must stay **lean** so the never-stopping loop survives con
 - **Sequence a playable gameplay verb early** — favour slices that turn the sailing toy into a
   game (a port to dock at, something to trade, a reason to go somewhere) over more polish, until
   the north-star fantasy is actually playable (Retro 1, Product Manager).
+- **Give the verb a reward, not just a destination** — once a verb exists (you can arrive
+  somewhere), the next move is to make arriving *pay* (economy, payoff, a stated goal) before
+  adding more verbs. Retro 2: "arrive" with no reward is a loading screen with a view.
+- **Every slice carries a CREATIVE SPARK and names a creative driver** — Game Designer or
+  Musician shapes one charm/fun/feel beat per slice; never ship a block with the creative roles
+  dark (Retro 2). Authored character is a first-class output, not a garnish.
+- **Default to a parallel batch now `main.js` is modular** — `src/systems/` retired the wiring
+  hotspot (#24), so the *default* unit of work is a small **parallel batch** on disjoint files,
+  not a lone serial slice — unless a real dependency forces serialisation. Prove the
+  modularisation by collecting its payoff (Retro 2).
 - **Keep CI actions current** — when GitHub annotates a deprecated runtime (e.g. Node-20), raise
   a `tech`/`chore` issue and bump the action versions promptly; a deprecation becomes a hard CI
   failure later and stalls the whole loop.
@@ -271,6 +294,14 @@ curl -sI https://cakuki.github.io/tidewake/
 
 ## Changelog
 
+- **2026-06-27 — Retro 2 (loops 4-6):** first verb + persistence shipped, but the two creative
+  roles (Game Designer, Musician) stayed dark and the gallery-diff habit lapsed. Changes: added a
+  mandatory **CREATIVE SPARK** beat to the loop (every slice names a creative driver + one
+  charm/fun/feel beat); made the **per-release gallery diff enforced** (cycle fails if a visible
+  change ships no shot); **default to parallel batches** now `main.js` is modular (#24);
+  guardrail "give the verb a reward, not just a destination." Next block activates the Musician
+  (#27) + Game Designer-driven port economy (#26), run as a parallel batch. See
+  `studio/retros/2026-06-27-retro-2.md`, `studio/agents/{game-designer,musician,qa}.md`.
 - **2026-06-27 — Owner process improvements:** retros now explicitly review **both the game and
   the studio's own process** (workflow/collaboration/tooling), aiming for more throughput **and**
   more creative results; **Tech Lead + Project Manager run a continuous-observation pass each
