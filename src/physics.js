@@ -147,6 +147,39 @@ export function dockingUpdate(prevDockedName, pos, ports, radius) {
   return { dockedName, dockedPort, arrived };
 }
 
+// ---- Arcade tangential slide (#76 a2) -------------------------------------------------
+// The polish that makes contact feel arcade-smooth: when the hull touches a coast or another
+// hull at an ANGLE, it should SLIDE along the surface and keep its way — losing only the part of
+// its velocity heading INTO the surface (the normal component), never the part skimming ALONG it
+// (the tangential component). A head-on hit (velocity straight into the surface) loses everything
+// and bleeds to a stop; a glancing graze (velocity nearly parallel) loses almost nothing and
+// glides on. This is the single shared rule both the island and the ship-vs-ship resolvers feed
+// their speed through, so coasts and hulls feel identical underfoot. Pure: numbers in, numbers
+// out. Research-backed feel (Game Developer): "a coast should graze and bleed speed / slide the
+// hull along the shoreline, not halt it dead."
+
+/**
+ * Strip the into-the-surface (normal) component from a velocity, keeping the tangential (sliding)
+ * component intact — the heart of the arcade slide. `(nx,nz)` is the OUTWARD contact normal (the
+ * direction the hull was pushed out of the surface), as the resolvers return it. Velocity heading
+ * AWAY from the surface (or exactly along it) is returned untouched — contact only resists motion
+ * pressing INTO the surface. A zero/degenerate normal (no real contact) is a no-op.
+ *
+ * @param {number} vx  velocity x
+ * @param {number} vz  velocity z
+ * @param {number} nx  outward contact normal x (need not be unit length)
+ * @param {number} nz  outward contact normal z
+ * @returns {{vx:number, vz:number}} velocity with the into-surface component removed
+ */
+export function slideVelocity(vx, vz, nx, nz) {
+  const nLen = Math.hypot(nx, nz);
+  if (nLen < 1e-9) return { vx, vz };          // no contact normal → nothing to slide against
+  const ux = nx / nLen, uz = nz / nLen;        // unit outward normal
+  const vn = vx * ux + vz * uz;                // velocity component along the OUTWARD normal
+  if (vn >= 0) return { vx, vz };              // moving away/along the surface → keep all of it
+  return { vx: vx - vn * ux, vz: vz - vn * uz }; // remove only the into-surface (negative) part
+}
+
 // ---- Arcade island collision (#76 a1 + beach fix) -------------------------------------
 // Islands stop you — but soft and arcade-y, never a brick wall. We collide the hull against
 // a simple SHAPE per island (its visible shoreline), not the jagged beach mesh: cheaper AND
@@ -190,10 +223,13 @@ export const ISLAND_HITBOX = 1.18;
  * coast. Runs a couple of relaxation passes so a hull wedged between two overlapping isles
  * settles instead of ping-ponging. A dead-centre hull is ejected along +x (no divide-by-zero).
  *
+ * Also returns the OUTWARD contact normal `(nx,nz)` — the unit direction the point was net-pushed
+ * out of the surface — so the caller can slide velocity along the coast (#76 a2). Zero when no hit.
+ *
  * @param {{x:number,z:number}} p  hull centre on the x/z sea plane
  * @param {Array<{x:number,z:number,r:number,sx?:number,sz?:number}>} circles  island footprints
  * @param {{shipR?:number, hitbox?:number}} [opts]
- * @returns {{x:number, z:number, hit:boolean}}
+ * @returns {{x:number, z:number, hit:boolean, nx:number, nz:number}}
  */
 export function resolveCircleCollision(p, circles, opts = {}) {
   const shipR = opts.shipR ?? SHIP_RADIUS;
@@ -218,7 +254,13 @@ export function resolveCircleCollision(p, circles, opts = {}) {
     }
     if (!moved) break;
   }
-  return { x, z, hit };
+  // Outward contact normal = the unit direction of the net push-out (#76 a2 slide).
+  let nx = 0, nz = 0;
+  if (hit) {
+    const pxv = x - p.x, pzv = z - p.z, pl = Math.hypot(pxv, pzv);
+    if (pl > 1e-9) { nx = pxv / pl; nz = pzv / pl; }
+  }
+  return { x, z, hit, nx, nz };
 }
 
 /**
@@ -231,8 +273,12 @@ export function resolveCircleCollision(p, circles, opts = {}) {
  * @param {{x:number,z:number}} prev  position before this step
  * @param {{x:number,z:number}} next  integrated position (pre-collision)
  * @param {Array<{x:number,z:number,r:number,sx?:number,sz?:number}>} circles
+ * Also returns the OUTWARD contact normal `(nx,nz)` of the LAST sub-step that touched — the
+ * surface the hull is pressing against at the end of the step — so the caller can slide velocity
+ * along it (#76 a2). Zero when nothing was hit.
+ *
  * @param {{shipR?:number, hitbox?:number, maxStep?:number}} [opts]
- * @returns {{x:number, z:number, hit:boolean}}
+ * @returns {{x:number, z:number, hit:boolean, nx:number, nz:number}}
  */
 export function sweepIslandCollision(prev, next, circles, opts = {}) {
   const shipR = opts.shipR ?? SHIP_RADIUS;
@@ -248,14 +294,14 @@ export function sweepIslandCollision(prev, next, circles, opts = {}) {
   const dist = Math.hypot(dx, dz);
   const steps = Number.isFinite(maxStep) ? Math.max(1, Math.ceil(dist / maxStep)) : 1;
   const stepX = dx / steps, stepZ = dz / steps;
-  let x = prev.x, z = prev.z, hit = false;
+  let x = prev.x, z = prev.z, hit = false, nx = 0, nz = 0;
   for (let i = 0; i < steps; i++) {
     x += stepX; z += stepZ;
     const r = resolveCircleCollision({ x, z }, circles, { shipR, hitbox });
     x = r.x; z = r.z;
-    if (r.hit) hit = true;
+    if (r.hit) { hit = true; nx = r.nx; nz = r.nz; } // keep the LAST contact's outward normal
   }
-  return { x, z, hit };
+  return { x, z, hit, nx, nz };
 }
 
 // ---- Arcade ship-vs-ship collision (#76 b) --------------------------------------------
@@ -297,11 +343,13 @@ export function shipCircles(npcs, r = NPC_RADIUS) {
  * `sweepIslandCollision` with a `hitbox` of 1, because an NPC circle's `r` already IS its
  * forgiving radius (no shoreline inflation): the solid boundary is exactly `r + shipR`. The
  * sweep's sub-stepping still forbids a fast charge tunnelling clean through a smaller vessel.
+ * Returns the same shape as `sweepIslandCollision`, including the outward contact normal
+ * `(nx,nz)` so the player's velocity slides along the other hull (#76 a2).
  * @param {{x:number,z:number}} prev  position before this step
  * @param {{x:number,z:number}} next  integrated position (pre-collision)
  * @param {Array<{x:number,z:number,r:number}>} ships  other vessels' circles (shipCircles())
  * @param {{shipR?:number, maxStep?:number}} [opts]
- * @returns {{x:number, z:number, hit:boolean}}
+ * @returns {{x:number, z:number, hit:boolean, nx:number, nz:number}}
  */
 export function sweepShipCollision(prev, next, ships, opts = {}) {
   return sweepIslandCollision(prev, next, ships, { hitbox: 1, ...opts });

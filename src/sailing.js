@@ -3,7 +3,7 @@
 // the hull on the live swell with bob/roll, and follows with the camera. This is the
 // arcade-sailing heart that used to live inline in main.js's update().
 import * as THREE from 'three';
-import { targetSpeed, approach, steerRate, sweepIslandCollision, sweepShipCollision, shipCircles, settledTargetSpeed, SETTLE_RATE } from './physics.js';
+import { targetSpeed, approach, steerRate, sweepIslandCollision, sweepShipCollision, shipCircles, slideVelocity, settledTargetSpeed, SETTLE_RATE } from './physics.js';
 
 export const MAX_SPEED = 55;
 
@@ -15,6 +15,16 @@ const SCRAPES = [
   'Run aground! Somewhere below, a barrel of rum tips over. Tragedy.',
   'The keel grinds the shallows. "That\'ll buff right out," lies the carpenter.',
   'A crunch of coral. The cook drops the stew. Morale: damp.',
+];
+
+// CREATIVE SPARK (#76 a2): a GLANCING graze along the coast is no groan — the hull skims the
+// shallows and slips on past, keeping its way. A lighter beat than the head-on SCRAPES, so the
+// tone tracks the feel: angled contact glides, it doesn't stop you dead. Throttled + rotated.
+const SLIPS = [
+  'Scrape… and you slip past — the coast lets you off with a warning.',
+  'The keel grazes the shallows; you skim on by, barely losing way.',
+  'A whisper of sand along the hull, then open water again. Smooth, captain.',
+  'You shave the shoreline and slide clear — the lookout exhales.',
 ];
 
 // CREATIVE SPARK (#76 b): graze another captain's hull and the crew hollers across the water —
@@ -133,20 +143,26 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
       const r = sweepIslandCollision({ x: px0, z: pz0 }, { x: state.pos.x, z: state.pos.z }, islands);
       if (r.hit) {
         state.pos.x = r.x; state.pos.z = r.z;
-        // Bleed speed to the GROUND speed we actually made this step: a head-on run-aground
-        // glides to a stop (achieved ≈ 0), a glancing graze keeps its tangential way on. The
-        // throttle/wind easing (approach) does the rest, so it's a soft scrape, not a wall.
-        if (dt > 1e-6) {
-          const achieved = Math.hypot(state.pos.x - px0, state.pos.z - pz0) / dt;
-          if (achieved < state.speed) {
-            // A genuinely HARD grounding (charging in, brought near to a halt) earns a quip.
-            if (typeof onRunAground === 'function' && state.speed > 12 && achieved < state.speed * 0.35 && (t - lastScrapeT) > 5) {
-              lastScrapeT = t;
-              onRunAground(SCRAPES[Math.floor((Math.abs(t * 7.3)) % SCRAPES.length)]);
-            }
-            state.speed = achieved;
+        // #76 a2 — tangential slide: keep the velocity skimming ALONG the coast, lose only the
+        // part pressing INTO it. A head-on charge (velocity straight into the surface) bleeds to a
+        // stop; a glancing graze keeps its way on and glides. One shared rule (slideVelocity +
+        // the resolver's contact normal) drives both the coast and the ship-vs-ship slide.
+        const prevSpeed = state.speed;
+        const slid = slideVelocity(Math.sin(state.heading) * prevSpeed, Math.cos(state.heading) * prevSpeed, r.nx, r.nz);
+        const newSpeed = Math.hypot(slid.vx, slid.vz);
+        // Tone tracks feel: a HARD run-aground groans (SCRAPES); a glancing graze that keeps most
+        // of its way slips past with a lighter line (SLIPS). Throttled so neither ever spams.
+        if (typeof onRunAground === 'function' && prevSpeed > 12 && (t - lastScrapeT) > 5) {
+          const kept = newSpeed / prevSpeed; // 0 = dead-stop, 1 = clean glide
+          if (kept < 0.35) {
+            lastScrapeT = t;
+            onRunAground(SCRAPES[Math.floor((Math.abs(t * 7.3)) % SCRAPES.length)]);
+          } else if (kept < 0.85 && newSpeed > 6) {
+            lastScrapeT = t;
+            onRunAground(SLIPS[Math.floor((Math.abs(t * 6.1)) % SLIPS.length)]);
           }
         }
+        state.speed = newSpeed;
       }
     }
 
@@ -162,16 +178,16 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
         const rs = sweepShipCollision({ x: px0, z: pz0 }, { x: sx, z: sz }, ships);
         if (rs.hit) {
           state.pos.x = rs.x; state.pos.z = rs.z;
-          if (dt > 1e-6) {
-            const achieved = Math.hypot(state.pos.x - px0, state.pos.z - pz0) / dt;
-            if (achieved < state.speed) {
-              if (typeof onBump === 'function' && state.speed > 12 && achieved < state.speed * 0.5 && (t - lastBumpT) > 5) {
-                lastBumpT = t;
-                onBump(BUMPS[Math.floor((Math.abs(t * 5.1)) % BUMPS.length)]);
-              }
-              state.speed = achieved;
-            }
+          // #76 a2 — the SAME tangential slide the coast uses: a head-on shoulder bleeds speed (a
+          // soft pile-up), a glancing bump slides along the other hull and keeps its way on.
+          const prevSpeed = state.speed;
+          const slid = slideVelocity(Math.sin(state.heading) * prevSpeed, Math.cos(state.heading) * prevSpeed, rs.nx, rs.nz);
+          const newSpeed = Math.hypot(slid.vx, slid.vz);
+          if (typeof onBump === 'function' && prevSpeed > 12 && newSpeed < prevSpeed * 0.5 && (t - lastBumpT) > 5) {
+            lastBumpT = t;
+            onBump(BUMPS[Math.floor((Math.abs(t * 5.1)) % BUMPS.length)]);
           }
+          state.speed = newSpeed;
         }
       }
     }
