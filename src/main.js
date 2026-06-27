@@ -3,6 +3,7 @@ import { createOcean } from './ocean.js';
 import { createShip } from './ship.js';
 import { createWorld } from './world.js';
 import { createWake } from './wake.js';
+import { createNpcs } from './npc.js';
 import { createPorts } from './ports.js';
 import { createAudio } from './audio.js';
 import { createMusic } from './music.js';
@@ -45,6 +46,8 @@ const wake = createWake(ocean);
 scene.add(wake.points);
 const ports = createPorts(world);
 scene.add(ports.group);
+const npcs = createNpcs({ ocean, world, count: 3 });
+scene.add(npcs.group);
 
 // Game systems
 const input = createInput(renderer.domElement);
@@ -89,6 +92,7 @@ function update(dt, t) {
   ocean.update(t, camera.position);
   ports.update(state, hud.showArrival, t);     // arrival detection (fires once) + buoy bob
   wake.update(dt, state, t);                   // bow wake + trailing foam
+  npcs.update(dt, t);                          // wandering AI vessels (advances under step())
   hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
   audio.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
   music.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
@@ -118,6 +122,7 @@ window.__tidewake = {
   ready: false,
   get state() { return { heading: state.heading, speed: state.speed, throttle: state.throttle, pos: state.pos.toArray(), port: state.port ?? null }; },
   get ports() { return ports.ports; },
+  get npcs() { return npcs.snapshot(); },
   get docked() { return ports.docked; },
   press(k) { input.keys.add(k); },
   release(k) { input.keys.delete(k); },

@@ -24,12 +24,16 @@ export function createSailing({ ship, ocean, camera, input }) {
     state.speed = saved.speed;
     state.throttle = saved.throttle;
     state.pos.set(saved.pos[0], saved.pos[1], saved.pos[2]);
+    // Economy (persisted since save v2) — apply if present; initEconomy fills any gaps.
+    if (typeof saved.coins === 'number') state.coins = saved.coins;
+    if (saved.cargo && typeof saved.cargo === 'object') state.cargo = { ...saved.cargo };
   }
 
-  // Respawn at the origin, dead in the water.
+  // Respawn at the origin, dead in the water. Clear economy so initEconomy re-seeds defaults.
   function reset() {
     state.heading = 0; state.speed = 0; state.throttle = 0;
     state.pos.set(0, 0, 0);
+    delete state.coins; delete state.cargo;
   }
 
   function step(dt, t) {

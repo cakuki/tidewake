@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { serialize, deserialize, SAVE_VERSION } from '../../src/save.js';
+import { GOODS, HOLD_CAP, START_COINS } from '../../src/economy.js';
 
 // A representative "live" state shape, mirroring main.js's `state` but with the
 // THREE.Vector3 reduced to its array form (the renderer-free contract).
@@ -94,4 +95,81 @@ test('deserialize rejects absurd / non-finite positions defensively', () => {
   const good = JSON.parse(serialize(sampleState()));
   // a position far beyond any sane world bound is treated as corrupt
   assert.equal(deserialize(JSON.stringify({ ...good, pos: [1e30, 0, 0] })), null);
+});
+
+// ---- Economy persistence (coins + cargo) ----
+
+// A live state that also carries the economy fields from economy.js.
+function economyState() {
+  return {
+    heading: 1, speed: 5, throttle: 0.4, pos: [10, 0, -5],
+    coins: 250, cargo: { rum: 3, spice: 2 },
+  };
+}
+
+test('serialize → deserialize round-trips coins + cargo', () => {
+  const s = economyState();
+  const restored = deserialize(serialize(s));
+  assert.equal(restored.coins, 250);
+  assert.deepEqual(restored.cargo, { rum: 3, spice: 2 });
+});
+
+test('serialize defaults a missing economy to a fresh purse + empty hold', () => {
+  // sampleState() predates the economy fields — restored save should still be valid.
+  const restored = deserialize(serialize(sampleState()));
+  assert.ok(restored);
+  assert.equal(restored.coins, START_COINS);
+  assert.deepEqual(restored.cargo, {});
+});
+
+test('deserialize rejects negative or non-finite coins', () => {
+  const good = JSON.parse(serialize(economyState()));
+  assert.equal(deserialize(JSON.stringify({ ...good, coins: -1 })), null);
+  assert.equal(deserialize(JSON.stringify({ ...good, coins: 'x' })), null);
+  assert.equal(deserialize(JSON.stringify({ ...good, coins: null })), null);
+});
+
+test('deserialize rejects cargo with unknown-good keys', () => {
+  const good = JSON.parse(serialize(economyState()));
+  assert.equal(deserialize(JSON.stringify({ ...good, cargo: { kraken: 1 } })), null);
+});
+
+test('deserialize rejects cargo with negative / non-finite quantities', () => {
+  const good = JSON.parse(serialize(economyState()));
+  assert.equal(deserialize(JSON.stringify({ ...good, cargo: { rum: -2 } })), null);
+  assert.equal(deserialize(JSON.stringify({ ...good, cargo: { rum: 'lots' } })), null);
+});
+
+test('deserialize rejects cargo over hold capacity', () => {
+  const good = JSON.parse(serialize(economyState()));
+  const over = { [GOODS[0].id]: HOLD_CAP, [GOODS[1].id]: 1 }; // HOLD_CAP + 1 total
+  assert.equal(deserialize(JSON.stringify({ ...good, cargo: over })), null);
+});
+
+test('deserialize rejects a non-object cargo (array / null)', () => {
+  const good = JSON.parse(serialize(economyState()));
+  assert.equal(deserialize(JSON.stringify({ ...good, cargo: [1, 2] })), null);
+  assert.equal(deserialize(JSON.stringify({ ...good, cargo: null })), null);
+});
+
+test('deserialize rejects a current save missing economy fields', () => {
+  const good = JSON.parse(serialize(economyState()));
+  const noCoins = { ...good }; delete noCoins.coins;
+  assert.equal(deserialize(JSON.stringify(noCoins)), null);
+  const noCargo = { ...good }; delete noCargo.cargo;
+  assert.equal(deserialize(JSON.stringify(noCargo)), null);
+});
+
+test('deserialize rejects an old pre-economy (v1) save', () => {
+  const v1 = { v: 1, heading: 1, speed: 5, throttle: 0.4, pos: [10, 0, -5] };
+  assert.equal(deserialize(JSON.stringify(v1)), null);
+});
+
+test('deserialize accepts good economy data right up to hold capacity', () => {
+  const good = JSON.parse(serialize(economyState()));
+  const full = { [GOODS[0].id]: HOLD_CAP }; // exactly at cap
+  const restored = deserialize(JSON.stringify({ ...good, cargo: full }));
+  assert.ok(restored);
+  assert.equal(restored.cargo[GOODS[0].id], HOLD_CAP);
+  assert.equal(restored.coins, good.coins);
 });

@@ -3,13 +3,24 @@
 // renderer (main.js) owns the actual localStorage I/O (guarded in try/catch) and
 // just leans on these functions for the shape, versioning, and sanity-checks.
 //
-// Contract: a "save" is a tiny JSON object { v, heading, speed, throttle, pos }
-// where pos is a [x, y, z] array. Anything that doesn't match — wrong version,
-// missing/partial fields, non-finite numbers, absurd positions — deserialises to
-// `null` so the caller can simply start a fresh voyage. Never throws.
+// Contract: a "save" is a tiny JSON object
+//   { v, heading, speed, throttle, pos, coins, cargo }
+// where pos is a [x, y, z] array, coins is a finite number >= 0, and cargo is a
+// {goodId: qty} map over known goods (total within HOLD_CAP). Anything that doesn't
+// match — wrong version, missing/partial fields, non-finite numbers, absurd
+// positions, unknown/over-capacity cargo — deserialises to `null` so the caller can
+// simply start a fresh voyage. Never throws.
+
+import { GOODS, HOLD_CAP, START_COINS } from './economy.js';
 
 export const SAVE_KEY = 'tidewake.save.v1';
-export const SAVE_VERSION = 1;
+// v2 added the economy fields (coins + cargo). Pre-economy v1 saves fail the version
+// gate and fall back to a fresh voyage rather than crashing.
+export const SAVE_VERSION = 2;
+
+// The set of canonical cargo keys we'll accept back from storage. Anything else is
+// treated as corrupt — cargo keys are a single source of truth in economy.js.
+const KNOWN_GOOD_IDS = new Set(GOODS.map((g) => g.id));
 
 // Defensive world bound: positions beyond this are treated as corrupt rather than
 // teleporting the player into the void. The sea is large but not unbounded.
@@ -23,6 +34,19 @@ function clamp(n, lo, hi) {
   return Math.min(hi, Math.max(lo, n));
 }
 
+// Produce a clean cargo map for storage: only known goods with a positive, finite
+// quantity. Drops unknown keys and emptied (zero) holds. Never mutates the input.
+function cleanCargoForSave(cargo) {
+  const out = {};
+  if (cargo && typeof cargo === 'object' && !Array.isArray(cargo)) {
+    for (const id of KNOWN_GOOD_IDS) {
+      const q = cargo[id];
+      if (isFiniteNumber(q) && q > 0) out[id] = q;
+    }
+  }
+  return out;
+}
+
 /**
  * Serialise a live ship state into a versioned JSON string ready for storage.
  * Accepts `pos` as either a [x,y,z] array or a THREE.Vector3-like object exposing
@@ -34,21 +58,28 @@ export function serialize(state) {
   const pos = Array.isArray(state.pos)
     ? state.pos
     : (state.pos && typeof state.pos.toArray === 'function' ? state.pos.toArray() : [0, 0, 0]);
+  // Economy: persist the purse + hold. A live state always carries these (economy.js
+  // initialises them), but default defensively so a pre-economy caller still round-trips.
+  const coins = isFiniteNumber(state.coins) && state.coins >= 0 ? state.coins : START_COINS;
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
     speed: state.speed,
     throttle: state.throttle,
     pos: [pos[0], pos[1], pos[2]],
+    coins,
+    cargo: cleanCargoForSave(state.cargo),
   });
 }
 
 /**
  * Parse + validate a stored save string. Returns a clean, sanitised state object
- * `{ heading, speed, throttle, pos:[x,y,z] }` on success, or `null` for anything
- * missing, corrupt, or from an incompatible version. Never throws.
+ * `{ heading, speed, throttle, pos:[x,y,z], coins, cargo }` on success, or `null` for
+ * anything missing, corrupt, or from an incompatible version. A success always carries
+ * valid economy fields (coins finite >= 0; cargo a known-goods map within HOLD_CAP),
+ * so a restored voyage never lands in an inconsistent economy. Never throws.
  * @param {unknown} raw  the string read back from storage (or null/undefined)
- * @returns {{heading:number, speed:number, throttle:number, pos:number[]} | null}
+ * @returns {{heading:number, speed:number, throttle:number, pos:number[], coins:number, cargo:object} | null}
  */
 export function deserialize(raw) {
   if (typeof raw !== 'string' || raw.length === 0) return null;
@@ -72,10 +103,30 @@ export function deserialize(raw) {
     if (!isFiniteNumber(c) || Math.abs(c) > MAX_COORD) return null;
   }
 
+  // Economy: coins must be a finite, non-negative purse.
+  const { coins, cargo } = obj;
+  if (!isFiniteNumber(coins) || coins < 0) return null;
+
+  // Cargo must be a plain object whose keys are known goods and whose quantities are
+  // finite, non-negative, and total within the hold's capacity.
+  if (!cargo || typeof cargo !== 'object' || Array.isArray(cargo)) return null;
+  const cleanCargo = {};
+  let held = 0;
+  for (const key of Object.keys(cargo)) {
+    if (!KNOWN_GOOD_IDS.has(key)) return null;
+    const q = cargo[key];
+    if (!isFiniteNumber(q) || q < 0) return null;
+    held += q;
+    if (q > 0) cleanCargo[key] = q;
+  }
+  if (held > HOLD_CAP) return null;
+
   return {
     heading,
     speed: Math.max(0, speed),
     throttle: clamp(throttle, 0, 1),
     pos: [pos[0], pos[1], pos[2]],
+    coins,
+    cargo: cleanCargo,
   };
 }
