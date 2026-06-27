@@ -29,6 +29,10 @@ export function createHud() {
   const $legendBadge = document.getElementById('legend-badge');
   document.getElementById('version').textContent = VERSION;
 
+  // Touch mode (#17): input.js sets `body.touch` before the HUD is built. When set, the
+  // trade rows and duel jabs become tappable so trading/dueling work without a keyboard.
+  const TOUCH = typeof document !== 'undefined' && !!document.body && document.body.classList.contains('touch');
+
   let lastPosLabel = '', lastPosBand = '';
   let toastTimer = null;
   // Captain's Ledger: only re-touch the DOM when a pole changes, and flash on rank-up.
@@ -80,6 +84,27 @@ export function createHud() {
     });
   }
 
+  // Tappable trade (#17, touch only): tap a row to buy one unit, tap its sell price to
+  // sell one. Delegated on the panel so re-renders don't need re-binding. Desktop is
+  // untouched — the listener is never attached unless we're in touch mode.
+  if (TOUCH && $trade) {
+    $trade.addEventListener('click', (e) => {
+      const tr = e.target.closest('.trow');
+      if (!tr || !tr.dataset.good) return;
+      doTrade(tr.dataset.good, !!e.target.closest('.ts'));
+    });
+  }
+  // Tappable duel jabs (#17, touch only): tap an option to fling it. We dispatch the
+  // same digit keydown the keyboard would, so main.js's duel handler runs unchanged.
+  if (TOUCH && $duel) {
+    $duel.addEventListener('click', (e) => {
+      const li = e.target.closest('.duel-opts li');
+      if (!li || li.dataset.jab === undefined) return;
+      const n = Number(li.dataset.jab) + 1;
+      dispatchEvent(new KeyboardEvent('keydown', { key: String(n), code: 'Digit' + n, bubbles: true }));
+    });
+  }
+
   // Render the docked port's market board into #trade (or hide it at sea).
   function renderTrade(state) {
     if (!$trade) return;
@@ -107,7 +132,7 @@ export function createHud() {
     const rows = market(port, renown).map((row, i) => {
       const held = (state.cargo && state.cargo[row.id]) || 0;
       const spec = info.speciality === row.id ? ' spec' : (info.craving === row.id ? ' crave' : '');
-      return `<tr class="trow${spec}"><td class="tk">${i + 1}</td><td class="tg">${row.icon} ${row.name}</td>`
+      return `<tr class="trow${spec}" data-good="${row.id}"><td class="tk">${i + 1}</td><td class="tg">${row.icon} ${row.name}</td>`
         + `<td class="tb">${row.buy}</td><td class="ts">${row.sell}</td><td class="th">${held || ''}</td></tr>`;
     }).join('');
 
@@ -117,7 +142,9 @@ export function createHud() {
       + `<div class="trade-cry">${cryer}</div>`
       + `<table class="trade-t"><thead><tr><th></th><th>good</th><th>buy</th><th>sell</th><th>hold</th></tr></thead><tbody>${rows}</tbody></table>`
       + `<div class="trade-msg">${flash && Date.now() < flashUntil ? flash : '&nbsp;'}</div>`
-      + `<div class="trade-help">Press <b>1–5</b> to buy · <b>Shift+1–5</b> to sell · sail off to leave</div>`;
+      + `<div class="trade-help">${TOUCH
+          ? 'Tap a row to <b>buy</b> · tap its <b>sell</b> price to sell · sail off to leave'
+          : 'Press <b>1–5</b> to buy · <b>Shift+1–5</b> to sell · sail off to leave'}</div>`;
     $trade.classList.add('show');
   }
 
@@ -190,7 +217,7 @@ export function createHud() {
     const sig = `${duel.enemyName}|${pPct}|${ePct}|${duel.enemyLine}|${duel.options.map((o) => o.id).join(',')}`;
     if (sig === lastDuelSig && $duel.classList.contains('show')) return;
     lastDuelSig = sig;
-    const opts = duel.options.map((o, i) => `<li><b>${i + 1}</b>${o.line}</li>`).join('');
+    const opts = duel.options.map((o, i) => `<li data-jab="${i}"><b>${i + 1}</b>${o.line}</li>`).join('');
     $duel.innerHTML =
       `<div class="duel-h">⚔ Insult Broadside — ${duel.enemyName}</div>`
       + '<div class="duel-bars">'
@@ -199,7 +226,7 @@ export function createHud() {
       + '</div>'
       + `<div class="duel-line">“${duel.enemyLine}”</div>`
       + `<ul class="duel-opts">${opts}</ul>`
-      + '<div class="duel-help">Press <b>1–4</b> to fling a jab · a sharp one cracks their nerve, a poor one shakes yours</div>';
+      + `<div class="duel-help">${TOUCH ? 'Tap' : 'Press <b>1–4</b>'} to fling a jab · a sharp one cracks their nerve, a poor one shakes yours</div>`;
     $duel.classList.add('show');
   }
 

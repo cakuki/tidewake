@@ -117,6 +117,18 @@ read **new + classic**, then record 2–4 takeaways and **one wildcard idea** bo
   Wait real time (~600 ms) or await `transitionend` before asserting opacity-based visibility.
   Loops 7-8 filed #30 as a "bug" that was a transition-timing artifact — a false positive that
   cost a cycle. Confirm a defect survives a real-time settle before filing it.
+- 2026-06-27 (Retro 4) — **The visual pass is MINE inside the cycle-runner — not the orchestrator's
+  manual chore**: capturing the Chrome-MCP gallery shot, scoring it on the rubric, and diffing it
+  against the previous release happen **in my QA step inside the cycle-runner subagent**, and I
+  return the visual verdict in the 5-line summary. The orchestrator must not burn its scarce
+  context taking screenshots each cycle — that's the heavy work the loop delegates. Owning the
+  visual pass end-to-end is the whole point of the gate having teeth.
+- 2026-06-27 (Retro 4) — **Stop deferring the deterministic diff — build #37**: the gallery diff is
+  still eyeball-only and #37 has lost to feature slices since cycle 10. A threshold-based diff (pin
+  a fixed viewport + `--force-device-scale-factor=1`, seed RNG/time, capture a deterministic
+  harness pose, compare with `maxDiffPixelRatio ≈ 0.01–0.02`) turns my human pass into a real
+  automated gate that can't be skipped under time pressure. I push for it as a near-term slice, not
+  "someday."
 
 ## Research log
 

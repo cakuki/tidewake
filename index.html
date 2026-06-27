@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Tidewake — an experimental age-of-sail pirate adventure</title>
   <meta name="description" content="Tidewake: an experimental, open 3D age-of-sail pirate adventure. Sail, explore, trade, and seek your fortune." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22><text y=%2214%22 font-size=%2214%22>%E2%9A%93</text></svg>" />
@@ -167,6 +167,47 @@
       font-size: 13px; letter-spacing: .3em; transition: opacity .6s ease;
     }
     #boot.hidden { opacity: 0; pointer-events: none; }
+
+    /* ---- Touch / mobile controls (#17) ----------------------------------- */
+    /* No browser scroll/zoom on the play surface; the controls own their gestures. */
+    #app canvas { touch-action: none; }
+    #touch-controls { display: none; }
+    body.touch #touch-controls { display: block; }
+    #touch-controls .tc-cluster {
+      position: fixed; z-index: 13; display: flex; gap: 12px; pointer-events: none;
+      bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+    }
+    #touch-controls .tc-throttle { right: 18px; flex-direction: column; }
+    #touch-controls .tc-steer { left: 18px; }
+    #touch-controls .tc-action { left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+    #touch-controls .tc-btn {
+      pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none;
+      width: 62px; height: 62px; display: grid; place-items: center; font-size: 23px; line-height: 1;
+      color: #cfe8ff; background: rgba(7, 22, 38, .42); border: 1px solid rgba(120,180,230,.4);
+      border-radius: 14px; backdrop-filter: blur(3px); cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,0,0,.4); -webkit-tap-highlight-color: transparent;
+      transition: background .1s ease, border-color .1s ease, transform .1s ease;
+    }
+    #touch-controls .tc-btn.on { background: rgba(60,120,180,.62); border-color: rgba(180,220,255,.75); color: #fff; transform: scale(.94); }
+    #touch-controls .tc-f { width: 68px; height: 68px; font-size: 27px; color: #ffb478; border-color: rgba(255,180,120,.5); }
+    #touch-controls .tc-f.on { background: rgba(140,90,45,.62); border-color: rgba(255,200,150,.8); color: #fff; }
+    /* On touch, keyboard hints make no sense and the corner panels get out of the way. */
+    body.touch #help { display: none; }
+    body.touch #minimap { left: auto; right: 12px; top: 54px; bottom: auto; }
+    body.touch #version { left: 50%; right: auto; transform: translateX(-50%); bottom: 5px; }
+    body.touch #trade { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+    /* Make the trade/duel panels tappable only while shown, so the center of the
+       screen stays free for camera drag when they're hidden. */
+    body.touch #trade.show, body.touch #duel.show { pointer-events: auto; }
+    #trade .trow td, #duel .duel-opts li { cursor: pointer; }
+    body.touch #challenge-prompt { bottom: calc(170px + env(safe-area-inset-bottom, 0px)); }
+    @media (max-width: 560px) {
+      #hud { font-size: 11px; max-width: 64vw; padding: 6px 9px; }
+      #title { font-size: 11px; letter-spacing: .22em; top: 12px; }
+      #trade { width: min(82vw, 290px); }
+      #minimap { width: 112px; height: 112px; }
+    }
+
     a { color: #ffd98a; }
   </style>
 </head>
@@ -204,6 +245,24 @@
   <button id="audio-toggle" type="button" aria-pressed="false" aria-label="Mute" title="Mute (m)">🔊</button>
   <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; F duel a ship (1–4 to jab) &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; M mute &nbsp;·&nbsp; N new voyage</div>
   <div id="version">v0.0.0-dev</div>
+
+  <!-- On-screen touch controls (#17): hold to throttle/steer, tap to hail. Shown only
+       on touch / coarse-pointer devices via the `touch` class on <body> (input.js). They
+       feed the SAME key set the keyboard does, so every system works unchanged. -->
+  <div id="touch-controls" aria-hidden="true">
+    <div class="tc-cluster tc-steer">
+      <button class="tc-btn" type="button" data-hold="a" aria-label="Steer to port (left)">◀</button>
+      <button class="tc-btn" type="button" data-hold="d" aria-label="Steer to starboard (right)">▶</button>
+    </div>
+    <div class="tc-cluster tc-throttle">
+      <button class="tc-btn" type="button" data-hold="w" aria-label="Throttle up">▲</button>
+      <button class="tc-btn" type="button" data-hold="s" aria-label="Throttle down">▼</button>
+    </div>
+    <div class="tc-cluster tc-action">
+      <button class="tc-btn tc-f" type="button" data-tap="f" aria-label="Hail and duel a nearby ship">⚔</button>
+    </div>
+  </div>
+
   <div id="boot">CASTING OFF…</div>
 
   <script type="importmap">

@@ -3,18 +3,19 @@
 Single source of truth for the never-stopping delivery loop. The orchestrator
 updates this each loop so progress survives context resets.
 
-- **Current loop:** 20 (duel audio shipped; Retro 4 running + mobile #17; deep-learning #2 due ~next)
-- **Loops since last retro:** 0 (Retro 3 DONE — reset; covered cycles 7,8,9,11)
-- **Cycles since last deep-learning loop:** 0 (Deep-learning loop #1 DONE — all 9 agents refreshed; filed #32-#40)
-- **Research backlog (prioritise):** #43 (port reputation reactions, #39-followup) port reputation reactions (NEXT), #32 glTF ship, #33 Insult Broadside combat, #16 minimap, #35 cannon SFX, #36 fixed-timestep, #37 visual-diff QA, #40 adaptive music, #25 actions bump ( #34 contract step ADOPTED into runbook/PARALLEL.md)
-- **Next slices (Retro 3, priority):** (1) #43 (port reputation reactions, #39-followup) ports/NPCs react to renown — reactivity; (2) #32 CC0 glTF hull — charm; PARALLEL BATCH candidate (#43 (port reputation reactions, #39-followup) edits reputation/state, #32 edits ship mesh — disjoint files; CONTRACT: renown/reputation read API — name·shape·owner before dispatch). Then (3) #33 Insult Broadside (bigger, after stakes exist); (4) #16 minimap as a batch B-side.
+- **Current loop:** 20 (Retro 4 DONE — core arc COMPLETE; next = tune curve #57; deep-learning #2 DUE)
+- **Loops since last retro:** 0 (Retro 4 DONE — reset; covered cycles 16,17,18,19)
+- **Cycles since last deep-learning loop:** ~9 — **#2 DUE NOW** (run before the well runs dry; #1 filed #32-#40)
+- **Research backlog (prioritise):** #57 tune renown curve (NEXT), #50/#51 from-owner P1 bugs (FAST-LANE), #58 weather & day-night, #59 ship-vs-ship cannon combat, #60 invisible onboarding, #49 camera astern (P1), #32 glTF hull, #35 cannon SFX, #37 deterministic visual-diff (schedule — owned since cycle 10), #52 perf budget (P1), #40 adaptive music, #36 fixed-timestep, #53 self-tested UI components
+- **Next slices (Retro 4, priority):** (1) **#57 tune the renown/legend curve** — the arc is complete but the ~12,800 grind is unreachable in a ~4.45-min web session; most shareable, highest-leverage slice. (2) **from-owner P1 bug fast-lane #51 (swell submerges ports/docks) + #50 (compass drift)** — visible breakage, cheap, cleans every capture; PARALLEL-BATCH candidate (disjoint: #57 tunes renown numbers, #50/#51 touch sea/compass — but #51+#58 share the water/swell, contract first). (3) **#58 weather & day-night** — biggest charm-per-pixel depth, asset-free, shareable. (4) **#59 ship-vs-ship cannon combat** — depth that complements the Insult Broadside duel (design-first, after the curve is tuned). Then #60 onboarding + #49 camera-astern as a follow-on batch; build #37 deterministic visual diff.
+- **Process (Retro 4):** cycle-runner's QA step now OWNS the Chrome-MCP gallery capture + diff (orchestrator stops manual visual QA); Game Designer owns a per-block balance/tuning pass; from-owner P1 bugs jump the feature queue.
 - **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions (e.g. #trade .show opacity) read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
 - **Last Telegram update (UTC):** 2026-06-27T07:35 (morning catch-up + art screenshot)
 - **Next hourly update due (UTC):** ~2026-06-27T08:35
 - **Latest release:** v0.0.20260627072700 (art polish: carved hull, richer islands, ink-wash)
 - **Live:** https://cakuki.github.io/tidewake/
 - **Note:** session hit usage limit ~01:43-07:20 UTC (paused), resumed on owner "continue".
-- **Open enablers:** #25 bump Actions off Node-20; #41 HUD/title overlap (P3)
+- **Open enablers:** #37 deterministic visual-diff (schedule); #52 perf-budget gate (P1, gates #58 weather)
 
 ## Loop log
 
@@ -44,6 +45,7 @@ updates this each loop so progress survives context resets.
 | 18 | Polish batch: legend overlay persists, HUD/title overlap, Node-24 actions | #47,#41,#25 | v0.0.20260627102844 | 180 tests; CI annotation cleared |
 | 19 | Duel audio juice — procedural SFX stings | #48 | v0.0.20260627104334 | 182 tests; playtest now wins a full duel |
 | — | Retro 3 (subagent) | — | — | Fantasy now legible (sail→trade→renown rank, NPCs). Adopted #34 shared-contract step + re-dispatch-glitched-subagent rule + QA nav/timing gotchas into runbook; new guardrail "reactive verbs over inert content". Next = #43 (port reputation reactions, #39-followup) reputation reactions + #32 glTF ship (parallel, contract'd) |
+| — | Retro 4 (subagent) | — | — | **Core fantasy arc COMPLETE** (two poles #45 → crowned a legend #46). Depth-vs-breadth: TUNE the arc to be reachable first (#57, the ~12,800 grind is unreachable in a web session), then depth (weather #58, cannon combat #59) over breadth. Process: cycle-runner QA step owns the gallery capture+diff (not orchestrator); Game Designer owns balance/tuning; from-owner P1 bugs jump the queue; build #37 diff. Filed #57-#60. Deep-learning #2 due. Next = #57 tune curve, then #51/#50 P1-bug fast-lane |
 
 ## Hourly Telegram log
 

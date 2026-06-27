@@ -6,6 +6,42 @@ architecture) are raised as `owner-decision` GitHub issues and recorded here onc
 
 ---
 
+### 2026-06-27 — Retro 4: the core arc is complete — tune it before deepening; depth over breadth
+**Decision.** The north-star arc now exists end-to-end (one boat → trade/fight → climb either pole
+#45 → crowned a legend #46). Priorities invert: **(1) tune the renown/reward curve so a fresh
+player feels real progress in one short web session (#57)** before adding anything; **(2) add DEPTH
+that complements the spine** — weather & day-night (#58), ship-vs-ship cannon combat alongside the
+Insult Broadside duel (#59), invisible first-win onboarding (#60) — **over thin BREADTH** (more
+ports/goods). Added as a runbook guardrail; PM/Game Designer practices updated.
+**Why.** The ~12,800 legend threshold is unreachable in a ~4.45-min web session, so a *complete*
+arc is one players never feel. A finished spine needs to be *reachable, atmospheric, and dramatic*
+— not garnished with more nouns.
+
+### 2026-06-27 — Retro 4: the Game Designer is the standing balance/tuning owner
+**Decision.** Numbers that shape *fun* (rank curves, reward rates, price spreads, thresholds) are a
+first-class output. The **Game Designer** runs a per-block **tuning pass** — one stated "is the
+curve fun in a real session?" check against real session length — starting with the renown curve
+(#57). Added to `LOOP.md` (DESIGN step) and `game-designer.md`.
+**Why.** The complete arc shipped with an un-tuned ~12,800 grind because tuning was no one's job.
+Feel drifts when nobody owns the numbers.
+
+### 2026-06-27 — Retro 4: the cycle-runner's QA step owns the visual pass (free the orchestrator)
+**Decision.** The Chrome-MCP gallery capture + scoring + per-release diff happen **inside the
+cycle-runner subagent**, which returns the visual verdict in its 5-line summary; the orchestrator
+stops doing manual screenshot QA each cycle. And **#37 (tolerance-based deterministic visual diff)**
+is scheduled as a near-term slice — the eyeball-only diff has lost to feature slices since cycle 10.
+Added to `LOOP.md` (PLAYTEST step) and `qa.md`.
+**Why.** Manual visual QA in the orchestrator burns the scarce context the loop is built to
+protect — exactly the heavy work the context-optimization discipline says to delegate.
+
+### 2026-06-27 — Retro 4: from-owner P1 bugs jump the feature queue
+**Decision.** Bugs filed by the owner through the PM Desk with `from-owner` + `P1` (e.g. #50
+compass drift, #51 swell submerging ports/docks) are sequenced **ahead of feature slices**. Added
+as a runbook guardrail; `product-manager.md` updated.
+**Why.** They fix visible breakage cheaply and make every shareable screenshot/clip clean; a
+visibly broken world taxes every capture. The PM Desk (#44) works — the owner filed 8 issues
+through it immediately — so the intake must not let P1 bugs queue behind shiny features.
+
 ### 2026-06-27 — Retro 3: adopt the shared-contract step before any parallel batch (#34)
 **Decision.** No parallel dispatch across a **shared state/save/event seam** without a one-line
 **contract artifact** (*name · shape · owner · consumers*) written down first — in

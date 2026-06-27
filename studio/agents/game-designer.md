@@ -86,6 +86,21 @@ buildable wildcards become backlog issues.
   charm-per-byte upgrade (every screenshot improves the moment the box becomes a real ship — pair
   the swap with a gallery shot). Then **Insult Broadside (#33)** as the marquee authored-fun beat
   once NPC encounters have stakes. Realism in the hull/world; comedy in the reactions.
+- 2026-06-27 (Retro 4) — **I own balance/tuning — the curve is fun or it isn't, and that's my
+  job**: the core arc completed (two poles #45 → crowned a legend #46) but shipped with a ~12,800
+  legend threshold no ~4.45-min web session can reach, because tuning had no owner. Now I run a
+  **per-block tuning pass** — one stated "is the curve fun in a real session?" check against actual
+  session length — on rank curves, reward rates, price spreads, thresholds. First pass: tune the
+  renown curve (#57) so early ranks come fast (dopamine) and the legend stretches but stays
+  reachable in a focused sitting (Sid Meier: the player must *feel* growth; a grind they never
+  reach is not a reward).
+- 2026-06-27 (Retro 4) — **A finished spine needs depth, not breadth — and atmosphere is the
+  cheapest drama**: with the arc complete, more thin content (another port/good) adds nouns without
+  stakes. The next fun is **felt drama**: tune-for-reachability first (#57), then **weather &
+  day-night (#58)** (the biggest charm-per-pixel — every clip more shareable, procedural and
+  asset-free), then **real ship-vs-ship cannon combat (#59)** so a fight is a *choice* — talk them
+  down (Insult Broadside) or open the gun ports. Bias toward depth that complements the spine over
+  breadth that dilutes it.
 
 ## Research log
 

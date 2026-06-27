@@ -48,6 +48,12 @@ the Project Manager edits it after each retro (see Changelog at the bottom).
    found we shipped competent engineering with the two creative roles dark; the Spark exists
    so authored character rides along with mechanics. Cut it only if a creative driver
    explicitly says this slice carries none (rare).
+   **Balance/tuning has an owner — the Game Designer (Retro 4).** Numbers that shape *fun* (rank
+   curves, reward rates, price spreads, thresholds) are a first-class output, not an afterthought.
+   Once per block the Game Designer runs a **tuning pass** answering one question — *"is the curve
+   fun in a real session?"* — and tunes against actual session length, not a guess. Retro 4: we
+   shipped the complete arc with a ~12,800 legend threshold a web session (~4.45 min median) can't
+   reach, because tuning was no one's job. The first tuning pass is the renown curve (#57).
 
 3. **TECH PLAN** — *Tech Lead.*
    For each slice write a short technical plan: **approach**, **files to touch**, **test
@@ -72,6 +78,16 @@ the Project Manager edits it after each retro (see Changelog at the bottom).
    **fails the cycle** if no gallery shot was archived for this release — the per-release diff is
    a gate, not an aspiration. (Retro 1 made it a habit; loops 4-6 skipped it and the gallery
    stayed empty, so it now has teeth.)
+   **The cycle-runner's QA step OWNS the visual pass (Retro 4) — not the orchestrator.** Capturing
+   the Chrome-MCP gallery shot, scoring it, and diffing it against the previous release happens
+   **inside the cycle-runner subagent**, which returns the visual verdict in its 5-line summary.
+   The orchestrator must **not** burn its own (scarce) context doing manual screenshot QA each
+   cycle — that's exactly the heavy work the context-optimization discipline says to delegate.
+   **Build #37 (tolerance-based deterministic visual diff) — stop deferring it (Retro 4):** the
+   diff is still eyeball-only and #37 has been open since cycle 10, losing to feature slices each
+   block. A deterministic threshold-based diff (fixed viewport + `--force-device-scale-factor=1`,
+   seeded RNG/time, a deterministic harness pose, `maxDiffPixelRatio ≈ 0.01–0.02`) turns the human
+   pass into a real automated gate. Schedule it as a near-term slice, not "someday."
    **QA navigation & timing gotchas (Retro 3) — solve once, don't re-learn:**
    - **Coordinate mismatch.** `port.pos` is **`[x, z]`** (2D ground plane); ship `state.pos` is
      **`[x, y, z]`** (3D). When autopiloting the ship toward a port, map `port.pos[0]→x` and
@@ -285,6 +301,20 @@ The main orchestrator must stay **lean** so the never-stopping loop survives con
   Favour slices that make **the world respond to who the player is becoming** (ports greet/price
   by reputation, NPCs react to your legend) over adding more static content, until the world
   visibly *knows the player's name*. Reactivity is where both the drama and the comedy live.
+- **The core arc is COMPLETE — tune it before you deepen it, and prefer depth over breadth (Retro
+  4).** The spine now exists end-to-end: one boat → trade/fight → climb *either pole* (Infamy ↔
+  Standing, #45) → get *crowned a legend* (#46). With a finished spine the priorities invert:
+  **(1) make the arc reachable** — tune the renown/reward curve so a fresh player *feels* real
+  progress in one short web session (#57) before anything else; a complete arc nobody reaches is a
+  spine players never feel. **(2) add DEPTH that complements the spine** — atmosphere (weather &
+  day-night #58), combat *weight* (ship-vs-ship cannon #59 alongside the Insult Broadside duel),
+  a real first-win onboarding (#60) — over **thin BREADTH** (yet another port/good) that adds
+  nouns without drama. The spine doesn't need more nouns; it needs to be *reachable, atmospheric,
+  and dramatic*.
+- **from-owner P1 bugs jump the feature queue (Retro 4).** Bugs the owner files through the PM
+  Desk with `from-owner` + `P1` (e.g. #50 compass drift, #51 swell submerging ports/docks) fix
+  *visible breakage* cheaply and make every shareable screenshot/clip clean. They are sequenced
+  **ahead of feature slices**, not behind them — a visibly broken world taxes every capture.
 - **Keep CI actions current** — when GitHub annotates a deprecated runtime (e.g. Node-20), raise
   a `tech`/`chore` issue and bump the action versions promptly; a deprecation becomes a hard CI
   failure later and stalls the whole loop.
@@ -327,6 +357,23 @@ curl -sI https://cakuki.github.io/tidewake/
 
 ## Changelog
 
+- **2026-06-27 — Retro 4 (loops 16-19): the core fantasy arc is now COMPLETE.** Shipped the
+  KEYSTONE two-pole renown split (Infamy ↔ Standing, #45), endgame legend milestones (crowned THE
+  Terror / THE Governor, #46), a polish batch (#47/#41/#25 — #47's real root cause was OS
+  key-repeat from a held throttle), and duel audio juice (#48). One boat → trade/fight → climb
+  either pole → crowned a legend now exists end-to-end (182 tests). Headline product finding: with
+  a finished spine the question flips to **depth vs. breadth**, and the single highest-leverage
+  slice is **tuning the arc so players reach it** (the ~12,800 legend threshold is unreachable in a
+  ~4.45-min web session). Headline process finding: the finished arc shipped *un-tuned* because
+  **balance/tuning had no owner**. Changes: **Game Designer is now the standing balance/tuning
+  owner** (per-block "is the curve fun in a real session?" pass); **the cycle-runner's QA step owns
+  the Chrome-MCP gallery capture + diff** so the orchestrator stops doing manual visual QA each
+  cycle (and **#37 deterministic visual diff** is scheduled, not deferred); new guardrails **"tune
+  the complete arc before deepening it; prefer depth over breadth"** and **"from-owner P1 bugs jump
+  the feature queue"**. Next block: tune the renown curve (#57), then weather/day-night (#58) and
+  ship-vs-ship cannon combat (#59); onboarding (#60) + camera-astern (#49) as a follow-on batch.
+  Deep-learning loop #2 is due. See `studio/retros/2026-06-27-retro-4.md`,
+  `studio/agents/{game-designer,product-manager,qa,project-manager}.md`.
 - **2026-06-27 — Retro 3 (loops 7-11):** the core fantasy is now legible — sail → trade for
   profit → climb a named renown rank, with wandering NPC ships giving the sea life; first music
   (#27) and first deep-learning research loop (#32-#40) both landed. Headline finding was a

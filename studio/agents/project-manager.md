@@ -121,6 +121,17 @@ world — read **new + classic**, then record 2–4 takeaways and **one wildcard
   as "done," that stalls a cycle. Standard response: confirm a subagent actually did the work (a
   tag, files changed, a real summary) and **auto-re-dispatch once** on an empty return before
   investigating (added to the orchestrator discipline in `LOOP.md`).
+- 2026-06-27 (Retro 4) — **Push the visual pass into the cycle-runner; keep the orchestrator
+  lean**: the gallery capture + diff had crept into the orchestrator's own context every cycle —
+  the heavy, context-burning work the loop exists to delegate. The cycle-runner's QA step now owns
+  it and reports the verdict in its summary; the orchestrator only reads the verdict. Watch for
+  *any* per-cycle work re-accumulating in the orchestrator and push it back into a subagent.
+- 2026-06-27 (Retro 4) — **Give owner-filed P1 bugs a fast lane, and give *fun-tuning* an owner**:
+  the PM Desk (#44) works — the owner filed 8 issues immediately. Two flow rules: **from-owner P1
+  bugs (#50, #51) jump the feature queue** (visible breakage, cheap, makes captures clean), and the
+  **Game Designer owns a per-block balance/tuning pass** (the complete arc shipped un-tuned because
+  no one owned the numbers). A finished spine needs a *reachable* curve before more systems — when
+  the slice mix drifts toward breadth, re-sequence toward tune-then-depth.
 
 ## Research log
 

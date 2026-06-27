@@ -90,6 +90,19 @@ game code; buildable wildcards become backlog issues.
   mechanic dramatizes the whole north-star and carries the comedy. **Bias the roadmap toward
   reactive verbs (a world that responds) over more inert content (more ports/goods/ships).** Then
   the CC0 glTF hull (#32) for charm, then Insult Broadside (#33) for authored fun.
+- 2026-06-27 (Retro 4) — **The arc is complete — now make it *reachable*, then *deep*, before
+  *wide***: loops 16-19 finished the north-star (two poles #45 → crowned a legend #46). The trap of
+  a finished spine is shipping more thin breadth (another port/good) on a spine players can't even
+  reach. Highest-leverage slice on the board is **tuning the renown curve (#57)** — a web session
+  is ~4.45 min and the ~12,800 legend grind is unreachable, so a *complete* arc is one nobody
+  feels; tuning makes everything we already built pay off and is the most *shareable* slice we have.
+  Then **depth that complements the spine** (weather/day-night #58, ship-vs-ship cannon #59,
+  invisible onboarding #60) over breadth. Sequence: **reachable → atmospheric → dramatic**.
+- 2026-06-27 (Retro 4) — **from-owner P1 bugs jump my feature queue**: the PM Desk (#44) works —
+  the owner filed 8 issues the moment it shipped, incl. P1 *bugs* (#50 compass drift, #51 swell
+  submerging ports/docks) that break believability in every screenshot. I sequence those **ahead
+  of feature slices**: they're cheap, they fix visible breakage, and a clean world makes every
+  capture shareable. Don't let shiny features starve the owner's visible-breakage bugs.
 
 ## Research log
 

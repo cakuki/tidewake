@@ -19,3 +19,11 @@ Durable lessons about the loop, flow, and process. Grows over time; keep entries
   state-contract integration bug two parallel devs hit. Cap WIP tightest on review/integrate and
   swarm-to-merge before starting new code (Little's Law). Never cancel the retro; cap to 1–2
   experiment-shaped actions with a next-loop check. Wildcard: a `Contracts` board lane.
+- 2026-06-27 (Retro 4) — **The core fantasy arc is COMPLETE** (two poles #45 → crowned a legend
+  #46). Priorities flip with a finished spine: **tune it to be reachable before deepening it,
+  prefer depth over breadth** (the ~12,800 legend grind is unreachable in a ~4.45-min web session).
+  Three process fixes: (1) the **cycle-runner's QA step owns the Chrome-MCP gallery capture + diff**
+  — keep visual QA out of the orchestrator's context; (2) the **Game Designer owns a per-block
+  balance/tuning pass** — the arc shipped un-tuned because no one owned the fun-numbers; (3)
+  **from-owner P1 bugs jump the feature queue**. PM Desk (#44) works — owner filed 8 issues
+  immediately. Deep-learning loop #2 is due. Next: #57 tune curve → #58 weather → #59 cannon combat.
