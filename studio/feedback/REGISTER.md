@@ -28,3 +28,4 @@ with the item files in `inbox/`. Raw items are never deleted — only their stat
 | 2026-06-27-art-asset-sourcing | idea | accepted | Research only: cost/effectiveness sourcing report → designer budget | [#55](https://github.com/cakuki/tidewake/issues/55) |
 | 2026-06-27-mobile-support-feasibility | idea | accepted | Report done; **Phase 0 device spike approved** ([#62](https://github.com/cakuki/tidewake/issues/62)); full build parked (owner-decision) | [#56](https://github.com/cakuki/tidewake/issues/56) |
 | 2026-06-27-sea-texture-caribbean | feature | accepted | Sunny/holiday Caribbean sea: turquoise palette + sun glint + subtle detail, low perf cost | [#61](https://github.com/cakuki/tidewake/issues/61) |
+| 2026-06-27-ios-native-mvc-frontend | idea | accepted | iOS via WebView/PWA (Approach 1); native renderer parked, full rewrite declined | [#63](https://github.com/cakuki/tidewake/issues/63) |
