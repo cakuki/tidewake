@@ -24,3 +24,13 @@ Durable implementation lessons and gotchas. Grows over time; keep entries short.
 - 2026-06-27 — **Scaling levers when needed**: keep three.js objects "humble" (draw-only, no
   branching); push spawn/collision/score into pure modules. For many identical props use one
   InstancedMesh (1 draw call, cull via `.count`, share materials); watch `renderer.info.render.calls`.
+- 2026-06-27 (DL#2) — **OffscreenCanvas moves the render loop off the main thread**:
+  `transferControlToOffscreen()` + a Web Worker runs `rAF` in the worker so DOM/main-thread traffic can't
+  jank animation (the real mobile fix beyond #63's DPR cap). Worker can't touch DOM → input/UI stay on
+  main and message the worker = the Command-pattern intent boundary I already want.
+- 2026-06-27 (DL#2) — **Determinism is testability**: seed/freeze RNG + time, drive input
+  deterministically, screenshot a stable tick — same property fixed-timestep (#36) buys, unlocking unit
+  tests AND a stable gallery diff (#37). DORA 2025: fast codegen needs a tight gate or rework rate climbs.
+- 2026-06-27 (DL#2) 💡 **Wildcard — a seeded-PRNG wrapper as the keystone refactor**: one injectable
+  `makeRng(seed)` threaded through the sim unlocks deterministic tests, a `--seed`-pinned #37 pose, the
+  record/replay harness (#36), and a *seeded daily voyage*. Smallest change, most downstream payoff. → noted.

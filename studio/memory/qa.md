@@ -34,3 +34,15 @@ Durable testing lessons, known issues, and regression notes. Grows over time; ke
   `tw.step()` advances the sim, not the clock, so `#trade.show` opacity reads mid-transition.
   Wait ~600 ms (or `transitionend`) before asserting fade visibility. This produced false bug #30
   (a timing artifact, not a defect) — settle before filing.
+- 2026-06-27 (DL#2) — **The deterministic gallery diff (#37) is a solved recipe — stop deferring**:
+  Playwright/Pixelmatch 2025 consensus = control time/RNG/input, render a known stable tick, diff with
+  a tolerance (`maxDiffPixelRatio` ≈ 0.01–0.02 + small `maxDiffPixels`). Blocker was determinism (#36),
+  not tooling (Pixelmatch ≈ one file). Push #36→#37 as a paired enabler.
+- 2026-06-27 (DL#2) — **Measure time-to-first-sail; add a real-device pass**: web games die on the
+  opening seconds (load < 3 s even on 3G) — gate the boot-to-playable budget like the 16.6 ms frame
+  budget. The mobile PWA (#63) needs a device tour (iOS audio unlock, notch/safe-area, touch overlap,
+  thermal) the headless gate can't see; owner already caught #66/#75/#77 by phone.
+- 2026-06-27 (DL#2) 🔎 **Wildcard — a "golden replay" smoke gate**: once deterministic (#36)+seeded,
+  replay a ~30 s `(seed, intent-log)` run in CI asserting final state-trace (flake-free, no GPU) AND the
+  end-pose pixel baseline (#37). One fixture catches gameplay + visual regressions; every bug ships as a
+  repro replay. → folds into #36/#37.

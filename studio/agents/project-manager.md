@@ -178,6 +178,36 @@ will read/write this loop gets a one-line entry — *name · shape · owner · c
 visible on the board, so the PM can see a collision brewing the moment two cards reference the
 same contract, and turns "we both assumed the state shape" into a checkable, shared artifact.
 
+### 2026-06-27 — Deep-learning loop #2: AI-era flow, instability as the constraint
+
+Web research, new + classic. Sources: DORA 2025 *State of AI-assisted Software Development* (renamed
+from *Accelerate State of DevOps*; dora.dev, Google Cloud blog, getDX/RedMonk recaps), re-grounded in
+*Accelerate*, *The Goal*, and Kanban flow.
+
+- **AI amplifies what you already are — it doesn't fix a weak system.** DORA 2025's headline: AI lifts
+  throughput *but raises instability* where the foundation is brittle — fast-generated code is force-fed
+  into a delivery system not built for the volume, exposing slow/manual gates. For our AI-run studio this
+  is the central risk: our defence is the system itself (headless gate, perf budget, clean-tree rule,
+  serialised merges). Process *is* the moat when codegen is cheap.
+- **"Rework rate" is the metric we were missing.** DORA added **rework rate** (unplanned fixes pushed to
+  prod) as a 5th metric — a blind spot in the classic four. We have a proxy: *from-owner bugs filed
+  shortly after a release* and *fix-forward commits*. Worth tracking lightly in the loop log so a spike
+  in rework flags that we're shipping too fast for the gate — the AI-era signal that throughput is
+  outrunning quality.
+- **The integration queue is still the constraint (Little's Law).** Re-confirmed: cap WIP tightest on
+  `Ready-for-review`/`Integrating` (~1–2) and swarm to merge before starting new code. With cycle-runners
+  generating slices fast, the bottleneck is *merging safely*, not *writing* — protect the serialise-merges
+  discipline and the (still-open) #38 pre-merge PR gate.
+- **Rituals must bite, not just be scheduled (validated by our own miss).** Retro 6 already hardened
+  this after DL #2 slipped ~22 cycles — DORA's "foundations beat tools" reinforces it: a self-improvement
+  ritual that always loses to fresh work is a foundation gap. Keep the hard counter trigger.
+
+🧩 **Wildcard — a lightweight "rework-rate" tile in the loop log.** Add one derived signal to
+`loop-state.md`: for each release, note whether a `from-owner` bug or a fix-forward followed it within
+~N cycles. A rising count is our early-warning that throughput is outrunning the gate (the DORA AI-era
+failure mode) — turning an abstract metric into a one-glance health check the PM already reads each loop,
+with zero new tooling.
+
 ## Owner channel (two-way Telegram) — keep it in lockstep
 
 The owner steers live over **Telegram** (`studio/comms/OWNER-CHANNEL.md`). On the **process** side

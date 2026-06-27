@@ -162,3 +162,37 @@ animation handling, frame-time/jank measurement, Whittaker exploratory tours.
   areas where past bugs clustered — e.g. world edges, the invisible-sail spot), and an
   **Obsessive-Compulsive Tour** (spam throttle/steer/reverse, repeat the same action 20×).
   Time-boxed charters give structured coverage that a vibes-based sail misses.
+
+### 2026-06-27 — Deep-learning loop #2: deterministic pixel-diff, mobile/real-device QA
+
+Web research, new + classic. Sources: Playwright `toHaveScreenshot` + Pixelmatch guides
+(testgrid, TestDino, BrowserStack, CSS-Tricks 2025), oneuptime "Handle Visual Regression" (2026),
+GameAnalytics 2025 retention benchmarks, web game load-time field data.
+
+- **The deterministic gallery diff (#37) is now a solved recipe — stop deferring it.** The 2025
+  Playwright/Pixelmatch consensus is exactly our open #37: **make time/RNG/input controllable, render
+  at a known stable tick, then diff with a tolerance** (`maxDiffPixelRatio` ≈ 0.01–0.02 + a small
+  `maxDiffPixels`) so anti-aliasing/DPI noise doesn't cry wolf while real regressions still trip. The
+  blocker was never tooling (Pixelmatch is ~one file) — it was determinism, which the fixed-timestep
+  loop (#36) + a seeded PRNG hand us. I push #36→#37 as a paired enabler, not "someday."
+- **Animations still need real time or disabling — confirmed again.** Pin it in the harness: inject
+  `*{animation-duration:0s!important;transition-duration:0s!important}` for *baselines*, or await
+  `transitionend` for fades (our #30 false-bug lesson). `waitForElementState('stable')` catches
+  bounding-box motion, never opacity — wait on the event for fades.
+- **Web games live or die on the opening seconds — add a load-budget check.** 2025 data: total load
+  < 3 s even on 3G; cold-load cuts lifted retention double digits. QA should **measure
+  time-to-first-sail** (boot → playable) in the headless gate and treat a regression past budget as a
+  bug, the same way we guard the 16.6 ms frame budget. A web game that's slow to start fails before
+  it's judged on fun.
+- **We now ship a mobile PWA (#63) — QA needs a real-device tour.** The headless gate and a desktop
+  browser can't see iOS audio-unlock, notch/safe-area, touch-overlap, or thermal throttling (the owner
+  already caught #66/#75/#77 by phone). Add a **device pass** to the checklist for any mobile-touching
+  slice; until #62's real-device spike, simulate via Chrome device-emulation + a documented "owner
+  confirms on iPhone" step for audio/heat.
+
+🔎 **Wildcard — a "golden replay" smoke gate.** Once the sim is deterministic (#36) + seeded, record a
+~30 s scripted run as `(seed, intent-log)` and replay it headlessly in CI, asserting (a) the final
+sampled **state** matches a committed golden trace (state-diff, flake-free, no GPU) *and* (b) the
+deterministic end pose matches the golden **pixel** baseline (#37). One fixture catches both gameplay
+*and* visual regressions, and every future QA-reported bug ships as a tiny replay that reproduces it
+exactly — turning "I can't repro" into a permanent test.

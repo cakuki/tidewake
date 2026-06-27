@@ -16,3 +16,14 @@ Durable art-direction decisions and asset notes. Grows over time; keep entries s
   light, vertical gradient sky dome, FBM height fog, toon gradientMap on characters only.
 - 2026-06-27 — **AI texturing**: free text→PBR (AITextured/GoEnhance/ZSky) for one hero material
   at ≤1K, baked/atlased; check per-tool output license before shipping.
+- 2026-06-27 (DL#2) — **NPR is a direction, not a filter**: keep sea/sky PBR-realistic; reserve NPR
+  (toon `gradientMap` banding, rim light, ink outlines, watercolour colour-bleed) for ships/characters/UI
+  — the warm-charm half. 2025 AI/diffusion toon-shading is offline-only, not runtime.
+- 2026-06-27 (DL#2) — **Stylised water is layered + a CPU height-mirror for buoyancy**: 2025 kits =
+  Gerstner swell silhouette + 1–3 separate foam layers (whitecap/ambient/shoreline) + foam tied to
+  wake/surface-compression, plus a cheap CPU mirror of the wave function so the ship pitches/rolls with
+  the sea. The CPU mirror is the top charm-per-byte hull upgrade and is no-build math, not a shader rewrite.
+- 2026-06-27 (DL#2) 🎨 **Wildcard — "the living chart"**: render the #54 map as a weathered watercolour
+  sea-chart (parchment grain, inked coastlines, drifting watercolour sea, compass rose, a self-writing
+  dotted rhumb-line wake). Separate render target = freedom to be painterly without breaking world
+  realism; realism outside, painted chart within. → filed.

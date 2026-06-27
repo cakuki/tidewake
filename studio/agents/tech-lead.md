@@ -166,6 +166,40 @@ lightweight PR-validation workflow (unit tests + headless playtest, **no** deplo
 *before* merge and saves free-tier minutes. Deploy concurrency stays `cancel-in-progress:
 false` (never kill a deploy). *(GitHub Actions cost-optimization guides, 2025–2026.)*
 
+### 2026-06-27 — Deep-learning loop #2: WebGPU readiness, off-main-thread, batching reality-check
+
+Web research, new + classic, scoped to our no-build CDN stack and *our* size. Sources: utsubo "100
+Three.js tips (2026)", Wael Yasmina on `BatchedMesh`, three.js GitHub perf issues (#31055, #29580),
+web.dev/MDN OffscreenCanvas, DORA-adjacent "AI amplifies instability" framing.
+
+1. **WebGPU is now shippable — but as an *opt-in fallback-guarded* renderer, not a rewrite.** Since
+   r171 `import { WebGPURenderer } from 'three/webgpu'` gives a zero-config renderer with automatic
+   WebGL2 fallback, and Safari 26 (Sept 2025) closed the last major-browser gap. It wins 2–10× **only**
+   in draw-call-heavy / compute scenes; at *our* scale (one boat, a few isles, ~77 draws) it can be
+   *slower*. So: track it, keep our render path renderer-agnostic, and treat WebGPU as a future spike
+   behind a capability check + WebGL2 fallback — never a hard dependency in a no-build CDN game.
+2. **`BatchedMesh`/`InstancedMesh` are not free wins — profile first.** Field reports show
+   `BatchedMesh` can *regress* (esp. unbatched meshes mixed in, and on Android/WebGPU). Re-confirms
+   DL#1: apply batching only where instance counts genuinely grow (gull flocks, debris, a fleet), and
+   measure against our perf-budget gate (#52) before adopting — don't batch the hero ship.
+3. **The main thread is the real budget on mobile — OffscreenCanvas is the lever.** Our heat/DPR work
+   (#63) treats the symptom; the structural fix is moving heavy work off the main thread.
+   `OffscreenCanvas` + a Web Worker can run rendering (or the sim) detached from the DOM so main-thread
+   traffic can't jank the animation. Pairs cleanly with our fixed-timestep direction (#36): a pure
+   `update(state, dt)` is exactly what's safe to ship to a worker.
+4. **AI-fast codegen amplifies instability unless the gate holds (DORA 2025).** The 2025 DORA report
+   (renamed to *State of AI-assisted Software Development*) adds **rework rate** as a 5th metric and
+   finds AI raises throughput *and* instability where foundations are weak. Our defence is already the
+   right one — keep the headless gate + perf budget + clean-tree discipline strong; they're what turns
+   fast generation into safe delivery. Push #38 (pre-merge PR gate) up the list.
+
+⚙️ **Wildcard — a render-agnostic "renderer adapter" seam + an OffscreenCanvas spike.** Carve a tiny
+boundary so the rest of the game never imports a concrete renderer — it asks an adapter to draw. That
+single seam makes (a) a WebGPU A/B trial and (b) moving rendering into a Web Worker (OffscreenCanvas)
+*mechanical* instead of surgical, and it's free to design now while the engine is small. The first
+payoff to measure: does pushing the render loop to a worker hold framerate on a mid phone under main-
+thread load (our actual mobile pain), at the cost of a one-time `transferControlToOffscreen`?
+
 ## Owner channel (two-way Telegram) — you're the feasibility voice
 
 When the PM desk triages owner input that arrives over **Telegram**

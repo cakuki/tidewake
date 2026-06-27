@@ -142,6 +142,36 @@ round-ups (Game Rant), and the Rise of Venice "one ship → trading empire + rep
   the seed of the eventual two-ending split. Comedy hook: NPC reactions get wittier as your legend
   grows (cowering pun-cracking merchants; a smarmy harbourmaster who suddenly remembers your name).
 
+### 2026-06-27 — Deep-learning loop #2 (web research: instant-play retention, the anecdote factory)
+
+Sources: GameAnalytics 2025 benchmarks + HTML5 instant-play case studies (digitaledge "42M
+sessions", Playgama/Galaxy4Games HTML5 trends 2025-26, Mobile Game Doctor on FTUE), and the
+emergent-narrative canon (Tarn Adams on Dwarf Fortress; Game Developer "Rimworld/DF procedural
+storytelling"; Sid Meier "a series of interesting choices").
+
+- **Load time IS retention for a web game.** 2025 field data: keep total load < 3 s even on 3G;
+  one team cutting cold-load 45 s → < 8 s lifted retention +37% and session length +22%. A top-25%
+  HTML5 title hit ~48% D1 (double the hyper-casual ~24% benchmark) by opening *directly into action*.
+  For us (CDN three.js, no-build) the lever isn't more content — it's a measured **time-to-first-sail**
+  budget and a loading beat that's already in-world. Worth a `tech`/`qa` measurement before we add weight.
+- **Wealth/rank only retains when it manufactures *stories*, not stats (the anecdote factory).** DF
+  and RimWorld retain with zero authored plot because systemic rules + memory turn each run into a
+  *tellable* story players share. We already have the engine (reputation, ports that react, cannon &
+  insult duels) — the missing piece is **capturing the anecdote** and handing it back to the player.
+  This is the cheapest "every session makes a story" lever and the most *shareable* (our growth channel
+  is screenshots/clips the owner posts).
+- **"A series of interesting choices" beats more nouns (Meier) — and our spine is complete.** Re-confirms
+  the standing Retro-4 guardrail: depth/drama over breadth. The next product value is in *choices the
+  world remembers*, not another port/good.
+
+🧭 **Wildcard — "The Ballad of Your Voyage" (a Captain's Log anecdote factory):** at session end (or
+on demand from the map), auto-compose a short in-character **logbook entry / mini-ballad** from what
+actually happened this run — ports visited, best trade, the insult that won a duel, the ship you sank
+or talked down, the rank you climbed — stitched from templated lines the systems already emit. One
+screen, warm and witty, *shareable as an image*. It turns our existing systemic events into the
+"anecdote factory" retentive hook and gives the owner a ready-made thing to post. Cheap (text +
+event log we mostly already record), on-tone, and it makes a 4-minute web session feel like a tale.
+
 ## Owner channel (two-way Telegram) — you own the front door
 
 The owner now steers the studio live over **Telegram** (`studio/comms/OWNER-CHANNEL.md`). **You own

@@ -36,3 +36,14 @@ Durable lessons about the loop, flow, and process. Grows over time; keep entries
   balance/tuning pass** — the arc shipped un-tuned because no one owned the fun-numbers; (3)
   **from-owner P1 bugs jump the feature queue**. PM Desk (#44) works — owner filed 8 issues
   immediately. Deep-learning loop #2 is due. Next: #57 tune curve → #58 weather → #59 cannon combat.
+- 2026-06-27 (DL#2) — **AI amplifies what you already are (DORA 2025)**: AI lifts throughput but raises
+  instability where foundations are brittle. For an AI-run studio, process IS the moat — keep the headless
+  gate, perf budget, clean-tree rule, and serialised merges strong; they turn cheap codegen into safe
+  delivery.
+- 2026-06-27 (DL#2) — **"Rework rate" is the metric we lacked**: DORA's new 5th metric = unplanned fixes
+  to prod. Our proxy = from-owner bugs / fix-forwards shortly after a release; a spike means we're
+  outrunning the gate. The integration queue (Ready-for-review/Integrating, cap ~1–2) is still the
+  constraint — protect serialised merges + push the #38 pre-merge gate.
+- 2026-06-27 (DL#2) 🧩 **Wildcard — a "rework-rate" tile in the loop log**: per release, note whether a
+  from-owner bug / fix-forward followed within ~N cycles. A rising count is the DORA AI-era early-warning
+  that throughput is outrunning quality — one-glance health, zero new tooling. → noted (process).

@@ -104,6 +104,35 @@ world — study **new + classic**, then record 2–4 takeaways and **one wildcar
   danger* — a swashbuckling-comedy menace colour that's still folk-fiddle-and-accordion, not
   orchestral cliché. One scale, dialled in by gain when a rival or storm appears.
 
+### 2026-06-27 — Deep-learning loop #2: interactive stems, the shanty's social shape
+
+Web research, new + classic. Sources: thegameaudioco / Emad Saedi on adaptive music (vertical
+layering as the 2026 blueprint, "interactive stems" listeners toggle), the SeaShantyTok / *Wellerman*
+phenomenon (Slate explainer; The Longest Johns; an AI-revival write-up) and shanty taxonomy.
+
+- **"Interactive stems" are going mainstream — our layered engine is already on-trend.** 2025-26
+  music is leaning into modular soundtracks that shift with user behaviour, with even pop releasing
+  toggle-able stems. Validates the DL#1 plan (vertical layering on the shared bus) — and suggests
+  exposing a *player-facing* hook: the #73 settings panel could let a player toggle a stem (e.g. "crew
+  vocals") the way the wider world now expects.
+- **The shanty's power is *social*, not just melodic — call-and-response is the hook.** SeaShantyTok
+  blew up because the form is *participatory*: a shantyman calls, the crew answers in chorus. That
+  call-and-response shape (not any one tune — we never imitate) is the most evocative, most shareable
+  thing about the genre and we're not using it yet. A crew that "answers" on the chorus turns our
+  sailing loop from background music into something that feels *crewed*.
+- **Tie the vocal layer to a game state for free drama.** Crew morale (the mutiny/insult systems want
+  it anyway) is the natural driver: a full, lusty chorus when morale is high; ragged, sparse, or sour
+  when it's low; silence after a mauling. The music *reports the crew's state* — adaptive scoring and
+  storytelling in one layer.
+
+🎵 **Wildcard — a generative *call-and-response crew chorus* layer.** Add a vocal stem to the sailing
+loop where a solo "shantyman" line is answered by a **crew chorus on the off-beats** — built from a
+few short, original, syllabic "heave!/ho!"-style one-shots (not lyrics from any real shanty), pitched
+to the current key and gated/recombined so it never loops audibly. Its fullness is driven by **crew
+morale**: thriving crew = a rousing answer; demoralised = a thin, flat mutter; post-defeat = quiet.
+On-tone (warm, witty, participatory), shareable (rides the SeaShantyTok instinct), and it makes the
+empty deck feel manned — adaptive music that's literally the crew talking back.
+
 ## Practices adopted
 - 2026-06-27 — **Adaptive, not on-repeat**: write layered/branching cues that follow game
   state (interactive/adaptive-music practice, vertical layering + horizontal resequencing).

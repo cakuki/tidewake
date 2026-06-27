@@ -26,3 +26,14 @@ Durable lessons, vision notes, and roadmap rationale. Grows over time; keep entr
   Ledger / Notoriety track (feared pirate ↔ respected governor) makes coins matter immediately,
   gives a stateable goal, makes growth legible, and seeds the two-ending split — cheapest leverage
   before combat/crew/governance. Wildcard: ports that *react* to your legend = a story engine.
+- 2026-06-27 (DL#2) — **Load time is retention for a web game**: keep total load < 3 s even on 3G;
+  opening straight into action drove top-quartile HTML5 D1 ~48% (2× the hyper-casual benchmark). Our
+  lever is a measured *time-to-first-sail* budget, not more content.
+- 2026-06-27 (DL#2) — **The anecdote factory**: DF/RimWorld retain with zero authored plot because
+  systemic rules + memory make each run a *tellable, shareable* story. Our spine is complete — next
+  value is choices the world *remembers*, captured and handed back to the player. (Meier: "interesting
+  choices" > more nouns.)
+- 2026-06-27 (DL#2) 🧭 **Wildcard — "The Ballad of Your Voyage"**: auto-composed in-character logbook /
+  mini-ballad at session end from real events (ports, best trade, the winning insult, ship sunk/talked
+  down, rank climbed), one shareable image. Cheapest "every session is a story" hook; ready-made owner
+  share content. → filed as backlog issue.

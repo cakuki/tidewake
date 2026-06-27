@@ -118,3 +118,33 @@ world — read **new + classic**, then record 2–4 takeaways and **one wildcard
   any QA-reported bug ships as a tiny replay fixture that reproduces it exactly (no Heisenbugs).
   Turns "feel" bugs into regression tests. Start small: seed `Math.random` wrapper + record the
   intent list the input layer already produces.
+
+### 2026-06-27 — Deep-learning loop #2: off-main-thread rendering, determinism for tests
+
+Web research, new + classic. Sources: web.dev/MDN OffscreenCanvas, Alex MacArthur "Animate Your
+Canvas in a Worker", webgamedev.com performance, Playwright + Pixelmatch visual-regression guides,
+DORA 2025 (rework rate).
+
+- **OffscreenCanvas moves the render loop off the main thread.** `canvas.transferControlToOffscreen()`
+  hands the canvas to a Web Worker; `requestAnimationFrame` then runs *in the worker*, so DOM/main-
+  thread traffic (GC, input, UI churn) can't stall the animation. For us this is the structural answer
+  to mobile jank/heat that #63's DPR cap only softens. Caveat: the worker can't touch the DOM, so input
+  and UI stay on main and talk to the worker by messages — which is exactly the **Command-pattern intent
+  stream** boundary I already want (DL#1). Design the seam now; the move becomes mechanical.
+- **Determinism is testability — make time, RNG, and input controllable at the source.** The 2025
+  visual-regression field consensus (Playwright/Pixelmatch on canvas/WebGL): you can't diff a flaky
+  frame, so *remove flake at the source* — seed/freeze RNG and time, drive input deterministically, and
+  screenshot a known stable tick. This is the same property the fixed-timestep loop (#36) buys us, and
+  it's why a pure `update(state, dt)` + a seeded PRNG wrapper unlocks *both* unit tests and a stable
+  gallery diff (#37). One discipline pays off three times.
+- **Fast codegen needs a tight gate, or rework rate climbs (DORA 2025).** AI-accelerated output raises
+  throughput *and* instability where the foundation is weak. My defence: keep changes small, TDD the
+  pure logic, start from a clean tree, and never let a red `main` linger — the boring discipline is what
+  keeps velocity from turning into rework.
+
+💡 **Wildcard — a seeded-PRNG wrapper as the keystone refactor.** Replace scattered `Math.random()`
+with one tiny injectable `rng = makeRng(seed)` threaded through the sim. It's a few lines, but it
+simultaneously enables: deterministic unit tests, a stable `--seed`-pinned gallery pose for #37,
+the record/replay regression harness (DL#1 wildcard, #36), AND a *seeded daily voyage* the PM's
+"Ballad of Your Voyage" could share ("today's seed: …"). The smallest change that unlocks the most
+downstream craft — do it the next time movement/combat logic is touched.

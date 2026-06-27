@@ -18,3 +18,14 @@ Durable audio lessons, mix targets, and asset notes. Grows over time; keep entri
   ~4 convolvers/source — too costly for many NPCs); reserve HRTF for the focus target only
   ("captain's ear"). Pool source nodes. No real sidechain in WebAudio — duck the music sub-bus
   manually via `setTargetAtTime`. Keep master → {ambience, sfx, music} bus tree.
+- 2026-06-27 (DL#2) — **Physical modelling > sample-loop for responsive sounds**: model the cause — an
+  excitation (ship stress from pitch/roll/turn/speed) driving a cheap modal resonator (a couple of
+  biquads excited by a noise burst) gives a hull groan that tracks sea state and helm, alive not tiled.
+  Waveguides are overkill; the modal shortcut fits budget. Pool voices; reserve HRTF for the focus target.
+- 2026-06-27 (DL#2) — **Ambience = a few "sound atoms" mapped to game parameters**: drive wind howl from
+  wind dir/strength, gull density from coast proximity, rigging stress from turn rate — the soundscape is
+  a function of the sim (one sea-state RTPC extended), not a static bed.
+- 2026-06-27 (DL#2) 🔊 **Wildcard — a physically-modelled "hull voice"**: a small bank of resonant
+  filters (the hull's modes) excited by roll+pitch+turn+speed-against-swell — moans into a hard turn,
+  groans in a heavy sea, silent becalmed. Zero assets, reactive to the physics already computed for
+  buoyancy; comic over-creak on a run-aground (#76 "Scraaape…"). → filed.

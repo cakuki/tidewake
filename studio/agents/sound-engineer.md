@@ -119,3 +119,31 @@ WebAudio pipeline. Takeaways:
 equalpower. As the player's attention shifts, crossfade the previous focus down to equalpower
 and promote the new target to HRTF. Near-binaural immersion exactly where the player is looking,
 at roughly one convolver's cost — a perf trick that doubles as a storytelling lens.
+
+### 2026-06-27 — Deep-learning loop #2: physical modelling, parameterised ambience
+
+Web research, new + classic, scoped to our no-asset single-bus WebAudio pipeline. Sources: Frontiers
+2025 editorial "Sound synthesis through physical modeling", Smith's *Physical Audio Signal Processing*
+(digital waveguides, dsprelated.com), "Procedural audio for particle-based environmental effects" (the
+5 sound-atoms model), Stanford "Physics-Based Sound Synthesis for Games".
+
+- **Physical modelling > sample-and-loop for *responsive* sounds.** Instead of triggering a fixed
+  creak clip, model the *cause*: an excitation (the ship's stress from pitch/roll/turn/speed) driving a
+  cheap resonator. Even a one-pole/biquad "modal" approximation (a couple of resonant filters excited by
+  a short noise burst) gives a hull groan whose pitch/intensity *tracks the sea state and helm* — alive,
+  never tiled. Full digital-waveguides are overkill; the modal shortcut fits our budget.
+- **Environmental ambience = a few "sound atoms" mapped to game parameters.** The particle-audio
+  literature builds rain/fire/wind from a handful of atoms (filtered noise grains) whose parameters are
+  *driven by the visuals/state*. Re-confirms our one-knob "sea-state RTPC" plan and extends it: drive
+  wind howl from actual wind direction/strength, gull density from coast proximity, rigging stress from
+  turn rate — so the soundscape is a function of the sim, not a static bed.
+- **Keep it cheap and pooled.** Modal/waveguide resonators are a couple of biquads per voice — fine if
+  we **pool** them (DL#1) and reserve any expensive panning (HRTF) for the focus target only.
+
+🔊 **Wildcard — a *physically-modelled hull voice*.** Give the ship one continuous "creak engine": a
+small bank of resonant filters (the hull's modes) excited in proportion to **roll + pitch + turn rate +
+speed against the swell**, so it *moans* leaning into a hard turn, *groans* low in a heavy sea, and
+*settles to silence* becalmed — all synthesised, zero assets, and reactive to the exact physics the
+graphic side is already computing for buoyancy. The boat stops being a silent prop and starts sounding
+like tons of straining timber — believable realism underneath, with room for a comic over-creak on a
+run-aground (ties to the #76 "Scraaape…" beat).

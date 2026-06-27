@@ -154,3 +154,35 @@ Sources: [Burgess GDC 2011](http://blog.joelburgess.com/2011/03/gdc-2011-transcr
 [Puzzle Dependency Diagrams (GDC Vault)](https://www.gdcvault.com/play/1017978/The-Arcane-Art-of-Puzzle),
 [PotBS Reputation](https://potbs.fandom.com/wiki/Reputation),
 [Life at sea (RMG Greenwich)](https://www.rmg.co.uk/stories/maritime-history/life-sea-age-sail).
+
+### 2026-06-27 — Deep-learning loop #2: deception as a verb, and game-feel juice
+
+Mixed new + classic web reading: age-of-sail history on **letters of marque, privateer-vs-pirate
+ambiguity, false flags / flags of convenience** (Wikipedia *Letter of Marque*, goldenageofpiracy.org,
+piratesinfo.com), and modern **game-feel/"juice"** craft (Vlambeer's Jan Willem Nijman *"The Art of
+Screenshake"* GDC; GameJuice / GameAnalytics "squeeze more juice"; Wayline's caution that juice must
+*echo* the mechanic, not mask a weak one).
+
+Takeaways for Tidewake:
+
+1. **Deception was a real, legal, dramatic mechanic — and it maps straight onto our two poles.** A
+   *letter of marque* turned the same raiding act into either an honoured privateer or a hanged pirate
+   — purely a question of paperwork and whose flag you flew. Flying **false colours** to close on a
+   prize was standard practice. This is a ready-made *interesting choice* that dramatizes Infamy ↔
+   Standing: the same attack reads as patriotism or piracy depending on a commission you do/don't hold.
+2. **Juice must echo the core, not decorate it (Nijman / Wayline).** Screenshake, hit-stop (freeze
+   3–5 frames on impact), a soft camera "punch", and a brief time-dilation are the cheapest way to make
+   our cannon hits and the Insult Broadside *land*. But over-juicing harms clarity — tie each effect to
+   a real game event (a cannon *connecting*, a killing insult), keep it short, and make it toggle-able
+   (the #73 settings panel) so it complements rather than masks.
+3. **The best feedback is diegetic + systemic.** A won duel shouldn't just flash — the enemy crew's
+   morale should visibly break (they flinch, strike colours), so the *juice is the simulation showing
+   its state*, not a particle layer bolted on.
+
+🎲 **Wildcard — "False Colours & a Letter of Marque":** let the player **fly a chosen nation's flag**
+(bought/earned at a friendly port) and **raise false colours** to approach a target unsuspected. Hold
+a *commission* and raiding that nation's enemies builds **Standing** (you're a privateer, ports cheer);
+raid indiscriminately or without papers and the same deeds build **Infamy** (you're a pirate, a navy
+hunts you, merchants flee). One mechanic — *which flag, and is it a lie?* — turns every encounter into
+a moral/strategic choice that feeds *both* poles, adds delicious comedy (the smug reveal as the false
+flag drops), and gives the world a concrete reason to react to who you've decided to be.

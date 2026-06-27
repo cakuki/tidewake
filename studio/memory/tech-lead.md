@@ -40,3 +40,16 @@ Durable architecture decisions and engineering lessons. Grows over time; keep en
   Backlog: lightweight PR-validation workflow (tests + headless playtest, no deploy) with
   `cancel-in-progress: true` to gate trunk pre-merge and save free-tier minutes; deploy
   concurrency stays non-cancelling.
+- 2026-06-27 (DL#2) — **WebGPU is shippable as an opt-in, fallback-guarded renderer, not a rewrite**:
+  r171 `three/webgpu` auto-falls back to WebGL2; Safari 26 (Sep 2025) closed the gap. Wins 2–10× only in
+  draw-call/compute-heavy scenes — at our ~77-draw scale it can be *slower*. Keep the render path
+  renderer-agnostic; treat WebGPU as a future spike behind a capability check.
+- 2026-06-27 (DL#2) — **Batching isn't free; the main thread is the real mobile budget**: BatchedMesh
+  can regress (mixed/unbatched, Android/WebGPU) — profile vs #52 before adopting. OffscreenCanvas + a
+  Web Worker (render or sim off main thread) is the structural fix for mobile jank/heat that #63's DPR
+  cap only softens; pairs with fixed-timestep #36.
+- 2026-06-27 (DL#2) — **DORA 2025: AI amplifies throughput AND instability** (new "rework rate" metric)
+  where foundations are weak. Our gate + perf budget + clean-tree are the moat; push #38 (pre-merge gate).
+- 2026-06-27 (DL#2) ⚙️ **Wildcard — a renderer-adapter seam + OffscreenCanvas spike**: a tiny boundary
+  so nothing imports a concrete renderer makes both a WebGPU A/B and a worker render-move mechanical;
+  free to design now while the engine is small. → filed (WebGPU spike + OffscreenCanvas spike).

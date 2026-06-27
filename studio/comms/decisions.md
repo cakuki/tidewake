@@ -238,3 +238,31 @@ Complexity: low (pure `physics.js`, phased — island push-out first). Dependenc
 **ahead of the optional weather toggle (#58)**, which stays queued right after (it's charm, optional,
 and already unblocked by the #73 panel).
 **Why.** Trust the team to sequence; spend the owner's attention on direction, not micro-priority.
+
+### 2026-06-27 — Deep-learning research loop #2 (all 9 roles refreshed)
+**What.** Ran DL #2 (research only — no game code) as a subagent: each of the 9 roles did a web pass
+(mix of 2025-26 developments + timeless references) and wrote takeaways + a wildcard into its
+`studio/agents/<role>.md` ## Research log and `studio/memory/<role>.md`. Deduped against DL #1
+(#32–#40) and the existing backlog.
+
+**Cross-cutting themes that emerged.**
+- **Make the world remember the player → shareable stories.** Deception-as-a-verb (false colours /
+  letters of marque feeding Infamy↔Standing) + an "anecdote factory" that hands each run back as a
+  shareable Captain's Log. The spine is complete; value now lives in *choices the world reacts to*,
+  not more nouns (Meier; Dwarf Fortress/RimWorld; web-game retention 2025).
+- **The web platform is the performance frontier.** Off-main-thread rendering (OffscreenCanvas + Web
+  Worker) and a fallback-guarded WebGPU readiness spike behind a renderer-adapter seam — structural
+  answers to mobile jank/heat that #63's DPR cap only softens. Profile before batching.
+- **Determinism is the keystone.** A seeded PRNG + fixed-timestep (#36) unlock unit tests, a
+  tolerance-based gallery diff (#37), and a golden record/replay gate at once — push #36→#37 as a pair.
+- **Craft, cheaply, on-tone.** Physically-modelled hull "creak engine", a morale-reactive
+  call-and-response crew chorus, painterly NPR for the map view, and a combat/harbour game-feel juice
+  pass (hit-stop/shake/punch, toggle-able, echoing the mechanic).
+- **AI-era flow (DORA 2025).** AI amplifies throughput *and* instability where foundations are weak →
+  process is the moat; track a lightweight "rework rate" proxy; protect serialised merges + #38.
+
+**Issues filed (8 buildable wildcards):** #78 Ballad of Your Voyage (Captain's Log), #79 False Colours
+& Letters of Marque, #80 combat/harbour juice pass, #81 physically-modelled hull creak, #82
+call-and-response crew chorus, #83 living watercolour chart (map), #84 WebGPU readiness spike, #85
+OffscreenCanvas/Web Worker split spike. Most P2/P3; research only — each goes through a normal cycle if
+adopted. DL counter reset to 0 in `loop-state.md` (next DL ~cycle 43).

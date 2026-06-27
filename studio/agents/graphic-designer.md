@@ -103,3 +103,34 @@ desaturated, slightly higher-contrast fog that fades to a warm paper tone near t
 the world reads like a weathered nautical chart at distance but resolves to full-colour realism
 up close. Pure fog-colour + a distance-driven saturation lerp in the fog shader — near-zero cost,
 instantly signals "age of sail" and ties our realism/charm split into one atmospheric gag.
+
+### 2026-06-27 — Deep-learning loop #2: 2025 NPR, painterly maps, layered stylised water
+
+Web research, new + classic. Sources: red3d.com NPR canon (Reynolds), Wikipedia NPR, npj Heritage
+Science "Chinese ink-and-wash NPR for 3D" (2022), 2025 NPR round-ups (toon/watercolour, diffusion-
+based editable toon shading), and stylised-water kits (Tidewater ocean kit / ilikekillnerds 2026,
+Three.js Water Pro, Codrops R3F stylised water 2025).
+
+- **NPR is a *direction*, not a filter — pick where realism stops and charm starts.** The dual brief
+  is cleanest if we keep the **sea/sky PBR-realistic** and reserve NPR (toon banding via `gradientMap`,
+  rim light, ink outlines) for **ships, characters, and UI** — the "warm charm" half. 2025 adds cheap
+  wins: edge/outline passes and watercolour-style colour-bleed are now well-trodden fragment tricks;
+  diffusion/AI toon-shading exists but is offline-only — not for our runtime.
+- **The map/chart is the perfect place to go fully painterly.** Our bigger-map view (#54) is a
+  *separate* surface from the live 3D world, so it can adopt a strong **ink-and-watercolour nautical-
+  chart** NPR look (the npj ink-wash mountain technique generalises) without fighting the realistic
+  sea. Distinct render target = freedom to be expressive where it can't break world realism.
+- **Stylised water is layered, not monolithic — and CPU-mirror buoyancy is the trick to copy.** 2025
+  kits converge on: Gerstner swells for silhouette + 1–3 *separate* foam layers (whitecap, ambient,
+  shoreline) + foam tied to **surface compression/wake** rather than a noise texture, and a **cheap CPU
+  height mirror** of the wave function so the ship pitches/rolls *with* the sea. That CPU mirror is the
+  highest charm-per-byte upgrade for our hull and is no-build-friendly (it's math, not a shader rewrite).
+- **Charm still comes from light, not polygons (re-confirmed).** Fresnel rim, gradient sky dome,
+  height fog — the cheap trio — remain the budget way to sell atmosphere; pair with the CC0 Quaternius/
+  Kenney pirate kits (DL#1) for the hull instead of modelling from scratch.
+
+🎨 **Wildcard — "the living chart":** render the #54 map as an animated **weathered sea-chart**:
+parchment paper grain, hand-inked coastlines, a faintly drifting watercolour sea, a compass rose, and
+the player's wake drawn as a dotted rhumb-line that *writes itself* as you sail. It reuses data we
+already have (island positions, the route), reads instantly as "age of sail," and gives the map a
+character moment — the realism/charm split made literal: realistic sea outside, painted chart within.

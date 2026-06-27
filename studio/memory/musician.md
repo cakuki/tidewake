@@ -24,3 +24,14 @@ Durable scoring lessons, palette notes, and adaptive rules. Grows over time; kee
   = steady sail loop, halyard = anchor cue, short-haul = raid stinger); keep jokes as muteable one-shots
   (pizzicato sneak, dotted “drunk” swagger, brass blunder stab). Wildcard: a Klezmer **freygish** menace
   stem (same D root) for rival/storm tension — exotic danger that's still folk fiddle+accordion. Backlog #40.
+- 2026-06-27 (DL#2) — **"Interactive stems" are mainstream (2025-26)** — modular soundtracks that shift
+  with behaviour, even toggle-able pop stems. Validates the layered-on-the-bus engine; consider exposing
+  a player-facing stem toggle in the #73 settings panel.
+- 2026-06-27 (DL#2) — **The shanty's power is social (call-and-response), not just melodic**: SeaShantyTok
+  blew up because the form is participatory (shantyman calls, crew answers). Steal the *shape*, never a
+  tune. Tie a vocal layer to crew morale = adaptive drama for free (full chorus high / ragged low / silent
+  after a mauling).
+- 2026-06-27 (DL#2) 🎵 **Wildcard — generative call-and-response crew chorus**: a solo line answered by a
+  crew chorus on the off-beats, built from short *original* syllabic one-shots, key-matched and recombined
+  so it never loops audibly; fullness driven by crew morale. Makes the empty deck feel manned; rides the
+  SeaShantyTok shareability instinct. → filed.
