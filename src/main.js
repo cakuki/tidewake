@@ -9,6 +9,7 @@ import { createAudio } from './audio.js';
 import { createMusic } from './music.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';
+import { createSettings } from './ui/settings.js';
 import { createMinimap } from './minimap.js';
 import { createBigMap } from './bigmap.js';
 import { createSailing } from './sailing.js';
@@ -185,13 +186,38 @@ let booted = false;
 // on-device measurement. Cheap: a few field reads, no allocation in the hot path.
 const perf = { fps: 0, ms: 0, drawCalls: 0, triangles: 0, geometries: 0, textures: 0, programs: 0 };
 const $perf = document.getElementById('perf');
-let perfOn = new URLSearchParams(location.search).has('perf');
+const urlPerf = new URLSearchParams(location.search).has('perf');
+let perfOn = urlPerf;
 let perfMs = 0; // rolling ms/frame (EMA) so the read-out doesn't jitter
 function syncPerfOverlay() { if ($perf) $perf.classList.toggle('show', perfOn); }
-syncPerfOverlay();
-// Toggle the overlay: 'P' on desktop; tap the panel to dismiss on touch; ?perf to boot shown.
-addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'p') { perfOn = !perfOn; syncPerfOverlay(); } });
-if ($perf) $perf.addEventListener('click', () => { perfOn = false; syncPerfOverlay(); });
+
+// Settings / options panel (#73): the early-phase home for FEATURE TOGGLES. A self-contained
+// src/ui/ component (the #53 standard) that owns the ⚙ button + the brass control plate and
+// persists stored toggles to localStorage. Two real toggles ship here, each wired to existing
+// behaviour so the panel is useful from day one:
+//   • Sound — LIVE-backed by audio.js's own mute (its source of truth, already persisted); we
+//     read & drive it through here so the mute has ONE home, no double storage.
+//   • Spyglass readout (perf overlay) — STORED here (the panel persists it), driving the perf
+//     read-out. The overlay's existing P key + tap-to-dismiss now route THROUGH the toggle, so
+//     the switch, the key, and the saved choice all stay in lock-step.
+// A new toggle registers with ONE line (e.g. weather/day-night #58 next — default OFF so the
+// sunny look stays the default). See src/ui/README.md → "Registering a new toggle".
+const settings = createSettings();
+settings.register({
+  id: 'sound', label: 'Sound the shanties', hint: 'sea ambience, gulls & music',
+  read: () => !audio.isMuted(), apply: (on) => audio.setMute(!on),
+});
+settings.register({
+  id: 'perf', label: 'Spyglass readout', hint: 'fps · draw calls · triangles', default: urlPerf,
+  apply: (on) => { perfOn = on; syncPerfOverlay(); },
+});
+settings.init(); // builds the panel, wires the O / Esc keys, applies the saved/default toggles
+
+function setPerf(on) { settings.setOption('perf', on); } // one source of truth for the overlay
+// Toggle the overlay: 'P' on desktop; tap the read-out to dismiss; ?perf boots it shown. All
+// route through the toggle so the panel switch + persistence track the overlay.
+addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'p') setPerf(!perfOn); });
+if ($perf) $perf.addEventListener('click', () => setPerf(false));
 
 // Route-planning map (#54): Tab toggles the big chart, Esc closes it; the 🗺 button does
 // the same for touch / mouse. Tab is otherwise unused at sea, so we preventDefault to stop
@@ -352,6 +378,13 @@ window.__tidewake = {
   get perf() { return { ...perf }; },
   get perfBudget() { return { ...BUDGET }; },
   get ports() { return ports.ports; },
+  // Settings/options panel (#73) QA surface: read every toggle's effective value, flip one by
+  // id (drives the wired behaviour + persists stored toggles), and open/close the panel.
+  get options() { return settings.options; },
+  setOption(id, on) { return settings.setOption(id, on); },
+  get settingsOpen() { return settings.isOpen; },
+  openSettings() { settings.open(); return settings.isOpen; },
+  closeSettings() { settings.close(); return settings.isOpen; },
   // Route-planning chart (#54) QA surface: read its open-state + drive the toggle headlessly.
   get bigmap() { return { open: bigmap.open }; },
   mapToggle() { bigmap.toggle(); syncMapToggle(); return bigmap.open; },

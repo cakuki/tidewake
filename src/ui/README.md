@@ -37,3 +37,39 @@ maths out makes each piece independently verifiable and keeps the DOM wiring thi
 - [ ] `npm test` green; `node tests/playtest.mjs` still ✓ (behaviour unchanged).
 
 Future slices (per #53): ledger → trade → duel → arrival toast.
+
+## Settings panel — registering a feature toggle (`settings.js`, #73)
+
+The settings panel (`src/ui/settings.js`) is the early-phase home for **feature toggles**. It
+follows the same standard — pure registry/persistence logic (`resolveOptions` / `serializeOptions`
+/ `parseOptions` / `withOption`, unit-tested in `tests/unit/settings.test.mjs`) plus a thin
+`createSettings()` factory that owns the ⚙ button + the brass control plate (`#settings-toggle` /
+`#settings-panel` in `index.html`) and persists stored toggles to `localStorage` (`tidewake.options`).
+
+**A new toggle is one `register(...)` line in `main.js`, before `settings.init()`:**
+
+```js
+// STORED toggle — the panel owns + persists it. Visual/experimental features default OFF so
+// the current look stays the default. This is exactly the seam weather/day-night (#58) plugs into:
+settings.register({
+  id: 'weather',
+  label: 'Weather & day-night',
+  hint: 'clouds, rain, a passing night — off by default',
+  default: false,                       // OFF → the sunny look is the default
+  apply: (on) => world.setWeather(on),  // your feature reads this to switch on/off
+});
+```
+
+Toggle definition fields:
+
+- `id` — stable key used in the save and the `window.__tidewake` hook.
+- `label` / `hint` — the row's text (a touch of charm is welcome).
+- `default` — value when nothing is saved. **Visual toggles default `false`** (sunny stays default).
+- `apply(value)` — called on change **and** at `init()`; drives the wired behaviour.
+- `read()` *(optional)* — a **LIVE** toggle whose source of truth lives elsewhere (e.g. `Sound`
+  reads `audio.isMuted()`). Presence sets `persist:false` (the home system stores it; we never
+  double-store). Omit `read` for a normal **STORED** toggle that the panel persists itself.
+
+The panel opens with the **⚙ button** or the **O** key (Esc closes it). The QA hook exposes
+`tw.options`, `tw.setOption(id, bool)`, `tw.openSettings()` / `tw.closeSettings()` so the headless
+playtest can drive it. Defaults preserve the current experience: sound as-is, perf overlay hidden.

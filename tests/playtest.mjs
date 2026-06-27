@@ -300,6 +300,57 @@ try {
     if (!present) fail(`touch controls: ${verb} button missing from #touch-controls`);
   }
 
+  // 2f) Settings / options panel (#73): the panel opens, hosts the feature toggles, flipping a
+  // toggle drives the wired behaviour, and a STORED toggle persists across a reload (defaults
+  // keep the current look). Drives it through the QA hook (tw.options / tw.setOption / open).
+  const settings = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const $panel = document.getElementById('settings-panel');
+    const $perf = document.getElementById('perf');
+    const before = { ...tw.options };
+    // Open the panel and confirm it renders a row per toggle.
+    tw.openSettings();
+    const opened = {
+      isOpen: tw.settingsOpen === true,
+      visible: !!$panel && $panel.classList.contains('show'),
+      rows: $panel ? $panel.querySelectorAll('.set-row').length : 0,
+      hasSound: 'sound' in tw.options,
+      hasPerf: 'perf' in tw.options,
+    };
+    // Flip the STORED perf toggle ON → the perf read-out should show; flip the LIVE sound toggle.
+    tw.setOption('perf', true);
+    const perfOn = { value: tw.options.perf === true, overlay: !!$perf && $perf.classList.contains('show') };
+    tw.setOption('sound', false);
+    const soundOff = tw.options.sound === false;
+    tw.closeSettings();
+    const closed = tw.settingsOpen === false && !!$panel && !$panel.classList.contains('show');
+    return { before, opened, perfOn, soundOff, closed };
+  });
+  if (!settings.opened.isOpen) fail('settings: panel did not report open via tw.settingsOpen');
+  if (!settings.opened.visible) fail('settings: #settings-panel did not become visible on open');
+  if (!(settings.opened.rows >= 2)) fail(`settings: expected >=2 toggle rows, got ${settings.opened.rows}`);
+  if (!settings.opened.hasSound) fail('settings: sound toggle missing from tw.options');
+  if (!settings.opened.hasPerf) fail('settings: perf toggle missing from tw.options');
+  if (!settings.perfOn.value) fail('settings: perf toggle did not flip to true');
+  if (!settings.perfOn.overlay) fail('settings: perf overlay (#perf) did not show when toggled on');
+  if (!settings.soundOff) fail('settings: sound toggle did not flip to false');
+  if (!settings.closed) fail('settings: panel did not close on closeSettings()');
+
+  // Reload: the STORED perf toggle must persist (localStorage), proving toggle state restores on
+  // load. Then restore the defaults (perf off, sound on) so the gallery shot stays clean, and
+  // open the panel so the screenshot artifact showcases it.
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForFunction('window.__tidewake && window.__tidewake.ready === true', { timeout: 30000 });
+  const settingsPersist = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const restored = tw.options.perf === true; // the flipped-on stored toggle survived the reload
+    tw.setOption('perf', false);  // back to the hidden default for a clean shot
+    tw.setOption('sound', true);  // unmute back to default
+    tw.openSettings();            // showcase the panel in docs/playtest.png
+    return { restored, perf: tw.options.perf, sound: tw.options.sound, open: tw.settingsOpen };
+  });
+  if (!settingsPersist.restored) fail('settings: stored perf toggle did not persist across reload');
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -322,7 +373,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));
