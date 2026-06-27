@@ -11,18 +11,23 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 > orchestrator does not edit this file per cycle. Full protocol: "Lean orchestrator protocol
 > (post-compact)" in `docs/runbook/LOOP.md`.
 
-- **Current loop:** 26 done → next is **27** (read `queue.md` to pick the slice)
-- **Loops since last retro:** 0 (**Retro 5 DONE — reset**; covered loops 20–26)
-- **Cycles since last deep-learning loop:** ~18 — **🔴 DL #2 BADLY OVERDUE** (trigger is every 10; #1
-  at loop 10 filed #32–#40; loops 11–26 all mined it — refill the well). Scheduled in `queue.md`.
-- **State:** core arc COMPLETE + **tuned reachable** (`LEGEND_AT 2400`, #57) + invisible onboarding
-  (#60) + sunny Caribbean water (#61) + perf budget gate (#52). **ALL owner P1s & P2s #53/#54 done.**
-- **Next slices:** see **`studio/comms/queue.md`** (the prioritised queue). Top: **[ask owner]** #56
-  mobile go/no-go + #58 weather (owner-decisions, don't auto-do); then **#55** art-sourcing research
-  (owner P2, the top *work* item); **DL loop #2** (overdue ritual); then depth #59 cannon combat /
-  #32 glTF hull and polish #19/#15/#20/#21.
-- **Owner P2 still open:** #55 (do — research), **#56 mobile (OWNER-DECISION — ask)**, **#58 weather
-  (OWNER-DECISION — ask; do NOT undo the sunny vibe)**.
+- **Current loop:** 29 done → next is **30** (read `queue.md` top). Loops 27–29 this session: #59
+  cannon combat → #63 mobile PWA → PWA notch safe-area fix.
+- **Loops since last retro:** **3** (27–29; Retro 5 covered 20–26) — **🟡 RETRO 6 DUE NOW** (every 3–4).
+- **Cycles since last deep-learning loop:** ~21 — **🔴 DL #2 BADLY OVERDUE** (trigger every 10; #1 at
+  loop 10 filed #32–#40; loops 11–29 all mined it — refill the well). #5 in `queue.md`. Run soon.
+- **State:** core arc COMPLETE + tuned reachable + onboarded + sunny + perf-gated; **+ cannon combat
+  (#59), + installable mobile PWA with heat-aware DPR cap (#63), + PWA safe-area-top (part of #75).**
+- **Next slices (`queue.md`):** **#73** settings/toggles UI → **#58** weather (OPTIONAL toggle, sunny
+  default) → **#55** art research → **DL loop #2** + **Retro 6** (both ritual-overdue) → depth #76
+  collision / #72 cannon-followup / #32 glTF; polish #66 docked-touch-overlap, rest of #75.
+- **Owner-decisions ANSWERED (Telegram 2026-06-27):** #56 mobile = **GO (shipped #63)**; #58 weather =
+  **GO as optional toggle**. New owner-steered: **#73** toggles UI, **#76** collision+harbour-slowdown.
+- **⏳ Pending owner question:** **#76 priority — P1 (jump queue) vs P2?** Held at filed-P1, NOT
+  preempting until he confirms (logged in `OWNER-CHANNEL.md` → Pending questions).
+- **Comms:** **two-way owner channel LIVE** (`OWNER-CHANNEL.md` + `scripts/owner-channel.sh`) — report
+  out on every release/roadmap change; smart intent-routing in (pending-answer / thread-reaction /
+  small ad-hoc inline / planning→PM-desk). Poll `owner-channel.sh peek` each cycle (step 0).
 - **Process (Retro 5):** lean orchestrator protocol live; cycle-runners own ALL bookkeeping &
   `git add <specific files>` (NEVER `git add -A`); no docs-subagent concurrent with a `git add -A`
   runner; live QA only for owner visuals (cache-bust `ignoreCache`, one shot, then park tab on
@@ -30,7 +35,7 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
   QA; Game Designer owns balance/tuning; from-owner P1s jump the queue.)
 - **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions
   read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
-- **Latest release:** **v0.0.20260627115834** (invisible onboarding, #60). 28 releases, 229 tests.
+- **Latest release:** **v0.0.20260627133536** (PWA safe-area-top). 31 releases, **249 tests**.
 - **Live:** https://cakuki.github.io/tidewake/
 - **Open enablers:** #37 deterministic visual-diff (schedule — open since cycle 10); #38 PR-validation
   CI gate; #36 fixed-timestep.
