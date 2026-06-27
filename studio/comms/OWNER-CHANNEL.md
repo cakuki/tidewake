@@ -24,6 +24,7 @@ report format + quiet-hours guard:
 | Send a photo/clip | `scripts/owner-channel.sh report --photo … --caption …` | `notify.sh --photo/--video` |
 | Read the owner's new messages (non-consuming) | `scripts/owner-channel.sh peek` | `inbox.sh --peek` |
 | Read + consume (advance the read cursor) | `scripts/owner-channel.sh inbox` | `inbox.sh` |
+| **Fetch an owner-sent photo to a local file + print its path** (so a cycle can SEE a visual bug report) | `scripts/owner-channel.sh photo [--latest\|--id <file_id>] [--out <path>]` | `getFile` + download (token kept out of argv) |
 | Ask a **decision** with tappable buttons (blocks) | `scripts/owner-channel.sh ask "Q?" "A" "B"` | `ask.sh` |
 
 The bot only ever talks to the one allow-listed chat. Strangers are dropped + audited.
@@ -106,9 +107,26 @@ top of `studio/comms/queue.md`** — owner P1s preempt, then the agenda resumes.
 > in an ongoing thread → continue that thread. A quick ask → just do it. Something that needs
 > planning → summon the PM. Match intent to the lightest path that handles it well.
 
+### Visual bug reports — FETCH + VIEW the full frame before fixing (Retro 7)
+When the owner reports a **visual** bug (it looks broken / wrong / missing) — especially with a
+screenshot — **do not dispatch a fix from the description or a thumbnail.** First **fetch the actual
+image and VIEW the full frame**:
+
+```
+scripts/owner-channel.sh photo --latest        # → prints a local path; open/Read it and LOOK
+```
+
+Then **reconcile the image against expected behaviour and confirm the bug is real.** If the capture is
+ambiguous (a zoom-in/crop, a partial frame), **ask the owner for a wider or clarifying shot** before
+acting. Retro 7: a single zoom-in close-up of the hull was misread as "the ocean isn't rendering on
+iOS," and a whole cycle shipped shader hardening for a **non-bug** (the sea was fine). A cropped image
+is not a diagnosis — see the full frame, confirm, *then* fix. (Device-only fixes that can't be checked
+locally still ship best-effort and are tracked **unconfirmed pending owner re-test** — runbook guardrails.)
+
 ### Intent cues (help pick the branch)
 - *"it sails wrong / it looks broken"* → **bug**. A small visible glitch can be a 3c quick-fix; a
-  non-trivial one is a 3d PM-desk item, fast-laned (likely `from-owner` P1).
+  non-trivial one is a 3d PM-desk item, fast-laned (likely `from-owner` P1). **If it's visual, fetch +
+  view the screenshot first (above).**
 - *"can it also… / what if…"* → **feature/idea** → 3d PM-desk.
 - *"is X on the roadmap / what's next"* → **roadmap Q&A** — answer inline from `ROADMAP.md` + issues +
   `REGISTER.md` (3c), no issue filed.

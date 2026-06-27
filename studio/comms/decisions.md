@@ -6,6 +6,38 @@ architecture) are raised as `owner-decision` GitHub issues and recorded here onc
 
 ---
 
+### 2026-06-27 — Retro 7 (loops 33–36): SEE the owner's media + verify visual bugs before fixing
+**Decision.** Serving an owner field-testing on a real iPhone surfaced an owner-signal-fidelity gap, so:
+**(1) `owner-channel.sh photo` subcommand** — a first-class `scripts/owner-channel.sh photo
+[--latest|--id <file_id>] [--out <path>]` that fetches an owner-sent photo to a local file and prints
+the path (token read from config, kept out of argv; `--latest` is non-consuming peek semantics; clean
+"no photo" exit 3), so any cycle can actually SEE owner media instead of hand-rolling `getFile` + a
+token-bearing download. **(2) Visual-bug intake rule** — for any owner-reported visual bug, the
+orchestrator must fetch + VIEW the full-frame screenshot and confirm the bug is real (ask for a wider
+shot if the capture is ambiguous) **before** dispatching a fix. **(3) Device-fix guardrail** —
+iOS/device-specific fixes ship best-effort, are tracked **unconfirmed pending owner re-test**, and the
+loop must **not stack dependent work** on an unconfirmed device fix. Edited `scripts/owner-channel.sh`,
+`docs/runbook/LOOP.md` (owner-channel + guardrails + Changelog), `studio/comms/OWNER-CHANNEL.md` (tools
+table + §3 visual-bug note).
+**Why.** Loop 34 read a single zoom-in close-up of the hull as "the ocean isn't rendering on iOS" and
+shipped shader-precision/fallback hardening for a **non-bug** (#86 — the sea was fine). The hardening
+was harmless but a whole cycle chased a phantom because the real screenshot was never viewed full-frame.
+A cropped image is not a diagnosis; seeing owner media must be cheap (one command) and viewing it must be
+a required step for visual reports. And a device fix that can't be locally verified shouldn't be built
+upon until the owner confirms — or a misdiagnosis cascades.
+
+### 2026-06-27 — Retro 7: CI path filter doesn't match the stated release policy (owner follow-up)
+**Decision (flagged, not unilaterally changed).** The runbook says "releases trigger only on
+`src/`/`index.html`," but `.github/workflows/release.yml` uses **`paths-ignore`** (`studio/**`,
+`docs/**`, `**/*.md`), so a push touching `scripts/**`, `tests/**`, `package.json`,
+`manifest.webmanifest`, or `.github/**` **does** trigger a release. This retro's `scripts/owner-channel.sh`
+change would have burned a release run; it was committed with `[skip ci]` to avoid that. Recommended
+follow-up (CI-trigger semantics is an owner-ish call, so not changed here): add `scripts/**` (and
+likely `tests/**`/`.github/**`) to `paths-ignore`, or switch to an allow-list `paths:` listing only the
+game-code/asset paths the deploy actually ships.
+**Why.** Actions budget is a core constraint and the stated policy and the implementation have quietly
+diverged; aligning them prevents non-game pushes from silently spending release minutes.
+
 ### 2026-06-27 — Retro 6 (loops 27–32): harden subagent dispatch + make ritual counters bite
 **Decision.** Three process-hardening changes from running the lean loop under live owner steering:
 **(1) Injected-context guardrail** — every cycle-runner / subagent brief must include an explicit line

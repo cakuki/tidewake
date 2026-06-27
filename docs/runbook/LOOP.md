@@ -189,6 +189,14 @@ The hourly heartbeat is one part of a **two-way** link. The full protocol lives 
   that needs planning* (feature / idea / non-trivial bug) → a **PM-desk-triage subagent** exactly as
   `scripts/pm-desk.sh` would. Read messages smartly, match intent to the lightest path; a `from-owner`
   **P1** that triage files preempts `queue.md`.
+- **Owner-reported VISUAL bug → fetch + VIEW the full frame before fixing (Retro 7).** When the owner
+  says something looks broken/wrong/missing (especially with a screenshot), **do not dispatch a fix
+  from the description or a thumbnail.** First run `scripts/owner-channel.sh photo --latest` (it prints
+  a local path — open/Read it and actually LOOK), reconcile the image against expected behaviour, and
+  **confirm the bug is real**; if the capture is ambiguous (a crop/zoom-in/partial frame), **ask for a
+  wider shot** before acting. Retro 7: a zoom-in close-up of the hull was misread as "the ocean isn't
+  rendering on iOS" and a whole cycle shipped shader hardening for a **non-bug**. A cropped image is
+  not a diagnosis. (Full protocol + tools in `OWNER-CHANNEL.md` §1/§3.)
 - The owner (**@cakuki**, id `347889561`) is authorized to direct and decide over this channel; the
   bot is owner-locked to him.
 
@@ -413,6 +421,13 @@ trusts the headless playtest + the perf budget gate. When it must open the live 
   Desk with `from-owner` + `P1` (e.g. #50 compass drift, #51 swell submerging ports/docks) fix
   *visible breakage* cheaply and make every shareable screenshot/clip clean. They are sequenced
   **ahead of feature slices**, not behind them — a visibly broken world taxes every capture.
+- **Device/iOS-specific fixes ship best-effort + are tracked UNCONFIRMED pending owner re-test
+  (Retro 7).** Fixes that can't be validated locally (no real device — iOS Safari/PWA audio unlock,
+  touch/selection behaviour, mobile shader quirks) ship as the smallest always-working increment,
+  pass the headless gate, and are then **marked "unconfirmed — pending owner re-test on his device"**
+  in `loop-state.md` and on the issue (reopen/keep-open until he confirms). **Do NOT stack dependent
+  work on an unconfirmed device fix** — if the fix turns out wrong (or the bug was a misdiagnosis,
+  Retro 7 #86), a cascade of follow-on cycles is wasted. Confirm first, then build on it.
 - **Keep CI actions current** — when GitHub annotates a deprecated runtime (e.g. Node-20), raise
   a `tech`/`chore` issue and bump the action versions promptly; a deprecation becomes a hard CI
   failure later and stalls the whole loop.
@@ -455,6 +470,27 @@ curl -sI https://cakuki.github.io/tidewake/
 
 ## Changelog
 
+- **2026-06-27 — Retro 7 (loops 33–36): serving an owner field-testing on a real iPhone, and learning
+  to SEE what he sends.** Shipped a bigger island hitbox + first iOS audio unlock (#77/#76), an iOS bug
+  batch (#86 ocean "void", #77 capture-phase audio, #87 no-text-select), ship-vs-ship collision (#76 b),
+  and an optional day-night toggle (#58, sunny stays default). 4 releases, **~310 tests**, perf gate
+  green throughout; latest **v0.0.20260627195729**. Retro 6's hardening **held** — the 0-tool-use /
+  injected-"output-style" glitch did **not** recur, clean-tree checks passed, and the hard ritual
+  trigger fired this retro on schedule. The defining lesson was **owner-signal fidelity**: a single
+  owner screenshot (a zoom-in close-up of the hull) was misread as "the ocean isn't rendering on iOS,"
+  and a whole cycle shipped shader hardening for a **non-bug** (#86; the sea was fine). Three changes:
+  **(1)** the headline tool — a new **`scripts/owner-channel.sh photo [--latest|--id <file_id>] [--out
+  <path>]`** subcommand that fetches an owner-sent photo to a local file and prints the path (token kept
+  out of argv; `--latest` is non-consuming peek semantics; clean "no photo" exit 3), so any cycle can
+  actually SEE owner media instead of hand-rolling Bot-API calls; **(2)** a **visual-bug intake rule** —
+  for any owner-reported visual bug, fetch + VIEW the full frame and confirm the bug is real (ask for a
+  wider shot if the capture is ambiguous) **before** dispatching a fix; **(3)** a **device-fix
+  guardrail** — iOS/device-specific fixes ship best-effort, are tracked **unconfirmed pending owner
+  re-test**, and the loop must **not stack dependent work** on an unconfirmed device fix. Also flagged
+  (not fixed) a **CI path-filter vs. release-policy mismatch**: `release.yml` uses `paths-ignore`, so
+  `scripts/**`/`tests/**`/`.github/**` changes DO trigger a release despite the "src/ + index.html only"
+  policy (this retro's script commit used `[skip ci]` to avoid burning a run) — an owner follow-up.
+  See `studio/retros/2026-06-27-retro-7.md`, `scripts/owner-channel.sh`, `studio/comms/OWNER-CHANNEL.md`.
 - **2026-06-27 — Retro 6 (loops 27–32): a depth+platform run, and process hardening under live owner
   steering.** Shipped cannon combat (#59), an installable mobile PWA with a heat-aware DPR cap (#63),
   the PWA top-notch safe-area fix (#75 partial), an in-game settings/toggles panel (#73), and the
