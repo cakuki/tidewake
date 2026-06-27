@@ -22,6 +22,7 @@ export function createHud() {
   const $rankprog = document.getElementById('rankprog');
   const $trade = document.getElementById('trade');
   const $duel = document.getElementById('duel');
+  const $cannons = document.getElementById('cannons');
   const $prompt = document.getElementById('challenge-prompt');
   const $legend = document.getElementById('legend');
   const $legendBadge = document.getElementById('legend-badge');
@@ -99,6 +100,16 @@ export function createHud() {
       const li = e.target.closest('.duel-opts li');
       if (!li || li.dataset.jab === undefined) return;
       const n = Number(li.dataset.jab) + 1;
+      dispatchEvent(new KeyboardEvent('keydown', { key: String(n), code: 'Digit' + n, bubbles: true }));
+    });
+  }
+  // Tappable cannon aims (#59, touch only): tap an aim to fire it — same digit-keydown
+  // trick as the duel, so main.js's cannon handler runs unchanged.
+  if (TOUCH && $cannons) {
+    $cannons.addEventListener('click', (e) => {
+      const li = e.target.closest('.cannon-opts li');
+      if (!li || li.dataset.aim === undefined) return;
+      const n = Number(li.dataset.aim) + 1;
       dispatchEvent(new KeyboardEvent('keydown', { key: String(n), code: 'Digit' + n, bubbles: true }));
     });
   }
@@ -246,6 +257,37 @@ export function createHud() {
     $duel.classList.add('show');
   }
 
+  // ---- Cannon-broadside panel (#59) -----------------------------------------
+  // The duel panel's teeth-y twin: two HULL bars, the foe's last line / a volley quip,
+  // and the numbered aim options. Same cheap-cache discipline as renderDuel. When the
+  // cannonade is active it also hides the at-sea hail/fire prompt (it runs after
+  // renderDuel each frame, so an active engagement wins the prompt).
+  let lastCannonSig = '';
+  function renderCannons(c) {
+    if (!$cannons) return;
+    if (!c || !c.active) {
+      if ($cannons.classList.contains('show')) { $cannons.classList.remove('show'); lastCannonSig = ''; }
+      return; // at sea: renderDuel owns the prompt (range is shared), so we leave it be
+    }
+    if ($prompt) $prompt.classList.remove('show'); // an active fight hides the prompt
+    const pPct = Math.round((c.playerHull / c.maxHull) * 100);
+    const ePct = Math.round((c.enemyHull / c.maxHull) * 100);
+    const sig = `${c.foeName}|${pPct}|${ePct}|${c.lastLine}|${c.round}`;
+    if (sig === lastCannonSig && $cannons.classList.contains('show')) return;
+    lastCannonSig = sig;
+    const opts = c.options.map((o) => `<li data-aim="${o.i}"><b>${o.i + 1}</b>${o.label}</li>`).join('');
+    $cannons.innerHTML =
+      `<div class="cannon-h">🔥 Cannon Broadside — ${c.foeName}</div>`
+      + '<div class="duel-bars">'
+      + `<div class="duel-bar you"><div class="lab"><span>Your hull</span><span>${Math.round(c.playerHull)}</span></div><div class="meter"><div class="fill" style="width:${pPct}%"></div></div></div>`
+      + `<div class="duel-bar them"><div class="lab"><span>Their hull</span><span>${Math.round(c.enemyHull)}</span></div><div class="meter"><div class="fill" style="width:${ePct}%"></div></div></div>`
+      + '</div>'
+      + `<div class="duel-line">“${c.lastLine}”</div>`
+      + `<ul class="duel-opts cannon-opts">${opts}</ul>`
+      + `<div class="duel-help">${TOUCH ? 'Tap' : 'Press <b>1–2</b>'} to fire · a broadside hits hard but they hit back · chain-shot is safer</div>`;
+    $cannons.classList.add('show');
+  }
+
   // Rank-up flash — reuses the arrival toast, dressed in the ledger's green.
   const RANKUP_LINES = [
     'Word of your deeds travels the tideways.',
@@ -347,5 +389,5 @@ export function createHud() {
     compass.update(state);
   }
 
-  return { update, showArrival, setWind, renderDuel, flashBanner, showLegend, showGoal, hideGoal };
+  return { update, showArrival, setWind, renderDuel, renderCannons, flashBanner, showLegend, showGoal, hideGoal };
 }

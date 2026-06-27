@@ -125,6 +125,52 @@ try {
   });
   if (duel.engaged && duel.result !== 'win') fail(`duel engaged but did not resolve to a win (result=${duel.result}, rounds=${duel.rounds})`);
 
+  // 2b2) Cannon Broadside (#59): the OTHER way to settle a fight. Sail to the nearest
+  // NPC, run out the guns (openFire), and spam full broadsides — the player holds the
+  // initiative so a broadside-spam is a guaranteed win — driving the cannon resolution +
+  // its SFX path (silent headless, must not throw). Hull bars + Infamy reward exercised.
+  const cannon = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    function nearest() {
+      const s = tw.state.pos; // [x, y, z]
+      let best = null, bd = Infinity;
+      for (const n of tw.npcs) {           // n.pos = [x, z]
+        const dx = n.pos[0] - s[0], dz = n.pos[1] - s[2];
+        const d = Math.hypot(dx, dz);
+        if (d < bd) { bd = d; best = n; }
+      }
+      return { best, bd };
+    }
+    const infamyBefore = tw.state.infamy;
+    tw.press('w');
+    let engaged = false;
+    for (let i = 0; i < 1500 && !engaged; i++) {
+      const { best, bd } = nearest();
+      if (!best) break;
+      if (bd <= 180) { engaged = tw.openFire(); if (engaged) break; }
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    let rounds = 0, result = null, hullSeen = null;
+    if (engaged) {
+      hullSeen = tw.cannons.playerHull; // bars are live
+      for (let r = 0; r < 20 && tw.cannons.active; r++) {
+        tw.cannonFire(0); // 0 == full broadside (the reliable-win aim)
+        rounds++;
+        result = tw.cannons.result;
+      }
+    }
+    return { engaged, rounds, result, hullSeen, infamyGain: tw.state.infamy - infamyBefore };
+  });
+  if (cannon.engaged && cannon.result !== 'win') fail(`cannons engaged but did not resolve to a win (result=${cannon.result}, rounds=${cannon.rounds})`);
+  if (cannon.engaged && !(cannon.infamyGain > 0)) fail(`cannon win did not award infamy (gain=${cannon.infamyGain})`);
+
   // 2c) Route-planning map (#54): open the big chart, confirm the overlay is visible,
   // the chart drew (liveness counter) and the open-state is exposed, then close it.
   const bigmap = await page.evaluate(async () => {
@@ -241,7 +287,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, onboarding, persisted, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

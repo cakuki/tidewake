@@ -14,6 +14,7 @@ import { createBigMap } from './bigmap.js';
 import { createSailing } from './sailing.js';
 import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
+import { createCannons } from './cannons.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown } from './renown.js';
@@ -89,6 +90,27 @@ const duel = createDuel({
   },
 });
 
+// Cannon Broadside (#59): the duel's teeth-y twin. Run out the guns on a nearby ship
+// instead of out-jeering it — so a fight is a genuine CHOICE (talk them down OR open
+// fire). Sinking a foe pays the bigger INFAMY (the pirate pole, #45); losing the
+// gun-duel costs a few coins for repairs. Reuses the same audio bus as the insult duel.
+const cannons = createCannons({
+  npcs,
+  getShipPos: () => [state.pos.x, state.pos.z],
+  applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.infamy; syncRenown(state); },
+  applyPenalty: (p) => { initEconomy(state); state.coins = Math.max(0, state.coins - p.coins); },
+  sfx: (kind) => audio.playDuelHit(kind),
+  onEnd: ({ result, reward, penalty, foeName }) => {
+    if (result === 'win') {
+      hud.flashBanner('🔥 You sink her!',
+        `${foeName} slips beneath the waves — you haul ${reward.coins}c from the wreckage and your legend gains ${reward.infamy} infamy.`);
+    } else {
+      hud.flashBanner('💥 Hull breached!',
+        `${foeName} rakes you stem to stern — you break off and limp away, ${penalty.coins} coins lighter for the repairs.`);
+    }
+  },
+});
+
 // Audio: procedural sea ambience + adaptive sailing theme (start on first user gesture).
 // The music shares the audio engine's one context + master bus + mute toggle.
 const audio = createAudio();
@@ -116,6 +138,7 @@ addEventListener('pagehide', persistence.write);
 // again — and drops the ledger baselines so the first deed isn't mistaken for an old one.
 function newVoyage() {
   duel.cancel();
+  cannons.cancel();
   persistence.clear();
   sailing.reset();
   state.onboarding = normalizeFlags(state.onboarding); // reset() cleared it → fresh set
@@ -124,14 +147,21 @@ function newVoyage() {
 }
 addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'n') newVoyage(); });
 
-// Duel controls: 'f' hails the nearest ship; while dueling, 1–4 fling a jab. (At sea
-// the digit keys are free — the trade panel only claims them while docked.)
+// Combat controls — a fight is a CHOICE (#59):
+//   'f' HAILS the nearest ship for an Insult Broadside (talk them down); 1–4 fling a jab.
+//   'g' OPENS FIRE on the nearest ship with cannons (out-gun them); 1–2 pick where to aim.
+// Only one engagement runs at a time. (At sea the digit keys are free — the trade panel
+// only claims them while docked.)
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
-  if (k === 'f') { duel.tryChallenge(); return; }
+  if (k === 'f') { if (!cannons.state.active) duel.tryChallenge(); return; }
+  if (k === 'g') { if (!duel.state.active) cannons.openFire(); return; }
   if (duel.state.active) {
     const m = /^[1-9]$/.exec(e.key);
     if (m) duel.choose(Number(e.key) - 1);
+  } else if (cannons.state.active) {
+    const m = /^[1-9]$/.exec(e.key);
+    if (m) cannons.fire(Number(e.key) - 1);
   }
 });
 
@@ -191,9 +221,9 @@ function updatePerf(frameMs) {
 }
 
 function update(dt, t) {
-  // During an insult duel the ship holds station and sailing input is ignored —
-  // the captains are too busy trading barbs to mind the helm.
-  if (!duel.state.active) {
+  // During an insult duel OR a cannon engagement the ship holds station and sailing
+  // input is ignored — the crew is too busy trading barbs (or broadsides) to mind the helm.
+  if (!duel.state.active && !cannons.state.active) {
     sailing.step(dt, t);                       // throttle/steer/wind, integrate, place ship, follow camera
     npcs.update(dt, t);                        // wandering AI vessels (advances under step())
   }
@@ -205,7 +235,8 @@ function update(dt, t) {
   checkOnboarding();                           // invisible onboarding: goal nudge + first-win beats (#60)
   minimap.update(state);                       // north-up radar: isles/ports/ships (#16)
   bigmap.update(state);                         // route-planning chart (only redraws while open) (#54)
-  hud.renderDuel(duel.snapshot());             // insult-duel panel + "hail" prompt (#33)
+  hud.renderDuel(duel.snapshot());             // insult-duel panel + "hail/fire" prompt (#33)
+  hud.renderCannons(cannons.snapshot());       // cannon-broadside panel (#59)
   audio.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
   music.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
 }
@@ -332,6 +363,12 @@ window.__tidewake = {
   get duel() { return duel.snapshot(); },
   challenge() { return duel.tryChallenge(); },
   duelChoose(i) { return duel.choose(i); },
+  // Cannon Broadside (#59) QA surface: read the live cannonade + drive it headlessly.
+  // openFire() runs out the guns on the nearest ship; cannonFire(aim) fires one volley
+  // (aim = 0 broadside / 1 chain, or the aim name).
+  get cannons() { return cannons.snapshot(); },
+  openFire() { return cannons.openFire(); },
+  cannonFire(aim) { return cannons.fire(aim); },
   press(k) { input.keys.add(k); },
   release(k) { input.keys.delete(k); },
   save() { persistence.write(); },
