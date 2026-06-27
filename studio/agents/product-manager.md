@@ -54,3 +54,7 @@ Genuine craft only — sharpen judgment, never manipulate players or teammates.
   boat to pirate/governor" (game-product framing, narrative-driven design leads).
 - 2026-06-27 — **Release notes as a feature**: patch notes that delight build community
   (live-games / indie patch-notes craft).
+- 2026-06-27 (Retro 1) — **Sequence a playable verb before polish**: after 4 loops we had
+  beautiful sailing and nothing to sail toward. The fantasy only becomes a *game* once there's a
+  verb — dock at a port (#12), trade, then save (#11). Prioritise the smallest verb that lets a
+  fresh player state a goal, ahead of more visual polish (core-loop-first product discipline).

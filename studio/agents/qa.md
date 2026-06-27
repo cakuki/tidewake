@@ -83,3 +83,7 @@ Protect players and teammates honestly; report what is, never inflate green.
   can never silently return (regression-suite / "every bug a test" discipline).
 - 2026-06-27 — **Score, don't vibe**: rate production quality on a fixed rubric so "good"
   is measurable and comparable across releases (quality-rubric / heuristic-evaluation practice).
+- 2026-06-27 (Retro 1) — **The headless gate is visually blind**: swiftshader renders the scene
+  dark and passed the invisible sail (#23). Treat CI as the *functional* gate only; a real-browser
+  Chrome-MCP pass is the *visual* gate — mandatory whenever a visible change ships, and **always
+  diffed against the previous release's gallery shot**, every release, not occasionally.

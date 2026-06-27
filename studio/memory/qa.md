@@ -10,3 +10,6 @@ Durable testing lessons, known issues, and regression notes. Grows over time; ke
   bugs need repro steps + screenshot; smoke-test the live URL after deploy.
 - 2026-06-27 — **First priorities**: keep playtest coverage growing with features; build a
   short manual smoke checklist (boot, sail upwind/downwind, orbit camera, version shows).
+- 2026-06-27 (Retro 1) — **Headless gate can't see visuals** (swiftshader renders dark; it
+  passed the invisible sail #23). The real-browser pass is the visual gate; diff every release's
+  gallery shot against the previous one — visual regression is caught by eyes, not by CI.

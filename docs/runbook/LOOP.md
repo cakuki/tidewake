@@ -47,7 +47,11 @@ the Project Manager edits it after each retro (see Changelog at the bottom).
    Run `node tests/playtest.mjs` locally (must print `✓ PLAYTEST PASSED`, zero console
    errors). **Also** do a browser smoke check: serve locally, confirm the game boots, sails,
    and the new change actually works. **Capture a screenshot** (the playtest writes
-   `docs/playtest.png`; grab an extra of the new feature if useful).
+   `docs/playtest.png`; grab an extra of the new feature if useful). The headless gate renders
+   the 3D scene dark (swiftshader) and **cannot validate visuals** — so a real-browser pass is
+   mandatory, not optional, whenever a visible change shipped. **Every release**, archive one
+   shot to `studio/qa/gallery/<version-tag>.png` and diff it against the previous release's shot;
+   any regressed dimension → file a bug and consider blocking the gate (Retro 1).
 
 6. **RELEASE** — *Software Developer + QA.*
    Commit the game-code change to `main`. CI runs the headless playtest gate, stamps the
@@ -108,6 +112,15 @@ quiet hours (no messages 01:00–07:00); batch and send at 07:00 if a window is 
 
 **Guardrails:**
 - **Always shippable** — never merge a build that doesn't boot and sail.
+- **Keep `main.js` thin** — it is the wiring hotspot that serialises parallel work. New
+  features self-register through `src/systems/` (#24); don't grow `main.js` with per-feature
+  logic. Tech Lead flags any slice that must touch it so the PM avoids a colliding batch.
+- **Sequence a playable gameplay verb early** — favour slices that turn the sailing toy into a
+  game (a port to dock at, something to trade, a reason to go somewhere) over more polish, until
+  the north-star fantasy is actually playable (Retro 1, Product Manager).
+- **Keep CI actions current** — when GitHub annotates a deprecated runtime (e.g. Node-20), raise
+  a `tech`/`chore` issue and bump the action versions promptly; a deprecation becomes a hard CI
+  failure later and stalls the whole loop.
 - **Never imitate a named franchise** — original work only; no commercial game/franchise by
   name (Constitution).
 - **Keep the public surface clean** — README and public docs stay tidy and audience-correct;
@@ -147,4 +160,9 @@ curl -sI https://cakuki.github.io/tidewake/
 
 ## Changelog
 
+- **2026-06-27 — Retro 1 (loops 0–3):** PLAYTEST step now requires a mandatory real-browser pass
+  for visible changes (headless gate can't see visuals) and a per-release gallery diff vs. the
+  previous shot. Added guardrails: keep `main.js` thin via `src/systems/` (#24); sequence a
+  playable gameplay verb early (port #12 → trade) over polish; keep CI actions current (bump
+  deprecated Node-20 runtimes). See `studio/retros/2026-06-27-retro-1.md`.
 - **2026-06-27** — initial runbook (Loop 0 bootstrap).

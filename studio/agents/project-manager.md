@@ -64,3 +64,7 @@ Optimise for flow and predictability, never for surveillance or pressure.
   documented (lean/Kanban explicit-policies practice).
 - 2026-06-27 — **Serialise integration, parallelise work**: many devs build at once, but PRs
   merge one at a time on a green gate (trunk-based / integration-discipline practice).
+- 2026-06-27 (Retro 1) — **Retire shared touch-points, don't just schedule around them**: a
+  file every slice edits (here `main.js`) is a flow tax — fix the architecture (#24) instead of
+  forever sequencing batches to avoid it. Also: treat CI deprecation annotations (Node-20) as
+  chore issues immediately, before they become hard failures that stall the loop.

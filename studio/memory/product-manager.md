@@ -9,3 +9,6 @@ Durable lessons, vision notes, and roadmap rationale. Grows over time; keep entr
 - 2026-06-27 — **First priorities**: give sailing a *point* — the first reason to go somewhere
   (a port / a goal / a reward). Smallest slice that turns "sailing" into "adventure".
 - 2026-06-27 — **Guardrail**: original work only; never reference or imitate a named franchise.
+- 2026-06-27 (Retro 1) — **Still a sailing toy, not a game**: 4 loops in, great sailing but no
+  gameplay verb. Next: dockable port (#12) → simplest trade → save/load (#11). Ship the smallest
+  verb that lets a fresh player name a goal, ahead of more polish.

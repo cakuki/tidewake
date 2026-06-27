@@ -10,3 +10,6 @@ Durable lessons about the loop, flow, and process. Grows over time; keep entries
   changes. Keep loops efficient; don't burn Actions minutes on docs.
 - 2026-06-27 — **First priorities**: stand up `board.md` as the live mirror; ensure issue
   labels/priorities exist before Loop 1 planning.
+- 2026-06-27 (Retro 1) — **First retro held** (loops 0–3): runbook updated with thin-`main.js`,
+  visual-gallery-diff, gameplay-verb-first, and CI-version guardrails. Watch items: `main.js`
+  contention (#24), Actions Node-20 deprecation, the no-gameplay-verb product gap.

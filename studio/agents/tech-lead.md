@@ -62,3 +62,7 @@ Study a named engineering/graphics practice each loop-block; adopt the useful pa
 - 2026-06-27 — **Design for parallel work**: split slices along clean module seams with
   non-overlapping file ownership so devs don't collide (modular-boundaries / Conway-aware
   design practice).
+- 2026-06-27 (Retro 1) — **Keep the integration file thin**: `main.js` was becoming the
+  shared touch-point every parallel slice edits. Move per-feature wiring into a `src/systems/`
+  registry where features self-register (#24); `main.js` stays a small bootstrap + QA hook.
+  A thin core is a parallelism enabler, not just tidiness.
