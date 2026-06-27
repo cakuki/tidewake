@@ -39,6 +39,9 @@ Genuine craft only — sharpen judgment, never manipulate players or teammates.
 - **→ Game Designer** (`inbox/game-designer.md`): intended player fantasy/outcome.
 - **← QA** (`inbox/product-manager.md`): build verdict feeding release notes.
 - **← everyone**: ideas/risks surface to PM inbox; PM folds them into the roadmap.
+- **← owner feedback desk** (`studio/feedback/`): the owner triages feedback with you in a
+  separate session (`scripts/pm-desk.sh`). Accepted items arrive as `from-owner` GitHub issues
+  already value- and feasibility-assessed; fold them into the roadmap and confirm priority with TL.
 
 ## Definition of Done (PM outputs)
 - Roadmap reflects current reality; top slice has a one-line player value + acceptance.

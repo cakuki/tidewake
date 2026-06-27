@@ -12,6 +12,7 @@ loads its agent definition, its memory, its inbox, and the board, and that's eno
 | `board.md` | The current loop's kanban — mirrors GitHub issues. | Project Manager (others read) |
 | `decisions.md` | Append-only log of cross-role decisions, newest first, dated. | Any role, on a real decision |
 | `inbox/<role>.md` | Messages and asks addressed to one role. | Any role → that role |
+| `../feedback/` | Owner feedback intake + PM-desk triage pipeline (separate session). | Owner + PM desk |
 | `../memory/<role>.md` | A role's durable long-term memory. | That role only |
 
 GitHub Issues remain the source of truth for *work items*; `board.md` is the loop-local mirror.
