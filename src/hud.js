@@ -25,6 +25,7 @@ export function createHud() {
   const $prompt = document.getElementById('challenge-prompt');
   const $legend = document.getElementById('legend');
   const $legendBadge = document.getElementById('legend-badge');
+  const $goal = document.getElementById('goal'); // invisible-onboarding goal card (#60)
   document.getElementById('version').textContent = VERSION;
 
   // Touch mode (#17): input.js sets `body.touch` before the HUD is built. When set, the
@@ -195,6 +196,24 @@ export function createHud() {
     flashBanner(`⚓ Made port at ${portName}`, line);
   }
 
+  // ---- Invisible-onboarding goal card (#60) ---------------------------------
+  // A small, diegetic objective card for a brand-new captain — names the loop in one
+  // breath. Non-blocking (pointer-events: none) and self-clearing: main.js shows it on a
+  // fresh voyage and hides it the moment the captain acts (their first dock). Cheap cache.
+  let lastGoalSig = '';
+  function showGoal(goal) {
+    if (!$goal || !goal) return;
+    const sig = goal.title + '|' + goal.line;
+    if (sig === lastGoalSig && $goal.classList.contains('show')) return;
+    lastGoalSig = sig;
+    $goal.innerHTML = `<div class="goal-title">${goal.title}</div><div class="goal-line">${goal.line}</div>`;
+    $goal.classList.add('show');
+  }
+  function hideGoal() {
+    if (!$goal) return;
+    if ($goal.classList.contains('show')) { $goal.classList.remove('show'); lastGoalSig = ''; }
+  }
+
   // ---- Insult-duel panel (#33) ----------------------------------------------
   // Reads a plain duel snapshot and paints the modal-ish panel: both morale bars,
   // the enemy's last line, and the numbered jab options. Cheap cache so the hot
@@ -328,5 +347,5 @@ export function createHud() {
     compass.update(state);
   }
 
-  return { update, showArrival, setWind, renderDuel, flashBanner, showLegend };
+  return { update, showArrival, setWind, renderDuel, flashBanner, showLegend, showGoal, hideGoal };
 }

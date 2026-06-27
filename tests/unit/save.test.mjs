@@ -271,3 +271,45 @@ test('deserialize coerces a malformed legends field to safe booleans', () => {
   assert.ok(r2);
   assert.deepEqual(r2.legends, { pirate: false, governor: false });
 });
+
+// ---- Invisible-onboarding persistence (save v6, #60) ----
+
+test('SAVE_VERSION advanced to carry the onboarding flags', () => {
+  assert.ok(SAVE_VERSION >= 6, 'onboarding bumps the save version');
+});
+
+test('serialize → deserialize round-trips the onboarding flags', () => {
+  const s = { ...economyState(), onboarding: { goal: true, firstDock: true, firstTrade: true, firstRank: false } };
+  const restored = deserialize(serialize(s));
+  assert.deepEqual(restored.onboarding, { goal: true, firstDock: true, firstTrade: true, firstRank: false });
+});
+
+test('serialize stamps a fresh onboarding set for a pre-onboarding caller', () => {
+  const obj = JSON.parse(serialize(economyState())); // no onboarding field
+  assert.deepEqual(obj.onboarding, { goal: false, firstDock: false, firstTrade: false, firstRank: false });
+});
+
+test('deserialize coerces a malformed onboarding field to safe booleans (never rejects)', () => {
+  const good = JSON.parse(serialize(economyState()));
+  const r = deserialize(JSON.stringify({ ...good, onboarding: { firstDock: 'aye', firstTrade: 1, junk: 9 } }));
+  assert.ok(r, 'a junk onboarding field must not reject the whole save');
+  assert.deepEqual(r.onboarding, { goal: false, firstDock: true, firstTrade: true, firstRank: false });
+  const r2 = deserialize(JSON.stringify({ ...good, onboarding: 'whoops' }));
+  assert.ok(r2);
+  assert.deepEqual(r2.onboarding, { goal: false, firstDock: false, firstTrade: false, firstRank: false });
+});
+
+test('an untouched save with no onboarding field reads as a brand-new captain', () => {
+  // a fresh-start save (starting purse, no renown, empty hold) with the field absent
+  const bare = { v: SAVE_VERSION, heading: 0, speed: 0, throttle: 0, pos: [0, 0, 0], coins: START_COINS, cargo: {}, infamy: 0, standing: 0 };
+  const r = deserialize(JSON.stringify(bare));
+  assert.ok(r);
+  assert.deepEqual(r.onboarding, { goal: false, firstDock: false, firstTrade: false, firstRank: false });
+});
+
+test('a save with real progress but no onboarding field reads as a returning captain (none nagged)', () => {
+  const progressed = { v: SAVE_VERSION, heading: 0, speed: 0, throttle: 0, pos: [10, 0, -5], coins: 500, cargo: { rum: 2 }, infamy: 80, standing: 40 };
+  const r = deserialize(JSON.stringify(progressed));
+  assert.ok(r);
+  assert.deepEqual(r.onboarding, { goal: true, firstDock: true, firstTrade: true, firstRank: true });
+});

@@ -91,6 +91,21 @@
     }
     #perf.show { display: block; pointer-events: auto; cursor: pointer; }
     body.touch #perf { top: auto; bottom: 24px; right: 12px; }
+    /* Invisible-onboarding goal card (#60): a small, diegetic objective for a brand-new
+       captain. Reuses the toast's glass look; sits low-centre (above #help) so it never
+       fights the arrival toast up top. Non-blocking; fades in/out, auto-clears on first dock. */
+    #goal {
+      position: fixed; left: 50%; bottom: 46px; z-index: 11; transform: translate(-50%, 10px);
+      min-width: 240px; max-width: min(90vw, 420px); text-align: center; pointer-events: none;
+      color: #eaf6ff; background: rgba(7, 22, 38, .72); border: 1px solid rgba(135,224,164,.5);
+      border-radius: 10px; padding: 9px 18px; backdrop-filter: blur(4px);
+      box-shadow: 0 6px 24px rgba(0,0,0,.45);
+      opacity: 0; transition: opacity .4s ease, transform .4s ease;
+    }
+    #goal.show { opacity: 1; transform: translate(-50%, 0); }
+    #goal .goal-title { color: #9be8b0; font-weight: 700; font-size: 13px; letter-spacing: .04em; }
+    #goal .goal-line { margin-top: 3px; font-size: 12px; line-height: 1.45; color: #dfeaf5; }
+    body.touch #goal { bottom: calc(180px + env(safe-area-inset-bottom, 0px)); }
     #toast {
       position: fixed; left: 50%; top: 64px; z-index: 12; transform: translate(-50%, -14px);
       min-width: 240px; max-width: min(90vw, 460px); text-align: center; pointer-events: none;
@@ -282,6 +297,9 @@
   <div id="challenge-prompt" role="status">⚔ Press <b>F</b> to hail and duel</div>
   <div id="duel" role="dialog" aria-live="polite"></div>
   <div id="toast" role="status" aria-live="polite"></div>
+  <!-- Invisible onboarding (#60): a brand-new captain's seeded first goal. Filled + shown
+       by hud.js/main.js on a fresh voyage; self-clears the moment they make their first port. -->
+  <div id="goal" role="status" aria-live="polite"></div>
   <div id="legend" role="dialog" aria-live="polite"></div>
   <canvas id="minimap" width="150" height="150" aria-label="Minimap of nearby islands, ports and ships"></canvas>
   <button id="map-toggle" type="button" aria-pressed="false" aria-label="Open route-planning map" title="Map (Tab)">🗺</button>

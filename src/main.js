@@ -16,8 +16,9 @@ import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { VERSION } from './version.js';
-import { greetPlayer, dominantPole, titleFor, earnedLegend } from './renown.js';
+import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown } from './renown.js';
 import { BUDGET, formatPerf } from './perf.js';
+import { GOAL, applyEvent, shouldShowGoal, normalizeFlags, currentStep } from './onboarding.js';
 
 // main.js is a thin bootstrap: it builds the renderer/scene/camera/lights, spins up
 // the world + game systems (input, sailing, hud, ports, wake, audio, persistence),
@@ -100,14 +101,27 @@ hud.setWind(state.windName);
 // Restore a prior voyage before the loop starts. Corrupt/old/missing → fresh start.
 const saved = persistence.load();
 if (saved) sailing.restore(saved);
+// Invisible onboarding (#60): make sure the progress flags always exist. A fresh voyage
+// (no save) gets an all-to-do set so the seeded goal greets a brand-new captain; a restored
+// voyage keeps whatever it earned (so a returning captain is never re-taught or re-applauded).
+state.onboarding = normalizeFlags(state.onboarding);
 
 // Quiet auto-save: periodically and whenever the tab is hidden or closed.
 setInterval(persistence.write, 2000);
 addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') persistence.write(); });
 addEventListener('pagehide', persistence.write);
 
-// 'n' — new voyage: wipe the save and respawn at the origin, dead in the water.
-function newVoyage() { duel.cancel(); persistence.clear(); sailing.reset(); }
+// 'n' — new voyage: wipe the save and respawn at the origin, dead in the water. A fresh
+// voyage also re-arms onboarding — the seeded goal + first-win beats greet the new captain
+// again — and drops the ledger baselines so the first deed isn't mistaken for an old one.
+function newVoyage() {
+  duel.cancel();
+  persistence.clear();
+  sailing.reset();
+  state.onboarding = normalizeFlags(state.onboarding); // reset() cleared it → fresh set
+  obsStanding = undefined;
+  obsRankIndex = undefined;
+}
 addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'n') newVoyage(); });
 
 // Duel controls: 'f' hails the nearest ship; while dueling, 1–4 fling a jab. (At sea
@@ -184,10 +198,11 @@ function update(dt, t) {
     npcs.update(dt, t);                        // wandering AI vessels (advances under step())
   }
   ocean.update(t, camera.position);
-  ports.update(state, hud.showArrival, t);     // arrival detection (fires once) + buoy bob
+  ports.update(state, onArrive, t);            // arrival detection (fires once) + buoy bob
   wake.update(dt, state, t);                   // bow wake + trailing foam
   hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
   checkLegends();                              // endgame payoff: crown a new legend once (#46)
+  checkOnboarding();                           // invisible onboarding: goal nudge + first-win beats (#60)
   minimap.update(state);                       // north-up radar: isles/ports/ships (#16)
   bigmap.update(state);                         // route-planning chart (only redraws while open) (#54)
   hud.renderDuel(duel.snapshot());             // insult-duel panel + "hail" prompt (#33)
@@ -217,6 +232,46 @@ function checkLegends() {
       persistence.write(); // lock the legend in the moment it's earned
     }
   }
+}
+
+// ---- Invisible onboarding (#60) -------------------------------------------------------
+// A light-touch first-session teacher: a seeded goal nudge for a brand-new captain, plus a
+// few first-win beats that fire ONCE EVER. The decision logic is pure (onboarding.js); this
+// is just the wiring that watches the world for the events and routes applause to the HUD.
+// The flags live on the shared state and persist in the save, so a returning captain — or a
+// captain who reloads mid-session — never sees the nudge or a beat twice.
+// Arrival handler: the harbourmaster's greeting toast, plus the first-dock onboarding beat.
+// On a captain's very first port the celebratory beat lands last (overwrites the greeting),
+// turning "you arrived" into a taught first-win; every later arrival is the normal greeting.
+function onArrive(portName, line) {
+  hud.showArrival(portName, line);
+  fireOnboarding('dock');
+}
+
+function fireOnboarding(event) {
+  const { beat, flags, changed } = applyEvent(state.onboarding, event);
+  if (!changed) return;
+  state.onboarding = flags;
+  if (beat) hud.flashBanner(beat.title, beat.line);
+  persistence.write(); // lock the milestone the instant it's reached
+}
+
+// Detect the first profitable trade and the first rank climbed by watching the ledger move.
+// Selling is the only thing that grows STANDING, so a standing bump == a sale (coin earned);
+// any rise in rung == a rank-up. Baselines adopt silently on the first observed frame so a
+// restored voyage never mistakes its starting numbers for a fresh achievement.
+let obsStanding, obsRankIndex;
+function checkOnboarding() {
+  const standing = state.standing ?? 0;
+  if (obsStanding !== undefined && standing > obsStanding) fireOnboarding('profit');
+  obsStanding = standing;
+
+  const rankIndex = rankForRenown(state.renown ?? 0).index;
+  if (obsRankIndex !== undefined && rankIndex > obsRankIndex) fireOnboarding('rank');
+  obsRankIndex = rankIndex;
+
+  // The seeded goal card: shown until the captain acts (their first dock clears it).
+  if (shouldShowGoal(state.onboarding)) hud.showGoal(GOAL); else hud.hideGoal();
 }
 
 let simT = 0;
@@ -267,6 +322,12 @@ window.__tidewake = {
   mapToggle() { bigmap.toggle(); syncMapToggle(); return bigmap.open; },
   get npcs() { return npcs.snapshot(); },
   get docked() { return ports.docked; },
+  // Invisible onboarding (#60) QA surface: the live progress flags, the next step, and
+  // whether the seeded goal card is currently on screen.
+  get onboarding() {
+    const flags = normalizeFlags(state.onboarding);
+    return { flags, step: currentStep(flags), goalVisible: shouldShowGoal(flags) };
+  },
   // Insult Broadside (#33) QA surface: read the live duel + drive it headlessly.
   get duel() { return duel.snapshot(); },
   challenge() { return duel.tryChallenge(); },

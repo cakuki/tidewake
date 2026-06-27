@@ -150,6 +150,75 @@ try {
   if (!(bigmap.frames > 0)) fail('big map never rendered a frame while open');
   if (!bigmap.closedHidden) fail('big map did not hide on the second toggle');
 
+  // 2d) Invisible onboarding (#60): a brand-new captain gets a seeded goal, then first-win
+  // beats that fire ONCE EVER and persist. Start a clean voyage, assert the goal shows,
+  // autopilot to the nearest port (first dock), do a trade (first coin), then reload and
+  // confirm the flags persisted so a returning captain is never re-taught.
+  const onboarding = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    tw.newVoyage();
+    tw.step(0.1);
+    const fresh = { goalVisible: tw.onboarding.goalVisible, flags: { ...tw.onboarding.flags } };
+
+    // Sail to the nearest port and dock.
+    function nearestPort() {
+      const s = tw.state.pos; // [x, y, z]
+      let best = null, bd = Infinity;
+      for (const p of tw.ports) {            // p.pos = [x, z]
+        const d = Math.hypot(p.pos[0] - s[0], p.pos[1] - s[2]);
+        if (d < bd) { bd = d; best = p; }
+      }
+      return { best, bd };
+    }
+    tw.press('w');
+    let docked = false;
+    for (let i = 0; i < 4000 && !docked; i++) {
+      const { best } = nearestPort();
+      if (!best) break;
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+      docked = !!tw.docked;
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    const afterDock = { docked: tw.docked, firstDock: tw.onboarding.flags.firstDock, goalVisible: tw.onboarding.goalVisible };
+
+    // Make a trade for coin: buy a unit then sell it back (any sale grows standing → first coin).
+    let traded = false;
+    if (tw.docked && tw.economy && tw.economy.market) {
+      const good = tw.economy.market[0].id;
+      tw.economy.buy(good, 1);
+      const r = tw.economy.sell(good, 1);
+      traded = !!(r && r.ok);
+    }
+    tw.step(0.2); // let the loop observe the standing bump and fire the beat
+    const afterTrade = { traded, firstTrade: tw.onboarding.flags.firstTrade };
+
+    tw.save();
+    return { fresh, afterDock, afterTrade };
+  });
+  if (!onboarding.fresh.goalVisible) fail('onboarding: seeded goal not shown to a brand-new captain');
+  if (onboarding.fresh.flags.firstDock || onboarding.fresh.flags.firstTrade) fail('onboarding: a fresh voyage should have no beats fired');
+  if (!onboarding.afterDock.docked) fail('onboarding: ship never reached a port to dock');
+  if (!onboarding.afterDock.firstDock) fail('onboarding: first-dock beat did not fire on first port');
+  if (onboarding.afterDock.goalVisible) fail('onboarding: seeded goal should clear after the first dock');
+  if (!onboarding.afterTrade.traded) fail('onboarding: trade did not complete');
+  if (!onboarding.afterTrade.firstTrade) fail('onboarding: first-trade beat did not fire after earning coin');
+
+  // Reload: the flags must persist so a returning captain is never re-taught or re-applauded.
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForFunction('window.__tidewake && window.__tidewake.ready === true', { timeout: 30000 });
+  const persisted = await page.evaluate(() => {
+    const tw = window.__tidewake;
+    return { flags: { ...tw.onboarding.flags }, goalVisible: tw.onboarding.goalVisible };
+  });
+  if (!persisted.flags.firstDock || !persisted.flags.firstTrade) fail(`onboarding: beats did not persist across reload (${JSON.stringify(persisted.flags)})`);
+  if (persisted.goalVisible) fail('onboarding: a returning captain should not see the seeded goal');
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -172,7 +241,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, onboarding, persisted, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

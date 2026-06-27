@@ -37,6 +37,11 @@ export function createSailing({ ship, ocean, camera, input }) {
     if (saved.legends && typeof saved.legends === 'object') {
       state.legends = { pirate: !!saved.legends.pirate, governor: !!saved.legends.governor };
     }
+    // Onboarding progress (persisted since save v6): a returning captain keeps the flags
+    // they earned, so the seeded goal + first-win beats never re-fire for them (#60).
+    if (saved.onboarding && typeof saved.onboarding === 'object') {
+      state.onboarding = { ...saved.onboarding };
+    }
   }
 
   // Respawn at the origin, dead in the water. Clear economy so initEconomy re-seeds defaults.
@@ -46,6 +51,7 @@ export function createSailing({ ship, ocean, camera, input }) {
     delete state.coins; delete state.cargo;
     delete state.infamy; delete state.standing; delete state.renown;
     delete state.legends; // a new voyage starts legend-less; the crowns are yet to earn
+    delete state.onboarding; // a fresh voyage re-teaches: the goal + first-win beats arm again (#60)
     if (input && typeof input.resetView === 'function') input.resetView(); // reopen astern (#49)
   }
 

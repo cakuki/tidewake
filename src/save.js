@@ -14,13 +14,15 @@
 // fresh voyage. Never throws.
 
 import { GOODS, HOLD_CAP, START_COINS } from './economy.js';
+import { normalizeFlags, freshFlags, completedFlags } from './onboarding.js';
 
 export const SAVE_KEY = 'tidewake.save.v1';
 // v2 added the economy fields (coins + cargo); v3 added renown (the Captain's Ledger);
 // v4 split renown into two poles — infamy (pirate) + standing (governor) (#45); v5 added
-// the earned endgame legends ({pirate, governor} crowns, #46).
+// the earned endgame legends ({pirate, governor} crowns, #46); v6 added the invisible-
+// onboarding progress flags (seeded goal + first-win beats, fired once per captain, #60).
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -73,6 +75,9 @@ export function serialize(state) {
   // caller (no `legends`) simply records none earned.
   const lg = state.legends || {};
   const legends = { pirate: !!lg.pirate, governor: !!lg.governor };
+  // Onboarding progress (#60): the seeded-goal + first-win flags, coerced to safe booleans.
+  // A pre-onboarding caller (no `onboarding`) records a fresh, all-to-do set.
+  const onboarding = state.onboarding ? normalizeFlags(state.onboarding) : freshFlags();
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -84,6 +89,7 @@ export function serialize(state) {
     infamy,
     standing,
     legends,
+    onboarding,
   });
 }
 
@@ -154,6 +160,20 @@ export function deserialize(raw) {
   const lg = (obj.legends && typeof obj.legends === 'object' && !Array.isArray(obj.legends)) ? obj.legends : {};
   const legends = { pirate: !!lg.pirate, governor: !!lg.governor };
 
+  // Onboarding progress (save v6, #60): coerce to safe booleans; like legends, junk never
+  // rejects an otherwise-valid save (these are teaching flags, not load-bearing physics).
+  // If the field is ABSENT (a leaner / migrated save), infer from progress: a captain who
+  // already has coin beyond the starting purse, any renown, or cargo isn't new — they're
+  // returning, so onboarding is considered done and they're never nagged. An untouched save
+  // gets a fresh set so the goal can still greet a genuinely new captain.
+  let onboarding;
+  if (obj.onboarding !== undefined) {
+    onboarding = normalizeFlags(obj.onboarding);
+  } else {
+    const hasProgress = coins !== START_COINS || infamy > 0 || standing > 0 || Object.keys(cleanCargo).length > 0;
+    onboarding = hasProgress ? completedFlags() : freshFlags();
+  }
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -164,6 +184,7 @@ export function deserialize(raw) {
     infamy,
     standing,
     legends,
+    onboarding,
     renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }
