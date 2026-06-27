@@ -4,9 +4,10 @@
 // just leans on these functions for the shape, versioning, and sanity-checks.
 //
 // Contract: a "save" is a tiny JSON object
-//   { v, heading, speed, throttle, pos, coins, cargo }
-// where pos is a [x, y, z] array, coins is a finite number >= 0, and cargo is a
-// {goodId: qty} map over known goods (total within HOLD_CAP). Anything that doesn't
+//   { v, heading, speed, throttle, pos, coins, cargo, renown }
+// where pos is a [x, y, z] array, coins is a finite number >= 0, cargo is a
+// {goodId: qty} map over known goods (total within HOLD_CAP), and renown is a finite
+// number >= 0 (the Captain's Ledger; an absent renown loads as 0). Anything that doesn't
 // match — wrong version, missing/partial fields, non-finite numbers, absurd
 // positions, unknown/over-capacity cargo — deserialises to `null` so the caller can
 // simply start a fresh voyage. Never throws.
@@ -14,9 +15,9 @@
 import { GOODS, HOLD_CAP, START_COINS } from './economy.js';
 
 export const SAVE_KEY = 'tidewake.save.v1';
-// v2 added the economy fields (coins + cargo). Pre-economy v1 saves fail the version
-// gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 2;
+// v2 added the economy fields (coins + cargo); v3 added renown (the Captain's Ledger).
+// Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
+export const SAVE_VERSION = 3;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -61,6 +62,8 @@ export function serialize(state) {
   // Economy: persist the purse + hold. A live state always carries these (economy.js
   // initialises them), but default defensively so a pre-economy caller still round-trips.
   const coins = isFiniteNumber(state.coins) && state.coins >= 0 ? state.coins : START_COINS;
+  // Renown: a lifetime legend score; default 0 for a pre-renown caller.
+  const renown = isFiniteNumber(state.renown) && state.renown >= 0 ? state.renown : 0;
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -69,6 +72,7 @@ export function serialize(state) {
     pos: [pos[0], pos[1], pos[2]],
     coins,
     cargo: cleanCargoForSave(state.cargo),
+    renown,
   });
 }
 
@@ -121,6 +125,14 @@ export function deserialize(raw) {
   }
   if (held > HOLD_CAP) return null;
 
+  // Renown (save v3): an absent field loads as 0 (a leaner older v3 shape stays valid),
+  // but a present-but-corrupt renown — negative or non-finite — fails the whole save.
+  let renown = 0;
+  if (obj.renown !== undefined) {
+    if (!isFiniteNumber(obj.renown) || obj.renown < 0) return null;
+    renown = obj.renown;
+  }
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -128,5 +140,6 @@ export function deserialize(raw) {
     pos: [pos[0], pos[1], pos[2]],
     coins,
     cargo: cleanCargo,
+    renown,
   };
 }

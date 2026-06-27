@@ -111,6 +111,7 @@ export function createPorts(world) {
     initEconomy(state);
     return {
       coins: state.coins,
+      renown: state.renown,
       cargo: { ...state.cargo },
       used: cargoUsed(state.cargo),
       capacity: HOLD_CAP,

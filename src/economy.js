@@ -9,6 +9,8 @@
 // gasping for it, and watch your purse climb. Realism in the prices; comedy in the
 // people who quote them. All names + banter original to Tidewake.
 
+import { renownForSale } from './renown.js';
+
 // ---- Goods: a small, readable hold of five trade goods. Order = number-key order. ----
 export const GOODS = [
   { id: 'rum',       name: 'Rum',       base: 20, icon: '🍺' },
@@ -143,6 +145,8 @@ export function initEconomy(state) {
   if (!state) return state;
   if (typeof state.coins !== 'number' || !Number.isFinite(state.coins)) state.coins = START_COINS;
   if (!state.cargo || typeof state.cargo !== 'object') state.cargo = {};
+  // Renown (the Captain's Ledger) — a lifetime score that only ever climbs. Seeds to 0.
+  if (typeof state.renown !== 'number' || !Number.isFinite(state.renown) || state.renown < 0) state.renown = 0;
   return state;
 }
 
@@ -193,7 +197,10 @@ export function sell(state, goodId, qty, portName = state && state.port) {
   if (qty > held) return result(false, state, 'no-cargo');
 
   const unit = priceAt(portName, goodId).sell;
-  state.coins += unit * qty;
+  const proceeds = unit * qty;
+  state.coins += proceeds;
+  // Every sale writes a line in the Captain's Ledger: bigger hauls grow a bigger legend.
+  state.renown += renownForSale(proceeds);
   state.cargo[goodId] = held - qty;
   if (state.cargo[goodId] === 0) delete state.cargo[goodId];
   return result(true, state);

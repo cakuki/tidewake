@@ -5,6 +5,7 @@
 import { pointOfSail } from './physics.js';
 import { VERSION } from './version.js';
 import { GOODS, PORTS, HOLD_CAP, market, buy, sell, cargoUsed } from './economy.js';
+import { rankForRenown } from './renown.js';
 
 const RAD2DEG = 180 / Math.PI;
 
@@ -17,11 +18,18 @@ export function createHud() {
   const $toast = document.getElementById('toast');
   const $coins = document.getElementById('coins');
   const $cargo = document.getElementById('cargo');
+  const $renown = document.getElementById('renown');
+  const $rank = document.getElementById('rank');
+  const $rankprog = document.getElementById('rankprog');
   const $trade = document.getElementById('trade');
   document.getElementById('version').textContent = VERSION;
 
   let lastPosLabel = '', lastPosBand = '';
   let toastTimer = null;
+  // Captain's Ledger: only re-touch the DOM when renown changes, and flash on rank-up.
+  // `lastRankIndex` starts null so the first frame (incl. a restored voyage) just adopts
+  // the current rank silently — we only celebrate a rank the player *climbs into*.
+  let lastRenown = -1, lastRankIndex = null;
 
   // ---- Trade panel + keyboard trading ---------------------------------------
   // We can't touch input.js/main.js, so the HUD owns a small, self-contained keydown
@@ -102,6 +110,25 @@ export function createHud() {
   function renderPurse(state) {
     if ($coins) $coins.textContent = state.coins;
     if ($cargo) $cargo.textContent = `${cargoUsed(state.cargo)}/${HOLD_CAP}`;
+    renderLedger(state);
+  }
+
+  // Captain's Ledger: current rank title + renown + a hint of progress to the next rung.
+  // Fires a celebratory toast the moment the player climbs into a new rank.
+  function renderLedger(state) {
+    const renown = Number.isFinite(state.renown) ? state.renown : 0;
+    const rank = rankForRenown(renown);
+    if (lastRankIndex !== null && rank.index > lastRankIndex) showRankUp(rank.title);
+    lastRankIndex = rank.index;
+    if (renown === lastRenown) return; // nothing to repaint
+    lastRenown = renown;
+    if ($renown) $renown.textContent = renown;
+    if ($rank) $rank.textContent = rank.title;
+    if ($rankprog) {
+      $rankprog.textContent = rank.nextAt === null
+        ? ' · top of the ledger ★'
+        : ` · ${rank.nextAt - renown} to ${rank.nextTitle}`;
+    }
   }
 
   // One-time wind name stamp (the breeze is fixed for the voyage).
@@ -110,10 +137,28 @@ export function createHud() {
   // Arrival toast — a non-blocking banner that auto-dismisses. Reaching a port shows
   // "⚓ Made port at <Name>" plus a rotating harbourmaster greeting.
   function showArrival(portName, line) {
+    $toast.classList.remove('rankup');
     $toast.innerHTML = `<div class="toast-title">⚓ Made port at ${portName}</div><div class="toast-line">${line}</div>`;
     $toast.classList.add('show');
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => $toast.classList.remove('show'), 5000);
+  }
+
+  // Rank-up flash — reuses the arrival toast, dressed in the ledger's green.
+  const RANKUP_LINES = [
+    'Word of your deeds travels the tideways.',
+    'The harbourmasters have started spelling your name right.',
+    'Someone, somewhere, is nervous. Excellent.',
+    'Your legend gains a barnacle of weight.',
+  ];
+  function showRankUp(title) {
+    if (!$toast) return;
+    const line = RANKUP_LINES[Math.floor(Math.random() * RANKUP_LINES.length)];
+    $toast.classList.add('rankup');
+    $toast.innerHTML = `<div class="toast-title">⚑ You're now ${/^[AEIOU]/.test(title) ? 'an' : 'a'} ${title}!</div><div class="toast-line">${line}</div>`;
+    $toast.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { $toast.classList.remove('show'); $toast.classList.remove('rankup'); }, 5000);
   }
 
   function update(state, maxSpeed) {

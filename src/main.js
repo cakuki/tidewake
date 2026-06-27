@@ -120,7 +120,7 @@ function loop() {
 window.__tidewake = {
   version: VERSION,
   ready: false,
-  get state() { return { heading: state.heading, speed: state.speed, throttle: state.throttle, pos: state.pos.toArray(), port: state.port ?? null }; },
+  get state() { return { heading: state.heading, speed: state.speed, throttle: state.throttle, pos: state.pos.toArray(), port: state.port ?? null, renown: state.renown ?? 0 }; },
   get ports() { return ports.ports; },
   get npcs() { return npcs.snapshot(); },
   get docked() { return ports.docked; },

@@ -173,3 +173,48 @@ test('deserialize accepts good economy data right up to hold capacity', () => {
   assert.equal(restored.cargo[GOODS[0].id], HOLD_CAP);
   assert.equal(restored.coins, good.coins);
 });
+
+// ---- Renown persistence (the Captain's Ledger, save v3) ----
+
+test('serialize → deserialize round-trips renown', () => {
+  const s = { ...economyState(), renown: 2400 };
+  const restored = deserialize(serialize(s));
+  assert.equal(restored.renown, 2400);
+});
+
+test('serialize stamps renown into the save object', () => {
+  const obj = JSON.parse(serialize({ ...economyState(), renown: 750 }));
+  assert.equal(obj.renown, 750);
+});
+
+test('serialize defaults a missing renown to 0', () => {
+  const obj = JSON.parse(serialize(economyState())); // no renown field
+  assert.equal(obj.renown, 0);
+  const restored = deserialize(serialize(economyState()));
+  assert.equal(restored.renown, 0);
+});
+
+test('serialize defaults a negative / non-finite renown to 0', () => {
+  assert.equal(JSON.parse(serialize({ ...economyState(), renown: -5 })).renown, 0);
+  assert.equal(JSON.parse(serialize({ ...economyState(), renown: Infinity })).renown, 0);
+});
+
+test('deserialize defaults an absent renown to 0 (older v3 shape stays valid)', () => {
+  const good = JSON.parse(serialize(economyState()));
+  delete good.renown;
+  const restored = deserialize(JSON.stringify(good));
+  assert.ok(restored, 'a save without renown should still load');
+  assert.equal(restored.renown, 0);
+});
+
+test('deserialize rejects a present-but-corrupt renown', () => {
+  const good = JSON.parse(serialize(economyState()));
+  assert.equal(deserialize(JSON.stringify({ ...good, renown: -1 })), null);
+  assert.equal(deserialize(JSON.stringify({ ...good, renown: 'famous' })), null);
+  assert.equal(deserialize(JSON.stringify({ ...good, renown: null })), null);
+});
+
+test('deserialize rejects an old pre-renown (v2) save', () => {
+  const v2 = { v: 2, heading: 1, speed: 5, throttle: 0.4, pos: [10, 0, -5], coins: 100, cargo: {} };
+  assert.equal(deserialize(JSON.stringify(v2)), null);
+});

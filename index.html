@@ -21,6 +21,10 @@
       border-radius: 8px; padding: 8px 12px; backdrop-filter: blur(3px);
     }
     #hud b { color: #ffd98a; }
+    #ledger #rank { color: #ffcf6e; }
+    #ledger #rankprog { color: #7fa6c6; font-size: 11px; margin-left: 4px; }
+    #toast.rankup { border-color: rgba(135,224,164,.6); }
+    #toast.rankup .toast-title { color: #9be8b0; }
     #windrose { display: flex; align-items: center; gap: 9px; margin-top: 7px; }
     #windrose svg { display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
     #pos { font-size: 12px; font-weight: 600; letter-spacing: .02em; transition: color .3s ease; }
@@ -100,6 +104,7 @@
     <div>Speed <b><span id="speed">0.0</span></b> kn</div>
     <div>Wind <b><span id="wind">—</span></b></div>
     <div>Coins <b><span id="coins">100</span></b> · Hold <b><span id="cargo">0/12</span></b></div>
+    <div id="ledger">Renown <b><span id="renown">0</span></b> · <b><span id="rank">Bilge-rat</span></b><span id="rankprog"></span></div>
     <div id="windrose">
       <svg width="48" height="48" viewBox="0 0 48 48" aria-label="Wind relative to ship">
         <circle cx="24" cy="24" r="20" fill="rgba(7,22,38,.35)" stroke="rgba(120,180,230,.45)" stroke-width="1.5" />
