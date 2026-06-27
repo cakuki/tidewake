@@ -11,15 +11,16 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 > orchestrator does not edit this file per cycle. Full protocol: "Lean orchestrator protocol
 > (post-compact)" in `docs/runbook/LOOP.md`.
 
-- **Current loop:** 29 done → next is **30** (read `queue.md` top). Loops 27–29 this session: #59
-  cannon combat → #63 mobile PWA → PWA notch safe-area fix.
-- **Loops since last retro:** **3** (27–29; Retro 5 covered 20–26) — **🟡 RETRO 6 DUE NOW** (every 3–4).
+- **Current loop:** 30 done → next is **31** (read `queue.md` top). Loops 27–30 this session: #59
+  cannon combat → #63 mobile PWA → PWA notch safe-area fix → #73 settings/toggles panel.
+- **Loops since last retro:** **4** (27–30; Retro 5 covered 20–26) — **🟡 RETRO 6 DUE NOW** (every 3–4).
 - **Cycles since last deep-learning loop:** ~21 — **🔴 DL #2 BADLY OVERDUE** (trigger every 10; #1 at
   loop 10 filed #32–#40; loops 11–29 all mined it — refill the well). #5 in `queue.md`. Run soon.
 - **State:** core arc COMPLETE + tuned reachable + onboarded + sunny + perf-gated; **+ cannon combat
   (#59), + installable mobile PWA with heat-aware DPR cap (#63), + PWA safe-area-top (part of #75).**
-- **Next slices (`queue.md`):** **#73** settings/toggles UI → **#58** weather (OPTIONAL toggle, sunny
-  default) → **#55** art research → **DL loop #2** + **Retro 6** (both ritual-overdue) → depth #76
+- **Next slices (`queue.md`):** ~~#73 settings/toggles UI~~ ✅ **SHIPPED Loop 30** → **#58** weather
+  (OPTIONAL toggle — plugs into the #73 panel's registry, sunny default) → **#55** art research →
+  **DL loop #2** + **Retro 6** (both ritual-overdue) → depth #76
   collision / #72 cannon-followup / #32 glTF; polish #66 docked-touch-overlap, rest of #75.
 - **Owner-decisions ANSWERED (Telegram 2026-06-27):** #56 mobile = **GO (shipped #63)**; #58 weather =
   **GO as optional toggle**. New owner-steered: **#73** toggles UI, **#76** collision+harbour-slowdown.
@@ -81,6 +82,8 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 | 27 | Cannon Broadside — open fire (G) as a teeth-y alternative to the Insult Broadside duel; deterministic seedable exchange, two aims, coin+Infamy on a sinking | #59 | v0.0.20260627130215 | 242 tests (+13); `src/cannons.js` pure+TDD mirrors duel.js; fire-orange HUD panel; QA hook .cannons/.openFire/.cannonFire; playtest drives a cannon win. Closed #59, filed depth follow-up #72 |
 | 28 | Mobile MVP — installable PWA (`manifest.webmanifest` + brass-anchor icons, Add-to-Home-Screen, standalone, sunny theme) + heat-aware DPR cap (`pixelRatioCap` ≤1.5x on coarse-pointer so a 3x phone doesn't cook the per-vertex ocean) atop the existing touch controls + responsive HUD (#17) | #63 | v0.0.20260627131832 | 249 unit tests (+7: pixelRatioCap + PWA install contract); playtest now fetches the manifest in-browser & asserts the touch verbs exist; perf unchanged (77 draws/85.2k tris). Phone-viewport QA shot clean — controls thumb-reachable, no overlap (`studio/qa/gallery/v0.0.20260627131832-mobile-pwa.png`). Docking is automatic (no dock button needed). Workflow copies manifest into `_site`. Closed #63; filed follow-ups #74 (service-worker offline) + #75 (safe-area/landscape/low-end-throttle); docked overlap already tracked as #66 |
 | 29 | PWA top-notch safe-area spacing (owner request via Telegram, §3c small fix) — swept `env(safe-area-inset-*)` onto every top-anchored HUD element (`#hud`, `#title`, `#map-toggle`, `#audio-toggle`, `#perf`, touch `#minimap`) so the top HUD no longer hides under the notch / status bar in PWA standalone; also fixed the ≤560px media-query `#title` rule that re-pinned a bare `top:12px` and would have dropped the inset on a narrow phone. CSS-only; `viewport-fit=cover` already present; insets collapse to 0 on desktop/non-notch | #75 (partial) | v0.0.20260627133536 | 249 unit tests (unchanged — pure CSS); playtest ✓, perf unchanged (77/130 draws · 85.2k/150k tris), zero console errors. Headless phone-viewport QA (390×844) with a simulated 47px notch: all four top elements clear it (hud/audio/map 59px, title 65px ≥ 47) — gallery shot `studio/qa/gallery/v0.0.20260627133536-safe-area-top.png`. Reported out over Telegram. #75 safe-area-**top** done; landscape pass, home-indicator/side insets in other orientations, low-end throttle, gesture steering remain → #75 stays open. #66 (docked button overlap) untouched, kept out of scope |
+
+| 30 | Settings / options panel — the early-phase home for feature toggles (owner: "build a ui for [toggles]"). Self-contained `src/ui/settings.js` per #53: a ⚙ button (or **O** key, Esc to close) opens a ship's-brass control plate that renders a one-line-per-toggle REGISTRY. Two real toggles wired to existing behaviour — **Sound the shanties** (LIVE-backed by audio.js's own mute, one home/no double-store) + **Spyglass readout** (the perf overlay, STORED+persisted; P key & tap-to-dismiss now route through the toggle so switch/key/save stay in lock-step). Defaults preserve the current look (sound as-is, perf hidden) and a future visual toggle like weather #58 defaults OFF → sunny stays default | #73 | v0.0.20260627135021 | 260 unit tests (+11: pure registry/persistence logic TDD'd in `tests/unit/settings.test.mjs`); playtest opens the panel, flips a toggle, asserts persistence across a reload; perf unchanged (77/130 draws · 85.2k/150k tris), zero console errors. `window.__tidewake` exposes `.options`/`.setOption(id,bool)`/`.openSettings`/`.closeSettings`. Weather registration seam documented in `src/ui/README.md`. Gallery shot `studio/qa/gallery/v0.0.20260627135021-settings-panel.png`. Closed #73; **#58 weather plugs into this panel next (queue item 3)** |
 
 ## Hourly Telegram log
 

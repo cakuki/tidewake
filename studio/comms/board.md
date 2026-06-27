@@ -23,6 +23,7 @@ Keep `Doing` small (limit WIP). Cards: `#issue — short title — owner`.
 - Loop 27: #59 Cannon Broadside — open fire (G) alongside the Insult Broadside duel; closed, depth follow-up #72 filed (v0.0.20260627130215).
 - Loop 28: #63 Mobile MVP — installable PWA (manifest + brass-anchor icons, Add-to-Home-Screen) + heat-aware DPR cap atop existing touch controls/responsive HUD; closed. Follow-ups #74 (SW offline) + #75 (safe-area/landscape/low-end polish); docked overlap tracked in #66 (v0.0.20260627131832).
 - Loop 29: PWA top-notch safe-area (owner request, §3c) — swept `env(safe-area-inset-*)` onto every top-anchored HUD element so nothing hides under the notch/status bar in standalone; also fixed the ≤560px media-query `#title` rule. #75 safe-area-top item done (partial; landscape/home-indicator/low-end remain) (v0.0.20260627133536).
+- Loop 30: #73 Settings/options panel — self-contained `src/ui/settings.js` (per #53) with a ⚙ button / O key opening a ship's-brass control plate that renders feature toggles from a one-line registry. Ships **Sound** (live-backed by audio mute) + **Spyglass readout** (perf overlay, persisted); defaults keep the current look, weather #58 plugs in next. Persisted to localStorage, TDD'd (+11 tests = 260), playtest drives it. Closed #73 (v0.0.20260627135021).
 
 ## Blocked
 - _(empty)_
