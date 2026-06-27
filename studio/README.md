@@ -20,6 +20,14 @@ Start with the **[Constitution](CONSTITUTION.md)** — the shared brief every ag
 5. **Improve** — each role studies industry leaders and adopts practices into its own
    definition. Every 3–4 loops, the studio holds a retrospective.
 
+Cycles, retros, and the research loop all run **as subagents** so the orchestrator stays lean —
+state lives in `comms/loop-state.md`; only summaries return to the main context.
+
+**Deep-learning research loop (every 10 cycles).** Periodically every role steps off the line into
+its **own isolated subagent**, researches its discipline online (new **and** classic references),
+and writes the takeaways — plus a wildcard idea — back into its agent + memory files. It produces
+knowledge and backlog ideas, never code. See the runbook below.
+
 Full step-by-step: **[`docs/runbook/LOOP.md`](../docs/runbook/LOOP.md)**.
 
 ## Map

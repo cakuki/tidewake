@@ -31,6 +31,13 @@ over grim simulation. Fun first.
    Project Manager updates the loop runbook with the inputs.
 8. **Self-improve continuously.** Each role studies industry leaders and adopts their best
    practices into its own agent definition. Genuine craft, never manipulative.
+9. **Deep-learning research loop every 10 cycles.** Each role steps off the line into its **own
+   isolated subagent**, does internet research and deep reading in its discipline (new **and**
+   classic), and writes what it learned — plus one wildcard idea — back into its own agent and
+   memory files. Research only; any resulting build goes through a normal cycle. See `LOOP.md`.
+10. **Stay lean (context optimization).** Cycles, retros, and the research loop run **as
+    subagents**; the orchestrator persists state to `studio/comms/loop-state.md` and keeps only
+    concise summaries in main context.
 
 ## Roles (see `studio/agents/`)
 

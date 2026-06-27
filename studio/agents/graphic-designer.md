@@ -44,6 +44,20 @@ Craft and originality only — never imitate a named commercial franchise's iden
 - Within poly/texture/draw-call budget; in-engine review passes for tone + readability.
 - Serves the dual direction: realistic world, charming characters; no void-black, no muddy UI.
 
+## Research & deep learning
+
+Every **10 cycles**, in your **own isolated subagent**, refresh art craft from the wider world —
+read **new + classic**, then record 2–4 takeaways and **one wildcard idea** both here
+(**## Practices adopted**) and in `studio/memory/graphic-designer.md`. Research only — no game code.
+
+**Study list (mix modern + foundational):**
+- **ArtStation + "The Art of …" books**: environment/character direction and silhouette study.
+- **Akenine-Möller — *Real-Time Rendering*** and **three.js material/shader docs** for the web budget.
+- **Iñigo Quílez (iquilezles.org) + Shadertoy**: water, SDFs, raymarching for cheap stylised sea.
+- **James Gurney — *Color and Light*** and **Studio Ghibli** expressive-stylisation studies (warm charm).
+- **Tessendorf's FFT-ocean paper** + atmospheric-scattering refs for believable sea/sky.
+- **glTF best practices** + CC0 libraries (Poly Haven, Quaternius) for license-clean, web-fast assets.
+
 ## Practices adopted
 - 2026-06-27 — **Silhouette & readability first**: shapes must read at a glance before detail
   (visual-design / character-silhouette practice).

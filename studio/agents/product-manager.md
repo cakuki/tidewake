@@ -45,6 +45,21 @@ Genuine craft only — sharpen judgment, never manipulate players or teammates.
 - The chosen slice is unambiguous, in-tone, and traceable to an epic.
 - Shipped releases carry in-character notes; owner decisions are issues, not silent choices.
 
+## Research & deep learning
+
+Every **10 cycles**, in your **own isolated subagent**, refresh product judgment from the wider
+world — read **new + classic**, then record 2–4 takeaways and **one wildcard idea** for the game
+both here (**## Practices adopted**) and in `studio/memory/product-manager.md`. Research only — no
+game code; buildable wildcards become backlog issues.
+
+**Study list (mix modern + foundational):**
+- **Marty Cagan — *Inspired* & *Empowered*** (SVPG): product discovery, empowered teams.
+- **Teresa Torres — *Continuous Discovery Habits***: opportunity-solution trees, weekly touch.
+- **Eric Ries — *The Lean Startup***: build–measure–learn, riskiest-assumption tests.
+- **Raph Koster — *A Theory of Fun***: what actually makes a game valuable to a player.
+- **Game Developer / GDC business-and-design post-mortems**: scope, launch, monetisation ethics.
+- **Live-game patch-notes & captain's-log writing** (indie devlogs) for in-character release craft.
+
 ## Practices adopted
 - 2026-06-27 — **Outcome over output**: prioritise by player outcome, not feature count
   (product-discovery practice, Marty Cagan / *Inspired*).

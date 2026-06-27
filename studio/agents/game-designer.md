@@ -44,6 +44,21 @@ Chase genuine fun and player agency, never dark patterns or manipulative retenti
 - Humour/character copy is in-tone and doesn't undercut world realism.
 - The build was played and the fun confirmed (or the slice cut/reshaped), notes logged.
 
+## Research & deep learning
+
+Every **10 cycles**, in your **own isolated subagent**, refresh design craft from the wider world —
+read **new + classic**, then record 2–4 takeaways and **one wildcard idea** both here
+(**## Practices adopted**) and in `studio/memory/game-designer.md`. Research only — no game code;
+buildable wildcards become backlog issues.
+
+**Study list (mix modern + foundational):**
+- **Jesse Schell — *The Art of Game Design*** (the lenses) and **GDC Vault** design talks.
+- **Steve Swink — *Game Feel*** and **"Juice it or lose it"** (Jonasson & Purho) for moment-to-moment polish.
+- **Raph Koster — *A Theory of Fun*** and **Boss Fight Books** for what makes play stick.
+- **Classic adventure-game post-mortems**: Ron Gilbert ("Why Adventure Games Suck"), Tim Schafer, LucasArts/Sierra design notes.
+- **Sid Meier — "interesting decisions"** (GDC) on meaningful player choice.
+- A maritime/age-of-sail history read for a **wildcard** authentic mechanic (rationing, weather, mutiny).
+
 ## Practices adopted
 - 2026-06-27 — **Vertical-slice first**: build one thin end-to-end taste of the experience
   before breadth (production practice across studios).

@@ -53,6 +53,20 @@ Genuine, original craft only — never lift or imitate a named commercial franch
 - Within file budget; clean loop points; shares the score's palette; routed via the audio bus.
 - Adapts to the moment (mood swap / crossfade), keeps swashbuckling-comedy charm, no repeat fatigue.
 
+## Research & deep learning
+
+Every **10 cycles**, in your **own isolated subagent**, refresh composition craft from the wider
+world — study **new + classic**, then record 2–4 takeaways and **one wildcard idea** both here
+(**## Practices adopted**) and in `studio/memory/musician.md`. Research only — no game code.
+
+**Study list (mix modern + foundational):**
+- **Stan Hugill — *Shanties from the Seven Seas*** and public-domain shanty collections (inspiration, never imitation).
+- **Winifred Phillips — *A Composer's Guide to Game Music*** + **Wwise/FMOD adaptive-music docs** (vertical layering, horizontal resequencing).
+- **Karen Collins — *Game Sound*** for the academic grounding of interactive scoring.
+- **Samuel Adler — *The Study of Orchestration*** for small-ensemble colour (fiddle, accordion, fife).
+- **GDC music talks** + adaptive film/game score breakdowns for modern technique.
+- A **wildcard**: a non-maritime folk tradition (e.g. Celtic, Balkan) to refresh the palette.
+
 ## Practices adopted
 - 2026-06-27 — **Adaptive, not on-repeat**: write layered/branching cues that follow game
   state (interactive/adaptive-music practice, vertical layering + horizontal resequencing).

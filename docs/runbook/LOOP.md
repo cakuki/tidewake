@@ -70,6 +70,15 @@ the Project Manager edits it after each retro (see Changelog at the bottom).
    under **"Practices adopted"** in your own `studio/agents/<role>.md`. Genuine craft, never
    manipulative.
 
+> **Continuous observation (Tech Lead + Project Manager).** Beyond these steps, TL and PM
+> **don't just wait for the retro** — they run a **continuous-observation pass each cycle and
+> between cycles**, watching the real signals and adjusting the moment something can be improved
+> or a problem prevented. **TL** watches CI health, code-quality drift, the `main.js` hotspot,
+> and perf; **PM** watches issue hygiene, dependencies, cycle time, scope, and blocked cards.
+> Either intervenes immediately (re-prioritise, file/split an issue, fix a flaky step, carve a
+> seam, adjust the plan) rather than banking it for retro time. See the
+> *Continuous observation & adjustment* section in each of their agent definitions.
+
 ---
 
 ## 3. Hourly stakeholder update (required ritual)
@@ -83,19 +92,121 @@ This is a required ritual, not optional. Include:
   (Chrome MCP / Puppeteer). A short **screen-capture video/GIF** of the boat sailing is even
   better — prefer it when a visible change shipped.
 
+### Video capture recipe (clarity over smoothness)
+
+So clips read crisp, not muddy. **Prefer real captured frames to fake interpolated ones.**
+
+1. **Capture more frames, higher quality.** Drive the live build and grab **~16–24 frames** at
+   **higher resolution** (e.g. **1280px wide**) and good JPEG quality (**~90**). More real
+   frames beats stretching a few.
+2. **Assemble at a near-native framerate** (~**10–15 fps**) — match the rate you actually
+   captured. Don't ask ffmpeg to invent motion.
+3. **Do NOT use aggressive motion-compensated interpolation.** Avoid `minterpolate=mci` (and
+   `mc_mode=aobmc`): it smears sparse frames into mud. Use **real frames as-is**, or at most
+   `minterpolate=mi_mode=dup` (frame duplication, no warping) — or no interpolation at all.
+4. **Encode for clarity:** `libx264`, **low CRF (~18–20)**, `-pix_fmt yuv420p`,
+   `-movflags +faststart`. Keep the file **< ~15 MB** so Telegram accepts it inline.
+
+```bash
+# frames captured as frame_0001.jpg … (1280px wide, q~90)
+ffmpeg -framerate 12 -i frame_%04d.jpg \
+  -c:v libx264 -crf 18 -pix_fmt yuv420p -movflags +faststart \
+  sail.mp4
+# If you must hit a target fps, duplicate — never motion-warp — frames:
+#   -vf "minterpolate=fps=24:mi_mode=dup"   # NOT minterpolate=mci
+```
+
+**Rule of thumb: prefer clarity over smoothness.** A slightly choppy but sharp clip of the boat
+sailing beats a smooth, smeared one.
+
 If a blocker or an `owner-decision` needs attention, surface it in the same update. Respect
 quiet hours (no messages 01:00–07:00); batch and send at 07:00 if a window is skipped.
 
 ---
 
-## 4. Retrospective ritual (every 3–4 loops)
+## 4. Retrospective ritual (every 3–4 loops, run AS A SUBAGENT)
 
-1. Copy `studio/retros/TEMPLATE.md` to `studio/retros/<YYYY-MM-DD>-loop-NN.md` and run it
-   with all roles: what went well, what didn't, what to change.
-2. The **Project Manager records outcomes** in that retro file and appends decisions to
-   `studio/comms/decisions.md`.
-3. The **Project Manager UPDATES THIS RUNBOOK** with the agreed improvements (this file is
-   living — edit steps, add guardrails, tune cadence) and adds a **Changelog** entry below.
+The retro runs in its **own subagent**, not in the main orchestrator context (Retro 1 already
+ran this way as a background subagent). The orchestrator dispatches one retro subagent, hands it
+the recent loop log from `studio/comms/loop-state.md`, and keeps only the 5-line summary it
+returns.
+
+**Every retro reviews two things, not one:** **(a) the product/game** *and* **(b) the studio
+itself — its workflow, collaboration, tooling, and process.** The explicit goal is to **optimise
+our workflows so we produce better, MORE CREATIVE results** — higher throughput *and* higher
+creative quality, not one at the other's expense. Ask, on the process side:
+
+- *Where did process slow us or dull creativity?*
+- *What workflow / tooling / communication change would raise **both throughput AND creative quality**?*
+- *What will we change in the **runbook** or an **agent definition** as a result?*
+
+So **process improvements are first-class retro outcomes**: action-items frequently edit this
+runbook and the `studio/agents/<role>.md` definitions. The process is meant to improve itself.
+
+The subagent:
+
+1. Copies `studio/retros/TEMPLATE.md` to `studio/retros/<YYYY-MM-DD>-loop-NN.md` and runs it
+   across all roles, reviewing **both the game and the studio's own process**: what went well,
+   what didn't, and what workflow/tooling/agent change would lift throughput *and* creativity.
+2. Records outcomes in that retro file and appends decisions to `studio/comms/decisions.md`
+   (on behalf of the **Project Manager**).
+3. **UPDATES THIS RUNBOOK** with the agreed improvements (this file is living — edit steps, add
+   guardrails, tune cadence) and adds a **Changelog** entry below.
+4. Resets **Loops since last retro** in `studio/comms/loop-state.md` and returns a 5-line
+   summary (top finding, changes made, files touched) to the orchestrator.
+
+---
+
+## Deep-learning research loop (every 10 cycles)
+
+A deliberate, periodic refresh: every role steps off the line, reads widely in its own
+discipline, and brings inspiration — and a dash of serendipity — back into Tidewake. This is
+**research only**: it produces *knowledge + backlog ideas*, never a code change. Any idea worth
+building goes through a normal cycle/issue afterwards; the research loop **must not touch game
+code** (`src/`, `index.html`).
+
+**Trigger.** Track **Cycles since last deep-learning loop** in `studio/comms/loop-state.md`.
+When it reaches **10**, the orchestrator runs this loop, then resets the counter to 0.
+
+**Dispatch.** Fan out **one subagent per role (9 in parallel)**, each in its **own isolated
+context** — never in the main orchestrator. Each role's subagent:
+
+1. Uses **web research** (`WebSearch` / `WebFetch`) to study its discipline, reading a mix of
+   **(a) current/new developments** (recent talks, articles, releases) **and (b) timeless/classic
+   foundational references** — see the **## Research & deep learning** section in its own
+   `studio/agents/<role>.md` for a starting reading list.
+2. Distils **2–4 concrete takeaways** plus **at least one "wildcard / inspiration" idea** to try
+   in the game (genuine craft + a deliberate spark of randomness from the wider world).
+3. Writes back, dated `YYYY-MM-DD`, to **both**:
+   - its own `studio/agents/<role>.md` — append to **## Practices adopted** (or a **## Research
+     log**), refreshing its identity/skills/practices with what it learned;
+   - its `studio/memory/<role>.md` — the durable record of takeaways + the wildcard.
+4. Files any buildable wildcard as a backlog **idea/issue** for a future cycle (it does **not**
+   implement it here).
+5. Returns a short summary to the orchestrator; the orchestrator keeps only the summaries.
+
+**Spirit.** Real sources, real craft, a little serendipity — never just-for-show, never
+manipulative. The point is that each agent keeps growing and the game keeps surprising us.
+
+---
+
+## Context optimization (orchestrator discipline)
+
+The main orchestrator must stay **lean** so the never-stopping loop survives context resets.
+
+- **Delegate whole units of work to subagents** — a full cycle, a retro, the research loop —
+  rather than running them inline. The orchestrator plans the dispatch and reads back summaries.
+- **Persist state to files, not context.** `studio/comms/loop-state.md` is the persistent brain
+  (current loop, counters, release, open enablers, loop log); `board.md`, `decisions.md`, and
+  `inbox/<role>.md` carry concrete hand-offs. Pass data **through files**, never by holding it in
+  the orchestrator's head.
+- **Only summaries return to main.** A subagent does the heavy reading/building and returns a
+  concise summary; the orchestrator keeps that, not the transcript.
+- **Prefer one self-contained cycle-runner subagent per slice** that goes end-to-end:
+  **plan → build (TDD) → playtest → commit → verify CI green → QA → update the board**, and
+  returns a **5-line summary** (slice, release tag, CI status, QA verdict, follow-ups).
+- After each delegated unit, the orchestrator updates `loop-state.md` (counters incl.
+  *Cycles since last deep-learning loop* and *Loops since last retro*) and moves on.
 
 ---
 
@@ -160,6 +271,15 @@ curl -sI https://cakuki.github.io/tidewake/
 
 ## Changelog
 
+- **2026-06-27 — Owner process improvements:** retros now explicitly review **both the game and
+  the studio's own process** (workflow/collaboration/tooling), aiming for more throughput **and**
+  more creative results; **Tech Lead + Project Manager run a continuous-observation pass each
+  cycle and between cycles** (steer/prevent immediately, don't wait for the retro); added a
+  concrete **video capture recipe** (more real frames, higher res/quality, no `minterpolate=mci`,
+  libx264 low-CRF, <15 MB) to the hourly update. See `studio/retros/TEMPLATE.md`,
+  `studio/agents/tech-lead.md`, `studio/agents/project-manager.md`.
+- **2026-06-27 — Added deep-learning research loop (every 10 cycles), retro-as-subagent, and
+  context-optimization discipline (owner request).**
 - **2026-06-27 — Retro 1 (loops 0–3):** PLAYTEST step now requires a mandatory real-browser pass
   for visible changes (headless gate can't see visuals) and a per-release gallery diff vs. the
   previous shot. Added guardrails: keep `main.js` thin via `src/systems/` (#24); sequence a

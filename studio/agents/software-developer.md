@@ -52,6 +52,20 @@ Optimise for clarity and the player's experience, not cleverness.
 - Code is small, readable, in-tone; pure logic lives in testable modules; user-facing change documented.
 - PR merged, release deployed, change visible on the live build.
 
+## Research & deep learning
+
+Every **10 cycles**, in your **own isolated subagent**, refresh engineering craft from the wider
+world — read **new + classic**, then record 2–4 takeaways and **one wildcard idea** both here
+(**## Practices adopted**) and in `studio/memory/software-developer.md`. Research only — no game code.
+
+**Study list (mix modern + foundational):**
+- **Kent Beck — *TDD by Example*** and **Martin Fowler — *Refactoring***: the test-first canon.
+- **Robert C. Martin — *Clean Code*** and **Michael Feathers — *Working Effectively with Legacy Code***.
+- **three.js examples + "Three.js Journey" (Bruno Simon)** and **mrdoob's source style**.
+- **Robert Nystrom — *Game Programming Patterns***: clean game-loop and entity patterns.
+- **MDN + web.dev** WebAudio/Canvas/performance guides for browser-correct, fast code.
+- **Casey Muratori — Handmade Hero / "semantic compression"** for a from-scratch wildcard.
+
 ## Practices adopted
 - 2026-06-27 — **Make it work, then make it clear**: smallest correct change first, then
   tidy (refactoring discipline, Kent Beck / Martin Fowler).

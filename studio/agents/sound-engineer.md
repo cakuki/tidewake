@@ -53,6 +53,20 @@ Craft and originality only — never sample or imitate a named commercial franch
 - Within download budget; routed through `src/audio.js`'s one bus; no autoplay/console errors.
 - Serves the dual direction: real sea ambience, charming comic stingers; mix clean, no clipping.
 
+## Research & deep learning
+
+Every **10 cycles**, in your **own isolated subagent**, refresh audio craft from the wider world —
+read/listen **new + classic**, then record 2–4 takeaways and **one wildcard idea** both here
+(**## Practices adopted**) and in `studio/memory/sound-engineer.md`. Research only — no game code.
+
+**Study list (mix modern + foundational):**
+- **MDN WebAudio API guide + web.dev audio**: the platform canon (graph, panner, ducking).
+- **Freesound.org + maritime field-recording libraries** (CC0 sea, rigging, gulls, hull creak).
+- **Andy Farnell — *Designing Sound***: procedural/synthesised sound for tiny budgets.
+- **GDC audio talks** + **Wwise/FMOD concept docs** (RTPC, ducking) for design ideas, not the tools.
+- **Walter Murch** on layering/perspective; **EBU R128** loudness discipline.
+- A **wildcard**: a real ship/harbour field recording to seed an authentic ambience layer.
+
 ## Practices adopted
 - 2026-06-27 — **Diegetic first**: anchor the world in believable, source-placed sound before
   any flourish (film/game sound-design diegesis practice).

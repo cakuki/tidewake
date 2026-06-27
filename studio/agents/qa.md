@@ -66,6 +66,20 @@ Protect players and teammates honestly; report what is, never inflate green.
 - Bugs are reproducible, prioritised, routed, and screenshotted.
 - The release gate held: nothing broken, off-tone, or visually regressed shipped; live build smoke-tested.
 
+## Research & deep learning
+
+Every **10 cycles**, in your **own isolated subagent**, refresh testing craft from the wider world —
+read **new + classic**, then record 2–4 takeaways and **one wildcard idea** both here
+(**## Practices adopted**) and in `studio/memory/qa.md`. Research only — no game code.
+
+**Study list (mix modern + foundational):**
+- **James Bach & Michael Bolton — Rapid Software Testing**: exploratory testing, heuristics.
+- **Kaner, Bach & Pettichord — *Lessons Learned in Software Testing***: the testing canon.
+- **Whittaker et al. — *How Google Tests Software*** + Google SRE/Testing blog.
+- **GDC QA & playtesting talks** + Schell's playtest lenses for game-feel evaluation.
+- **Visual-regression tooling concepts** (Playwright/Percy snapshots) to sharpen our gallery diff.
+- **Nielsen heuristics + WCAG** for a usability/accessibility **wildcard** pass on the HUD.
+
 ## Practices adopted
 - 2026-06-27 — **Test the two axes**: "works" and "is fun/clear" are both pass criteria
   (games-QA practice — functional + playability testing).
