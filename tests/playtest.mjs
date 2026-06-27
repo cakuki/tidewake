@@ -55,12 +55,23 @@ try {
     tw.step(3);            // deterministic 3s of simulation, frame-rate independent
     const moving = tw.state;
     tw.release('w');
+    // Minimap (#16): canvas exists, has a non-zero size, and is live — it just rendered
+    // a stack of frames during the step (swiftshader can't read 2D pixels back, so we
+    // assert liveness via the radar's own frame counter rather than getImageData).
+    const mm = document.getElementById('minimap');
+    const minimap = {
+      exists: !!mm,
+      w: mm ? mm.width : 0,
+      h: mm ? mm.height : 0,
+      frames: window.__minimapFrames || 0,
+    };
     return {
       version: tw.version,
       fps: tw.fps,
       startSpeed: start.speed,
       movingSpeed: moving.speed,
       distance: Math.hypot(moving.pos[0] - start.pos[0], moving.pos[2] - start.pos[2]),
+      minimap,
     };
   });
 
@@ -72,6 +83,9 @@ try {
   if (errors.length) fail(`console errors:\n  ${errors.join('\n  ')}`);
   if (!(result.movingSpeed > 1)) fail(`ship did not accelerate (speed=${result.movingSpeed})`);
   if (!(result.distance > 5)) fail(`ship did not move (distance=${result.distance})`);
+  if (!result.minimap.exists) fail('minimap canvas (#minimap) missing');
+  if (!(result.minimap.w > 0 && result.minimap.h > 0)) fail(`minimap has zero size (${result.minimap.w}x${result.minimap.h})`);
+  if (!(result.minimap.frames > 0)) fail('minimap never rendered a frame');
 
   console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');

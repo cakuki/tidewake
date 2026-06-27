@@ -111,6 +111,12 @@
       opacity: 0; transition: opacity .2s ease, transform .2s ease;
     }
     #challenge-prompt.show { opacity: 1; transform: translate(-50%, 0); }
+    #minimap {
+      position: fixed; left: 12px; bottom: 14px; z-index: 11; pointer-events: none;
+      width: 150px; height: 150px; border-radius: 10px;
+      background: rgba(7, 22, 38, .35); border: 1px solid rgba(120,180,230,.25);
+      backdrop-filter: blur(3px); box-shadow: 0 6px 22px rgba(0,0,0,.4);
+    }
     #audio-toggle {
       position: fixed; right: 12px; top: 12px; z-index: 11; pointer-events: auto;
       width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
@@ -157,6 +163,7 @@
   <div id="challenge-prompt" role="status">⚔ Press <b>F</b> to hail and duel</div>
   <div id="duel" role="dialog" aria-live="polite"></div>
   <div id="toast" role="status" aria-live="polite"></div>
+  <canvas id="minimap" width="150" height="150" aria-label="Minimap of nearby islands, ports and ships"></canvas>
   <button id="audio-toggle" type="button" aria-pressed="false" aria-label="Mute" title="Mute (m)">🔊</button>
   <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; F duel a ship (1–4 to jab) &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; M mute &nbsp;·&nbsp; N new voyage</div>
   <div id="version">v0.0.0-dev</div>

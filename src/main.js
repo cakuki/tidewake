@@ -9,6 +9,7 @@ import { createAudio } from './audio.js';
 import { createMusic } from './music.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';
+import { createMinimap } from './minimap.js';
 import { createSailing } from './sailing.js';
 import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
@@ -55,6 +56,7 @@ scene.add(npcs.group);
 // Game systems
 const input = createInput(renderer.domElement);
 const hud = createHud();
+const minimap = createMinimap({ world, ports, npcs });
 const sailing = createSailing({ ship, ocean, camera, input });
 const state = sailing.state;
 const persistence = createPersistence(state);
@@ -130,6 +132,7 @@ function update(dt, t) {
   ports.update(state, hud.showArrival, t);     // arrival detection (fires once) + buoy bob
   wake.update(dt, state, t);                   // bow wake + trailing foam
   hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
+  minimap.update(state);                       // north-up radar: isles/ports/ships (#16)
   hud.renderDuel(duel.snapshot());             // insult-duel panel + "hail" prompt (#33)
   audio.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
   music.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
