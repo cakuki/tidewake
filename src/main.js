@@ -12,6 +12,7 @@ import { createHud } from './hud.js';
 import { createSailing } from './sailing.js';
 import { createPersistence } from './persistence.js';
 import { VERSION } from './version.js';
+import { greetPlayer } from './renown.js';
 
 // main.js is a thin bootstrap: it builds the renderer/scene/camera/lights, spins up
 // the world + game systems (input, sailing, hud, ports, wake, audio, persistence),
@@ -128,6 +129,10 @@ window.__tidewake = {
   release(k) { input.keys.delete(k); },
   save() { persistence.write(); },
   newVoyage() { newVoyage(); },
+  // QA affordances for the renown-reaction check (#43): nudge renown directly and
+  // read the deterministic (first-line) harbourmaster greeting for a given renown.
+  setRenown(n) { state.renown = Math.max(0, Number(n) || 0); return state.renown; },
+  greet(renown = state.renown ?? 0) { return greetPlayer(renown, ports.docked || ports.ports[0]?.name || 'the port', () => 0); },
   step(seconds) {
     const fixed = 1 / 60;
     let acc = seconds;

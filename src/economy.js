@@ -9,7 +9,7 @@
 // gasping for it, and watch your purse climb. Realism in the prices; comedy in the
 // people who quote them. All names + banter original to Tidewake.
 
-import { renownForSale } from './renown.js';
+import { renownForSale, standingPriceModifier } from './renown.js';
 
 // ---- Goods: a small, readable hold of five trade goods. Order = number-key order. ----
 export const GOODS = [
@@ -102,28 +102,37 @@ function requireGood(goodId) {
 /**
  * The buy/sell price of one good at one port. Buy is what you pay; sell is what the
  * harbour pays you (always a touch lower, the spread). Integer coins, no fractions.
+ *
+ * Renown (#43): a known captain enjoys a modest "standing" favour — buys a touch cheaper,
+ * sells a touch dearer (standingPriceModifier). It's small by design and we still clamp
+ * sell strictly below buy, so the world favouring you never becomes free money.
  * @param {string} portName
  * @param {string} goodId
+ * @param {number} [renown]  the trader's lifetime renown (0 = unknown, no favour)
  * @returns {{ buy: number, sell: number }}
  */
-export function priceAt(portName, goodId) {
+export function priceAt(portName, goodId, renown = 0) {
   const port = requirePort(portName);
   const good = requireGood(goodId);
   const m = port.mult[goodId] ?? 1;
-  const buy = Math.max(1, Math.round(good.base * m));
-  const sell = Math.max(1, Math.round(buy * SELL_SPREAD));
+  const base = Math.max(1, Math.round(good.base * m)); // neutral, renown-blind price
+  const f = standingPriceModifier(renown);             // standing favour (0 at unknown)
+  const buy = Math.max(1, Math.round(base * (1 - f)));
+  let sell = Math.max(1, Math.round(base * SELL_SPREAD * (1 + f)));
+  if (sell >= buy) sell = Math.max(1, buy - 1);        // invariant: never sell >= buy
   return { buy, sell };
 }
 
 /**
  * The full price board for a port — one row per good, ready for the HUD panel.
  * @param {string} portName
+ * @param {number} [renown]  the trader's renown, so the board shows their standing prices
  * @returns {Array<{ id:string, name:string, icon:string, buy:number, sell:number }>}
  */
-export function market(portName) {
+export function market(portName, renown = 0) {
   requirePort(portName);
   return GOODS.map((g) => {
-    const { buy, sell } = priceAt(portName, g.id);
+    const { buy, sell } = priceAt(portName, g.id, renown);
     return { id: g.id, name: g.name, icon: g.icon, buy, sell };
   });
 }
@@ -169,7 +178,7 @@ export function buy(state, goodId, qty, portName = state && state.port) {
   goodId = good.id; // canonicalise id/name → id so cargo keys stay consistent
   if (!PORTS[portName]) return result(false, state, 'unknown-port');
 
-  const unit = priceAt(portName, goodId).buy;
+  const unit = priceAt(portName, goodId, state.renown).buy;
   const cost = unit * qty;
   if (cost > state.coins) return result(false, state, 'no-coins');
   if (cargoUsed(state.cargo) + qty > HOLD_CAP) return result(false, state, 'no-room');
@@ -196,7 +205,7 @@ export function sell(state, goodId, qty, portName = state && state.port) {
   const held = state.cargo[goodId] || 0;
   if (qty > held) return result(false, state, 'no-cargo');
 
-  const unit = priceAt(portName, goodId).sell;
+  const unit = priceAt(portName, goodId, state.renown).sell;
   const proceeds = unit * qty;
   state.coins += proceeds;
   // Every sale writes a line in the Captain's Ledger: bigger hauls grow a bigger legend.

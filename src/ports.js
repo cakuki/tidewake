@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { dockingUpdate } from './physics.js';
 import { initEconomy, market, buy, sell, cargoUsed, HOLD_CAP } from './economy.js';
+import { greetPlayer } from './renown.js';
 
 // Ports give the horizon a destination — the first rung of the "one boat → pirate
 // or governor" climb. Each port is *data* ({ name, x, z }) plus a small procedural
@@ -14,20 +15,13 @@ export const DOCK_RADIUS = 90;
 // Original, charming, slightly comedic age-of-sail port names (not from any game).
 const PORT_NAMES = ['Saltpurse Quay', 'Barnacle Bottom', "Gullet's Rest"];
 
-// Rotating harbourmaster greetings — warm, witty, adventure-game flavour, original.
-// The signature is `{port}` so future reputation/flavour can swap the pool wholesale.
-export const HARBOURMASTER_LINES = [
-  'Welcome to {port}. Mind the gulls — they file complaints.',
-  "Tie her up snug. Last captain who didn't is still chasing his ship downwind.",
-  "A sail on the horizon turned into a guest. The grog's watered, the welcome isn't.",
-  "Made port at last! The dockhands wagered you'd sink. Pay them no mind, and no coin.",
-  "Easy on the jetty — it's older than my jokes and twice as wobbly.",
-  "Harbourmaster's the name, paperwork's the game. Sign here, here, and regrettably here.",
-];
-
-function harbourmasterLine(portName) {
-  const line = HARBOURMASTER_LINES[Math.floor(Math.random() * HARBOURMASTER_LINES.length)];
-  return line.replace('{port}', portName);
+// Harbourmaster greetings now REACT to the player's renown (#43): the world knows your
+// name. The line pools + tier logic are pure in renown.js (greetPlayer) so they unit-test;
+// here we just feed in the current renown and the docked port. Lower tier = comically
+// dismissive; higher tier = warm + by title. See the TWO-POLES SEAM in renown.js for how
+// these reactions will later diverge (feared pirate vs respected governor).
+function harbourmasterLine(portName, renown) {
+  return greetPlayer(renown, portName);
 }
 
 // Build one port marker: a stubby plank jetty reaching out to sea and a buoy with
@@ -116,7 +110,7 @@ export function createPorts(world) {
       used: cargoUsed(state.cargo),
       capacity: HOLD_CAP,
       port: prevDocked,
-      market: prevDocked ? market(prevDocked) : null,
+      market: prevDocked ? market(prevDocked, state.renown) : null,
       buy: (good, qty = 1, port = prevDocked) => buy(state, good, qty, port),
       sell: (good, qty = 1, port = prevDocked) => sell(state, good, qty, port),
     };
@@ -144,7 +138,7 @@ export function createPorts(world) {
       // that hud.js reads to render the panel and route key-driven buys/sells.
       state.port = dockedName;
       if (arrived && typeof onArrive === 'function') {
-        onArrive(dockedName, harbourmasterLine(dockedName));
+        onArrive(dockedName, harbourmasterLine(dockedName, state.renown));
       }
       // Expose the economy for QA/playtest once window.__tidewake exists (main.js
       // assigns it after createPorts, so we attach lazily from inside the loop).

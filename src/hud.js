@@ -5,7 +5,7 @@
 import { pointOfSail } from './physics.js';
 import { VERSION } from './version.js';
 import { GOODS, PORTS, HOLD_CAP, market, buy, sell, cargoUsed } from './economy.js';
-import { rankForRenown } from './renown.js';
+import { rankForRenown, renownTier } from './renown.js';
 
 const RAD2DEG = 180 / Math.PI;
 
@@ -53,8 +53,9 @@ export function createHud() {
     const g = GOODS.find((x) => x.id === goodId);
     const r = isSell ? sell(liveState, goodId, 1, port) : buy(liveState, goodId, 1, port);
     if (r.ok) {
-      const price = isSell ? market(port).find((m) => m.id === goodId).sell
-                           : market(port).find((m) => m.id === goodId).buy;
+      const board = market(port, liveState.renown);
+      const price = isSell ? board.find((m) => m.id === goodId).sell
+                           : board.find((m) => m.id === goodId).buy;
       flashMsg(`${isSell ? 'Sold' : 'Bought'} 1 ${g.name} ${isSell ? 'for' : 'at'} ${price}c.`);
     } else {
       flashMsg(REFUSALS[r.reason] || 'No deal.');
@@ -83,13 +84,17 @@ export function createHud() {
       lastTradeSig = '';
       return;
     }
-    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + flash;
+    const renown = Number.isFinite(state.renown) ? state.renown : 0;
+    const tier = renownTier(renown);
+    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + flash;
     if (sig === lastTradeSig && $trade.classList.contains('show')) return;
     lastTradeSig = sig;
 
     const info = PORTS[port] || {};
     const cryer = (info.cryers && info.cryers[(Math.floor(Date.now() / 6000)) % info.cryers.length]) || '';
-    const rows = market(port).map((row, i) => {
+    // Standing badge (#43): how this port reckons you — and the trade-terms perk it earns.
+    const standing = tier.tier > 0 ? ` · <span class="trade-standing">${tier.label} — terms in your favour</span>` : '';
+    const rows = market(port, renown).map((row, i) => {
       const held = (state.cargo && state.cargo[row.id]) || 0;
       const spec = info.speciality === row.id ? ' spec' : (info.craving === row.id ? ' crave' : '');
       return `<tr class="trow${spec}"><td class="tk">${i + 1}</td><td class="tg">${row.icon} ${row.name}</td>`
@@ -97,7 +102,7 @@ export function createHud() {
     }).join('');
 
     $trade.innerHTML =
-      `<div class="trade-h">⚓ ${port}</div>`
+      `<div class="trade-h">⚓ ${port}${standing}</div>`
       + `<div class="trade-sub">${info.blurb || ''}</div>`
       + `<div class="trade-cry">${cryer}</div>`
       + `<table class="trade-t"><thead><tr><th></th><th>good</th><th>buy</th><th>sell</th><th>hold</th></tr></thead><tbody>${rows}</tbody></table>`

@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { RANKS, rankForRenown, renownForSale } from '../../src/renown.js';
+import {
+  RANKS, rankForRenown, renownForSale,
+  renownTier, standingPriceModifier, greetPlayer, GREETINGS,
+} from '../../src/renown.js';
 
 test('RANKS is a non-empty ladder starting at 0 with strictly ascending thresholds', () => {
   assert.ok(Array.isArray(RANKS) && RANKS.length >= 6);
@@ -81,5 +84,77 @@ test('renownForSale increases with profit and is never negative', () => {
 test('renownForSale clamps junk input to 0', () => {
   for (const bad of [-1, -500, NaN, Infinity, -Infinity, undefined, null, 'lots']) {
     assert.equal(renownForSale(bad), 0, `bad earnings ${bad} should yield 0 renown`);
+  }
+});
+
+// ---- Reputation tiers: the world's three reactions to your legend ------------
+
+test('renownTier: three tiers keyed off the rank ladder, with labels', () => {
+  const lowest = renownTier(0);
+  assert.equal(lowest.tier, 0);
+  assert.equal(lowest.key, 'unknown');
+  assert.ok(typeof lowest.label === 'string' && lowest.label.length > 0);
+  // Bilge-rat / Deckhand = Unknown
+  assert.equal(renownTier(RANKS[1].at).tier, 0);
+  // Bosun..First Mate = Known
+  assert.equal(renownTier(RANKS[2].at).key, 'known');
+  assert.equal(renownTier(RANKS[4].at).key, 'known');
+  // Sea Captain and above = Renowned
+  assert.equal(renownTier(RANKS[5].at).key, 'renowned');
+  assert.equal(renownTier(RANKS[RANKS.length - 1].at).tier, 2);
+});
+
+test('renownTier: monotonic non-decreasing as renown climbs', () => {
+  let prev = -1;
+  for (let r = 0; r <= RANKS[RANKS.length - 1].at + 5000; r += 53) {
+    const { tier } = renownTier(r);
+    assert.ok(tier >= prev, `tier dropped at renown=${r}`);
+    prev = tier;
+  }
+});
+
+test('renownTier: junk renown is the lowest tier', () => {
+  for (const bad of [-1, NaN, Infinity, undefined, null, 'x']) {
+    assert.equal(renownTier(bad).tier, 0);
+  }
+});
+
+test('standingPriceModifier: zero at the bottom, modest and bounded at the top', () => {
+  assert.equal(standingPriceModifier(0), 0);
+  for (let r = -100; r <= RANKS[RANKS.length - 1].at + 5000; r += 41) {
+    const f = standingPriceModifier(r);
+    assert.ok(f >= 0 && f <= 0.05, `modifier out of sane bounds at ${r}: ${f}`);
+  }
+});
+
+test('standingPriceModifier: improves (rises) with renown, monotonic', () => {
+  assert.ok(standingPriceModifier(RANKS[5].at) > standingPriceModifier(0));
+  let prev = -1;
+  for (let r = 0; r <= RANKS[RANKS.length - 1].at + 2000; r += 31) {
+    const f = standingPriceModifier(r);
+    assert.ok(f >= prev, `modifier dropped at ${r}`);
+    prev = f;
+  }
+});
+
+test('greetPlayer: returns a tier-appropriate line, substituting {port} and {title}', () => {
+  const first = () => 0; // deterministic: always the first line of the pool
+  const low = greetPlayer(0, 'Saltpurse Quay', first);
+  assert.equal(low, GREETINGS.unknown[0].replace(/\{port\}/g, 'Saltpurse Quay').replace(/\{title\}/g, 'Bilge-rat'));
+  assert.ok(!/\{port\}|\{title\}/.test(low), 'no unresolved placeholders');
+
+  const high = greetPlayer(RANKS[5].at, 'Saltpurse Quay', first);
+  const title = rankForRenown(RANKS[5].at).title; // Sea Captain
+  assert.equal(high, GREETINGS.renowned[0].replace(/\{port\}/g, 'Saltpurse Quay').replace(/\{title\}/g, title));
+  assert.ok(high.includes(title), 'a renowned captain is greeted by title');
+});
+
+test('greetPlayer: every greeting in every pool resolves cleanly for any tier', () => {
+  for (const renown of [0, RANKS[3].at, RANKS[6].at]) {
+    const { key } = renownTier(renown);
+    GREETINGS[key].forEach((_, i) => {
+      const line = greetPlayer(renown, 'Barnacle Bottom', () => i / GREETINGS[key].length);
+      assert.ok(line.length > 0 && !/\{port\}|\{title\}/.test(line));
+    });
   }
 });

@@ -151,6 +151,45 @@ test('#29 docked seam: state.port → market → buy reduces coins (no explicit 
   assert.equal(cargoUsed(s.cargo), 0);
 });
 
+// ---- Standing perk (#43): the world favours a known captain ----------------
+
+test('priceAt: standing never hurts the captain and never makes sell >= buy', () => {
+  const RENOWN_HI = 5000; // Sea Captain → top tier
+  for (const g of GOODS) {
+    for (const port of ['Saltpurse Quay', 'Barnacle Bottom', "Gullet's Rest"]) {
+      const base = priceAt(port, g.id, 0);
+      const fav = priceAt(port, g.id, RENOWN_HI);
+      assert.ok(fav.buy <= base.buy, `${g.id}@${port}: favoured buy ${fav.buy} > base ${base.buy}`);
+      // Standing must never *widen* the round-trip spread you pay (buy - sell).
+      assert.ok((fav.buy - fav.sell) <= (base.buy - base.sell),
+        `${g.id}@${port}: standing widened the spread`);
+      assert.ok(fav.sell < fav.buy, `${g.id}@${port}: no free money even with standing`);
+    }
+  }
+  // At least one good shows a visibly better deal (not all swallowed by rounding).
+  const b0 = priceAt('Saltpurse Quay', 'silk', 0);
+  const bHi = priceAt('Saltpurse Quay', 'silk', 5000);
+  assert.ok(bHi.buy < b0.buy && bHi.sell > b0.sell, 'silk terms visibly improve with standing');
+});
+
+test('buy: a renowned captain pays less than an unknown one', () => {
+  const unknown = freshState({ renown: 0 });
+  const renowned = freshState({ renown: 5000 });
+  buy(unknown, 'silk', 1, 'Saltpurse Quay');
+  buy(renowned, 'silk', 1, 'Saltpurse Quay');
+  const paidUnknown = START_COINS - unknown.coins;
+  const paidRenowned = START_COINS - renowned.coins;
+  assert.ok(paidRenowned < paidUnknown, `renowned paid ${paidRenowned}, unknown paid ${paidUnknown}`);
+});
+
+test('sell: a renowned captain is paid more than an unknown one', () => {
+  const unknown = freshState({ renown: 0, cargo: { silk: 1 } });
+  const renowned = freshState({ renown: 5000, cargo: { silk: 1 } });
+  sell(unknown, 'silk', 1, 'Saltpurse Quay');
+  sell(renowned, 'silk', 1, 'Saltpurse Quay');
+  assert.ok(renowned.coins > unknown.coins, `renowned got ${renowned.coins}, unknown ${unknown.coins}`);
+});
+
 test('arbitrage loop: buy low, sail, sell high → net profit', () => {
   const s = freshState();
   buy(s, 'rum', 4, 'Barnacle Bottom');   // cheap rum
