@@ -3,8 +3,8 @@
 Single source of truth for the never-stopping delivery loop. The orchestrator
 updates this each loop so progress survives context resets.
 
-- **Current loop:** 11 (next: #39 Captain's Ledger notoriety — make the fantasy legible)
-- **Loops since last retro:** 3 (Retro 3 due soon — after this cycle)
+- **Current loop:** 12 (next: art polish / glTF ship #32; Retro 3 due)
+- **Loops since last retro:** 4 (Retro 3 DUE NOW — after cycles 7,8,9,11)
 - **Cycles since last deep-learning loop:** 0 (Deep-learning loop #1 DONE — all 9 agents refreshed; filed #32-#40)
 - **Research backlog (prioritise):** #39 notoriety, #32 glTF ship, #33 Insult Broadside combat, #35 cannon SFX, #36 fixed-timestep, #37 visual-diff QA, #34 contract lane, #40 adaptive music, #25 actions bump
 - **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions (e.g. #trade .show opacity) read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
@@ -32,6 +32,7 @@ updates this each loop so progress survives context resets.
 | 8 | Fix trade (state.port getter + buy-by-name) | #29 | v0.0.20260627011026 | 76 tests; trade verified live (Rum buy coins 100→34). #30 filed→closed non-bug |
 | 9 | Wandering NPC ships + persist economy (parallel) | #28,#31 | v0.0.20260627012517 | 96 tests; 3 AI vessels; save v2 (coins/cargo) |
 | 10 | Deep-learning research loop #1 (9 agents, web research) | — | — | Filed #32-#40; agents' identities refreshed |
+| 11 | Captain's Ledger — renown/rank ladder (TDD) | #39 | v0.0.20260627014341 | 114 tests; Bilge-rat→Terror of the Tidewake; persisted |
 
 ## Hourly Telegram log
 
@@ -40,3 +41,4 @@ updates this each loop so progress survives context resets.
 | 23:25 | v0.0.2026...1938 | Test update + v0 status | screenshot |
 | 00:10 | v0.0.2026...0101 | Wake, sail, audio, wind compass (5 releases) | video |
 | 00:50 | v0.0.2026...4415 | Ports + save/load + modularise (clearer video) | video |
+| 01:48 | v0.0.2026...4341 | Economy, NPCs, persistence, deep-learning loop, Captain's Ledger | screenshot |
