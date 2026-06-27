@@ -64,7 +64,9 @@ const npcs = createNpcs({ ocean, world, count: 3 });
 scene.add(npcs.group);
 
 // Game systems
-const input = createInput(renderer.domElement);
+// `audio` is declared below; the thunk only runs on a real user gesture (long after module
+// init), so the binding is resolved by then — lets a touch-control tap unlock audio directly.
+const input = createInput(renderer.domElement, { onGesture: () => audio.unlock() });
 const hud = createHud();
 const minimap = createMinimap({ world, ports, npcs });
 // Bigger route-planning chart (#54): same world data, zoomed way out + ports labelled.
@@ -385,6 +387,10 @@ function loop() {
   updatePerf(dt * 1000);       // refresh the deterministic perf snapshot (#52)
   if (!booted) {
     booted = true;
+    // The custom ocean ShaderMaterial only compiles when first drawn. Now that one frame
+    // has rendered, check it linked (strict mobile GPUs can fail it) and, if not, drop to a
+    // flat-but-coloured fallback sea so the player never sees an empty teal void (iOS bug).
+    ocean.verifyShader(renderer);
     const b = document.getElementById('boot');
     b.classList.add('hidden');
     setTimeout(() => b.remove(), 700);

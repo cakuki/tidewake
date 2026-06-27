@@ -23,7 +23,10 @@ export function isTouchDevice() {
   } catch { return false; }
 }
 
-export function createInput(domElement) {
+export function createInput(domElement, opts = {}) {
+  // Optional belt-and-braces audio unlock: a tap on any on-screen control calls this so
+  // WebAudio resumes on iOS even if the window-level gesture listener is missed (#77).
+  const onGesture = typeof opts.onGesture === 'function' ? opts.onGesture : null;
   const keys = new Set();
   addEventListener('keydown', (e) => { keys.add(e.key.toLowerCase()); });
   addEventListener('keyup', (e) => { keys.delete(e.key.toLowerCase()); });
@@ -52,7 +55,7 @@ export function createInput(domElement) {
   const touch = isTouchDevice();
   if (touch && typeof document !== 'undefined') {
     document.body.classList.add('touch');
-    wireTouchControls(keys);
+    wireTouchControls(keys, onGesture);
   }
 
   return {
@@ -66,12 +69,15 @@ export function createInput(domElement) {
   };
 }
 
-function wireTouchControls(keys) {
+function wireTouchControls(keys, onGesture) {
+  // Tapping any control is a real user gesture — unlock audio directly too (belt-and-braces
+  // alongside the window capture-phase listener in audio.js), guarded so it never throws.
+  const kick = () => { try { onGesture?.(); } catch { /* never break a control */ } };
   // Hold buttons → a held key (W/A/S/D). Multi-touch friendly: each button is its own
   // element, so steering + throttle held at once just add two keys to the shared Set.
   for (const el of document.querySelectorAll('#touch-controls [data-hold]')) {
     const key = String(el.dataset.hold).toLowerCase();
-    const press = (e) => { e.preventDefault(); keys.add(key); el.classList.add('on'); };
+    const press = (e) => { e.preventDefault(); kick(); keys.add(key); el.classList.add('on'); };
     const release = (e) => { if (e) e.preventDefault(); keys.delete(key); el.classList.remove('on'); };
     el.addEventListener('touchstart', press, { passive: false });
     el.addEventListener('touchend', release, { passive: false });
@@ -87,7 +93,7 @@ function wireTouchControls(keys) {
     { key, code: codeForKey(key), bubbles: true }));
   for (const el of document.querySelectorAll('#touch-controls [data-tap]')) {
     const key = String(el.dataset.tap).toLowerCase();
-    el.addEventListener('touchstart', (e) => { e.preventDefault(); el.classList.add('on'); tap(key); }, { passive: false });
+    el.addEventListener('touchstart', (e) => { e.preventDefault(); kick(); el.classList.add('on'); tap(key); }, { passive: false });
     el.addEventListener('touchend', (e) => { e.preventDefault(); el.classList.remove('on'); }, { passive: false });
     el.addEventListener('touchcancel', () => el.classList.remove('on'));
     el.addEventListener('click', (e) => { e.preventDefault(); tap(key); }); // mouse fallback (?touch)

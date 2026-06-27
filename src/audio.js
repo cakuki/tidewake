@@ -500,7 +500,8 @@ export function createAudio(opts = {}) {
   function removeGestureListeners() {
     if (!gestureBound) return;
     try {
-      for (const ev of unlockEventNames()) globalThis.removeEventListener?.(ev, onGesture);
+      // Must pass the SAME capture flag used at bind time or the removal is a no-op.
+      for (const ev of unlockEventNames()) globalThis.removeEventListener?.(ev, onGesture, { capture: true });
     } catch {
       /* ignore */
     }
@@ -621,8 +622,12 @@ export function createAudio(opts = {}) {
     try {
       // First-gesture unlock. Bind BROADLY (touch + pointer + mouse + click + key) so iOS Safari
       // and an installed iOS PWA both resume + unlock inside a real gesture, whichever fires first.
+      // CAPTURE phase (#77 follow-up): the on-screen touch buttons call preventDefault() and could
+      // otherwise swallow the gesture before it bubbles up here — a capture-phase listener on the
+      // window runs FIRST, before any control's handler, so a tap on a steer/fire button unlocks
+      // audio too. (input.js also calls unlock() directly as a belt-and-braces.)
       for (const ev of unlockEventNames()) {
-        globalThis.addEventListener?.(ev, onGesture, { passive: true });
+        globalThis.addEventListener?.(ev, onGesture, { passive: true, capture: true });
       }
       gestureBound = true;
 
@@ -660,5 +665,12 @@ export function createAudio(opts = {}) {
     }
   }
 
-  return { init, setMute, isMuted, update, attachMusic, playDuelHit };
+  // Directly drive the gesture-unlock (belt-and-braces for the on-screen touch controls,
+  // which call this from their own handlers so audio unlocks even if the window-level
+  // listener is somehow missed). Idempotent + guarded; a no-op in headless.
+  function unlock() {
+    onGesture();
+  }
+
+  return { init, setMute, isMuted, update, attachMusic, playDuelHit, unlock };
 }

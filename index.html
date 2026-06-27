@@ -17,9 +17,17 @@
   <style>
     :root { color-scheme: dark; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a1c2b; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden; background: #0a1c2b;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace;
+      /* Mobile no-select hardening (#iOS): tapping the canvas / HUD / touch controls must
+         never select text or pop the iOS callout menu, and taps shouldn't be treated as
+         text gestures. There is no text input in-game, so this is safe to apply broadly. */
+      user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;
+      -webkit-touch-callout: none; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+    }
     #app { position: fixed; inset: 0; }
-    canvas { display: block; }
+    canvas { display: block; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 
     #hud {
       /* Safe-area (#75): pad the top-left corner clear of the notch / status bar in

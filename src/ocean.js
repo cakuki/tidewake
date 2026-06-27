@@ -1,11 +1,30 @@
 import * as THREE from 'three';
 import { WAVES, MAX_SWELL, swellHeight } from './swell.js';
+import { DEEP, SHALLOW, oceanFallbackColor } from './sea-color.js';
 
 // Re-export so existing importers (and the swell unit test) can read the crest height.
 export { MAX_SWELL };
 
 // Format a JS number as a GLSL float literal (always with a decimal point).
 const glf = (n) => (Number.isInteger(n) ? n.toFixed(1) : String(n));
+
+// Pull a material's compiled GL program out of the renderer, tolerating three's
+// internal shape across minor versions. Returns null if it can't be found (so a
+// caller can choose NOT to act rather than risk a false-positive fallback).
+function getGLProgram(renderer, material) {
+  try {
+    const props = renderer.properties?.get?.(material);
+    if (!props) return null;
+    if (props.currentProgram?.program) return props.currentProgram.program;
+    if (props.programs) {
+      const iter = typeof props.programs.values === 'function' ? props.programs.values() : props.programs;
+      for (const p of iter) if (p?.program) return p.program;
+    }
+  } catch {
+    /* fall through */
+  }
+  return null;
+}
 
 // A large animated ocean plane. Uses a vertex shader for Gerstner-style waves
 // so the GPU does the work and the CPU loop stays cheap.
@@ -16,21 +35,29 @@ export function createOcean() {
 
   const uniforms = {
     uTime: { value: 0 },
-    uShallow: { value: new THREE.Color(0x46e3d0) }, // luminous Caribbean turquoise (shallows)
-    uDeep: { value: new THREE.Color(0x1192c6) },    // rich tropical blue (offshore, not murky)
-    uHaze: { value: new THREE.Color(0xbfe8e6) },    // bright sunny sea-haze (keeps foreground vivid)
-    uPaper: { value: new THREE.Color(0xeae7d6) },   // soft warm sun-bleach toward horizon
+    uShallow: { value: new THREE.Color(SHALLOW) }, // luminous Caribbean turquoise (shallows)
+    uDeep: { value: new THREE.Color(DEEP) },       // rich tropical blue (offshore, not murky)
+    uHaze: { value: new THREE.Color(0xbfe8e6) },   // bright sunny sea-haze (keeps foreground vivid)
+    uPaper: { value: new THREE.Color(0xeae7d6) },  // soft warm sun-bleach toward horizon
     uSun: { value: new THREE.Vector3(0.5, 0.8, 0.2).normalize() },
     uCam: { value: new THREE.Vector3() },
   };
 
   const mat = new THREE.ShaderMaterial({
     uniforms,
+    // iOS Safari WebGL is strict: an explicit `precision highp float;` in BOTH stages
+    // keeps the shared varyings at a MATCHING precision (a vertex/fragment precision
+    // mismatch is a classic mobile link failure → the whole ocean draws nothing and you
+    // see only the clear colour, i.e. a flat teal void). highp also keeps the wave trig
+    // honest once the camera sails far from the origin.
     vertexShader: /* glsl */ `
+      precision highp float;
+      precision highp int;
       uniform float uTime;
+      uniform vec3 uCam;
       varying vec3 vNormal;
       varying float vHeight;
-      varying vec3 vWorld;
+      varying vec3 vRel; // camera-relative world position — kept SMALL so mobile GPUs stay precise
 
       // sum of a few sine waves -> rolling swell (evaluated in WORLD space so the
       // plane can follow the ship without the wave pattern sliding)
@@ -54,29 +81,33 @@ export function createOcean() {
         float hz = swell(wp.xz + vec2(0.0, e));
         vNormal = normalize(vec3(h - hx, e, h - hz));
 
-        vWorld = wp.xyz;
+        // Pass the position RELATIVE to the camera. The fragment shader's haze, glint and
+        // micro-ripple then work on small numbers (the plane is recentred under the camera
+        // each frame) instead of huge absolute world coords that lose precision on mobile.
+        vRel = wp.xyz - uCam;
         gl_Position = projectionMatrix * viewMatrix * wp;
       }
     `,
     fragmentShader: /* glsl */ `
+      precision highp float;
+      precision highp int;
       uniform float uTime;
       uniform vec3 uShallow;
       uniform vec3 uDeep;
       uniform vec3 uHaze;
       uniform vec3 uPaper;
       uniform vec3 uSun;
-      uniform vec3 uCam;
       varying vec3 vNormal;
       varying float vHeight;
-      varying vec3 vWorld;
+      varying vec3 vRel;
 
       void main() {
         vec3 n = normalize(vNormal);
 
         // Subtle micro-detail: a cheap high-frequency ripple perturbs the shading
-        // normal only (no geometry/height change — ports/coasts stay dry). It scrolls
-        // slowly, tied to time, to break the flatness left by the calmer swell (#51).
-        vec2 w = vWorld.xz;
+        // normal only (no geometry/height change — ports/coasts stay dry). Works in
+        // camera-relative space (vRel.xz) so the numbers stay small on mobile GPUs.
+        vec2 w = vRel.xz;
         vec3 nMicro = normalize(n + vec3(
           0.05 * cos(w.x * 0.25 + uTime * 0.8) + 0.03 * cos(w.y * 0.6 - uTime * 1.3),
           0.0,
@@ -95,7 +126,8 @@ export function createOcean() {
         // and the eye. A tight bright core reads as a sun reflection; a broader,
         // shimmering lobe twinkles as the micro-ripples and time scroll past, so the
         // glint dances calmly on the water. Capped so it never blows out to white.
-        vec3 viewDir = normalize(uCam - vWorld);
+        // viewDir = normalize(uCam - vWorld) == normalize(-vRel).
+        vec3 viewDir = normalize(-vRel);
         vec3 sunDir = normalize(uSun);
         vec3 halfV = normalize(sunDir + viewDir);
         float ndh = max(dot(nMicro, halfV), 0.0);
@@ -109,8 +141,9 @@ export function createOcean() {
         vec3 col = base + fres * 0.22 + glint * sunCol;
 
         // distance fog toward a BRIGHT sunny sea-haze — measured from the CAMERA so it
-        // follows the ship instead of staying pinned to the world origin.
-        float d = distance(vWorld.xz, uCam.xz) / 1800.0;
+        // follows the ship instead of staying pinned to the world origin. length(vRel.xz)
+        // == distance(vWorld.xz, uCam.xz), but on small camera-relative numbers.
+        float d = length(w) / 1800.0;
         col = mix(col, uHaze, clamp(d - 0.15, 0.0, 0.85));
         // Gentle sun-bleach toward the horizon for depth — a soft, warm, BRIGHT wash
         // (re-tuned from the old weathered ink-wash so the foreground water stays vivid
@@ -131,6 +164,22 @@ export function createOcean() {
   // delegates to the shared pure swellHeight() (same WAVES the GLSL is generated from).
   const sampleHeight = swellHeight;
 
+  let fellBack = false;   // did we install the flat-sea fallback?
+  let logged = false;     // one-time diagnostic guard (never spam)
+
+  // Swap the custom shader for a simple lit water material in the sea colour. A
+  // plausible flat sea always beats an empty teal void.
+  function installFallback() {
+    if (fellBack) return;
+    fellBack = true;
+    try {
+      mesh.material = new THREE.MeshLambertMaterial({ color: oceanFallbackColor() });
+      mat.dispose?.();
+    } catch {
+      /* if even the fallback throws, leave the original material — never crash the game */
+    }
+  }
+
   return {
     mesh,
     update(t, camPos) {
@@ -143,5 +192,30 @@ export function createOcean() {
       }
     },
     sampleHeight,
+    get fellBack() { return fellBack; },
+    // Diagnose the ocean shader after the first render and harden against a silent
+    // blank sea: if the program DEFINITIVELY failed to link (the iOS symptom), log it
+    // once and install a flat-but-coloured fallback. If we can't tell, do nothing (so a
+    // healthy desktop sea is never regressed). Safe to call every frame; acts once.
+    verifyShader(renderer) {
+      if (fellBack || !renderer) return !fellBack;
+      try {
+        const gl = renderer.getContext?.();
+        if (!gl) return true;
+        const program = getGLProgram(renderer, mesh.material);
+        if (!program) return true; // can't determine — don't risk a false fallback
+        const linked = gl.getProgramParameter(program, gl.LINK_STATUS);
+        if (linked) {
+          if (!logged) { logged = true; console.info('[ocean] shader program linked OK'); }
+          return true;
+        }
+        const info = gl.getProgramInfoLog(program) || '(no program info log)';
+        console.warn('[ocean] shader failed to link — installing flat-sea fallback so the sea is never a void:', info);
+        installFallback();
+        return false;
+      } catch {
+        return !fellBack;
+      }
+    },
   };
 }
