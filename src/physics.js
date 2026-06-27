@@ -52,6 +52,40 @@ export function steerRate(speed) {
 }
 
 /**
+ * Smallest angle between the ship's heading and the wind's "downwind" direction
+ * (the way windDir points). 0 = sailing dead downwind (running), PI = pointed
+ * straight into the wind (in irons). Always folded to [0, PI], so port and
+ * starboard tacks at the same offset read identically.
+ * @param {number} heading  ship heading in radians
+ * @param {number} windDir  wind direction in radians (0 == fastest heading)
+ * @returns {number} angle in [0, PI]
+ */
+export function relativeWindAngle(heading, windDir) {
+  const d = heading - windDir;
+  return Math.abs(Math.atan2(Math.sin(d), Math.cos(d))); // wrap to [-PI,PI], fold
+}
+
+/**
+ * Point of sail given heading vs wind: a readable label, an efficiency band for
+ * colouring (good → fair → poor), and the underlying speed multiplier. Driven by
+ * relativeWindAngle: dead downwind reads "Running" (best), dead upwind "In irons"
+ * (worst), abeam "Reaching".
+ * @param {number} heading  ship heading in radians
+ * @param {number} windDir  wind direction in radians
+ * @returns {{label: string, band: 'good'|'fair'|'poor', efficiency: number, angle: number}}
+ */
+export function pointOfSail(heading, windDir) {
+  const angle = relativeWindAngle(heading, windDir);
+  const efficiency = windFactor(heading, windDir);
+  let label, band;
+  if (angle < 0.30 * Math.PI) { label = 'Running'; band = 'good'; }
+  else if (angle < 0.55 * Math.PI) { label = 'Reaching'; band = 'good'; }
+  else if (angle < 0.78 * Math.PI) { label = 'Close-hauled'; band = 'fair'; }
+  else { label = 'In irons'; band = 'poor'; }
+  return { label, band, efficiency, angle };
+}
+
+/**
  * Normalized wake/foam intensity from speed. 0 at rest, monotonically rising,
  * clamped to [0,1]. Mirrors wake.js's speed->intensity mapping so the foam
  * model and the physics model stay consistent.

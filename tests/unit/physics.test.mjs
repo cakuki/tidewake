@@ -6,6 +6,8 @@ import {
   approach,
   steerRate,
   wakeIntensity,
+  relativeWindAngle,
+  pointOfSail,
 } from '../../src/physics.js';
 
 const PI = Math.PI;
@@ -95,4 +97,74 @@ test('wakeIntensity: stays within [0,1] and clamps above max', () => {
   assert.equal(wakeIntensity(55, 55), 1);
   assert.equal(wakeIntensity(100, 55), 1, 'clamped at 1');
   assert.equal(wakeIntensity(-5, 55), 0, 'clamped at 0');
+});
+
+test('relativeWindAngle: dead downwind (heading == windDir) is 0', () => {
+  assert.ok(Math.abs(relativeWindAngle(PI * 0.25, PI * 0.25)) < 1e-9, 'running == 0');
+  assert.ok(Math.abs(relativeWindAngle(1.7, 1.7)) < 1e-9);
+});
+
+test('relativeWindAngle: dead upwind (heading opposite windDir) is PI', () => {
+  assert.ok(Math.abs(relativeWindAngle(PI * 0.25 + PI, PI * 0.25) - PI) < 1e-9, 'irons == PI');
+});
+
+test('relativeWindAngle: beam (90° off) is PI/2', () => {
+  assert.ok(Math.abs(relativeWindAngle(PI / 2, 0) - PI / 2) < 1e-9);
+  assert.ok(Math.abs(relativeWindAngle(-PI / 2, 0) - PI / 2) < 1e-9);
+});
+
+test('relativeWindAngle: always in [0, PI] and wraps cleanly', () => {
+  for (let h = -4 * PI; h < 4 * PI; h += PI / 13) {
+    for (let w = -PI; w < PI; w += PI / 7) {
+      const a = relativeWindAngle(h, w);
+      assert.ok(a >= -1e-9 && a <= PI + 1e-9, `out of range: ${a} (h=${h}, w=${w})`);
+    }
+  }
+});
+
+test('relativeWindAngle: symmetric port vs starboard', () => {
+  const w = 0.4;
+  for (let off = 0; off <= PI; off += PI / 9) {
+    const port = relativeWindAngle(w + off, w);
+    const starboard = relativeWindAngle(w - off, w);
+    assert.ok(Math.abs(port - starboard) < 1e-9, `asymmetric at off=${off}`);
+  }
+});
+
+test('pointOfSail: dead downwind is Running', () => {
+  assert.equal(pointOfSail(PI * 0.25, PI * 0.25).label, 'Running');
+});
+
+test('pointOfSail: dead upwind is In irons', () => {
+  assert.equal(pointOfSail(PI * 0.25 + PI, PI * 0.25).label, 'In irons');
+});
+
+test('pointOfSail: beam reach is Reaching', () => {
+  assert.equal(pointOfSail(PI / 2, 0).label, 'Reaching');
+  assert.equal(pointOfSail(-PI / 2, 0).label, 'Reaching');
+});
+
+test('pointOfSail: near-upwind (but not dead) is Close-hauled', () => {
+  // ~150° off downwind => ~30° off the wind source: hard on the wind, not yet stalled
+  assert.equal(pointOfSail(PI * 0.7, 0).label, 'Close-hauled');
+});
+
+test('pointOfSail: symmetric port vs starboard', () => {
+  const w = 0.4;
+  for (let off = 0; off <= PI; off += PI / 12) {
+    assert.equal(pointOfSail(w + off, w).label, pointOfSail(w - off, w).label, `asymmetric at off=${off}`);
+  }
+});
+
+test('pointOfSail: efficiency matches windFactor and is best running, worst in irons', () => {
+  const w = 1.1;
+  const running = pointOfSail(w, w);
+  const irons = pointOfSail(w + PI, w);
+  assert.ok(Math.abs(running.efficiency - windFactor(w, w)) < 1e-9, 'efficiency == windFactor');
+  assert.ok(running.efficiency > irons.efficiency, 'running beats irons');
+});
+
+test('pointOfSail: band degrades from good (running) to poor (in irons)', () => {
+  assert.equal(pointOfSail(0, 0).band, 'good');
+  assert.equal(pointOfSail(PI, 0).band, 'poor');
 });

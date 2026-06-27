@@ -21,6 +21,13 @@
       border-radius: 8px; padding: 8px 12px; backdrop-filter: blur(3px);
     }
     #hud b { color: #ffd98a; }
+    #windrose { display: flex; align-items: center; gap: 9px; margin-top: 7px; }
+    #windrose svg { display: block; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+    #pos { font-size: 12px; font-weight: 600; letter-spacing: .02em; transition: color .3s ease; }
+    #pos.pos-good { color: #87e0a4; }
+    #pos.pos-fair { color: #ffd98a; }
+    #pos.pos-poor { color: #ff9a8a; }
+    #windarrow { transition: transform .12s linear; transform-origin: 24px 24px; }
     #title {
       position: fixed; left: 0; right: 0; top: 18px; z-index: 10; text-align: center;
       color: #eaf6ff; letter-spacing: .35em; font-size: 14px; text-shadow: 0 2px 8px rgba(0,0,0,.7);
@@ -56,6 +63,20 @@
     <div>Heading <b><span id="heading">0</span>°</b></div>
     <div>Speed <b><span id="speed">0.0</span></b> kn</div>
     <div>Wind <b><span id="wind">—</span></b></div>
+    <div id="windrose">
+      <svg width="48" height="48" viewBox="0 0 48 48" aria-label="Wind relative to ship">
+        <circle cx="24" cy="24" r="20" fill="rgba(7,22,38,.35)" stroke="rgba(120,180,230,.45)" stroke-width="1.5" />
+        <!-- bow marker: the ship always points up in this ship-relative dial -->
+        <path d="M24 1.5 l4.5 7.5 l-9 0 z" fill="#ffd98a" />
+        <!-- wind-flow arrow: rotates as you steer; points the way the wind pushes -->
+        <g id="windarrow">
+          <line x1="24" y1="38" x2="24" y2="13" stroke="#7fc4ff" stroke-width="2.5" stroke-linecap="round" />
+          <path d="M24 8 l5 8 l-10 0 z" fill="#7fc4ff" />
+        </g>
+        <circle cx="24" cy="24" r="2.4" fill="#cfe8ff" />
+      </svg>
+      <span id="pos" class="pos-good">—</span>
+    </div>
   </div>
   <button id="audio-toggle" type="button" aria-pressed="false" aria-label="Mute" title="Mute (m)">🔊</button>
   <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; M mute &nbsp;·&nbsp; experimental build</div>

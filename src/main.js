@@ -3,7 +3,7 @@ import { createOcean } from './ocean.js';
 import { createShip } from './ship.js';
 import { createWorld } from './world.js';
 import { createWake } from './wake.js';
-import { targetSpeed, approach, steerRate } from './physics.js';
+import { targetSpeed, approach, steerRate, pointOfSail } from './physics.js';
 import { createAudio } from './audio.js';
 import { VERSION } from './version.js';
 
@@ -74,8 +74,15 @@ addEventListener('resize', () => {
 const $heading = document.getElementById('heading');
 const $speed = document.getElementById('speed');
 const $wind = document.getElementById('wind');
+const $windArrow = document.getElementById('windarrow');
+const $pos = document.getElementById('pos');
 document.getElementById('version').textContent = VERSION;
 $wind.textContent = state.windName;
+
+// Wind indicator + point-of-sail state (kept across frames to avoid churning
+// the DOM when nothing changed — the hot path stays allocation-free).
+const RAD2DEG = 180 / Math.PI;
+let lastPosLabel = '', lastPosBand = '';
 
 const clock = new THREE.Clock();
 let booted = false;
@@ -123,6 +130,13 @@ function update(dt, t) {
   let deg = Math.round((state.heading * 180 / Math.PI) % 360); if (deg < 0) deg += 360;
   $heading.textContent = deg;
   $speed.textContent = (state.speed / MAX_SPEED * 18).toFixed(1);
+
+  // Wind indicator: arrow swings to the wind's bearing relative to the bow (the
+  // dial is ship-relative, bow up). Point-of-sail label + colour follow the angle.
+  $windArrow.setAttribute('transform', `rotate(${(state.windDir - state.heading) * RAD2DEG} 24 24)`);
+  const sail = pointOfSail(state.heading, state.windDir);
+  if (sail.label !== lastPosLabel) { $pos.textContent = sail.label; lastPosLabel = sail.label; }
+  if (sail.band !== lastPosBand) { $pos.className = 'pos-' + sail.band; lastPosBand = sail.band; }
 
   // sea/wind ambience tracks speed (no-op until audio is started by a gesture)
   audio.update({ speed: state.speed, maxSpeed: MAX_SPEED });
