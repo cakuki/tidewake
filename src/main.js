@@ -3,6 +3,7 @@ import { createOcean } from './ocean.js';
 import { createShip } from './ship.js';
 import { createWorld } from './world.js';
 import { createWake } from './wake.js';
+import { createPorts } from './ports.js';
 import { targetSpeed, approach, steerRate, pointOfSail } from './physics.js';
 import { createAudio } from './audio.js';
 import { VERSION } from './version.js';
@@ -32,6 +33,8 @@ const ship = createShip();
 scene.add(ship);
 const wake = createWake(ocean);
 scene.add(wake.points);
+const ports = createPorts(world);
+scene.add(ports.group);
 
 // ---- Ship state (simple arcade sailing) ----
 const state = {
@@ -79,6 +82,17 @@ const $pos = document.getElementById('pos');
 document.getElementById('version').textContent = VERSION;
 $wind.textContent = state.windName;
 
+// Arrival toast — a non-blocking banner that auto-dismisses. Reaching a port shows
+// "⚓ Made port at <Name>" plus a rotating harbourmaster greeting.
+const $toast = document.getElementById('toast');
+let toastTimer = null;
+function showArrival(portName, line) {
+  $toast.innerHTML = `<div class="toast-title">⚓ Made port at ${portName}</div><div class="toast-line">${line}</div>`;
+  $toast.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $toast.classList.remove('show'), 5000);
+}
+
 // Wind indicator + point-of-sail state (kept across frames to avoid churning
 // the DOM when nothing changed — the hot path stays allocation-free).
 const RAD2DEG = 180 / Math.PI;
@@ -121,6 +135,9 @@ function update(dt, t) {
   camera.lookAt(state.pos.x, h + 8, state.pos.z);
 
   ocean.update(t, camera.position);
+
+  // ports: detect arrival (fires once per visit) and animate the buoys
+  ports.update(state, showArrival, t);
 
   // bow wake + trailing foam (rides the swell, scales with speed)
   state.maxSpeed = MAX_SPEED;
@@ -165,6 +182,8 @@ window.__tidewake = {
   version: VERSION,
   ready: false,
   get state() { return { heading: state.heading, speed: state.speed, throttle: state.throttle, pos: state.pos.toArray() }; },
+  get ports() { return ports.ports; },
+  get docked() { return ports.docked; },
   press(k) { keys.add(k); },
   release(k) { keys.delete(k); },
   step(seconds) {

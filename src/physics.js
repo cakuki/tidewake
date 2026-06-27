@@ -96,3 +96,53 @@ export function pointOfSail(heading, windDir) {
 export function wakeIntensity(speed, maxSpeed) {
   return Math.min(1, Math.max(0, speed / maxSpeed));
 }
+
+// ---- Ports & arrival (data-driven, three.js/DOM-free so it unit-tests) ----
+// A "port" is plain data: { name, x, z }. The horizontal (x,z) plane is the sea;
+// height (y) is irrelevant to docking, so it's ignored.
+
+/**
+ * Nearest port to a position, by horizontal distance.
+ * @param {{x:number,z:number}} pos  ship position (y ignored)
+ * @param {Array<{name:string,x:number,z:number}>} ports
+ * @returns {{port: object, distance: number} | null} null if no ports
+ */
+export function nearestPort(pos, ports) {
+  let best = null, bestD = Infinity;
+  for (const p of ports) {
+    const d = Math.hypot(pos.x - p.x, pos.z - p.z);
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  return best ? { port: best, distance: bestD } : null;
+}
+
+/**
+ * Whether a position is within a port's docking radius (inclusive boundary).
+ * @param {{x:number,z:number}} pos
+ * @param {{x:number,z:number}} port
+ * @param {number} radius  docking radius in world units
+ * @returns {boolean}
+ */
+export function isDocked(pos, port, radius) {
+  return Math.hypot(pos.x - port.x, pos.z - port.z) <= radius;
+}
+
+/**
+ * One step of the arrival state machine. Given the name of the port we were
+ * docked at last step (or null), report which port we're docked at now and
+ * whether this step is a *fresh* arrival (entered a port we weren't already at).
+ * Leaving a port sets dockedName back to null, which re-arms the next arrival —
+ * so arrival fires exactly once per visit, and again if you leave and return.
+ * @param {string|null} prevDockedName
+ * @param {{x:number,z:number}} pos
+ * @param {Array<{name:string,x:number,z:number}>} ports
+ * @param {number} radius
+ * @returns {{dockedName: string|null, dockedPort: object|null, arrived: boolean}}
+ */
+export function dockingUpdate(prevDockedName, pos, ports, radius) {
+  const near = nearestPort(pos, ports);
+  const dockedPort = near && near.distance <= radius ? near.port : null;
+  const dockedName = dockedPort ? dockedPort.name : null;
+  const arrived = dockedName !== null && dockedName !== prevDockedName;
+  return { dockedName, dockedPort, arrived };
+}
