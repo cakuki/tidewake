@@ -10,6 +10,7 @@
 // the canvas only redraws while the overlay is open.
 
 import { minimapScale, worldToMinimap } from './minimap.js';
+import { assignIslandNames } from './islands.js';
 
 // Read a world position whether it's a THREE.Vector3 ({x,z}) or a [x,y,z]/[x,z] array.
 function readX(p) { return p && (p.x ?? p[0]) || 0; }
@@ -47,9 +48,14 @@ export function createBigMap({ world, ports, npcs, canvas, overlay, radius = 400
   const scale = minimapScale(size, radius);
   const GRID_STEP = 1000;                // world units between grid lines / the scale bar
 
-  // Static world geometry, distilled once to flat circles {x,z,r}.
-  const islands = (world && world.islands ? world.islands.children : []).map((isle) => ({
+  // Static world geometry, distilled once to flat circles {x,z,r} + each isle's name (#19).
+  // assignIslandNames is keyed by index — the SAME deterministic order the namer uses — so the
+  // chart's labels can never disagree with the landfall toast.
+  const isleChildren = (world && world.islands ? world.islands.children : []);
+  const isleNames = assignIslandNames(isleChildren.length);
+  const islands = isleChildren.map((isle, i) => ({
     x: isle.position.x, z: isle.position.z, r: isle.userData.radius || 70,
+    name: isleNames[i] ? isleNames[i].name : '',
   }));
   // Ports are static data ({ name, pos:[x,z] }); read the serialisable list once.
   const portList = (ports && ports.ports) ? ports.ports.map((p) => ({
@@ -62,6 +68,7 @@ export function createBigMap({ world, ports, npcs, canvas, overlay, radius = 400
   const RIM = 'rgba(255, 217, 138, .8)';
   const GRID = 'rgba(120, 180, 230, .14)';
   const ISLE = 'rgba(210, 188, 130, .95)';
+  const ISLE_LABEL = 'rgba(225, 205, 150, .85)';   // dimmer than ports — names sit under the harbours
   const PORT = '#ffd98a';
   const LABEL = '#ffe9b8';
   const SHIP = '#ff9a8a';
@@ -100,7 +107,9 @@ export function createBigMap({ world, ports, npcs, canvas, overlay, radius = 400
     }
     ctx.stroke();
 
-    // Islands — filled sandy blobs sized by radius.
+    // Islands — filled sandy blobs sized by radius, each LABELLED with its name (#19) so the
+    // archipelago reads as a named, charted place. Labels centred under the blob, dimmer than
+    // the gold harbour names so ports still read first.
     ctx.fillStyle = ISLE;
     for (const isle of islands) {
       const p = worldToMinimap(isle.x, isle.z, px, pz, scale, size);
@@ -109,6 +118,17 @@ export function createBigMap({ world, ports, npcs, canvas, overlay, radius = 400
       ctx.beginPath();
       ctx.arc(p.x, p.y, rr, 0, Math.PI * 2);
       ctx.fill();
+    }
+    ctx.font = '11px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = ISLE_LABEL;
+    for (const isle of islands) {
+      if (!isle.name) continue;
+      const p = worldToMinimap(isle.x, isle.z, px, pz, scale, size);
+      if (!p.onRadar) continue;
+      const rr = Math.max(2, isle.r * scale);
+      ctx.fillText(isle.name, p.x, p.y + rr + 3);
     }
 
     // Ports — gold diamonds, each LABELLED with its name. This is the whole point of

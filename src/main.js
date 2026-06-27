@@ -13,6 +13,7 @@ import { createSettings } from './ui/settings.js';
 import { createDayNight } from './daynight.js';
 import { createMinimap } from './minimap.js';
 import { createBigMap } from './bigmap.js';
+import { createIslandNamer } from './islands.js';
 import { createSailing } from './sailing.js';
 import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
@@ -74,6 +75,9 @@ const wake = createWake(ocean);
 scene.add(wake.points);
 const ports = createPorts(world);
 scene.add(ports.group);
+// Characterful island names + a one-time comedic landfall line (#19). Pure naming/approach
+// logic lives in src/islands.js; here we just fire the beat through the shared HUD toast.
+const islandNamer = createIslandNamer({ world });
 const npcs = createNpcs({ ocean, world, count: 3 });
 scene.add(npcs.group);
 
@@ -176,6 +180,7 @@ function newVoyage() {
   cannons.cancel();
   persistence.clear();
   sailing.reset();
+  islandNamer.reset(); // a fresh voyage re-arms the island landfall greetings (#19)
   state.onboarding = normalizeFlags(state.onboarding); // reset() cleared it → fresh set
   obsStanding = undefined;
   obsRankIndex = undefined;
@@ -325,6 +330,7 @@ function update(dt, t) {
   ocean.update(t, camera.position);
   daynight.update(dt);                          // optional day-night cycle (#58): no-op while OFF
   ports.update(state, onArrive, t);            // arrival detection (fires once) + buoy bob
+  islandNamer.update(state.pos, onApproachIsland); // name + flavour the first time you near an isle (#19)
   wake.update(dt, state, t);                   // bow wake + trailing foam
   hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
   checkLegends();                              // endgame payoff: crown a new legend once (#46)
@@ -373,6 +379,14 @@ function checkLegends() {
 function onArrive(portName, line) {
   hud.showArrival(portName, line);
   fireOnboarding('dock');
+}
+
+// Island landfall (#19): the first time you sail close to a named isle this session, the
+// lookout sings out its name + a daft flavour line on the shared toast. Once-only per isle
+// (the namer owns the "already introduced" guard), so it never spams.
+function onApproachIsland(name, flavour) {
+  try { hud.flashBanner(`🏝️ Landfall: ${name}`, flavour); }
+  catch { /* a flourish must never break the loop */ }
 }
 
 function fireOnboarding(event) {
@@ -481,7 +495,12 @@ window.__tidewake = {
   get collisionRadii() { return { ship: SHIP_RADIUS, npc: NPC_RADIUS, bound: SHIP_RADIUS + NPC_RADIUS }; },
   // Island collision (#76 a1) QA surface: the flat {x,z,r} circles the hull collides against,
   // so a headless playtest can drive the ship at the coast and assert it doesn't pass through.
-  get islands() { return world.islands.children.map((i) => ({ x: i.position.x, z: i.position.z, r: i.userData.radius || 80 })); },
+  // Now also carries each isle's characterful name + flavour (#19).
+  get islands() { return islandNamer.list; },
+  // Island naming (#19) QA surface: which isles have already greeted you this session, and the
+  // nearest isle (with its name + distance) — so a playtest can sail in and assert the beat fired.
+  get islandsIntroduced() { return islandNamer.introduced; },
+  get nearestIsland() { return islandNamer.nearestIsland(state.pos); },
   get docked() { return ports.docked; },
   // Invisible onboarding (#60) QA surface: the live progress flags, the next step, and
   // whether the seeded goal card is currently on screen.

@@ -551,6 +551,60 @@ try {
   if (!(daynight.restored.haze === daynight.offDefault.haze)) fail(`day-night: OFF did not restore the sunny haze exactly (${daynight.restored.haze} != ${daynight.offDefault.haze})`);
   if (!(daynight.restored.sunIntensity === daynight.offDefault.sunIntensity)) fail('day-night: OFF did not restore the sunny sun intensity exactly');
 
+  // 2k) Island names + landfall flavour (#19): every island carries a characterful name, and
+  // the FIRST time you sail close to one, a one-time toast hails it by name with a comedic line.
+  // Sail straight at the nearest isle and assert (1) it has a name, (2) the approach beat fired
+  // (it joins tw.islandsIntroduced) BEFORE running aground, and (3) the shared toast shows that
+  // name. Deterministic via tw.step().
+  const landfall = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    const $toast = document.getElementById('toast');
+    tw.newVoyage(); tw.step(0.1);
+    // every island is named + has flavour
+    const allNamed = tw.islands.length > 0 && tw.islands.every((i) => i.name && i.name.length > 0);
+    // nearest island to the origin
+    let isle = null, bd = Infinity;
+    for (const c of tw.islands) { const d = Math.hypot(c.x, c.z); if (d < bd) { bd = d; isle = c; } }
+    if (!isle) return { hasIsland: false, allNamed };
+    tw.press('w');
+    let firedName = null, toastWhenFired = '';
+    // Step a single sim sub-step at a time so we read the toast on the EXACT landfall frame —
+    // islandNamer.update runs last in the frame, so its banner wins over any same-frame bump.
+    for (let i = 0; i < 9000; i++) {
+      const s = tw.state;
+      const desired = Math.atan2(isle.x - s.pos[0], isle.z - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      const beforeCount = tw.islandsIntroduced.length;
+      tw.step(1 / 60);
+      if (tw.islandsIntroduced.length > beforeCount) {
+        // an island was just introduced this frame — capture the toast immediately
+        const t2 = $toast ? $toast.textContent : '';
+        if (tw.islandsIntroduced.includes(isle.index)) {
+          firedName = isle.name;
+          toastWhenFired = t2;
+          break; // captured at the moment of landfall, before any aground quip overwrites it
+        }
+      }
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    const nearest = tw.nearestIsland;
+    tw.newVoyage(); tw.step(0.1); // clean slate for the screenshot
+    return {
+      hasIsland: true, allNamed, isleName: isle.name, isleIndex: isle.index,
+      firedName, toastWhenFired, introduced: tw.islandsIntroduced,
+      nearestHasName: !!(nearest && nearest.name),
+    };
+  });
+  if (!landfall.allNamed) fail('island names: not every island carries a name via tw.islands');
+  if (landfall.hasIsland) {
+    if (landfall.firedName === null) fail(`island names: the landfall beat never fired sailing at "${landfall.isleName}"`);
+    if (!landfall.toastWhenFired.includes(landfall.isleName)) fail(`island names: the toast did not show the island name (toast="${landfall.toastWhenFired}", name="${landfall.isleName}")`);
+    if (!landfall.nearestHasName) fail('island names: tw.nearestIsland missing a name');
+  }
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -573,7 +627,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, bump, daynight, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, bump, daynight, landfall, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));
