@@ -11,7 +11,8 @@ export function createOcean() {
     uTime: { value: 0 },
     uShallow: { value: new THREE.Color(0x4fb4cc) },
     uDeep: { value: new THREE.Color(0x16607f) },
-    uHaze: { value: new THREE.Color(0x9ec6d8) },
+    uHaze: { value: new THREE.Color(0xc9bf9e) },   // warm weathered horizon haze
+    uPaper: { value: new THREE.Color(0xd8c79c) },  // ink-wash warm paper tone
     uSun: { value: new THREE.Vector3(0.5, 0.8, 0.2).normalize() },
     uCam: { value: new THREE.Vector3() },
   };
@@ -54,6 +55,7 @@ export function createOcean() {
       uniform vec3 uShallow;
       uniform vec3 uDeep;
       uniform vec3 uHaze;
+      uniform vec3 uPaper;
       uniform vec3 uSun;
       uniform vec3 uCam;
       varying vec3 vNormal;
@@ -70,6 +72,13 @@ export function createOcean() {
         // follows the ship instead of staying pinned to the world origin.
         float d = distance(vWorld.xz, uCam.xz) / 1800.0;
         col = mix(col, uHaze, clamp(d - 0.15, 0.0, 0.85));
+        // "ink-wash horizon": with distance, drain saturation and wash toward a
+        // warm paper tone so the far sea reads like a weathered nautical chart
+        // while the foreground stays full-colour. Pure colour maths — ~free.
+        float ink = clamp((d - 0.30) * 1.2, 0.0, 0.7);
+        float lum = dot(col, vec3(0.299, 0.587, 0.114));
+        col = mix(col, vec3(lum), ink * 0.55);   // desaturate
+        col = mix(col, uPaper, ink * 0.30);      // warm paper wash
         gl_FragColor = vec4(col, 1.0);
       }
     `,

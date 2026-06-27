@@ -2,13 +2,14 @@ import * as THREE from 'three';
 
 // Sky dome + a scatter of islands so there are landmarks to sail toward.
 export function createWorld(scene) {
-  // Sky gradient via a big inverted sphere
+  // Warm "age of sail" sky gradient via a big inverted sphere — the horizon
+  // band warms to a weathered paper tone so it ties into the ocean's ink-wash.
   const skyGeo = new THREE.SphereGeometry(3000, 32, 16);
   const skyMat = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     uniforms: {
-      top: { value: new THREE.Color(0x2b6aa3) },
-      bottom: { value: new THREE.Color(0xbfe0ee) },
+      top: { value: new THREE.Color(0x2f6fa6) },
+      bottom: { value: new THREE.Color(0xe5d8bd) }, // warm hazy horizon
     },
     vertexShader: `varying vec3 vp; void main(){ vp = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);} `,
     fragmentShader: `varying vec3 vp; uniform vec3 top; uniform vec3 bottom;
@@ -16,43 +17,108 @@ export function createWorld(scene) {
   });
   scene.add(new THREE.Mesh(skyGeo, skyMat));
 
-  scene.fog = new THREE.Fog(0x9ec6d8, 600, 2600);
+  // Warm, weathered horizon fog (matches the ocean ink-wash + sky band).
+  scene.fog = new THREE.Fog(0xc9bf9e, 600, 2600);
 
   const islands = new THREE.Group();
-  const sandMat = new THREE.MeshStandardMaterial({ color: 0xcdb27a, roughness: 1 });
+  // Shared palette — a couple of sand/grass/rock tones to blend beach into hill.
+  const sandMat = new THREE.MeshStandardMaterial({ color: 0xd8bd84, roughness: 1 });
+  const sandDarkMat = new THREE.MeshStandardMaterial({ color: 0xc2a468, roughness: 1 });
   const grassMat = new THREE.MeshStandardMaterial({ color: 0x4f7a3a, roughness: 1 });
+  const grassDarkMat = new THREE.MeshStandardMaterial({ color: 0x3c6230, roughness: 1 });
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x7d7669, roughness: 1 });
   const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5a3b22, roughness: 1 });
   const leafMat = new THREE.MeshStandardMaterial({ color: 0x2f6d3a, roughness: 1 });
+  const hutWallMat = new THREE.MeshStandardMaterial({ color: 0xb98a52, roughness: 1 });
+  const hutRoofMat = new THREE.MeshStandardMaterial({ color: 0x6e5128, roughness: 1 });
 
-  // deterministic-ish placement around the spawn
+  // tiny deterministic RNG so each island is varied but stable across reloads
+  const rng = (seed) => { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; };
+
+  // [x, z, radius] anchors around the spawn; per-isle character derived from seed
   const spots = [
     [320, -260, 60], [-480, 220, 90], [180, 640, 75],
     [-700, -520, 110], [820, 380, 85], [-260, -780, 70],
   ];
-  for (const [x, z, r] of spots) {
+
+  spots.forEach(([x, z, r], si) => {
+    const rand = rng(si * 9973 + 17);
     const isle = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.3, 14, 24), sandMat);
-    base.position.y = -2;
+
+    // Beach: a low sandy ring, squashed/rotated so no two islands share a shape.
+    const sx = 0.8 + rand() * 0.5, sz = 0.8 + rand() * 0.5;
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.3, 14, 28), sandMat);
+    base.position.y = -2; base.scale.set(sx, 1, sz); base.rotation.y = rand() * Math.PI;
+    base.receiveShadow = true;
     isle.add(base);
-    const hill = new THREE.Mesh(new THREE.SphereGeometry(r * 0.7, 16, 12), grassMat);
-    hill.scale.y = 0.4; hill.position.y = 4;
+    // a slightly higher, darker sand shelf to blend beach -> interior
+    const shelf = new THREE.Mesh(new THREE.CylinderGeometry(r * 0.78, r * 0.92, 5, 24), sandDarkMat);
+    shelf.position.y = 2; shelf.scale.set(sx, 1, sz); shelf.rotation.y = base.rotation.y;
+    isle.add(shelf);
+
+    // Interior grass — sometimes a broad mound, sometimes a taller hill peak.
+    const tall = rand() > 0.5;
+    const hill = new THREE.Mesh(new THREE.SphereGeometry(r * (0.55 + rand() * 0.2), 18, 14), grassMat);
+    hill.scale.set(sx, tall ? 0.75 : 0.4, sz);
+    hill.position.y = tall ? 8 : 4;
+    hill.receiveShadow = true;
     isle.add(hill);
-    // a couple palms
-    for (let i = 0; i < 4; i++) {
+    if (tall) {
+      const peak = new THREE.Mesh(new THREE.ConeGeometry(r * 0.32, r * 0.45, 12), grassDarkMat);
+      peak.position.y = 8 + r * 0.18;
+      isle.add(peak);
+    }
+
+    // Scattered rocks around the shoreline.
+    const nRocks = 2 + Math.floor(rand() * 4);
+    for (let i = 0; i < nRocks; i++) {
+      const a = rand() * Math.PI * 2;
+      const rr = r * (0.85 + rand() * 0.35);
+      const rk = new THREE.Mesh(new THREE.DodecahedronGeometry(2 + rand() * 4, 0), rockMat);
+      rk.position.set(Math.cos(a) * rr * sx, rand() * 2, Math.sin(a) * rr * sz);
+      rk.rotation.set(rand() * 3, rand() * 3, rand() * 3);
+      rk.scale.y = 0.6 + rand() * 0.5;
+      rk.castShadow = true;
+      isle.add(rk);
+    }
+
+    // Palms — varied count, height and a jaunty lean.
+    const nPalms = 3 + Math.floor(rand() * 4);
+    for (let i = 0; i < nPalms; i++) {
       const palm = new THREE.Group();
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(1, 1.6, 16, 6), trunkMat);
-      trunk.position.y = 12;
-      const leaves = new THREE.Mesh(new THREE.SphereGeometry(6, 8, 6), leafMat);
-      leaves.scale.y = 0.5; leaves.position.y = 20;
+      const ht = 13 + rand() * 8;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.6, ht, 6), trunkMat);
+      trunk.position.y = ht / 2;
+      trunk.castShadow = true;
+      const leaves = new THREE.Mesh(new THREE.SphereGeometry(5 + rand() * 2, 8, 6), leafMat);
+      leaves.scale.y = 0.5; leaves.position.y = ht + 1;
       palm.add(trunk, leaves);
-      const a = (i / 4) * Math.PI * 2;
-      palm.position.set(Math.cos(a) * r * 0.4, 6, Math.sin(a) * r * 0.4);
+      const a = (i / nPalms) * Math.PI * 2 + rand() * 0.6;
+      const pr = r * (0.3 + rand() * 0.25);
+      palm.position.set(Math.cos(a) * pr * sx, 5, Math.sin(a) * pr * sz);
+      palm.rotation.z = (rand() - 0.5) * 0.4;   // lean
+      palm.rotation.y = rand() * Math.PI;
       isle.add(palm);
     }
+
+    // Roughly half the islands get a lone weathered hut for a lived-in hint.
+    if (rand() > 0.45) {
+      const hut = new THREE.Group();
+      const walls = new THREE.Mesh(new THREE.BoxGeometry(9, 6, 9), hutWallMat);
+      walls.position.y = 3; walls.castShadow = true;
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(8, 5, 4), hutRoofMat);
+      roof.position.y = 8.5; roof.rotation.y = Math.PI / 4;
+      hut.add(walls, roof);
+      const a = rand() * Math.PI * 2;
+      hut.position.set(Math.cos(a) * r * 0.35 * sx, tall ? 6 : 4, Math.sin(a) * r * 0.35 * sz);
+      hut.rotation.y = rand() * Math.PI;
+      isle.add(hut);
+    }
+
     isle.position.set(x, 0, z);
     isle.userData.radius = r;
     islands.add(isle);
-  }
+  });
   scene.add(islands);
 
   return { islands };
