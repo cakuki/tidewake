@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Tidewake — a brass anchor on a sunny sea">
+  <defs>
+    <!-- The sunny vibe: a warm tropical sky melting into bright Caribbean sea-haze -->
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe6a8"/>
+      <stop offset="0.42" stop-color="#bfe8e6"/>
+      <stop offset="1" stop-color="#5bb6d6"/>
+    </linearGradient>
+    <!-- userSpaceOnUse so the gradient also paints the zero-area-bbox shank/stock lines -->
+    <linearGradient id="brass" x1="0" y1="62" x2="0" y2="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe6a0"/>
+      <stop offset="0.5" stop-color="#ffcf6e"/>
+      <stop offset="1" stop-color="#d99a32"/>
+    </linearGradient>
+  </defs>
+  <!-- Full-bleed background so the icon is safe as a maskable "any" icon -->
+  <rect x="0" y="0" width="512" height="512" rx="96" fill="url(#sky)"/>
+  <!-- Brass anchor, centred in the maskable safe zone. Drawn with rounded strokes so it
+       reads cleanly down to a 48px launcher tile. -->
+  <g fill="none" stroke="url(#brass)" stroke-linecap="round" stroke-linejoin="round">
+    <!-- ring -->
+    <circle cx="256" cy="92" r="30" stroke-width="20"/>
+    <!-- shank -->
+    <line x1="256" y1="122" x2="256" y2="408" stroke-width="26"/>
+    <!-- stock (crossbar) -->
+    <line x1="172" y1="176" x2="340" y2="176" stroke-width="22"/>
+    <!-- arms / flukes sweeping up from the crown -->
+    <path d="M140 318 Q256 452 372 318" stroke-width="28"/>
+  </g>
+  <!-- fluke barbs + a tiny crown, in solid brass -->
+  <g fill="url(#brass)">
+    <path d="M140 318 l-30 -16 l16 56 z"/>
+    <path d="M372 318 l30 -16 l-16 56 z"/>
+    <circle cx="256" cy="408" r="17"/>
+  </g>
+</svg>

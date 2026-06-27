@@ -32,6 +32,19 @@ export function checkBudget(perf, budget = BUDGET) {
   return { ok: violations.length === 0, violations };
 }
 
+// Heat-aware device-pixel-ratio cap (#63, mobile). Rendering a per-vertex Gerstner ocean at
+// full 3x retina cooks a phone (the #62 device-spike / #56 feasibility finding: "pixelRatio
+// cap 2 heavy on 3x phones"). On a coarse-pointer (touch) device we cap the backing-store
+// resolution lower so the GPU draws far fewer fragments — visibly identical on a small screen,
+// dramatically cooler. Desktop keeps the crisp 2x cap. Pure + unit-tested: no DOM, no globals;
+// main.js passes it `window.devicePixelRatio` and whether the device is coarse-pointer.
+export const DPR_CAP_DESKTOP = 2;
+export const DPR_CAP_TOUCH = 1.5;
+export function pixelRatioCap(dpr, coarse = false) {
+  const ratio = typeof dpr === 'number' && dpr > 0 ? dpr : 1;
+  return Math.min(ratio, coarse ? DPR_CAP_TOUCH : DPR_CAP_DESKTOP);
+}
+
 // Pure formatter (unit-tested): one-line overlay text from a perf snapshot. Kept here so the
 // overlay and any logging share one phrasing, and so it's testable without a DOM.
 export function formatPerf(perf) {

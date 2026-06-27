@@ -18,7 +18,8 @@ import { createCannons } from './cannons.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown } from './renown.js';
-import { BUDGET, formatPerf } from './perf.js';
+import { BUDGET, formatPerf, pixelRatioCap } from './perf.js';
+import { isTouchDevice } from './input.js';
 import { GOAL, applyEvent, shouldShowGoal, normalizeFlags, currentStep } from './onboarding.js';
 
 // main.js is a thin bootstrap: it builds the renderer/scene/camera/lights, spins up
@@ -29,7 +30,10 @@ import { GOAL, applyEvent, shouldShowGoal, normalizeFlags, currentStep } from '.
 const app = document.getElementById('app');
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// Heat-aware DPR cap (#63): full 3x retina cooks a phone rendering the per-vertex ocean, so
+// coarse-pointer devices get a lower ceiling (#62 spike). Desktop is unchanged at 2x.
+const coarsePointer = isTouchDevice();
+renderer.setPixelRatio(pixelRatioCap(window.devicePixelRatio, coarsePointer));
 renderer.setSize(window.innerWidth, window.innerHeight);
 app.appendChild(renderer.domElement);
 

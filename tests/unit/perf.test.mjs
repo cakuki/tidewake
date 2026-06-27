@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BUDGET, checkBudget, formatPerf } from '../../src/perf.js';
+import { BUDGET, checkBudget, formatPerf, pixelRatioCap, DPR_CAP_DESKTOP, DPR_CAP_TOUCH } from '../../src/perf.js';
 
 test('BUDGET ceilings sit above the measured current scene cost', () => {
   // Measured 2026-06-27: 77 draw calls, ~85.2k triangles. Ceilings must leave headroom.
@@ -43,4 +43,26 @@ test('formatPerf renders a compact one-liner without a DOM', () => {
 
 test('formatPerf tolerates a partial snapshot', () => {
   assert.equal(formatPerf({}), '0 fps · 0.0 ms · 0 draws · 0 tris');
+});
+
+test('pixelRatioCap caps a 3x retina phone lower than desktop (heat guard, #63)', () => {
+  // A modern 3x phone: touch path clamps to 1.5, desktop path to 2 — the touch backing
+  // store is ~44% fewer fragments per axis, the whole point of the heat guard.
+  assert.equal(pixelRatioCap(3, true), DPR_CAP_TOUCH);
+  assert.equal(pixelRatioCap(3, false), DPR_CAP_DESKTOP);
+  assert.ok(DPR_CAP_TOUCH < DPR_CAP_DESKTOP);
+});
+
+test('pixelRatioCap never upscales a low-DPR screen (only ever caps down)', () => {
+  // A 1x screen stays 1x on both paths — we clamp the ceiling, never invent resolution.
+  assert.equal(pixelRatioCap(1, true), 1);
+  assert.equal(pixelRatioCap(1, false), 1);
+  // A 1.25x touch screen is below the touch cap → untouched.
+  assert.equal(pixelRatioCap(1.25, true), 1.25);
+});
+
+test('pixelRatioCap defaults a missing/0/NaN dpr to 1 (never returns 0)', () => {
+  assert.equal(pixelRatioCap(undefined, true), 1);
+  assert.equal(pixelRatioCap(0, false), 1);
+  assert.equal(pixelRatioCap(NaN, true), 1);
 });

@@ -10,7 +10,7 @@ import { BUDGET, checkBudget } from '../src/perf.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.svg': 'image/svg+xml' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
 
 function startServer() {
   return new Promise((resolve) => {
@@ -265,6 +265,41 @@ try {
   if (!persisted.flags.firstDock || !persisted.flags.firstTrade) fail(`onboarding: beats did not persist across reload (${JSON.stringify(persisted.flags)})`);
   if (persisted.goalVisible) fail('onboarding: a returning captain should not see the seeded goal');
 
+  // 2e) Installable PWA (#63): the linked manifest actually resolves in the browser and
+  // carries the install essentials, the iOS apple-touch icon loads, and the touch-control
+  // cluster exists in the DOM (it's shown via body.touch on coarse-pointer devices). This
+  // guards the "Add to Home Screen" promise without needing a real device.
+  const pwa = await page.evaluate(async () => {
+    const link = document.querySelector('link[rel="manifest"]');
+    const href = link ? link.href : null;
+    let manifest = null, manifestOk = false;
+    if (href) {
+      try { const r = await fetch(href); manifestOk = r.ok; manifest = await r.json(); } catch {}
+    }
+    const apple = document.querySelector('link[rel="apple-touch-icon"]');
+    let appleOk = false;
+    if (apple) { try { appleOk = (await fetch(apple.href)).ok; } catch {} }
+    const tc = document.getElementById('touch-controls');
+    return {
+      manifestLinked: !!link,
+      manifestOk,
+      hasName: !!(manifest && manifest.name),
+      standalone: !!(manifest && manifest.display === 'standalone'),
+      icon512: !!(manifest && manifest.icons && manifest.icons.some((i) => i.sizes === '512x512')),
+      appleOk,
+      touchControls: { steer: !!tc?.querySelector('[data-hold="a"]'), throttle: !!tc?.querySelector('[data-hold="w"]'), fire: !!tc?.querySelector('[data-tap="g"]'), duel: !!tc?.querySelector('[data-tap="f"]') },
+    };
+  });
+  if (!pwa.manifestLinked) fail('PWA: no <link rel="manifest"> in index.html');
+  if (!pwa.manifestOk) fail('PWA: manifest did not load (200) in the browser');
+  if (!pwa.hasName) fail('PWA: manifest missing a name');
+  if (!pwa.standalone) fail('PWA: manifest display is not "standalone"');
+  if (!pwa.icon512) fail('PWA: manifest has no 512x512 icon');
+  if (!pwa.appleOk) fail('PWA: apple-touch-icon did not load (200)');
+  for (const [verb, present] of Object.entries(pwa.touchControls)) {
+    if (!present) fail(`touch controls: ${verb} button missing from #touch-controls`);
+  }
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -287,7 +322,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));
