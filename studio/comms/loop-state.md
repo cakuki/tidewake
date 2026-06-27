@@ -3,7 +3,7 @@
 Single source of truth for the never-stopping delivery loop. The orchestrator
 updates this each loop so progress survives context resets.
 
-- **Current loop:** 13 (art polish #42 shipped; next: #43 port/NPC reactions to renown)
+- **Current loop:** 14 (#43 reactivity shipped; next: #33 Insult Broadside comedic combat)
 - **Loops since last retro:** 0 (Retro 3 DONE — reset; covered cycles 7,8,9,11)
 - **Cycles since last deep-learning loop:** 0 (Deep-learning loop #1 DONE — all 9 agents refreshed; filed #32-#40)
 - **Research backlog (prioritise):** #43 (port reputation reactions, #39-followup) port reputation reactions (NEXT), #32 glTF ship, #33 Insult Broadside combat, #16 minimap, #35 cannon SFX, #36 fixed-timestep, #37 visual-diff QA, #40 adaptive music, #25 actions bump ( #34 contract step ADOPTED into runbook/PARALLEL.md)
@@ -36,6 +36,7 @@ updates this each loop so progress survives context resets.
 | 10 | Deep-learning research loop #1 (9 agents, web research) | — | — | Filed #32-#40; agents' identities refreshed |
 | 11 | Captain's Ledger — renown/rank ladder (TDD) | #39 | v0.0.20260627014341 | 114 tests; Bilge-rat→Terror of the Tidewake; persisted |
 | 12 | Art polish: carved hull + richer islands + ink-wash horizon | #42 | v0.0.20260627072700 | 114 tests; procedural, no assets |
+| 13 | Ports react to renown (tiered greetings + standing perk) | #43 | v0.0.20260627074620 | 124 tests; greets by title; price perk |
 | — | Retro 3 (subagent) | — | — | Fantasy now legible (sail→trade→renown rank, NPCs). Adopted #34 shared-contract step + re-dispatch-glitched-subagent rule + QA nav/timing gotchas into runbook; new guardrail "reactive verbs over inert content". Next = #43 (port reputation reactions, #39-followup) reputation reactions + #32 glTF ship (parallel, contract'd) |
 
 ## Hourly Telegram log
