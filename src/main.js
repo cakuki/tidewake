@@ -11,6 +11,8 @@ import { createInput } from './input.js';
 import { createHud } from './hud.js';
 import { createSailing } from './sailing.js';
 import { createPersistence } from './persistence.js';
+import { createDuel } from './duel.js';
+import { initEconomy } from './economy.js';
 import { VERSION } from './version.js';
 import { greetPlayer } from './renown.js';
 
@@ -57,6 +59,24 @@ const sailing = createSailing({ ship, ocean, camera, input });
 const state = sailing.state;
 const persistence = createPersistence(state);
 
+// Insult Broadside (#33): hail a nearby NPC and duel it with wit. Coins + renown on
+// a win; a small coin setback on a loss. Reward/penalty land on the shared state.
+const duel = createDuel({
+  npcs,
+  getShipPos: () => [state.pos.x, state.pos.z],
+  applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.renown += r.renown; },
+  applyPenalty: (p) => { initEconomy(state); state.coins = Math.max(0, state.coins - p.coins); },
+  onEnd: ({ result, reward, penalty, enemyName }) => {
+    if (result === 'win') {
+      hud.flashBanner('⚔ They strike their colours!',
+        `${enemyName} sails off jeering — but you pocket ${reward.coins}c and ${reward.renown} renown for the sharper tongue.`);
+    } else {
+      hud.flashBanner('🏴 Out-jeered!',
+        `${enemyName}'s crew howls with laughter. You fumble ${penalty.coins} coins overboard and slink away.`);
+    }
+  },
+});
+
 // Audio: procedural sea ambience + adaptive sailing theme (start on first user gesture).
 // The music shares the audio engine's one context + master bus + mute toggle.
 const audio = createAudio();
@@ -76,8 +96,19 @@ addEventListener('visibilitychange', () => { if (document.visibilityState === 'h
 addEventListener('pagehide', persistence.write);
 
 // 'n' — new voyage: wipe the save and respawn at the origin, dead in the water.
-function newVoyage() { persistence.clear(); sailing.reset(); }
+function newVoyage() { duel.cancel(); persistence.clear(); sailing.reset(); }
 addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'n') newVoyage(); });
+
+// Duel controls: 'f' hails the nearest ship; while dueling, 1–4 fling a jab. (At sea
+// the digit keys are free — the trade panel only claims them while docked.)
+addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (k === 'f') { duel.tryChallenge(); return; }
+  if (duel.state.active) {
+    const m = /^[1-9]$/.exec(e.key);
+    if (m) duel.choose(Number(e.key) - 1);
+  }
+});
 
 addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -89,12 +120,17 @@ const clock = new THREE.Clock();
 let booted = false;
 
 function update(dt, t) {
-  sailing.step(dt, t);                         // throttle/steer/wind, integrate, place ship, follow camera
+  // During an insult duel the ship holds station and sailing input is ignored —
+  // the captains are too busy trading barbs to mind the helm.
+  if (!duel.state.active) {
+    sailing.step(dt, t);                       // throttle/steer/wind, integrate, place ship, follow camera
+    npcs.update(dt, t);                        // wandering AI vessels (advances under step())
+  }
   ocean.update(t, camera.position);
   ports.update(state, hud.showArrival, t);     // arrival detection (fires once) + buoy bob
   wake.update(dt, state, t);                   // bow wake + trailing foam
-  npcs.update(dt, t);                          // wandering AI vessels (advances under step())
   hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
+  hud.renderDuel(duel.snapshot());             // insult-duel panel + "hail" prompt (#33)
   audio.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
   music.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
 }
@@ -121,10 +157,14 @@ function loop() {
 window.__tidewake = {
   version: VERSION,
   ready: false,
-  get state() { return { heading: state.heading, speed: state.speed, throttle: state.throttle, pos: state.pos.toArray(), port: state.port ?? null, renown: state.renown ?? 0 }; },
+  get state() { return { heading: state.heading, speed: state.speed, throttle: state.throttle, pos: state.pos.toArray(), port: state.port ?? null, renown: state.renown ?? 0, coins: state.coins ?? 0 }; },
   get ports() { return ports.ports; },
   get npcs() { return npcs.snapshot(); },
   get docked() { return ports.docked; },
+  // Insult Broadside (#33) QA surface: read the live duel + drive it headlessly.
+  get duel() { return duel.snapshot(); },
+  challenge() { return duel.tryChallenge(); },
+  duelChoose(i) { return duel.choose(i); },
   press(k) { input.keys.add(k); },
   release(k) { input.keys.delete(k); },
   save() { persistence.write(); },

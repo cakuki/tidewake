@@ -22,6 +22,8 @@ export function createHud() {
   const $rank = document.getElementById('rank');
   const $rankprog = document.getElementById('rankprog');
   const $trade = document.getElementById('trade');
+  const $duel = document.getElementById('duel');
+  const $prompt = document.getElementById('challenge-prompt');
   document.getElementById('version').textContent = VERSION;
 
   let lastPosLabel = '', lastPosBand = '';
@@ -139,14 +141,51 @@ export function createHud() {
   // One-time wind name stamp (the breeze is fixed for the voyage).
   function setWind(name) { $wind.textContent = name; }
 
-  // Arrival toast — a non-blocking banner that auto-dismisses. Reaching a port shows
-  // "⚓ Made port at <Name>" plus a rotating harbourmaster greeting.
-  function showArrival(portName, line) {
+  // Generic non-blocking banner (the shared toast). Auto-dismisses after `ms`.
+  function flashBanner(title, line, ms = 5000) {
+    if (!$toast) return;
     $toast.classList.remove('rankup');
-    $toast.innerHTML = `<div class="toast-title">⚓ Made port at ${portName}</div><div class="toast-line">${line}</div>`;
+    $toast.innerHTML = `<div class="toast-title">${title}</div><div class="toast-line">${line}</div>`;
     $toast.classList.add('show');
     if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => $toast.classList.remove('show'), 5000);
+    toastTimer = setTimeout(() => $toast.classList.remove('show'), ms);
+  }
+
+  // Arrival toast — reaching a port shows "⚓ Made port at <Name>" + a greeting.
+  function showArrival(portName, line) {
+    flashBanner(`⚓ Made port at ${portName}`, line);
+  }
+
+  // ---- Insult-duel panel (#33) ----------------------------------------------
+  // Reads a plain duel snapshot and paints the modal-ish panel: both morale bars,
+  // the enemy's last line, and the numbered jab options. Cheap cache so the hot
+  // path only touches the DOM when the duel actually changes.
+  let lastDuelSig = '';
+  function renderDuel(duel) {
+    if (!$duel) return;
+    if (!duel || !duel.active) {
+      if ($duel.classList.contains('show')) { $duel.classList.remove('show'); lastDuelSig = ''; }
+      // At sea (not dueling): hint when a ship is hailable.
+      if ($prompt) $prompt.classList.toggle('show', !!(duel && duel.inRange));
+      return;
+    }
+    if ($prompt) $prompt.classList.remove('show');
+    const pPct = Math.round((duel.playerMorale / duel.maxMorale) * 100);
+    const ePct = Math.round((duel.enemyMorale / duel.maxMorale) * 100);
+    const sig = `${duel.enemyName}|${pPct}|${ePct}|${duel.enemyLine}|${duel.options.map((o) => o.id).join(',')}`;
+    if (sig === lastDuelSig && $duel.classList.contains('show')) return;
+    lastDuelSig = sig;
+    const opts = duel.options.map((o, i) => `<li><b>${i + 1}</b>${o.line}</li>`).join('');
+    $duel.innerHTML =
+      `<div class="duel-h">⚔ Insult Broadside — ${duel.enemyName}</div>`
+      + '<div class="duel-bars">'
+      + `<div class="duel-bar you"><div class="lab"><span>Your crew</span><span>${Math.round(duel.playerMorale)}</span></div><div class="meter"><div class="fill" style="width:${pPct}%"></div></div></div>`
+      + `<div class="duel-bar them"><div class="lab"><span>Their crew</span><span>${Math.round(duel.enemyMorale)}</span></div><div class="meter"><div class="fill" style="width:${ePct}%"></div></div></div>`
+      + '</div>'
+      + `<div class="duel-line">“${duel.enemyLine}”</div>`
+      + `<ul class="duel-opts">${opts}</ul>`
+      + '<div class="duel-help">Press <b>1–4</b> to fling a jab · a sharp one cracks their nerve, a poor one shakes yours</div>';
+    $duel.classList.add('show');
   }
 
   // Rank-up flash — reuses the arrival toast, dressed in the ledger's green.
@@ -183,5 +222,5 @@ export function createHud() {
     if (sail.band !== lastPosBand) { $pos.className = 'pos-' + sail.band; lastPosBand = sail.band; }
   }
 
-  return { update, showArrival, setWind };
+  return { update, showArrival, setWind, renderDuel, flashBanner };
 }

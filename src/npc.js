@@ -183,7 +183,25 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
     return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading }));
   }
 
-  return { group, update, snapshot };
+  // Relocate ship `i` far away — a beaten foe slinking off over the horizon (#33).
+  // Re-uses the spawn rules: clear of the origin and of land, then a fresh waypoint.
+  function respawn(i) {
+    const s = ships[i];
+    if (!s) return;
+    let spawn, tries = 0;
+    do {
+      spawn = pickWaypoint(rng, bounds);
+      tries++;
+    } while (tries < 24 && (
+      (spawn.x * spawn.x + spawn.z * spawn.z) < 300 * 300 ||
+      islands.some(o => Math.hypot(o.x - spawn.x, o.z - spawn.z) < o.r + 90)
+    ));
+    s.x = spawn.x;
+    s.z = spawn.z;
+    s.wp = pickWaypoint(rng, bounds);
+  }
+
+  return { group, update, snapshot, respawn };
 }
 
 export { wrapAngle, steerToward, pickWaypoint, headingTo, hasArrived, avoidObstacles };

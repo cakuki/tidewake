@@ -79,6 +79,38 @@
     #trade .trade-msg { margin-top: 6px; min-height: 14px; color: #f3e6c4; font-size: 11px; }
     #trade .trade-help { margin-top: 4px; color: #8fb4d6; font-size: 10.5px; }
     #trade .trade-help b { color: #ffd98a; }
+    #duel {
+      position: fixed; left: 50%; top: 50%; z-index: 14; transform: translate(-50%, -50%) scale(.98);
+      width: min(92vw, 460px); pointer-events: none;
+      color: #f0e6d2; background: rgba(7, 18, 31, .9); border: 1px solid rgba(255,180,120,.5);
+      border-radius: 12px; padding: 16px 18px; backdrop-filter: blur(6px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.6); font-size: 13px;
+      opacity: 0; transition: opacity .25s ease, transform .25s ease;
+    }
+    #duel.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #duel .duel-h { color: #ffb478; font-weight: 700; font-size: 15px; letter-spacing: .04em; text-align: center; }
+    #duel .duel-bars { display: flex; gap: 12px; margin: 10px 0 6px; }
+    #duel .duel-bar { flex: 1; }
+    #duel .duel-bar .lab { font-size: 10.5px; color: #9fc4e6; display: flex; justify-content: space-between; margin-bottom: 2px; }
+    #duel .duel-bar .meter { height: 9px; border-radius: 5px; background: rgba(255,255,255,.1); overflow: hidden; }
+    #duel .duel-bar .fill { height: 100%; transition: width .3s ease; }
+    #duel .duel-bar.you .fill { background: linear-gradient(90deg, #6fc4ff, #87e0a4); }
+    #duel .duel-bar.them .fill { background: linear-gradient(90deg, #ffb478, #ff7a6a); }
+    #duel .duel-line { font-style: italic; color: #ffe0b0; text-align: center; min-height: 34px;
+      margin: 8px 4px 10px; line-height: 1.4; }
+    #duel .duel-opts { list-style: none; display: grid; gap: 5px; }
+    #duel .duel-opts li { background: rgba(255,255,255,.05); border: 1px solid rgba(255,180,120,.22);
+      border-radius: 7px; padding: 6px 9px; line-height: 1.35; }
+    #duel .duel-opts li b { color: #ffb478; margin-right: 6px; }
+    #duel .duel-help { margin-top: 9px; text-align: center; color: #8fb4d6; font-size: 10.5px; }
+    #duel .duel-help b { color: #ffb478; }
+    #challenge-prompt {
+      position: fixed; left: 50%; bottom: 70px; z-index: 11; transform: translate(-50%, 8px);
+      color: #ffb478; background: rgba(7, 18, 31, .7); border: 1px solid rgba(255,180,120,.45);
+      border-radius: 8px; padding: 6px 14px; font-size: 12px; pointer-events: none;
+      opacity: 0; transition: opacity .2s ease, transform .2s ease;
+    }
+    #challenge-prompt.show { opacity: 1; transform: translate(-50%, 0); }
     #audio-toggle {
       position: fixed; right: 12px; top: 12px; z-index: 11; pointer-events: auto;
       width: 34px; height: 34px; display: grid; place-items: center; cursor: pointer;
@@ -122,9 +154,11 @@
     </div>
   </div>
   <div id="trade" aria-live="polite"></div>
+  <div id="challenge-prompt" role="status">⚔ Press <b>F</b> to hail and duel</div>
+  <div id="duel" role="dialog" aria-live="polite"></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <button id="audio-toggle" type="button" aria-pressed="false" aria-label="Mute" title="Mute (m)">🔊</button>
-  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; M mute &nbsp;·&nbsp; N new voyage</div>
+  <div id="help">W/S throttle &nbsp;·&nbsp; A/D steer &nbsp;·&nbsp; drag to look &nbsp;·&nbsp; F duel a ship (1–4 to jab) &nbsp;·&nbsp; dock to trade (1–5 buy, Shift sell) &nbsp;·&nbsp; M mute &nbsp;·&nbsp; N new voyage</div>
   <div id="version">v0.0.0-dev</div>
   <div id="boot">CASTING OFF…</div>
 
