@@ -28,3 +28,11 @@ with the item files in `inbox/`. Raw items are never deleted — only their stat
 | 2026-06-27-art-asset-sourcing | idea | accepted | Research only: cost/effectiveness sourcing report → designer budget | [#55](https://github.com/cakuki/tidewake/issues/55) |
 | 2026-06-27-mobile-support-feasibility | idea | accepted | Report done; **Phase 0 device spike approved** ([#62](https://github.com/cakuki/tidewake/issues/62)); full build parked (owner-decision) | [#56](https://github.com/cakuki/tidewake/issues/56) |
 | 2026-06-27-sea-texture-caribbean | feature | accepted | Sunny/holiday Caribbean sea: turquoise palette + sun glint + subtle detail, low perf cost | [#61](https://github.com/cakuki/tidewake/issues/61) |
+| 2026-06-27-ios-native-mvc-frontend | idea | accepted | iOS via WebView/PWA (Approach 1); native renderer parked, full rewrite declined | [#63](https://github.com/cakuki/tidewake/issues/63) |
+| 2026-06-27-ship-water-inside | bug | accepted | Sea clips through open hull; add opaque bilge cap | [#65](https://github.com/cakuki/tidewake/issues/65) |
+| 2026-06-27-mobile-hud-overlap | bug | accepted | iPhone12: touch buttons overlap town/trade panel; hide-while-docked | [#66](https://github.com/cakuki/tidewake/issues/66) |
+| 2026-06-27-auto-harbor-on-approach | feature | accepted | Staged auto-harbor (announce→slow→city view→nav off→Leave); visible+audible cues, short, reversible | [#67](https://github.com/cakuki/tidewake/issues/67) |
+| 2026-06-27-seagulls-ambience | feature | accepted | Gull SFX exists → 'louder near coast' S slice; visual flock M | [#68](https://github.com/cakuki/tidewake/issues/68) |
+| 2026-06-27-per-town-music | feature | accepted | Distinct per-town music; transposition-first, rides #67 | [#69](https://github.com/cakuki/tidewake/issues/69) |
+| 2026-06-27-ocean-fun-microdetails | idea | accepted | Ocean sail-over delight + standing '1-2 per loop/retro' rule | [#70](https://github.com/cakuki/tidewake/issues/70) |
+| 2026-06-27-islands-tlc | feature | accepted | Island palette/variety/props polish, coord w/ #61 | [#71](https://github.com/cakuki/tidewake/issues/71) |
