@@ -228,3 +228,46 @@ test('deserialize rejects old pre-pole saves (v2 economy, v3 renown)', () => {
   const v3 = { v: 3, heading: 1, speed: 5, throttle: 0.4, pos: [10, 0, -5], coins: 100, cargo: {}, renown: 500 };
   assert.equal(deserialize(JSON.stringify(v3)), null);
 });
+
+// ---- Endgame legends persistence (save v5, #46) ----
+
+test('SAVE_VERSION advanced to carry the earned legends', () => {
+  assert.ok(SAVE_VERSION >= 5, 'legends bump the save version');
+});
+
+test('serialize → deserialize round-trips earned legends', () => {
+  const s = { ...economyState(), infamy: 12800, standing: 0, legends: { pirate: true, governor: false } };
+  const restored = deserialize(serialize(s));
+  assert.deepEqual(restored.legends, { pirate: true, governor: false });
+  const both = deserialize(serialize({ ...economyState(), legends: { pirate: true, governor: true } }));
+  assert.deepEqual(both.legends, { pirate: true, governor: true });
+});
+
+test('serialize stamps the legends flags into the save object', () => {
+  const obj = JSON.parse(serialize({ ...economyState(), legends: { pirate: true, governor: false } }));
+  assert.equal(obj.legends.pirate, true);
+  assert.equal(obj.legends.governor, false);
+});
+
+test('old saves with no legends default to none earned', () => {
+  // a save written before legends existed (no `legends` field) loads with both false
+  const good = JSON.parse(serialize(economyState())); // economyState carries no legends
+  assert.deepEqual(good.legends, { pirate: false, governor: false });
+  const restored = deserialize(serialize(economyState()));
+  assert.deepEqual(restored.legends, { pirate: false, governor: false });
+  // an explicitly stripped legends field also defaults to none
+  delete good.legends;
+  const r2 = deserialize(JSON.stringify(good));
+  assert.ok(r2);
+  assert.deepEqual(r2.legends, { pirate: false, governor: false });
+});
+
+test('deserialize coerces a malformed legends field to safe booleans', () => {
+  const good = JSON.parse(serialize(economyState()));
+  const r = deserialize(JSON.stringify({ ...good, legends: { pirate: 'yes', governor: 0 } }));
+  assert.ok(r, 'a junk legends field must not reject the whole save');
+  assert.deepEqual(r.legends, { pirate: true, governor: false });
+  const r2 = deserialize(JSON.stringify({ ...good, legends: 'whoops' }));
+  assert.ok(r2);
+  assert.deepEqual(r2.legends, { pirate: false, governor: false });
+});

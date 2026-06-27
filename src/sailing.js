@@ -32,6 +32,11 @@ export function createSailing({ ship, ocean, camera, input }) {
     if (typeof saved.infamy === 'number') state.infamy = saved.infamy;
     if (typeof saved.standing === 'number') state.standing = saved.standing;
     state.renown = (state.infamy || 0) + (state.standing || 0);
+    // Endgame legends (persisted since save v5): the earned crowns, so a restored voyage
+    // keeps its badge and never re-fires a celebration it already had (#46).
+    if (saved.legends && typeof saved.legends === 'object') {
+      state.legends = { pirate: !!saved.legends.pirate, governor: !!saved.legends.governor };
+    }
   }
 
   // Respawn at the origin, dead in the water. Clear economy so initEconomy re-seeds defaults.
@@ -40,6 +45,7 @@ export function createSailing({ ship, ocean, camera, input }) {
     state.pos.set(0, 0, 0);
     delete state.coins; delete state.cargo;
     delete state.infamy; delete state.standing; delete state.renown;
+    delete state.legends; // a new voyage starts legend-less; the crowns are yet to earn
   }
 
   function step(dt, t) {

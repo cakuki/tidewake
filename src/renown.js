@@ -7,10 +7,12 @@
 // on the ladder; the *dominant pole* picks which titles that rung reads (piratical vs
 // civic), and how harbourmasters react when you make port (feared vs respected).
 //
-// ENDGAME SEAM (not built yet): the very top of each pole is the fantasy's payoff —
-// become THE feared pirate (Terror of the Tidewake) or THE respected governor (Governor
-// of the Tidewake). A future slice can turn those top rungs into real milestone events
-// (a coronation / a bounty, a win-state). For now they're just the proudest titles.
+// ENDGAME (#46): the very top of each pole IS the fantasy's payoff — become THE feared
+// pirate (Terror of the Tidewake) or THE respected governor (Governor of the Tidewake).
+// Crossing the top rung of a committed pole crowns a one-time LEGEND (earnedLegend +
+// LEGENDS below); main.js fires a celebratory beat and the save remembers it. The world
+// keeps sailing after — a legend milestone, not a game-over. FUTURE: deeper endings could
+// branch off a legend (e.g. a governorship of a *specific* city, a named bounty arc).
 
 // The ladder. Thresholds are lifetime-renown (= infamy + standing) gates; the RANKS
 // titles are the canonical spine kept for back-compat. Per-pole titles live in LADDERS
@@ -212,6 +214,60 @@ export function greetPlayer(renown, portName, rnd = Math.random, pole = 'neutral
   const title = ladder[index] || ladder[ladder.length - 1];
   const line = pool[Math.floor(rnd() * pool.length) % pool.length] || pool[0];
   return line.replace(/\{port\}/g, portName).replace(/\{title\}/g, title);
+}
+
+// ---- Endgame legends: the payoff of the two-pole arc (#46) ------------------
+// The very top rung of the ladder is the summit of legend. Reach it while COMMITTED to a
+// pole (the dominant pole picks WHICH crown) and you become THE one: the feared Terror or
+// the respected Governor of the Tidewake. A balanced captain sits at the neutral summit
+// ("Legend of the Tidewake") but earns neither single crown until they lean — earn BOTH
+// crowns across a voyage and you are, fittingly, a true Legend of the Tidewake.
+
+// Lifetime-renown gate for a legend: the top rung's threshold (= infamy + standing).
+export const LEGEND_AT = RANKS[RANKS.length - 1].at;
+
+// The two crowns — each the top of its pole ladder, with a believable proclamation and a
+// wink of comedy. Original to Tidewake. main.js/hud.js read these for the celebration beat.
+export const LEGENDS = {
+  pirate: {
+    title: 'Terror of the Tidewake',
+    icon: '⚔',
+    proclaim: 'Feared in every port from here to the horizon.',
+    flourish: 'Mothers now name storms after you. The storms are flattered.',
+  },
+  governor: {
+    title: 'Governor of the Tidewake',
+    icon: '⚖',
+    proclaim: 'The isles, with one voice, proclaim you their own.',
+    flourish: 'A commemorative biscuit has been struck in your honour — and is, by all accounts, edible.',
+  },
+};
+
+/**
+ * The celebration data for a freshly-earned legend, or null for an unknown pole.
+ * @param {'pirate'|'governor'} which
+ * @returns {{title:string, icon:string, proclaim:string, flourish:string} | null}
+ */
+export function legendBeat(which) {
+  return LEGENDS[which] || null;
+}
+
+/**
+ * Which legend(s) a ledger qualifies for RIGHT NOW. A point-in-time check: at any instant
+ * the dominant pole crowns at most one, so the caller ORs the result into a persistent
+ * flags object to accumulate both crowns over a voyage. Pure + junk-safe.
+ * @param {number} infamy   pirate-path score
+ * @param {number} standing governor-path score
+ * @returns {{pirate:boolean, governor:boolean}}
+ */
+export function earnedLegend(infamy, standing) {
+  const i = poleScore(infamy), s = poleScore(standing);
+  const atTop = (i + s) >= LEGEND_AT;
+  const pole = dominantPole(i, s);
+  return {
+    pirate: atTop && pole === 'pirate',
+    governor: atTop && pole === 'governor',
+  };
 }
 
 /**

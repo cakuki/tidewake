@@ -5,7 +5,7 @@
 import { pointOfSail } from './physics.js';
 import { VERSION } from './version.js';
 import { GOODS, PORTS, HOLD_CAP, market, buy, sell, cargoUsed } from './economy.js';
-import { rankForRenown, renownTier, titleFor, dominantPole } from './renown.js';
+import { rankForRenown, renownTier, titleFor, dominantPole, legendBeat } from './renown.js';
 
 const RAD2DEG = 180 / Math.PI;
 
@@ -25,6 +25,8 @@ export function createHud() {
   const $trade = document.getElementById('trade');
   const $duel = document.getElementById('duel');
   const $prompt = document.getElementById('challenge-prompt');
+  const $legend = document.getElementById('legend');
+  const $legendBadge = document.getElementById('legend-badge');
   document.getElementById('version').textContent = VERSION;
 
   let lastPosLabel = '', lastPosBand = '';
@@ -218,9 +220,65 @@ export function createHud() {
     toastTimer = setTimeout(() => { $toast.classList.remove('show'); $toast.classList.remove('rankup'); }, 5000);
   }
 
+  // ---- Endgame legend overlay (#46) -----------------------------------------
+  // The payoff beat: a near-full-screen proclamation crowning the player THE Terror /
+  // THE Governor — believable grandeur with a wink of comedy. Fired once per newly-earned
+  // crown; the sandbox keeps playing beneath it. Dismiss with any key (or it fades on its
+  // own). A persistent corner badge then remembers the crown.
+  let legendTimer = null;
+  function hideLegend() {
+    if (!$legend) return;
+    $legend.classList.remove('show');
+    if (legendTimer) { clearTimeout(legendTimer); legendTimer = null; }
+  }
+  function showLegend(pole, stats = {}) {
+    const beat = legendBeat(pole);
+    if (!$legend || !beat) return;
+    const crown = `${beat.icon} You are now THE ${beat.title.toUpperCase()}`;
+    const both = stats.both
+      ? '<div class="legend-both">⚔⚖ Feared AND respected — a true Legend of the Tidewake. The bards have simply given up keeping score.</div>'
+      : '';
+    $legend.innerHTML =
+      `<div class="legend-card">`
+      + `<div class="legend-kicker">A LEGEND IS MADE</div>`
+      + `<div class="legend-title">${crown}</div>`
+      + `<div class="legend-proclaim">${beat.proclaim}</div>`
+      + `<div class="legend-flourish">${beat.flourish}</div>`
+      + both
+      + `<div class="legend-stats">⚔ Infamy ${stats.infamy ?? 0} · ⚖ Standing ${stats.standing ?? 0} · ★ Renown ${stats.renown ?? 0} · ⛃ ${stats.coins ?? 0}c · ${stats.title || beat.title}</div>`
+      + `<div class="legend-help">The sea is still yours — press <b>any key</b> to sail on, or <b>N</b> for a new voyage</div>`
+      + `</div>`;
+    $legend.classList.add('show');
+    if (legendTimer) clearTimeout(legendTimer);
+    legendTimer = setTimeout(hideLegend, 12000);
+  }
+  if (typeof window !== 'undefined' && window.addEventListener) {
+    window.addEventListener('keydown', () => { if ($legend && $legend.classList.contains('show')) hideLegend(); });
+  }
+
+  // Persistent corner badge: once a crown is earned it stays shown in the HUD.
+  let lastBadgeSig = '';
+  function renderLegendBadge(state) {
+    if (!$legendBadge) return;
+    const lg = state.legends || {};
+    const earned = [];
+    if (lg.pirate) earned.push(legendBeat('pirate'));
+    if (lg.governor) earned.push(legendBeat('governor'));
+    const sig = earned.map((e) => e.title).join('+');
+    if (sig === lastBadgeSig) return;
+    lastBadgeSig = sig;
+    if (!earned.length) { $legendBadge.classList.remove('show'); $legendBadge.textContent = ''; return; }
+    const label = earned.length === 2
+      ? '★ Legend of the Tidewake'
+      : `${earned[0].icon} Legend: ${earned[0].title}`;
+    $legendBadge.textContent = label;
+    $legendBadge.classList.add('show');
+  }
+
   function update(state, maxSpeed) {
     liveState = state;
     renderPurse(state);
+    renderLegendBadge(state);
     renderTrade(state);
 
     let deg = Math.round((state.heading * 180 / Math.PI) % 360); if (deg < 0) deg += 360;
@@ -235,5 +293,5 @@ export function createHud() {
     if (sail.band !== lastPosBand) { $pos.className = 'pos-' + sail.band; lastPosBand = sail.band; }
   }
 
-  return { update, showArrival, setWind, renderDuel, flashBanner };
+  return { update, showArrival, setWind, renderDuel, flashBanner, showLegend };
 }

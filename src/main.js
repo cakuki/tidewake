@@ -15,7 +15,7 @@ import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { VERSION } from './version.js';
-import { greetPlayer, dominantPole, titleFor } from './renown.js';
+import { greetPlayer, dominantPole, titleFor, earnedLegend } from './renown.js';
 
 // main.js is a thin bootstrap: it builds the renderer/scene/camera/lights, spins up
 // the world + game systems (input, sailing, hud, ports, wake, audio, persistence),
@@ -133,10 +133,35 @@ function update(dt, t) {
   ports.update(state, hud.showArrival, t);     // arrival detection (fires once) + buoy bob
   wake.update(dt, state, t);                   // bow wake + trailing foam
   hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
+  checkLegends();                              // endgame payoff: crown a new legend once (#46)
   minimap.update(state);                       // north-up radar: isles/ports/ships (#16)
   hud.renderDuel(duel.snapshot());             // insult-duel panel + "hail" prompt (#33)
   audio.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
   music.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
+}
+
+// Endgame legends (#46): each frame, see if the ledger has just crossed the top of a
+// committed pole. The first time it does, crown the player THE Terror / THE Governor with
+// a one-time celebratory overlay, lock the crown into the save, and sail on (sandbox
+// continues — this is a milestone, not a game-over). Earn both, over a voyage, for a true
+// Legend of the Tidewake.
+function checkLegends() {
+  const legends = state.legends || (state.legends = { pirate: false, governor: false });
+  const earned = earnedLegend(state.infamy ?? 0, state.standing ?? 0);
+  for (const pole of ['pirate', 'governor']) {
+    if (earned[pole] && !legends[pole]) {
+      legends[pole] = true;
+      hud.showLegend(pole, {
+        infamy: state.infamy ?? 0,
+        standing: state.standing ?? 0,
+        renown: state.renown ?? ((state.infamy ?? 0) + (state.standing ?? 0)),
+        coins: state.coins ?? 0,
+        title: titleFor(state.infamy ?? 0, state.standing ?? 0).title,
+        both: legends.pirate && legends.governor,
+      });
+      persistence.write(); // lock the legend in the moment it's earned
+    }
+  }
 }
 
 let simT = 0;
@@ -171,6 +196,8 @@ window.__tidewake = {
       infamy, standing, renown: state.renown ?? (infamy + standing),
       title: titleFor(infamy, standing).title,
       pole: dominantPole(infamy, standing),
+      // Endgame crowns (#46): which legends this voyage has earned.
+      legends: { pirate: !!state.legends?.pirate, governor: !!state.legends?.governor },
     };
   },
   get ports() { return ports.ports; },

@@ -17,9 +17,10 @@ import { GOODS, HOLD_CAP, START_COINS } from './economy.js';
 
 export const SAVE_KEY = 'tidewake.save.v1';
 // v2 added the economy fields (coins + cargo); v3 added renown (the Captain's Ledger);
-// v4 split renown into two poles — infamy (pirate) + standing (governor) (#45).
+// v4 split renown into two poles — infamy (pirate) + standing (governor) (#45); v5 added
+// the earned endgame legends ({pirate, governor} crowns, #46).
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -68,6 +69,10 @@ export function serialize(state) {
   // pre-pole caller. Renown is derived (infamy + standing) on load, so it isn't stored.
   const infamy = isFiniteNumber(state.infamy) && state.infamy >= 0 ? state.infamy : 0;
   const standing = isFiniteNumber(state.standing) && state.standing >= 0 ? state.standing : 0;
+  // Endgame legends (#46): the earned crowns. Plain booleans, coerced; a pre-legend
+  // caller (no `legends`) simply records none earned.
+  const lg = state.legends || {};
+  const legends = { pirate: !!lg.pirate, governor: !!lg.governor };
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -78,6 +83,7 @@ export function serialize(state) {
     cargo: cleanCargoForSave(state.cargo),
     infamy,
     standing,
+    legends,
   });
 }
 
@@ -142,6 +148,12 @@ export function deserialize(raw) {
     standing = obj.standing;
   }
 
+  // Endgame legends (save v5): the earned crowns, coerced to safe booleans. Absent or
+  // malformed → none earned; a junk `legends` never rejects an otherwise-valid save (the
+  // legend is a celebration flag, not load-bearing physics — fail open, not closed).
+  const lg = (obj.legends && typeof obj.legends === 'object' && !Array.isArray(obj.legends)) ? obj.legends : {};
+  const legends = { pirate: !!lg.pirate, governor: !!lg.governor };
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -151,6 +163,7 @@ export function deserialize(raw) {
     cargo: cleanCargo,
     infamy,
     standing,
+    legends,
     renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }

@@ -4,6 +4,7 @@ import {
   RANKS, rankForRenown, renownForSale,
   renownTier, standingPriceModifier, greetPlayer, GREETINGS,
   dominantPole, titleFor, LADDERS,
+  earnedLegend, LEGEND_AT, LEGENDS, legendBeat,
 } from '../../src/renown.js';
 
 test('RANKS is a non-empty ladder starting at 0 with strictly ascending thresholds', () => {
@@ -242,4 +243,70 @@ test('greetPlayer: pole defaults to neutral and stays back-compatible', () => {
   assert.equal(neutral, GREETINGS.renowned[0]
     .replace(/\{port\}/g, 'Saltpurse Quay')
     .replace(/\{title\}/g, titleFor(RANKS[5].at / 2, RANKS[5].at / 2).title));
+});
+
+// ---- Endgame legends: the payoff of the two-pole arc (#46) -------------------
+
+test('LEGEND_AT is the top rung of the ladder', () => {
+  assert.equal(LEGEND_AT, RANKS[RANKS.length - 1].at);
+  assert.ok(LEGEND_AT > 0);
+});
+
+test('LEGENDS: distinct pirate + governor crowns, each with title/icon/flavour', () => {
+  for (const which of ['pirate', 'governor']) {
+    const L = LEGENDS[which];
+    assert.ok(L && typeof L.title === 'string' && L.title.length > 0, `${which} needs a title`);
+    assert.ok(typeof L.icon === 'string' && L.icon.length > 0);
+    assert.ok(typeof L.flourish === 'string' && L.flourish.length > 0, `${which} needs a comedic flourish`);
+  }
+  assert.notEqual(LEGENDS.pirate.title, LEGENDS.governor.title);
+  // The legend title matches the very top rung of its pole ladder.
+  assert.equal(LEGENDS.pirate.title, LADDERS.pirate.at(-1));
+  assert.equal(LEGENDS.governor.title, LADDERS.governor.at(-1));
+});
+
+test('legendBeat returns the celebration data for a pole, null otherwise', () => {
+  assert.equal(legendBeat('pirate').title, LEGENDS.pirate.title);
+  assert.equal(legendBeat('governor').title, LEGENDS.governor.title);
+  assert.equal(legendBeat('nonsense'), null);
+});
+
+test('earnedLegend: below the threshold earns no legend', () => {
+  assert.deepEqual(earnedLegend(0, 0), { pirate: false, governor: false });
+  assert.deepEqual(earnedLegend(LEGEND_AT - 1, 0), { pirate: false, governor: false });
+  assert.deepEqual(earnedLegend(0, LEGEND_AT - 1), { pirate: false, governor: false });
+});
+
+test('earnedLegend: crossing the top as a pirate earns ONLY the pirate legend', () => {
+  const e = earnedLegend(LEGEND_AT, 0);
+  assert.equal(e.pirate, true);
+  assert.equal(e.governor, false);
+  // a strong pirate lean past the top also qualifies
+  assert.equal(earnedLegend(LEGEND_AT + 5000, 200).pirate, true);
+});
+
+test('earnedLegend: crossing the top as a governor earns ONLY the governor legend', () => {
+  const e = earnedLegend(0, LEGEND_AT);
+  assert.equal(e.governor, true);
+  assert.equal(e.pirate, false);
+  assert.equal(earnedLegend(200, LEGEND_AT + 5000).governor, true);
+});
+
+test('earnedLegend: a balanced captain at the top earns neither (no pole to crown)', () => {
+  // total >= LEGEND_AT but evenly split → neutral, no legend until you commit to a pole
+  assert.deepEqual(earnedLegend(LEGEND_AT / 2, LEGEND_AT / 2), { pirate: false, governor: false });
+});
+
+test('earnedLegend: both legends are reachable (one per maxed pole, mergeable over time)', () => {
+  // each pole, maxed in turn, crowns its own legend; ORing the two yields a true Legend
+  const a = earnedLegend(LEGEND_AT, 0);     // pirate run
+  const b = earnedLegend(0, LEGEND_AT);     // governor run
+  const merged = { pirate: a.pirate || b.pirate, governor: a.governor || b.governor };
+  assert.deepEqual(merged, { pirate: true, governor: true });
+});
+
+test('earnedLegend: junk inputs earn nothing and never throw', () => {
+  for (const bad of [NaN, Infinity, -Infinity, undefined, null, 'x']) {
+    assert.deepEqual(earnedLegend(bad, bad), { pirate: false, governor: false });
+  }
 });
