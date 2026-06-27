@@ -253,12 +253,84 @@ test('sweepIslandCollision: a glancing pass keeps most of its way on (slides, no
   assert.ok(Math.hypot(r.x, r.z) >= solidR(ISLE) - 1e-6, 'stayed outside the coast');
 });
 
-test('island collision never blocks docking: the port point sits outside its isle\'s hitbox', () => {
-  // Ports are placed at island-radius + 6 on the seaward face (src/ports.js). A ship can
-  // reach the dock so long as that point lies outside the solid collision boundary.
+// ---- #76 beach fix: islands are SOLID to their VISIBLE shoreline -----------------
+// Owner P1: the ship could still sail ONTO the sand. Root cause: the 0.9·r hitbox sat
+// well inside the visible beach (the beach cylinder reaches ~1.107·r at the waterline,
+// world.js), so the coastline was sailable. The fix makes the SHORELINE itself solid.
+
+// The visible sand edge at the waterline, as a fraction of the island's `r` (world.js
+// beach cylinder: radiusTop r at y=+5, radiusBottom 1.3·r at y=-9, sampled at y≈0).
+const WATERLINE_FACTOR = 1.107;
+
+test('#76 beach fix: a hull sitting ON the visible sand is pushed back past the coastline', () => {
+  // r=100 island. The OLD 0.9·r+shipR ≈ 97 boundary left everything from ~97 out to the
+  // 1.107·r ≈ 110.7 waterline sailable — that band IS the beach. Park a hull there.
+  const r = 100;
+  const isle = { x: 0, z: 0, r };
+  const waterline = WATERLINE_FACTOR * r;            // ~110.7: the sand/water line
+  const onSand = { x: waterline - 5, z: 0 };          // ~105.7 out: on the beach, clear of the old box
+  const res = resolveCircleCollision(onSand, [isle]);
+  assert.equal(res.hit, true, 'the beach is solid now — contact must register on the sand');
+  const d = Math.hypot(res.x - isle.x, res.z - isle.z);
+  // The HULL EDGE (centre − shipR), not just the centre, must clear the visible sand.
+  assert.ok(d - SHIP_RADIUS >= waterline - 1e-6,
+    `hull edge ${(d - SHIP_RADIUS).toFixed(2)} must clear the waterline ${waterline.toFixed(2)}`);
+});
+
+test('#76 beach fix: the solid boundary reaches the visible coastline (hull edge stops at the sand)', () => {
+  // The hull's leading edge should come to rest at/just outside the waterline on a head-on stop.
+  const r = 90;
+  const isle = { x: 0, z: 0, r };
+  const res = resolveCircleCollision({ x: 1, z: 0 }, [isle]); // driven deep, head-on along +x
+  const edge = Math.hypot(res.x, res.z) - SHIP_RADIUS;
+  const waterline = WATERLINE_FACTOR * r;
+  assert.ok(edge >= waterline - 1e-6, `edge ${edge.toFixed(2)} should reach the sand ${waterline.toFixed(2)}`);
+  assert.ok(edge <= waterline + 2, `edge ${edge.toFixed(2)} should stop AT the coast, not far out in the water`);
+});
+
+test('#76 beach fix: squashed island is solid on BOTH the narrow and wide axes (ellipse footprint)', () => {
+  // Island footprints are squashed/rotated ellipses (world.js scales the beach by sx,sz). A
+  // single circle would either wall open water or leave sand sailable; the resolver follows
+  // the ellipse so the hull stops at the coast on every bearing.
+  const r = 100, F = ISLAND_HITBOX;
+  const isle = { x: 0, z: 0, r, sx: 1.3, sz: 0.8 };   // wide on x, narrow on z
+  const wide = resolveCircleCollision({ x: 10, z: 0 }, [isle]);
+  assert.equal(wide.hit, true, 'wide axis is solid');
+  assert.ok(Math.abs(wide.x - (r * F * 1.3 + SHIP_RADIUS)) < 1e-6, 'pushed out to the WIDE shore');
+  assert.ok(Math.abs(wide.z) < 1e-9, 'pushed straight out along +x');
+  const narrow = resolveCircleCollision({ x: 0, z: 10 }, [isle]);
+  assert.equal(narrow.hit, true, 'narrow axis is solid');
+  assert.ok(Math.abs(narrow.z - (r * F * 0.8 + SHIP_RADIUS)) < 1e-6, 'pushed out to the (smaller) NARROW shore');
+  // No phantom wall: open water just past the narrow shore is untouched (the wide-axis radius
+  // does NOT bleed onto the narrow axis).
+  const clear = resolveCircleCollision({ x: 0, z: r * F * 0.8 + SHIP_RADIUS + 20 }, [isle]);
+  assert.equal(clear.hit, false, 'no invisible wall out past the narrow shore');
+});
+
+test('#76 beach fix: a fast ship still cannot tunnel onto/through the shoreline at speed', () => {
+  // Same swept-tunnelling guard, now against the SOLID shoreline boundary.
+  const r = 50;
+  const isle = { x: 0, z: 0, r };
+  const res = sweepIslandCollision({ x: -400, z: 0 }, { x: 400, z: 0 }, [isle]); // straight through, fast
+  assert.equal(res.hit, true, 'the shoreline stopped it');
+  const d = Math.hypot(res.x, res.z);
+  assert.ok(d - SHIP_RADIUS >= WATERLINE_FACTOR * r - 1e-6, 'hull edge never punched onto the sand');
+  assert.ok(res.x < 0, 'held on the NEAR coast — did not pop out the far side');
+});
+
+test('island collision still lets a ship dock: the hull rests within docking range of the port', () => {
+  // The port point sits at island-radius + 6 on the seaward face (src/ports.js); the solid
+  // shoreline now reaches past it, but docking is PROXIMITY within the generous DOCK_RADIUS,
+  // so a head-on approach still comes to rest within range of the dock.
+  const DOCK_RADIUS = 90; // src/ports.js
   for (const r of [60, 75, 85, 90, 110]) {
-    const isle = { x: 0, z: 0, r };
-    const portDist = r + 6;            // ports.js: ip + dir*(r+6)
-    assert.ok(portDist > solidR(isle), `port at ${portDist} must clear hitbox ${solidR(isle)} (r=${r})`);
+    const isle = { x: 0, z: 0, r };                   // circle island (sx=sz=1)
+    const portDist = r + 6;                           // ports.js: ip + dir*(r+6)
+    const approach = { x: 0, z: portDist + 250 };     // come in from open water toward the port
+    const res = sweepIslandCollision(approach, { x: 0, z: 0 }, [isle]);
+    assert.equal(res.hit, true, `r=${r}: the coast stopped the hull`);
+    const restDist = Math.hypot(res.x - isle.x, res.z - isle.z);
+    assert.ok(Math.abs(restDist - portDist) < DOCK_RADIUS,
+      `r=${r}: hull rest ${restDist.toFixed(1)} must be within ${DOCK_RADIUS} of port ${portDist}`);
   }
 });

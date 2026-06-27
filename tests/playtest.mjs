@@ -394,6 +394,99 @@ try {
     if (!(collision.finalDist >= collision.r * 0.85)) fail(`collision: ship ended up inside the island (finalDist=${collision.finalDist.toFixed(1)})`);
   }
 
+  // 2h) Arcade slow-to-stop for harbour & combat (#76 c): the ship must EASE to a near-stop
+  // instead of teleport-freezing. Two checks, both deterministic via tw.step():
+  //   • HARBOUR — sail in under power, then ease off the helm and confirm the hull coasts down
+  //     to a near-stop as it nears the berth (tw.state.settling flips true; speed drops hard).
+  //   • FIGHT  — open fire on a nearby ship while still holding the throttle; the helm is
+  //     ignored and the ship settles to a near-stop on its own, then control returns on the win.
+  const settle = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+
+    // --- HARBOUR coast-in ---
+    tw.newVoyage(); tw.step(0.1);
+    function nearestPort() {
+      const s = tw.state.pos;
+      let best = null, bd = Infinity;
+      for (const p of tw.ports) { const d = Math.hypot(p.pos[0] - s[0], p.pos[1] - s[2]); if (d < bd) { bd = d; best = p; } }
+      return { best, bd };
+    }
+    tw.press('w');
+    let reached = false, speedApproaching = 0, minSpeed = Infinity, settlingSeen = false;
+    for (let i = 0; i < 5000; i++) {
+      const { best, bd } = nearestPort();
+      if (!best) break;
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+      // Once we're nearly there, ease OFF the helm and let the berth assist coast us in.
+      if (bd < 200 && !reached) { reached = true; speedApproaching = tw.state.speed; tw.release('w'); }
+      if (reached) {
+        if (tw.state.settling) settlingSeen = true;
+        minSpeed = Math.min(minSpeed, tw.state.speed);
+        if (tw.docked && tw.state.speed < 3) break;
+      }
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    const harbour = { reached, docked: tw.docked, speedApproaching, minSpeed, settlingSeen, finalSpeed: tw.state.speed };
+
+    // --- FIGHT square-up ---
+    tw.newVoyage(); tw.step(0.1);
+    function nearestNpc() {
+      const s = tw.state.pos;
+      let best = null, bd = Infinity;
+      for (const n of tw.npcs) { const d = Math.hypot(n.pos[0] - s[0], n.pos[1] - s[2]); if (d < bd) { bd = d; best = n; } }
+      return { best, bd };
+    }
+    tw.press('w');
+    let engaged = false;
+    for (let i = 0; i < 3000 && !engaged; i++) {
+      const { best, bd } = nearestNpc();
+      if (!best) break;
+      // Only open fire while genuinely UNDER WAY (speed > 10), so the ease-to-a-stop has
+      // something to bite on — an NPC can spawn within range of the origin, dead in the water.
+      if (bd <= 150 && tw.state.speed > 10) { engaged = tw.openFire(); if (engaged) break; }
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+    }
+    const speedAtEngage = tw.state.speed;
+    // Keep the throttle HELD — fighting must ignore it and ease the ship down anyway.
+    let settlingDuringFight = false, fightMinSpeed = Infinity;
+    if (engaged) {
+      for (let i = 0; i < 80; i++) { tw.step(0.1); if (tw.state.settling) settlingDuringFight = true; fightMinSpeed = Math.min(fightMinSpeed, tw.state.speed); }
+    }
+    const settledSpeed = tw.state.speed;
+    // End the fight (broadside-spam is a guaranteed win), then confirm control returns.
+    for (let r = 0; r < 20 && tw.cannons.active; r++) tw.cannonFire(0);
+    tw.release('w'); tw.release('a'); tw.release('d');
+    const fight = { engaged, speedAtEngage, settlingDuringFight, fightMinSpeed, settledSpeed, fightEnded: !tw.cannons.active };
+
+    tw.newVoyage(); tw.step(0.1); // clean slate for the screenshot
+    return { harbour, fight };
+  });
+  // HARBOUR assertions: the hull reached & docked, the berth assist engaged, and it coasted down.
+  if (!settle.harbour.reached) fail('slow-to-stop: ship never approached a port to coast in');
+  if (!settle.harbour.docked) fail('slow-to-stop: ship never docked while coasting into the berth');
+  if (!settle.harbour.settlingSeen) fail('slow-to-stop: the harbour settle flag never went true near the berth');
+  if (!(settle.harbour.speedApproaching > 8)) fail(`slow-to-stop: ship was not moving on approach (speed=${settle.harbour.speedApproaching})`);
+  if (!(settle.harbour.minSpeed < settle.harbour.speedApproaching * 0.5)) fail(`slow-to-stop: speed did not ease down coasting in (min=${settle.harbour.minSpeed?.toFixed(1)} vs approach=${settle.harbour.speedApproaching?.toFixed(1)})`);
+  if (!(settle.harbour.finalSpeed < 5)) fail(`slow-to-stop: ship did not settle at the berth (finalSpeed=${settle.harbour.finalSpeed?.toFixed(1)})`);
+  // FIGHT assertions: a fight forced a near-stop with the throttle still held, then control returned.
+  if (settle.fight.engaged) {
+    if (!settle.fight.settlingDuringFight) fail('slow-to-stop: settle flag never went true during the fight');
+    if (!(settle.fight.settledSpeed < 3)) fail(`slow-to-stop: ship did not ease to a near-stop in the fight (settledSpeed=${settle.fight.settledSpeed?.toFixed(1)})`);
+    if (!(settle.fight.settledSpeed < settle.fight.speedAtEngage)) fail(`slow-to-stop: fight did not slow the ship (engage=${settle.fight.speedAtEngage?.toFixed(1)} → settled=${settle.fight.settledSpeed?.toFixed(1)})`);
+    if (!settle.fight.fightEnded) fail('slow-to-stop: fight did not resolve so control could return');
+  }
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -416,7 +509,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

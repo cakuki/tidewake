@@ -118,6 +118,10 @@ export function createWorld(scene) {
 
     isle.position.set(x, 0, z);
     isle.userData.radius = r;
+    // Beach footprint scale (squash) so collision can treat the island as its real, possibly
+    // squashed, shoreline ellipse rather than a circle (#76 beach fix, physics.js).
+    isle.userData.sx = sx;
+    isle.userData.sz = sz;
     islands.add(isle);
   });
   scene.add(islands);

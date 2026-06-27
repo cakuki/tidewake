@@ -3,7 +3,7 @@
 // the hull on the live swell with bob/roll, and follows with the camera. This is the
 // arcade-sailing heart that used to live inline in main.js's update().
 import * as THREE from 'three';
-import { targetSpeed, approach, steerRate, sweepIslandCollision } from './physics.js';
+import { targetSpeed, approach, steerRate, sweepIslandCollision, settledTargetSpeed, SETTLE_RATE } from './physics.js';
 
 export const MAX_SPEED = 55;
 
@@ -23,7 +23,10 @@ export function createSailing({ ship, ocean, camera, input, world, onRunAground 
   const islands = [];
   if (world && world.islands) {
     for (const isle of world.islands.children) {
-      islands.push({ x: isle.position.x, z: isle.position.z, r: isle.userData.radius || 80 });
+      islands.push({
+        x: isle.position.x, z: isle.position.z, r: isle.userData.radius || 80,
+        sx: isle.userData.sx ?? 1, sz: isle.userData.sz ?? 1, // squashed-shoreline ellipse (#76 beach fix)
+      });
     }
   }
   let lastScrapeT = -10; // throttle the run-aground quip so a long scrape doesn't spam
@@ -75,16 +78,32 @@ export function createSailing({ ship, ocean, camera, input, world, onRunAground 
     if (input && typeof input.resetView === 'function') input.resetView(); // reopen astern (#49)
   }
 
-  function step(dt, t) {
+  function step(dt, t, settle = {}) {
+    const fighting = !!settle.fighting;
     const keys = input.keys;
-    // throttle / steer
-    if (keys.has('w') || keys.has('arrowup')) state.throttle = Math.min(1, state.throttle + dt * 0.8);
-    if (keys.has('s') || keys.has('arrowdown')) state.throttle = Math.max(0, state.throttle - dt * 1.2);
-    const steer = (keys.has('a') || keys.has('arrowleft') ? 1 : 0) - (keys.has('d') || keys.has('arrowright') ? 1 : 0);
+    // throttle / steer — SUSPENDED while squaring up for a fight (#76 c): the crew's at the
+    // guns (or trading barbs), not the helm, so helm input is ignored and the ship eases to a
+    // near-stop on its own. The player taking the helm (W) at a berth still overrides the
+    // harbour assist below, so it coasts you IN but never traps you at the dock.
+    const wantsToGo = keys.has('w') || keys.has('arrowup');
+    if (!fighting) {
+      if (wantsToGo) state.throttle = Math.min(1, state.throttle + dt * 0.8);
+      if (keys.has('s') || keys.has('arrowdown')) state.throttle = Math.max(0, state.throttle - dt * 1.2);
+    }
+    const steer = fighting ? 0 : (keys.has('a') || keys.has('arrowleft') ? 1 : 0) - (keys.has('d') || keys.has('arrowright') ? 1 : 0);
 
-    // wind modifies achievable speed: sailing with the wind is faster
-    const target = targetSpeed(state.throttle, MAX_SPEED, state.heading, state.windDir);
-    state.speed = approach(state.speed, target, dt, 1.5);
+    // wind modifies achievable speed: sailing with the wind is faster. Then EASE that target
+    // DOWN to settle for a fight / harbour approach (#76 c) — a fight forces a near-stop, a
+    // berth coasts the hull in (harbourSlowFactor). The berth assist yields the instant the
+    // player takes the helm to leave (wantsToGo), so it never strands you at the dock.
+    const desired = targetSpeed(state.throttle, MAX_SPEED, state.heading, state.windDir);
+    const harbourDistance = (!fighting && !wantsToGo) ? (settle.harbourDistance ?? Infinity) : Infinity;
+    const target = settledTargetSpeed(desired, { fighting, harbourDistance, harbourRadius: settle.harbourRadius ?? 0 });
+    // Ease toward the target: a firmer SETTLE_RATE while actively settling (a deliberate
+    // glide), the normal rate otherwise. Either way it's approach() — eased, never a snap.
+    const settling = fighting || target < desired - 1e-6;
+    state.settling = settling;
+    state.speed = approach(state.speed, target, dt, settling ? SETTLE_RATE : 1.5);
 
     // steering scales with speed
     state.heading += steer * dt * steerRate(state.speed);

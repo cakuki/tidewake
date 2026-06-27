@@ -4,7 +4,7 @@ import { createShip } from './ship.js';
 import { createWorld } from './world.js';
 import { createWake } from './wake.js';
 import { createNpcs } from './npc.js';
-import { createPorts } from './ports.js';
+import { createPorts, DOCK_RADIUS } from './ports.js';
 import { createAudio } from './audio.js';
 import { createMusic } from './music.js';
 import { createInput } from './input.js';
@@ -254,13 +254,42 @@ function updatePerf(frameMs) {
   if (perfOn && $perf) $perf.textContent = formatPerf(perf);
 }
 
+// CREATIVE SPARK (#76 c) charm pools — short, daft, on-tone. Rotated by the beat counters so a
+// long session never hears the same line twice in a row.
+const FIGHT_REEF_LINES = [
+  'Sails reefed, the ship squares up — the crew cracks their knuckles.',
+  'Way comes off her; the helm goes quiet. Time to settle this.',
+  'The Tidewake heaves to and glares across the waves. En garde.',
+];
+const BERTH_LINES = [
+  'Way off, fenders out — she glides the last few yards to the planks.',
+  'The bosun calls the slow-down; the hull coasts gently toward the berth.',
+  'Easing in — the dock creaks a welcome as the ship drifts alongside.',
+];
+let wasFighting = false, wasHarbourSettling = false, fightBeat = 0, berthBeat = 0;
+
 function update(dt, t) {
-  // During an insult duel OR a cannon engagement the ship holds station and sailing
-  // input is ignored — the crew is too busy trading barbs (or broadsides) to mind the helm.
-  if (!duel.state.active && !cannons.state.active) {
-    sailing.step(dt, t);                       // throttle/steer/wind, integrate, place ship, follow camera
-    npcs.update(dt, t);                        // wandering AI vessels (advances under step())
+  // Slow-to-stop for harbour & combat (#76 c): the ship is no longer teleport-frozen for a
+  // fight or a berth — it EASES to a near-stop. sailing.step always runs; a settle reason eases
+  // the target speed smoothly toward ~0 (combat) or coasts it down as the hull nears a port
+  // (harbouring), all via approach(). Helm input is ignored during a fight (crew's at the guns).
+  const fighting = duel.state.active || cannons.state.active;
+  let harbourDistance = Infinity;              // distance to the nearest port point (for the coast-in)
+  for (const p of ports.ports) {
+    const d = Math.hypot(state.pos.x - p.pos[0], state.pos.z - p.pos[1]);
+    if (d < harbourDistance) harbourDistance = d;
   }
+  sailing.step(dt, t, { fighting, harbourDistance, harbourRadius: DOCK_RADIUS });
+  if (!fighting) npcs.update(dt, t);           // wandering AI pauses while the guns/insults are out
+
+  // CREATIVE SPARK (#76 c): one light arcade beat as the ship squares up for a fight or coasts
+  // into a berth — transition-guarded so it never spams, rotated so it never gets stale.
+  if (fighting && !wasFighting) hud.flashBanner('⚔ Battle stations!', FIGHT_REEF_LINES[fightBeat++ % FIGHT_REEF_LINES.length]);
+  wasFighting = fighting;
+  const harbourSettling = !fighting && state.settling;
+  if (harbourSettling && !wasHarbourSettling) hud.flashBanner('⚓ Easing into the berth…', BERTH_LINES[berthBeat++ % BERTH_LINES.length]);
+  wasHarbourSettling = harbourSettling;
+
   ocean.update(t, camera.position);
   ports.update(state, onArrive, t);            // arrival detection (fires once) + buoy bob
   wake.update(dt, state, t);                   // bow wake + trailing foam
@@ -367,6 +396,9 @@ window.__tidewake = {
     return {
       heading: state.heading, speed: state.speed, throttle: state.throttle,
       pos: state.pos.toArray(), port: state.port ?? null,
+      // Slow-to-stop (#76 c): true while the ship is easing to a near-stop for a fight or a
+      // harbour approach — the playtest asserts speed drops near a port / at fight start.
+      settling: !!state.settling,
       coins: state.coins ?? 0,
       // Two poles (#45) + their derived total, plus the current pole-aware title.
       infamy, standing, renown: state.renown ?? (infamy + standing),

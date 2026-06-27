@@ -147,32 +147,43 @@ export function dockingUpdate(prevDockedName, pos, ports, radius) {
   return { dockedName, dockedPort, arrived };
 }
 
-// ---- Arcade island collision (#76 a1) -------------------------------------------------
-// Islands stop you — but soft and arcade-y, never a brick wall. We collide the hull
-// against a forgiving CIRCLE per island (its world.js radius), not the jagged beach mesh:
-// cheaper AND fairer (no snagging on a stray palm). On contact the hull is pushed back out
-// to the coast and, because the push is purely radial, the ship naturally SLIDES along the
-// shoreline frame-to-frame instead of slamming dead-stop or sticking. Research-backed feel
-// (Game Developer, Rocket League's single box collider): "precise collisions would have made
-// the game feel more random and complicated."
+// ---- Arcade island collision (#76 a1 + beach fix) -------------------------------------
+// Islands stop you — but soft and arcade-y, never a brick wall. We collide the hull against
+// a simple SHAPE per island (its visible shoreline), not the jagged beach mesh: cheaper AND
+// fairer (no snagging on a stray palm). On contact the hull is pushed back out to the coast
+// and, because the push is purely radial (in the shape's own space), the ship naturally
+// SLIDES along the shoreline frame-to-frame instead of slamming dead-stop or sticking.
+// Research-backed feel (Game Developer, Rocket League's single box collider): "precise
+// collisions would have made the game feel more random and complicated."
+//
+// #76 beach fix (owner P1): the original 0.9·r hitbox sat WELL INSIDE the visible beach, so
+// the shoreline was sailable — the hull slid onto the sand. Islands are now SOLID to their
+// real coastline: the beach cylinder (world.js) reaches ~1.107·r at the waterline, so the
+// solid boundary is set THERE (ISLAND_HITBOX), plus the hull's half-size so the hull EDGE —
+// not its centre — comes to rest at the sand. Footprints are squashed ellipses (world.js
+// scales the beach by sx,sz per island); when those scales are supplied the resolver follows
+// the ellipse, so the coast is solid on every bearing without walling open water on the
+// narrow axis. Circles (no sx/sz) reduce to the original radial case.
 
 /** Ship's forgiving collision radius (world units). The hull is ~16 long / 6 abeam; a single
  *  circle a touch over the half-beam keeps grazes fair and snag-free. */
 export const SHIP_RADIUS = 7;
-/** Fraction of an island's visual radius treated as *solid*. Slightly under 1 so you graze the
- *  beach instead of catching on open water (island footprints are squashed ellipses; an under-
- *  radius circle never juts out past the sand). */
-export const ISLAND_HITBOX = 0.9;
+/** Multiplier on an island's `r` giving its SOLID visible shoreline. world.js's beach cylinder
+ *  reaches ~1.107·r at the waterline; 1.12 adds a hair of margin so the hull edge clears the
+ *  sand rather than kissing it. (If the beach geometry in world.js changes, retune this.) */
+export const ISLAND_HITBOX = 1.12;
 
 /**
- * Push a point out of any overlapping island circles to their solid boundary. Pure: numbers
- * in, numbers out. A point inside a circle is shoved radially out to `r*hitbox + shipR` —
- * never past, never left buried. Runs a couple of relaxation passes so a hull wedged between
- * two overlapping isles settles instead of ping-ponging. A dead-centre hull (zero distance)
- * is ejected along +x rather than dividing by zero.
+ * Push a point out of any overlapping island footprints to their solid shoreline boundary.
+ * Pure: numbers in, numbers out. Each island's solid region is the ellipse with semi-axes
+ * `r*hitbox*sx + shipR` (x) and `r*hitbox*sz + shipR` (z) — a circle when sx=sz=1 (or absent).
+ * A point inside is shoved out along its bearing in the ellipse's own (unit-circle) space —
+ * never past, never left buried — which preserves the bearing so the hull slides along the
+ * coast. Runs a couple of relaxation passes so a hull wedged between two overlapping isles
+ * settles instead of ping-ponging. A dead-centre hull is ejected along +x (no divide-by-zero).
  *
  * @param {{x:number,z:number}} p  hull centre on the x/z sea plane
- * @param {Array<{x:number,z:number,r:number}>} circles  island circles (world radius)
+ * @param {Array<{x:number,z:number,r:number,sx?:number,sz?:number}>} circles  island footprints
  * @param {{shipR?:number, hitbox?:number}} [opts]
  * @returns {{x:number, z:number, hit:boolean}}
  */
@@ -183,14 +194,17 @@ export function resolveCircleCollision(p, circles, opts = {}) {
   for (let iter = 0; iter < 2; iter++) {
     let moved = false;
     for (const c of circles) {
-      const R = c.r * hitbox + shipR;
-      let dx = x - c.x, dz = z - c.z;
-      let d = Math.hypot(dx, dz);
-      if (d < R) {
-        if (d < 1e-6) { dx = 1; dz = 0; d = 1; } // dead-centre: eject along +x
-        const nx = dx / d, nz = dz / d;          // unit outward normal
-        x = c.x + nx * R;                         // snap the hull onto the coast boundary
-        z = c.z + nz * R;
+      // Solid shoreline semi-axes (ellipse when squashed; circle when sx=sz=1), hull-inflated.
+      const ax = c.r * hitbox * (c.sx ?? 1) + shipR;
+      const az = c.r * hitbox * (c.sz ?? 1) + shipR;
+      const dx = x - c.x, dz = z - c.z;
+      let ux = dx / ax, uz = dz / az;           // into the ellipse's unit-circle space
+      let du = Math.hypot(ux, uz);
+      if (du < 1) {                              // inside the solid footprint
+        if (du < 1e-6) { ux = 1; uz = 0; du = 1; } // dead-centre: eject along +x
+        const k = 1 / du;                        // scale the bearing out to the boundary
+        x = c.x + ux * k * ax;                    // snap the hull onto the coast boundary
+        z = c.z + uz * k * az;
         hit = true; moved = true;
       }
     }
@@ -208,15 +222,19 @@ export function resolveCircleCollision(p, circles, opts = {}) {
  *
  * @param {{x:number,z:number}} prev  position before this step
  * @param {{x:number,z:number}} next  integrated position (pre-collision)
- * @param {Array<{x:number,z:number,r:number}>} circles
+ * @param {Array<{x:number,z:number,r:number,sx?:number,sz?:number}>} circles
  * @param {{shipR?:number, hitbox?:number, maxStep?:number}} [opts]
  * @returns {{x:number, z:number, hit:boolean}}
  */
 export function sweepIslandCollision(prev, next, circles, opts = {}) {
   const shipR = opts.shipR ?? SHIP_RADIUS;
   const hitbox = opts.hitbox ?? ISLAND_HITBOX;
+  // Sub-step no larger than the SMALLEST solid semi-axis so a fast hull can't tunnel a thin
+  // island (use the narrow axis of a squashed footprint, not just its `r`).
   let minR = Infinity;
-  for (const c of circles) minR = Math.min(minR, c.r * hitbox + shipR);
+  for (const c of circles) {
+    minR = Math.min(minR, c.r * hitbox * (c.sx ?? 1) + shipR, c.r * hitbox * (c.sz ?? 1) + shipR);
+  }
   const maxStep = opts.maxStep ?? (Number.isFinite(minR) ? Math.max(2, minR * 0.5) : Infinity);
   const dx = next.x - prev.x, dz = next.z - prev.z;
   const dist = Math.hypot(dx, dz);
@@ -230,4 +248,46 @@ export function sweepIslandCollision(prev, next, circles, opts = {}) {
     if (r.hit) hit = true;
   }
   return { x, z, hit };
+}
+
+// ---- Arcade slow-to-stop for harbouring & fighting (#76 c) ----------------------------
+// Arriving at a berth or squaring up for a fight should FEEL like the ship carries momentum:
+// it coasts in and settles, it doesn't teleport-freeze. The decel is an EASE — approach()
+// toward a lowered target, the very same easing the throttle/wind model already uses — never
+// a snap. Research-backed arcade feel (Game Developer): "ease speed with forces, don't snap
+// state." Pure: numbers in, numbers out, so the whole settle model unit-tests under node.
+
+/** Approach rate (per second) for easing the ship down to settle for harbour/fight. Gentle
+ *  enough to read as a deliberate glide, firm enough that the ship squares up promptly. */
+export const SETTLE_RATE = 1.6;
+
+/**
+ * Speed multiplier as the hull enters a harbour's settling band. At/beyond `radius` it's 1
+ * (full control, open water); inside, it eases smoothly down to 0 at the berth so the ship
+ * coasts in and settles instead of barrelling through. Smoothstep gives a soft knee at both
+ * ends — barely-there at the harbour mouth, gentle at the berth. Pure.
+ * @param {number} distance  distance from the port point
+ * @param {number} radius    radius at which settling begins (e.g. DOCK_RADIUS)
+ * @returns {number} multiplier in [0,1]
+ */
+export function harbourSlowFactor(distance, radius) {
+  if (!(radius > 0) || distance >= radius) return 1;
+  const t = Math.max(0, distance / radius);   // 0 at the berth, 1 at the harbour mouth
+  return t * t * (3 - 2 * t);                  // smoothstep: soft at both ends
+}
+
+/**
+ * The speed the ship should EASE toward this step, given the player's desired (throttle/wind)
+ * target and any active settle reason. A fight forces a near-stop (target 0 — sails reefed,
+ * the crew's at the guns); approaching a harbour scales the desired target down by
+ * harbourSlowFactor so the hull coasts in. Whichever reason slows more wins. Pure: the actual
+ * easing is approach(speed, this, dt, SETTLE_RATE) at the call site, so it never overshoots.
+ * @param {number} desired  the throttle/wind steady-state speed (targetSpeed())
+ * @param {{fighting?:boolean, harbourDistance?:number, harbourRadius?:number}} [opts]
+ * @returns {number} the (possibly lowered) target speed, in [0, desired]
+ */
+export function settledTargetSpeed(desired, opts = {}) {
+  if (opts.fighting) return 0; // battle stations — coast to a halt regardless of the helm
+  const f = harbourSlowFactor(opts.harbourDistance ?? Infinity, opts.harbourRadius ?? 0);
+  return desired * f;
 }
