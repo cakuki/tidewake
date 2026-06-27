@@ -141,3 +141,15 @@ round-ups (Game Rant), and the Rise of Venice "one ship → trading empire + rep
   emergent, story-making feedback — the cheapest possible "every session makes a story" engine, and
   the seed of the eventual two-ending split. Comedy hook: NPC reactions get wittier as your legend
   grows (cowering pun-cracking merchants; a smarmy harbourmaster who suddenly remembers your name).
+
+## Owner channel (two-way Telegram) — you own the front door
+
+The owner now steers the studio live over **Telegram** (`studio/comms/OWNER-CHANNEL.md`). **You own
+the intake.** When the orchestrator's per-cycle poll finds **unsolicited owner input** (feedback /
+bug / idea / roadmap Q), it dispatches **you (the PM desk) as a subagent** to triage it async — the
+**default** behaviour, run exactly as `studio/feedback/PM-DESK.md` (capture verbatim → confirm →
+value → TL-subagent feasibility → recommend → owner accepts → file the `from-owner` issue). Ask
+clarifying/decision questions back **over Telegram** (`scripts/owner-channel.sh ask …`), log them
+under `OWNER-CHANNEL.md` → ## Pending questions, and **never block the loop** while waiting. You also
+**report roadmap changes out** (accept/park/decline, re-prioritisation) — the owner reads them on his
+phone. `from-owner` P1s you file preempt `queue.md`.

@@ -2,12 +2,14 @@
 
 Single source of truth (resume brain) for the never-stopping delivery loop. Survives context resets.
 
-> ⏸️ **LOOP STOPPED for compaction (owner request 2026-06-27 ~12:00 UTC).**
-> **TO RESUME:** read **`studio/comms/queue.md`** top item and follow the
-> **"Lean orchestrator protocol (post-compact)"** in `docs/runbook/LOOP.md` — per cycle: read the
-> queue's top → dispatch ONE self-sufficient cycle-runner → read its <10-line report. Cycle-runners
-> own ALL bookkeeping (commit specific files, push, verify CI, close the issue, append their own
-> loop-log row, self-QA). The orchestrator no longer edits this file per cycle.
+> ▶️ **LOOP RUNNING (owner restart 2026-06-27 ~14:00 UTC) — two-way owner channel LIVE.**
+> **PER CYCLE:** (0) `scripts/owner-channel.sh peek` → route a pending-question answer / dispatch a
+> PM-desk-triage subagent for unsolicited owner input (`studio/comms/OWNER-CHANNEL.md`); (1) read
+> **`studio/comms/queue.md`** top item; (2) dispatch ONE self-sufficient cycle-runner; (3) read its
+> <10-line report. Cycle-runners own ALL bookkeeping (commit specific files, push, verify CI, close
+> the issue, append their own loop-log row, self-QA, **report the release out over Telegram**); the
+> orchestrator does not edit this file per cycle. Full protocol: "Lean orchestrator protocol
+> (post-compact)" in `docs/runbook/LOOP.md`.
 
 - **Current loop:** 26 done → next is **27** (read `queue.md` to pick the slice)
 - **Loops since last retro:** 0 (**Retro 5 DONE — reset**; covered loops 20–26)

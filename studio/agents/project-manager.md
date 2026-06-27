@@ -167,3 +167,14 @@ will read/write this loop gets a one-line entry — *name · shape · owner · c
 *before* dispatch and retired when both sides have merged. It makes invisible integration seams
 visible on the board, so the PM can see a collision brewing the moment two cards reference the
 same contract, and turns "we both assumed the state shape" into a checkable, shared artifact.
+
+## Owner channel (two-way Telegram) — keep it in lockstep
+
+The owner steers live over **Telegram** (`studio/comms/OWNER-CHANNEL.md`). On the **process** side
+that's yours to keep honest: ensure every Telegram-filed `from-owner` item flows through the same
+REGISTER → board → issue hygiene as a worktree-desk item, that **## Pending questions** in
+`OWNER-CHANNEL.md` reflects reality (no stale open questions, answered ones cleared), and that
+`from-owner` P1s actually preempt `queue.md`. In your **continuous-observation pass**, watch owner
+steering latency — if his message sat unrouted for more than ~a cycle, fix the poll step. The owner
+must always see roadmap changes reported out; if a release or re-prioritisation shipped silently,
+that's a process gap to close.

@@ -165,3 +165,12 @@ lightweight PR-validation workflow (unit tests + headless playtest, **no** deplo
 `concurrency: cancel-in-progress: true` so superseded PR pushes auto-cancel — gates trunk
 *before* merge and saves free-tier minutes. Deploy concurrency stays `cancel-in-progress:
 false` (never kill a deploy). *(GitHub Actions cost-optimization guides, 2025–2026.)*
+
+## Owner channel (two-way Telegram) — you're the feasibility voice
+
+When the PM desk triages owner input that arrives over **Telegram**
+(`studio/comms/OWNER-CHANNEL.md`), it dispatches **you as the feasibility subagent**: read the
+relevant `src/` and return **effort (S/M/L) · risk · short approach**, same as the worktree desk.
+Keep verdicts honest and fast — the owner is waiting on his phone. If an owner bug report names
+visible breakage, size the smallest always-working fix so a `from-owner` **P1** can preempt the queue
+and ship the *same* hour. You don't message the owner directly; you feed the PM, who reports out.

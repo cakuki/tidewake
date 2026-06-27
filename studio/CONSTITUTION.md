@@ -58,6 +58,11 @@ over grim simulation. Fun first.
 - `studio/comms/board.md` — current loop's plan (To do / Doing / Done), mirrors issues.
 - `studio/comms/decisions.md` — append-only log of cross-role decisions (dated).
 - `studio/comms/inbox/<role>.md` — messages/asks addressed to a role.
+- `studio/comms/OWNER-CHANNEL.md` — the **two-way owner link over Telegram** (the protocol);
+  `scripts/owner-channel.sh` is its entrypoint. The studio **reports out** on every release and
+  roadmap change, and **takes input in** each cycle: a reply to a pending question is routed to the
+  asker and executed; **unsolicited owner input is triaged by the PM desk** (`PM-DESK.md`) as the
+  **default**. The owner (**@cakuki**, id `347889561`) is authorized to direct/decide over it.
 - Each role keeps long-term learning in `studio/memory/<role>.md`.
 - Agents pass concrete data through these files so context stays lean between cycles.
 
@@ -69,4 +74,4 @@ over grim simulation. Fun first.
   priority `P0`–`P3`. Link slices to their epic.
 - **Done** = merged, play-tested, released, and user-facing behaviour documented.
 - **Owner decisions** (branding/strategy/big architecture) → an issue labelled
-  `owner-decision` with options; never auto-adopt.
+  `owner-decision` with options; surface over the owner channel (Telegram) and **never auto-adopt**.

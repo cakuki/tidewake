@@ -168,6 +168,22 @@ sailing beats a smooth, smeared one.
 If a blocker or an `owner-decision` needs attention, surface it in the same update. Respect
 quiet hours (no messages 01:00–07:00); batch and send at 07:00 if a window is skipped.
 
+### Two-way owner channel (Telegram) — `studio/comms/OWNER-CHANNEL.md`
+
+The hourly heartbeat is one part of a **two-way** link. The full protocol lives in
+`studio/comms/OWNER-CHANNEL.md`; in brief:
+
+- **Report OUT on every release and every roadmap change** (not only hourly): the cycle-runner that
+  ships sends a release report (tag + one line + live URL + a shot/clip if visible) via
+  `scripts/owner-channel.sh report …`; any accept/park/decline or re-prioritisation is reported too.
+- **Take input IN every cycle:** the orchestrator runs `owner-channel.sh peek` as **step 0** of the
+  Lean protocol. A reply that answers a **pending question** is routed to the asker and executed; any
+  **unsolicited** message (feedback / bug / idea / roadmap Q) is handled by a **PM-desk-triage
+  subagent** exactly as `scripts/pm-desk.sh` would — that is the **default** behaviour. A
+  `from-owner` **P1** that triage files preempts `queue.md`.
+- The owner (**@cakuki**, id `347889561`) is authorized to direct and decide over this channel; the
+  bot is owner-locked to him.
+
 ---
 
 ## 4. Retrospective ritual (every 3–4 loops, run AS A SUBAGENT)
@@ -270,8 +286,13 @@ The main orchestrator must stay **lean** so the never-stopping loop survives con
 _Added Retro 5 (owner ask: keep the main context lean so loops after a **compaction** are cheap)._
 
 After a compact, the orchestrator must NOT re-derive priorities, re-read the whole backlog, or do
-per-cycle bookkeeping by hand. Its per-cycle job shrinks to **three moves**:
+per-cycle bookkeeping by hand. Its per-cycle job shrinks to **four moves**:
 
+0. **Poll the owner channel — `scripts/owner-channel.sh peek` (a couple of seconds).** Any new
+   Telegram message from the owner? **None** → proceed. **Answers a pending question** (a row in
+   `studio/comms/OWNER-CHANNEL.md` → ## Pending questions) → route it to the asker, execute, clear
+   the row. **Unsolicited** → dispatch a **PM-desk-triage subagent** (default behaviour, §3b of
+   `OWNER-CHANNEL.md`), then resume the agenda. Never block: triage + decisions run async.
 1. **Read the TOP unblocked item of `studio/comms/queue.md`.** That file is the prioritised
    next-slice queue — the orchestrator's single starting point. (`studio/comms/loop-state.md` stays
    the *resume brain*: current loop, counters, latest release, loop log, DL-due flag.)
@@ -279,7 +300,8 @@ per-cycle bookkeeping by hand. Its per-cycle job shrinks to **three moves**:
    returns 0-tool-use / empty).
 3. **Read its <10-line report and move on.** Don't hold the transcript.
 
-That's the whole cycle. No re-prioritising, no manual loop-state editing per cycle.
+That's the whole cycle. No re-prioritising, no manual loop-state editing per cycle. The owner-channel
+poll keeps his steering latency to ~one cycle without the orchestrator camping on Telegram.
 
 **Cycle-runners own ALL bookkeeping (not the orchestrator).** A cycle-runner goes end-to-end and
 self-services everything:
@@ -404,6 +426,17 @@ curl -sI https://cakuki.github.io/tidewake/
 
 ## Changelog
 
+- **2026-06-27 — Two-way owner channel over Telegram (owner ask).** The owner (@cakuki, id
+  `347889561`) wired Telegram into the loop **both ways**: the studio **reports out** on every
+  release and roadmap change (not just the hourly heartbeat), and **takes input in** every cycle.
+  Added **step 0** to the Lean orchestrator protocol — `scripts/owner-channel.sh peek`: a reply to a
+  **pending question** routes to the asker and executes; **unsolicited** owner input (feedback / bug
+  / idea / roadmap Q) is handled by a **PM-desk-triage subagent** exactly as `scripts/pm-desk.sh`
+  would (the **default** behaviour, async over Telegram), and a `from-owner` P1 it files preempts
+  `queue.md`. New protocol doc `studio/comms/OWNER-CHANNEL.md` + thin entrypoint
+  `scripts/owner-channel.sh` (forwards to the owner-locked notify-telegram skill, adds the report
+  format + quiet-hours guard). PM-desk now runs in **two modes**: the interactive worktree session
+  (`pm-desk.sh`) and this async Telegram intake — same funnel, same `from-owner` provenance.
 - **2026-06-27 — Retro 5 + lean-orchestrator protocol (owner ask: keep main context lean
   post-compact).** Block 20–26 made the complete arc *landable*: from-owner P1 batch (camera-astern
   #49 / compass-drift #50 / swell-submerging-ports #51), sunny Caribbean water (#61), the renown

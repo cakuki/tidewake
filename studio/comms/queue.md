@@ -6,11 +6,14 @@ move on. The cycle-runner owns all bookkeeping (commit specific files, push, ver
 issue, append its loop-log row, QA). See `docs/runbook/LOOP.md` → **Lean orchestrator protocol
 (post-compact)**. Re-prioritise only when a higher item lands or the owner files new feedback.
 
-**PREEMPTION RULE:** an owner `from-owner` **P1** issue (filed via the PM Desk) **jumps to the top**
-of this queue, ahead of everything below. Owner P1s preempt; do them first, then resume here.
+**PREEMPTION RULE:** an owner `from-owner` **P1** issue (filed via the PM Desk — including the
+**async Telegram intake**, `studio/comms/OWNER-CHANNEL.md`) **jumps to the top** of this queue,
+ahead of everything below. Owner P1s preempt; do them first, then resume here.
 
 **OWNER-DECISION RULE:** items marked **[OWNER-DECISION]** are *questions to ask the owner*, not work
-to do. Surface them in the next Telegram update with options; never auto-adopt.
+to do. Surface them over the **two-way owner channel** (Telegram) with options — `owner-channel.sh
+ask …` for a tappable choice — log them under `OWNER-CHANNEL.md` → ## Pending questions, and route
+his reply back (never auto-adopt).
 
 Set by Retro 5 (2026-06-27). State: arc complete + tuned reachable (`LEGEND_AT 2400`) + onboarded +
 sunny Caribbean look; 28 releases, 229 tests, perf gate live. Latest `v0.0.20260627115834`.
