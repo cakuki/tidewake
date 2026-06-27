@@ -75,6 +75,52 @@ try {
     };
   });
 
+  // 2b) Insult Broadside (#33/#48): sail to the nearest NPC, hail it, and out-jeer
+  // it to a win — exercising the duel SFX path (challenge/cut/win stingers fire
+  // silently headless but must not throw). Best-effort engage; the hard gate is the
+  // zero-console-errors assertion below.
+  const duel = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    function nearest() {
+      const s = tw.state.pos; // [x, y, z]
+      let best = null, bd = Infinity;
+      for (const n of tw.npcs) {           // n.pos = [x, z]
+        const dx = n.pos[0] - s[0], dz = n.pos[1] - s[2];
+        const d = Math.hypot(dx, dz);
+        if (d < bd) { bd = d; best = n; }
+      }
+      return { best, bd };
+    }
+    tw.press('w');
+    let engaged = false;
+    for (let i = 0; i < 1500 && !engaged; i++) {
+      const { best, bd } = nearest();
+      if (!best) break;
+      if (bd <= 180) { engaged = tw.challenge(); if (engaged) break; }
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    let rounds = 0, result = null;
+    if (engaged) {
+      for (let r = 0; r < 40 && tw.duel.active; r++) {
+        const d = tw.duel;
+        let idx = d.options.findIndex((o) => o.category === d.enemyWeakTo); // the cutting line
+        if (idx < 0) idx = 0;
+        tw.duelChoose(idx);
+        rounds++;
+        result = tw.duel.result;
+      }
+    }
+    return { engaged, rounds, result };
+  });
+  if (duel.engaged && duel.result !== 'win') fail(`duel engaged but did not resolve to a win (result=${duel.result}, rounds=${duel.rounds})`);
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -87,7 +133,7 @@ try {
   if (!(result.minimap.w > 0 && result.minimap.h > 0)) fail(`minimap has zero size (${result.minimap.w}x${result.minimap.h})`);
   if (!(result.minimap.frames > 0)) fail('minimap never rendered a frame');
 
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, duel, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

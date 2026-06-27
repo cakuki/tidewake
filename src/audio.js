@@ -55,6 +55,18 @@ export function nextGullDelay(rand, min = 12, max = 34) {
   return min + clamp01(rand) * (max - min);
 }
 
+/**
+ * Equal-temperament frequency for a number of semitones above (or below) A4.
+ * The duel stingers tune their flourishes from this — keeps the note maths pure
+ * and unit-testable while the WebAudio plumbing stays inside createAudio().
+ * @param {number} semitonesFromA4  0 = A4 (440 Hz), 12 = A5, -12 = A3
+ * @param {number} [a4]             reference pitch in Hz
+ * @returns {number} frequency in Hz
+ */
+export function semitoneToFreq(semitonesFromA4, a4 = 440) {
+  return a4 * Math.pow(2, semitonesFromA4 / 12);
+}
+
 // ---- Audio system (browser-only; nothing here runs at import time) ----
 
 const MUTE_KEY = 'tidewake.muted';
@@ -75,6 +87,7 @@ export function createAudio() {
   let waveGainNode = null;
   let windGainNode = null;
   let windFilter = null;
+  let sfxGain = null; // one-shot duel stingers hang here, under the master (mute covers them)
   let started = false;
   let muted = readMutePref();
   let gullTimer = null;
@@ -108,6 +121,12 @@ export function createAudio() {
     master = ctx.createGain();
     master.gain.value = muted ? 0.0001 : 1;
     master.connect(ctx.destination);
+
+    // Duel SFX sub-bus: sits a touch under the ambience/music so the comedy
+    // stingers punctuate without fatiguing. Mute rides on the master above it.
+    sfxGain = ctx.createGain();
+    sfxGain.gain.value = 0.9;
+    sfxGain.connect(master);
 
     // A couple of seconds of noise, looped — the raw material for sea + wind.
     const noise = makeNoiseBuffer(2.0);
@@ -213,6 +232,201 @@ export function createAudio() {
       playGull();
       scheduleGull();
     }, delay);
+  }
+
+  // ---- Duel stingers (Insult Broadside, #48) -------------------------------
+  //
+  // Short, comedic, fully-synthesised one-shots that punctuate the wit-combat —
+  // the universal "osc/noise → filter → gain-envelope" recipe from the research
+  // log. All hang off sfxGain (under the master), so the existing mute silences
+  // them too. Every voice is guarded; a stinger must never break the game.
+
+  // A single enveloped oscillator note (optional pitch glide), routed to `dest`.
+  function tone(t0, dur, peak, type, f0, f1, dest, attack = 0.012) {
+    const osc = ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(f0, t0);
+    if (f1 != null && f1 !== f0) {
+      osc.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t0 + dur);
+    }
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.exponentialRampToValueAtTime(peak, t0 + Math.min(attack, dur * 0.4));
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(env).connect(dest);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.03);
+    return osc;
+  }
+
+  // A short band-passed noise burst — the neutral "tick" / crack material.
+  function noiseTick(t0, dur, peak, freq, Q, dest) {
+    const src = ctx.createBufferSource();
+    src.buffer = makeNoiseBuffer(dur + 0.05);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = freq;
+    bp.Q.value = Q;
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t0);
+    env.gain.exponentialRampToValueAtTime(peak, t0 + 0.006);
+    env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(bp).connect(env).connect(dest);
+    src.start(t0);
+    src.stop(t0 + dur + 0.03);
+  }
+
+  // CUTTING hit: a sharp upward zinger pluck + a tiny comedic crowd "ooooh".
+  function sfxCut(t0, dest) {
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 1200;
+    bp.Q.value = 1.2;
+    bp.connect(dest);
+    tone(t0, 0.14, 0.20, 'sawtooth', 520, 1300, bp, 0.008); // the "zing"
+    // the crowd: two detuned voices rising softly, lowpassed into an "ooh"
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1100;
+    lp.connect(dest);
+    for (let i = 0; i < 2; i++) {
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.detune.value = i === 0 ? -6 : 7;
+      const ot = t0 + 0.05;
+      osc.frequency.setValueAtTime(300, ot);
+      osc.frequency.linearRampToValueAtTime(430, ot + 0.18);
+      osc.frequency.linearRampToValueAtTime(400, ot + 0.42);
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, ot);
+      env.gain.linearRampToValueAtTime(0.07, ot + 0.16);
+      env.gain.setValueAtTime(0.07, ot + 0.30);
+      env.gain.exponentialRampToValueAtTime(0.0001, ot + 0.46);
+      osc.connect(env).connect(lp);
+      osc.start(ot);
+      osc.stop(ot + 0.5);
+    }
+  }
+
+  // BACKFIRE: a deflating sad-trombone "womp" — muted descending notes with a
+  // light vibrato wah and a final downward bend.
+  function sfxBackfire(t0, dest) {
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 900;
+    lp.Q.value = 0.6;
+    lp.connect(dest);
+    const vib = ctx.createOscillator();
+    vib.type = 'sine';
+    vib.frequency.value = 6.5;
+    const vibDepth = ctx.createGain();
+    vibDepth.gain.value = 7; // Hz of warble
+    vib.connect(vibDepth);
+    vib.start(t0);
+    vib.stop(t0 + 1.0);
+    const notes = [311, 277, 247, 220];
+    let t = t0;
+    notes.forEach((f, i) => {
+      const last = i === notes.length - 1;
+      const dur = last ? 0.34 : 0.16;
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(f, t);
+      if (last) osc.frequency.exponentialRampToValueAtTime(165, t + dur); // the womp
+      vibDepth.connect(osc.frequency);
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, t);
+      env.gain.exponentialRampToValueAtTime(0.16, t + 0.03);
+      env.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      osc.connect(env).connect(lp);
+      osc.start(t);
+      osc.stop(t + dur + 0.03);
+      t += dur * 0.92;
+    });
+  }
+
+  // GLANCING: a small neutral tick — a clipped noise crack + a tiny blip.
+  function sfxGlance(t0, dest) {
+    noiseTick(t0, 0.05, 0.07, 1500, 1.0, dest);
+    tone(t0, 0.045, 0.06, 'triangle', 760, 620, dest, 0.004);
+  }
+
+  // WIN: a short triumphant rising flourish (D major arpeggio) + a high sparkle.
+  function sfxWin(t0, dest) {
+    const freqs = [5, 9, 12, 17].map((s) => semitoneToFreq(s)); // D5 F#5 A5 D6
+    freqs.forEach((f, i) => {
+      const t = t0 + i * 0.085;
+      const last = i === freqs.length - 1;
+      tone(t, last ? 0.5 : 0.13, last ? 0.17 : 0.13, 'triangle', f, f, dest, 0.01);
+      tone(t, last ? 0.45 : 0.1, 0.05, 'square', f, f, dest, 0.01); // bright doubling
+    });
+    tone(t0 + freqs.length * 0.085, 0.4, 0.04, 'sine', 1760, 2349, dest, 0.02);
+  }
+
+  // LOSE: a comic descending defeat run that lands on a low womp.
+  function sfxLose(t0, dest) {
+    const freqs = [3, 1, -1, -4].map((s) => semitoneToFreq(s)); // C5 Bb4 G#4 F4
+    freqs.forEach((f, i) => {
+      tone(t0 + i * 0.12, 0.16, 0.13, 'triangle', f, f, dest, 0.008);
+    });
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 700;
+    lp.connect(dest);
+    tone(t0 + freqs.length * 0.12, 0.4, 0.17, 'sawtooth', 196, 110, lp, 0.02);
+  }
+
+  // CHALLENGE: a light bugle "ta-DAA" when a duel is hailed.
+  function sfxChallenge(t0, dest) {
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1600;
+    lp.Q.value = 0.7;
+    lp.connect(dest);
+    const call = [
+      { f: 392, t: t0, dur: 0.12, peak: 0.13 },         // G4 pickup
+      { f: 523, t: t0 + 0.13, dur: 0.34, peak: 0.16 },  // C5 held
+    ];
+    for (const n of call) {
+      for (let i = 0; i < 2; i++) {
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.detune.value = i === 0 ? 0 : 6;
+        osc.frequency.setValueAtTime(n.f, n.t);
+        const env = ctx.createGain();
+        env.gain.setValueAtTime(0.0001, n.t);
+        env.gain.exponentialRampToValueAtTime(n.peak, n.t + 0.025);
+        env.gain.setValueAtTime(n.peak, n.t + n.dur * 0.6);
+        env.gain.exponentialRampToValueAtTime(0.0001, n.t + n.dur);
+        osc.connect(env).connect(lp);
+        osc.start(n.t);
+        osc.stop(n.t + n.dur + 0.03);
+      }
+    }
+  }
+
+  /**
+   * Play a duel stinger. No-op until a real gesture has the engine running, so a
+   * headless run (no context) is silent and never throws.
+   * @param {'cut'|'backfire'|'glance'|'win'|'lose'|'challenge'} kind
+   */
+  function playDuelHit(kind) {
+    if (!ctx || ctx.state !== 'running' || !master) return;
+    try {
+      const dest = sfxGain || master;
+      const t0 = ctx.currentTime + 0.005;
+      switch (kind) {
+        case 'cut': sfxCut(t0, dest); break;
+        case 'backfire': sfxBackfire(t0, dest); break;
+        case 'glance': sfxGlance(t0, dest); break;
+        case 'win': sfxWin(t0, dest); break;
+        case 'lose': sfxLose(t0, dest); break;
+        case 'challenge': sfxChallenge(t0, dest); break;
+        default: /* unknown kind — stay silent */ break;
+      }
+    } catch {
+      /* a stinger must never break the game */
+    }
   }
 
   // Bring the engine up on the first real user gesture (autoplay gate).
@@ -344,5 +558,5 @@ export function createAudio() {
     }
   }
 
-  return { init, setMute, isMuted, update, attachMusic };
+  return { init, setMute, isMuted, update, attachMusic, playDuelHit };
 }

@@ -5,6 +5,7 @@ import {
   seaGain,
   windGain,
   nextGullDelay,
+  semitoneToFreq,
 } from '../../src/audio.js';
 
 const MAX = 55;
@@ -56,4 +57,16 @@ test('nextGullDelay: clamps out-of-range randoms and honors custom bounds', () =
   assert.ok(nextGullDelay(5) <= 34 + 1e-9, 'over-1 clamps to max');
   assert.ok(Math.abs(nextGullDelay(0, 2, 8) - 2) < 1e-9, 'custom min');
   assert.ok(Math.abs(nextGullDelay(1, 2, 8) - 8) < 1e-9, 'custom max');
+});
+
+test('semitoneToFreq: A4 is the reference and octaves double/halve', () => {
+  assert.ok(Math.abs(semitoneToFreq(0) - 440) < 1e-9, '0 -> A4 440Hz');
+  assert.ok(Math.abs(semitoneToFreq(12) - 880) < 1e-9, '+12 -> A5');
+  assert.ok(Math.abs(semitoneToFreq(-12) - 220) < 1e-9, '-12 -> A3');
+});
+
+test('semitoneToFreq: equal-temperament steps and a custom reference', () => {
+  assert.ok(Math.abs(semitoneToFreq(5) - 587.3295) < 1e-3, '+5 -> ~D5');
+  assert.ok(semitoneToFreq(1) > semitoneToFreq(0), 'monotonic up');
+  assert.ok(Math.abs(semitoneToFreq(0, 432) - 432) < 1e-9, 'honours custom A4');
 });

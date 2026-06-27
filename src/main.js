@@ -69,6 +69,9 @@ const duel = createDuel({
   getShipPos: () => [state.pos.x, state.pos.z],
   applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.renown; syncRenown(state); },
   applyPenalty: (p) => { initEconomy(state); state.coins = Math.max(0, state.coins - p.coins); },
+  // Procedural audio juice (#48): challenge horn, cut/backfire/glance stings, win/lose
+  // flourishes — all routed through the one shared audio bus + mute (declared below).
+  sfx: (kind) => audio.playDuelHit(kind),
   onEnd: ({ result, reward, penalty, enemyName }) => {
     if (result === 'win') {
       hud.flashBanner('⚔ They strike their colours!',

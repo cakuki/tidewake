@@ -178,7 +178,12 @@ export function opener(rng = Math.random) {
 
 export const CHALLENGE_RANGE = 200; // metres the player must be within to hail an NPC
 
-export function createDuel({ npcs, getShipPos, applyReward, applyPenalty, onEnd, rng = Math.random } = {}) {
+export function createDuel({ npcs, getShipPos, applyReward, applyPenalty, onEnd, sfx, rng = Math.random } = {}) {
+  // Fire a procedural duel stinger (audio.playDuelHit) if one was wired in. Audio
+  // must never break a duel, so every call is swallowed.
+  function ping(kind) {
+    try { if (sfx) sfx(kind); } catch { /* a stinger must never break the duel */ }
+  }
   const state = {
     active: false,
     enemyIndex: -1,
@@ -232,6 +237,7 @@ export function createDuel({ npcs, getShipPos, applyReward, applyPenalty, onEnd,
     state.lastOutcome = '';
     state.result = null;
     state.round = 0;
+    ping('challenge'); // a light bugle as the colours go up
     return true;
   }
 
@@ -247,6 +253,13 @@ export function createDuel({ npcs, getShipPos, applyReward, applyPenalty, onEnd,
     state.lastOutcome = r.outcome;
     state.round++;
 
+    const ending = isOver(state.enemyMorale) || isOver(state.playerMorale);
+    // On the blow that ends the duel, let the win/lose flourish carry the moment
+    // (finish() fires it); otherwise punctuate the exchange with its own sting.
+    if (!ending) {
+      ping(r.outcome === 'cutting' ? 'cut' : r.outcome === 'backfire' ? 'backfire' : 'glance');
+    }
+
     if (isOver(state.enemyMorale)) return finish('win');
     if (isOver(state.playerMorale)) return finish('lose');
     state.options = pickOptions(rng, enemy, 4); // fresh lines for the next round
@@ -255,6 +268,7 @@ export function createDuel({ npcs, getShipPos, applyReward, applyPenalty, onEnd,
 
   function finish(result) {
     state.result = result;
+    ping(result === 'win' ? 'win' : 'lose'); // triumphant fanfare / comic defeat sting
     let reward_ = null, penalty_ = null;
     if (result === 'win') {
       reward_ = reward({ playerMorale: state.playerMorale, enemyMaxMorale: state.maxMorale });
