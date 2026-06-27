@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createOcean } from './ocean.js';
-import { createShip } from './ship.js';
+import { loadShip } from './ship-loader.js';
 import { createWorld } from './world.js';
 import { createWake } from './wake.js';
 import { createNpcs } from './npc.js';
@@ -72,7 +72,7 @@ const daynight = createDayNight({
   scene, sun, hemi, ocean, sky: world.sky,
   onDusk: () => { try { hud.flashBanner('🌅 The sun dips toward the yardarm…', 'Golden light spills across the swell — the watch lights the stern lantern.'); } catch { /* a flourish must never break the loop */ } },
 });
-const ship = createShip();
+const ship = await loadShip(); // CC0 glTF sloop (#32); falls back to procedural hull on error
 scene.add(ship);
 const wake = createWake(ocean);
 scene.add(wake.points);
