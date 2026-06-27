@@ -146,3 +146,88 @@ export function dockingUpdate(prevDockedName, pos, ports, radius) {
   const arrived = dockedName !== null && dockedName !== prevDockedName;
   return { dockedName, dockedPort, arrived };
 }
+
+// ---- Arcade island collision (#76 a1) -------------------------------------------------
+// Islands stop you — but soft and arcade-y, never a brick wall. We collide the hull
+// against a forgiving CIRCLE per island (its world.js radius), not the jagged beach mesh:
+// cheaper AND fairer (no snagging on a stray palm). On contact the hull is pushed back out
+// to the coast and, because the push is purely radial, the ship naturally SLIDES along the
+// shoreline frame-to-frame instead of slamming dead-stop or sticking. Research-backed feel
+// (Game Developer, Rocket League's single box collider): "precise collisions would have made
+// the game feel more random and complicated."
+
+/** Ship's forgiving collision radius (world units). The hull is ~16 long / 6 abeam; a single
+ *  circle a touch over the half-beam keeps grazes fair and snag-free. */
+export const SHIP_RADIUS = 7;
+/** Fraction of an island's visual radius treated as *solid*. Slightly under 1 so you graze the
+ *  beach instead of catching on open water (island footprints are squashed ellipses; an under-
+ *  radius circle never juts out past the sand). */
+export const ISLAND_HITBOX = 0.9;
+
+/**
+ * Push a point out of any overlapping island circles to their solid boundary. Pure: numbers
+ * in, numbers out. A point inside a circle is shoved radially out to `r*hitbox + shipR` —
+ * never past, never left buried. Runs a couple of relaxation passes so a hull wedged between
+ * two overlapping isles settles instead of ping-ponging. A dead-centre hull (zero distance)
+ * is ejected along +x rather than dividing by zero.
+ *
+ * @param {{x:number,z:number}} p  hull centre on the x/z sea plane
+ * @param {Array<{x:number,z:number,r:number}>} circles  island circles (world radius)
+ * @param {{shipR?:number, hitbox?:number}} [opts]
+ * @returns {{x:number, z:number, hit:boolean}}
+ */
+export function resolveCircleCollision(p, circles, opts = {}) {
+  const shipR = opts.shipR ?? SHIP_RADIUS;
+  const hitbox = opts.hitbox ?? ISLAND_HITBOX;
+  let x = p.x, z = p.z, hit = false;
+  for (let iter = 0; iter < 2; iter++) {
+    let moved = false;
+    for (const c of circles) {
+      const R = c.r * hitbox + shipR;
+      let dx = x - c.x, dz = z - c.z;
+      let d = Math.hypot(dx, dz);
+      if (d < R) {
+        if (d < 1e-6) { dx = 1; dz = 0; d = 1; } // dead-centre: eject along +x
+        const nx = dx / d, nz = dz / d;          // unit outward normal
+        x = c.x + nx * R;                         // snap the hull onto the coast boundary
+        z = c.z + nz * R;
+        hit = true; moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  return { x, z, hit };
+}
+
+/**
+ * Swept arcade island collision. Resolves the hull's motion from `prev` to `next`, advancing
+ * in sub-steps no larger than half the smallest solid radius so a FAST ship can't tunnel
+ * clean through a small island in one frame — each sub-step advances then pushes back out, so
+ * a head-on charge piles up against the near coast (it never pops out the far side) while a
+ * glancing pass slides along and keeps most of its way on.
+ *
+ * @param {{x:number,z:number}} prev  position before this step
+ * @param {{x:number,z:number}} next  integrated position (pre-collision)
+ * @param {Array<{x:number,z:number,r:number}>} circles
+ * @param {{shipR?:number, hitbox?:number, maxStep?:number}} [opts]
+ * @returns {{x:number, z:number, hit:boolean}}
+ */
+export function sweepIslandCollision(prev, next, circles, opts = {}) {
+  const shipR = opts.shipR ?? SHIP_RADIUS;
+  const hitbox = opts.hitbox ?? ISLAND_HITBOX;
+  let minR = Infinity;
+  for (const c of circles) minR = Math.min(minR, c.r * hitbox + shipR);
+  const maxStep = opts.maxStep ?? (Number.isFinite(minR) ? Math.max(2, minR * 0.5) : Infinity);
+  const dx = next.x - prev.x, dz = next.z - prev.z;
+  const dist = Math.hypot(dx, dz);
+  const steps = Number.isFinite(maxStep) ? Math.max(1, Math.ceil(dist / maxStep)) : 1;
+  const stepX = dx / steps, stepZ = dz / steps;
+  let x = prev.x, z = prev.z, hit = false;
+  for (let i = 0; i < steps; i++) {
+    x += stepX; z += stepZ;
+    const r = resolveCircleCollision({ x, z }, circles, { shipR, hitbox });
+    x = r.x; z = r.z;
+    if (r.hit) hit = true;
+  }
+  return { x, z, hit };
+}

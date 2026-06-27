@@ -8,6 +8,10 @@ import {
   wakeIntensity,
   relativeWindAngle,
   pointOfSail,
+  resolveCircleCollision,
+  sweepIslandCollision,
+  SHIP_RADIUS,
+  ISLAND_HITBOX,
 } from '../../src/physics.js';
 
 const PI = Math.PI;
@@ -167,4 +171,94 @@ test('pointOfSail: efficiency matches windFactor and is best running, worst in i
 test('pointOfSail: band degrades from good (running) to poor (in irons)', () => {
   assert.equal(pointOfSail(0, 0).band, 'good');
   assert.equal(pointOfSail(PI, 0).band, 'poor');
+});
+
+// ---- Arcade island collision (#76 a1) -------------------------------------
+// A forgiving circle-hitbox resolver: islands stop you, but soft — push the hull
+// out to the coast and let it slide, never a brick wall, never tunnelling.
+
+const ISLE = { x: 0, z: 0, r: 100 };
+// The solid radius a ship centre is held outside of (slightly-under footprint + hull).
+const solidR = (c) => c.r * ISLAND_HITBOX + SHIP_RADIUS;
+
+test('resolveCircleCollision: a ship in open water is untouched', () => {
+  const far = { x: 500, z: -300 };
+  const r = resolveCircleCollision(far, [ISLE]);
+  assert.equal(r.hit, false, 'no contact out at sea');
+  assert.equal(r.x, far.x);
+  assert.equal(r.z, far.z);
+});
+
+test('resolveCircleCollision: a ship driven into an island is pushed to the coast (not past, not stuck)', () => {
+  // Drive the hull centre deep inside the island.
+  const inside = { x: 10, z: 5 };
+  const r = resolveCircleCollision(inside, [ISLE]);
+  assert.equal(r.hit, true, 'land was touched');
+  const d = Math.hypot(r.x - ISLE.x, r.z - ISLE.z);
+  // Sits exactly on the solid boundary — pushed OUT (not left buried), but not flung past it.
+  assert.ok(Math.abs(d - solidR(ISLE)) < 1e-6, `expected boundary ${solidR(ISLE)}, got ${d}`);
+  // Pushed radially: stays on the same bearing it came in on (no teleport across the isle).
+  assert.ok(r.x > 0 && r.z > 0, 'pushed out along the approach bearing');
+});
+
+test('resolveCircleCollision: a glancing approach slides out radially along the coast', () => {
+  // A point just inside the rim, off to one side — should pop straight out along its bearing,
+  // preserving its angle (the basis of sliding along the shoreline frame-to-frame).
+  const R = solidR(ISLE);
+  const angle = 0.6;
+  const p = { x: Math.cos(angle) * (R - 3), z: Math.sin(angle) * (R - 3) };
+  const r = resolveCircleCollision(p, [ISLE]);
+  assert.equal(r.hit, true);
+  const outAngle = Math.atan2(r.z, r.x);
+  assert.ok(Math.abs(outAngle - angle) < 1e-9, 'bearing preserved → it slides, not bounces');
+  assert.ok(Math.abs(Math.hypot(r.x, r.z) - R) < 1e-6, 'lands on the coast boundary');
+});
+
+test('resolveCircleCollision: a hull dead-centre is still ejected (no divide-by-zero)', () => {
+  const r = resolveCircleCollision({ x: 0, z: 0 }, [ISLE]);
+  assert.equal(r.hit, true);
+  const d = Math.hypot(r.x, r.z);
+  assert.ok(Number.isFinite(d) && Math.abs(d - solidR(ISLE)) < 1e-6, 'ejected cleanly to the boundary');
+});
+
+test('sweepIslandCollision: open-water motion passes through unchanged', () => {
+  const prev = { x: 400, z: 400 }, next = { x: 420, z: 410 };
+  const r = sweepIslandCollision(prev, next, [ISLE]);
+  assert.equal(r.hit, false);
+  assert.ok(Math.abs(r.x - next.x) < 1e-9 && Math.abs(r.z - next.z) < 1e-9);
+});
+
+test('sweepIslandCollision: a fast ship cannot tunnel through a small island', () => {
+  // A tiny island and a single huge step that would skip clean across it in one frame.
+  const small = { x: 0, z: 0, r: 40 };
+  const prev = { x: -300, z: 0 };
+  const next = { x: 300, z: 0 };   // straight through the middle, far side
+  const r = sweepIslandCollision(prev, next, [small]);
+  assert.equal(r.hit, true, 'the island was hit, not skipped');
+  const d = Math.hypot(r.x - small.x, r.z - small.z);
+  assert.ok(d >= solidR(small) - 1e-6, `ended outside the coast, got d=${d}`);
+  // Stopped on the NEAR side — did not come out the far side of the island.
+  assert.ok(r.x < 0, `should be held on the approach side, got x=${r.x}`);
+});
+
+test('sweepIslandCollision: a glancing pass keeps most of its way on (slides, not stops)', () => {
+  // Skim the rim of the island; the ship should keep moving forward, not dead-stop.
+  const prev = { x: -200, z: solidR(ISLE) - 6 };
+  const next = { x: 200, z: solidR(ISLE) - 6 };
+  const r = sweepIslandCollision(prev, next, [ISLE]);
+  assert.equal(r.hit, true, 'grazed the coast');
+  // Advanced a long way along the shore rather than halting at first contact.
+  assert.ok(r.x > 100, `should slide along the coast, got x=${r.x}`);
+  // Never buried in the island.
+  assert.ok(Math.hypot(r.x, r.z) >= solidR(ISLE) - 1e-6, 'stayed outside the coast');
+});
+
+test('island collision never blocks docking: the port point sits outside its isle\'s hitbox', () => {
+  // Ports are placed at island-radius + 6 on the seaward face (src/ports.js). A ship can
+  // reach the dock so long as that point lies outside the solid collision boundary.
+  for (const r of [60, 75, 85, 90, 110]) {
+    const isle = { x: 0, z: 0, r };
+    const portDist = r + 6;            // ports.js: ip + dir*(r+6)
+    assert.ok(portDist > solidR(isle), `port at ${portDist} must clear hitbox ${solidR(isle)} (r=${r})`);
+  }
 });

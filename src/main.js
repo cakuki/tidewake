@@ -69,7 +69,11 @@ const hud = createHud();
 const minimap = createMinimap({ world, ports, npcs });
 // Bigger route-planning chart (#54): same world data, zoomed way out + ports labelled.
 const bigmap = createBigMap({ world, ports, npcs });
-const sailing = createSailing({ ship, ocean, camera, input });
+const sailing = createSailing({
+  ship, ocean, camera, input, world,
+  // Arcade island collision (#76 a1): a hard run-aground earns a comic harbour-banner quip.
+  onRunAground: (quip) => hud.flashBanner('⚓ Hard aground!', quip),
+});
 const state = sailing.state;
 const persistence = createPersistence(state);
 
@@ -389,6 +393,9 @@ window.__tidewake = {
   get bigmap() { return { open: bigmap.open }; },
   mapToggle() { bigmap.toggle(); syncMapToggle(); return bigmap.open; },
   get npcs() { return npcs.snapshot(); },
+  // Island collision (#76 a1) QA surface: the flat {x,z,r} circles the hull collides against,
+  // so a headless playtest can drive the ship at the coast and assert it doesn't pass through.
+  get islands() { return world.islands.children.map((i) => ({ x: i.position.x, z: i.position.z, r: i.userData.radius || 80 })); },
   get docked() { return ports.docked; },
   // Invisible onboarding (#60) QA surface: the live progress flags, the next step, and
   // whether the seeded goal card is currently on screen.

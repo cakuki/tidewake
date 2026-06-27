@@ -3,11 +3,31 @@
 // the hull on the live swell with bob/roll, and follows with the camera. This is the
 // arcade-sailing heart that used to live inline in main.js's update().
 import * as THREE from 'three';
-import { targetSpeed, approach, steerRate } from './physics.js';
+import { targetSpeed, approach, steerRate, sweepIslandCollision } from './physics.js';
 
 export const MAX_SPEED = 55;
 
-export function createSailing({ ship, ocean, camera, input }) {
+// CREATIVE SPARK (#76 a1): a hard run-aground earns a comic complaint from the hull/crew —
+// the coast has consequence, but the tone stays light and arcade. Rotated so it never gets stale.
+const SCRAPES = [
+  'Scraaape… the hull complains, and so does the bosun.',
+  'You kiss the sand at speed — the crew lurches, the parrot swears.',
+  'Run aground! Somewhere below, a barrel of rum tips over. Tragedy.',
+  'The keel grinds the shallows. "That\'ll buff right out," lies the carpenter.',
+  'A crunch of coral. The cook drops the stew. Morale: damp.',
+];
+
+export function createSailing({ ship, ocean, camera, input, world, onRunAground }) {
+  // Distil islands to flat {x,z,r} circles once — the arcade collision hitboxes (#76 a1).
+  // Same reduction npc.js uses; islands never move, so we snapshot them at construction.
+  const islands = [];
+  if (world && world.islands) {
+    for (const isle of world.islands.children) {
+      islands.push({ x: isle.position.x, z: isle.position.z, r: isle.userData.radius || 80 });
+    }
+  }
+  let lastScrapeT = -10; // throttle the run-aground quip so a long scrape doesn't spam
+
   // ---- Ship state (simple arcade sailing) ----
   const state = {
     heading: 0,        // radians, 0 = +Z
@@ -70,8 +90,34 @@ export function createSailing({ ship, ocean, camera, input }) {
     state.heading += steer * dt * steerRate(state.speed);
 
     // integrate position
+    const px0 = state.pos.x, pz0 = state.pos.z; // pre-collision, for the swept resolve
     state.pos.x += Math.sin(state.heading) * state.speed * dt;
     state.pos.z += Math.cos(state.heading) * state.speed * dt;
+
+    // Arcade island collision (#76 a1): the coast stops you — soft. Resolve AFTER integration
+    // (and inside tw.step's fixed sub-steps, so it's deterministic) by pushing the hull out of
+    // any island circle it entered and sliding it along the shoreline. The swept resolver also
+    // forbids tunnelling through a small isle at speed.
+    if (islands.length) {
+      const r = sweepIslandCollision({ x: px0, z: pz0 }, { x: state.pos.x, z: state.pos.z }, islands);
+      if (r.hit) {
+        state.pos.x = r.x; state.pos.z = r.z;
+        // Bleed speed to the GROUND speed we actually made this step: a head-on run-aground
+        // glides to a stop (achieved ≈ 0), a glancing graze keeps its tangential way on. The
+        // throttle/wind easing (approach) does the rest, so it's a soft scrape, not a wall.
+        if (dt > 1e-6) {
+          const achieved = Math.hypot(state.pos.x - px0, state.pos.z - pz0) / dt;
+          if (achieved < state.speed) {
+            // A genuinely HARD grounding (charging in, brought near to a halt) earns a quip.
+            if (typeof onRunAground === 'function' && state.speed > 12 && achieved < state.speed * 0.35 && (t - lastScrapeT) > 5) {
+              lastScrapeT = t;
+              onRunAground(SCRAPES[Math.floor((Math.abs(t * 7.3)) % SCRAPES.length)]);
+            }
+            state.speed = achieved;
+          }
+        }
+      }
+    }
 
     // place ship on the swell with bob + roll
     const h = ocean.sampleHeight(state.pos.x, state.pos.z, t);

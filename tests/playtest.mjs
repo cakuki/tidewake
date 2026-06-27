@@ -351,6 +351,49 @@ try {
   });
   if (!settingsPersist.restored) fail('settings: stored perf toggle did not persist across reload');
 
+  // 2g) Island collision (#76 a1): islands STOP you, arcade-soft. Start a clean voyage at the
+  // origin, pick the nearest island, autopilot the ship straight at its centre at full throttle,
+  // and assert it (1) actually reaches the coast and (2) is NEVER allowed deep inside the solid
+  // footprint — the hull can no longer sail clean through land. Deterministic via tw.step().
+  const collision = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    tw.newVoyage();          // respawn dead in the water at the origin
+    tw.step(0.1);
+    // Nearest island to the origin.
+    let isle = null, bd = Infinity;
+    for (const c of tw.islands) {
+      const d = Math.hypot(c.x, c.z);
+      if (d < bd) { bd = d; isle = c; }
+    }
+    if (!isle) return { hasIsland: false };
+    tw.press('w');
+    let minDist = Infinity;
+    for (let i = 0; i < 2500; i++) {
+      const s = tw.state;
+      const desired = Math.atan2(isle.x - s.pos[0], isle.z - s.pos[2]); // aim at the island centre
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+      const d = Math.hypot(tw.state.pos[0] - isle.x, tw.state.pos[2] - isle.z);
+      if (d < minDist) minDist = d;
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    const finalDist = Math.hypot(tw.state.pos[0] - isle.x, tw.state.pos[2] - isle.z);
+    tw.newVoyage();          // leave a clean slate for the screenshot
+    tw.step(0.1);
+    return { hasIsland: true, r: isle.r, minDist, finalDist };
+  });
+  if (!collision.hasIsland) fail('collision: no islands exposed via tw.islands');
+  else {
+    // (1) it sailed right up to the coast — otherwise the test proves nothing.
+    if (!(collision.minDist <= collision.r + 25)) fail(`collision: ship never reached the coast (minDist=${collision.minDist.toFixed(1)}, r=${collision.r})`);
+    // (2) it was NEVER allowed deep inside the island — no tunnelling/phasing through land.
+    if (!(collision.minDist >= collision.r * 0.85)) fail(`collision: ship punched into the island (minDist=${collision.minDist.toFixed(1)} < ${(collision.r * 0.85).toFixed(1)})`);
+    if (!(collision.finalDist >= collision.r * 0.85)) fail(`collision: ship ended up inside the island (finalDist=${collision.finalDist.toFixed(1)})`);
+  }
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -373,7 +416,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));
