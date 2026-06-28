@@ -95,6 +95,22 @@ export const BEATS_PER_BAR = 4;
 export const BARS = 8;
 export const LOOP_BEATS = BARS * BEATS_PER_BAR; // 32-beat, 8-bar loop
 
+/** Eighth-note grid steps per bar (the scheduler runs on an eighth-note grid). */
+export const STEPS_PER_BAR = BEATS_PER_BAR * 2; // 8 grid steps = one bar
+
+/**
+ * Is this grid step a bar's downbeat (beat 1)? The bar-clock the landfall stinger quantises to:
+ * the "we've made port" punch is held until the next downbeat so it lands ON the beat, never mid-
+ * phrase (#102 phase 2). Pure + unit-tested; tolerant of negative/out-of-range steps.
+ * @param {number} step grid-step index
+ * @param {number} [stepsPerBar] grid steps in a bar
+ * @returns {boolean}
+ */
+export function isDownbeat(step, stepsPerBar = STEPS_PER_BAR) {
+  const n = Math.max(1, Math.trunc(stepsPerBar));
+  return ((Math.trunc(step) % n) + n) % n === 0;
+}
+
 /**
  * The lead melody as a flat list of {deg, beats} events (degrees 1-based in D major,
  * degrees > 7 reach into the upper octave). An A phrase that climbs and a B phrase
@@ -154,6 +170,7 @@ export function createMusic() {
   let muted = false;
   let intensity = 0;      // 0..1, set by update() from ship speed
   let schedulerId = null;
+  let stingerArmed = false; // landfall "we've made port" punch, fired on the next downbeat (#102 ph2)
 
   const beatSec = beatDuration(TEMPO);
   const stepSec = beatSec * 0.5;            // eighth-note scheduler grid
@@ -296,6 +313,29 @@ export function createMusic() {
     });
   }
 
+  // Landfall stinger (#102 ph2): a bright, bell-like D-major arpeggio swell — the single "we've
+  // made port" punch (DL#2 juice on the *transition*). Fired ONCE on the next bar downbeat so it
+  // lands on the beat as the gesture eases ashore. Routes through musicGain, so the mute covers it.
+  function voiceStinger(time) {
+    if (muted) return;
+    // A rising D-major spread (tonic→third→fifth→octave) with a soft mallet attack and long tail.
+    const degs = [1, 3, 5, 8];
+    degs.forEach((deg, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = degreeToFreq(deg, ROOT + 12); // an octave up — bright, bell-like
+      const env = ctx.createGain();
+      const at = time + i * 0.06;       // gentle upward roll
+      const peak = 0.16 * (1 - i * 0.12);
+      env.gain.setValueAtTime(0.0001, at);
+      env.gain.exponentialRampToValueAtTime(peak, at + 0.02);
+      env.gain.exponentialRampToValueAtTime(0.0001, at + 1.2); // long shimmering tail
+      osc.connect(env).connect(musicGain);
+      osc.start(at);
+      osc.stop(at + 1.3);
+    });
+  }
+
   function fireStep(s, time) {
     if (muted) return; // silent + cheap while muted; the grid clock keeps advancing
     try {
@@ -315,6 +355,8 @@ export function createMusic() {
     try {
       const lookahead = 0.12;
       while (nextNoteTime < ctx.currentTime + lookahead) {
+        // Landfall stinger (#102 ph2): when armed, fire ON the next bar downbeat, then disarm.
+        if (stingerArmed && isDownbeat(step, STEPS_PER_BAR)) { voiceStinger(nextNoteTime); stingerArmed = false; }
         fireStep(step, nextNoteTime);
         nextNoteTime += stepSec;
         step = (step + 1) % TOTAL_STEPS;
@@ -423,5 +465,10 @@ export function createMusic() {
     }
   }
 
-  return { start, setMute, update, setMix };
+  // Arm the landfall stinger (#102 ph2): the "we've made port" punch fires on the NEXT bar
+  // downbeat (quantised to the bar-clock, so it lands on the beat). Safe to call before the engine
+  // is up — it just arms a flag the scheduler reads once the music is running and unmuted.
+  function stinger() { stingerArmed = true; }
+
+  return { start, setMute, update, setMix, stinger };
 }

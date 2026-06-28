@@ -41,6 +41,10 @@ export function createOcean() {
     uPaper: { value: new THREE.Color(0xeae7d6) },  // soft warm sun-bleach toward horizon
     uSun: { value: new THREE.Vector3(0.5, 0.8, 0.2).normalize() },
     uCam: { value: new THREE.Vector3() },
+    // Glassy "moored" swell settle (#102 ph2): a global amplitude multiplier the landfall gesture
+    // eases 1→0.2 as you come to rest ashore, then back to 1 as you set sail. 1 = full open-water
+    // swell (the at-sea default). Mirrored on the CPU sampler so the ship never drifts off the sea.
+    uSwellScale: { value: 1 },
   };
 
   const mat = new THREE.ShaderMaterial({
@@ -55,19 +59,21 @@ export function createOcean() {
       precision highp int;
       uniform float uTime;
       uniform vec3 uCam;
+      uniform float uSwellScale; // glassy "moored" settle (#102 ph2): 1 at sea, eases toward 0.2 ashore
       varying vec3 vNormal;
       varying float vHeight;
       varying vec3 vRel; // camera-relative world position — kept SMALL so mobile GPUs stay precise
 
       // sum of a few sine waves -> rolling swell (evaluated in WORLD space so the
-      // plane can follow the ship without the wave pattern sliding)
+      // plane can follow the ship without the wave pattern sliding). Scaled by uSwellScale so
+      // the whole sea can settle glassy-calm as the ship comes to her moorings (#102 ph2).
       float wave(vec2 p, vec2 dir, float freq, float speed, float amp) {
         return amp * sin(dot(normalize(dir), p) * freq + uTime * speed);
       }
       float swell(vec2 p) {
-        return ${WAVES.map(([dx, dz, f, s, a]) =>
+        return (${WAVES.map(([dx, dz, f, s, a]) =>
           `wave(p, vec2(${glf(dx)}, ${glf(dz)}), ${glf(f)}, ${glf(s)}, ${glf(a)})`
-        ).join('\n             + ')};
+        ).join('\n              + ')}) * uSwellScale;
       }
 
       void main() {
@@ -161,8 +167,11 @@ export function createOcean() {
   mesh.position.y = 0;
 
   // CPU-side wave sampler so the ship can bob on the same swell the shader draws —
-  // delegates to the shared pure swellHeight() (same WAVES the GLSL is generated from).
-  const sampleHeight = swellHeight;
+  // delegates to the shared pure swellHeight() (same WAVES the GLSL is generated from), scaled by
+  // the SAME glassy-moored multiplier as the GPU (uSwellScale) so the ship never drifts off the
+  // visible sea as the swell settles ashore (#102 ph2). swellScale === uSwellScale.value always.
+  let swellScale = 1;
+  const sampleHeight = (x, z, t) => swellHeight(x, z, t) * swellScale;
 
   let fellBack = false;   // did we install the flat-sea fallback?
   let logged = false;     // one-time diagnostic guard (never spam)
@@ -196,6 +205,16 @@ export function createOcean() {
       }
     },
     sampleHeight,
+    // Glassy "moored" swell settle (#102 ph2): ease the whole sea's amplitude as the ship comes to
+    // rest ashore (1 = full open-water swell, 0.2 = glassy moored calm). Drives BOTH the GPU shader
+    // (uSwellScale) and the CPU sampler in lock-step so the ship rides exactly the swell it draws.
+    // A no-op-safe write: the flat-sea fallback has no uniforms, so it just tracks the CPU scale.
+    setSwellScale(s) {
+      swellScale = Number.isFinite(s) ? s : 1;
+      try { uniforms.uSwellScale.value = swellScale; } catch { /* fallback sea has no uniforms */ }
+      return swellScale;
+    },
+    get swellScale() { return swellScale; },
     get fellBack() { return fellBack; },
     // Diagnose the ocean shader after the first render and harden against a silent
     // blank sea: if the program DEFINITIVELY failed to link (the iOS symptom), log it

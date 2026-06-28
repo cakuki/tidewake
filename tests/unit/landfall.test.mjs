@@ -4,7 +4,20 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createLandfall, easeInOut, PHASES } from '../../src/systems/landfall.js';
+import { createLandfall, easeInOut, mooredSwellScale, PHASES } from '../../src/systems/landfall.js';
+
+test('mooredSwellScale: full swell at sea, glassy ashore, monotonic between (#102 ph2)', () => {
+  assert.equal(mooredSwellScale(0), 1);                       // open water, untouched
+  assert.ok(Math.abs(mooredSwellScale(1) - 0.2) < 1e-9);     // moored: glassy calm (default floor)
+  assert.ok(Math.abs(mooredSwellScale(0.5) - 0.6) < 1e-9);  // halfway eased
+  assert.ok(Math.abs(mooredSwellScale(1, 0.35) - 0.35) < 1e-9); // custom glassy floor honoured
+  // monotonic non-increasing as the gesture eases ashore
+  let prev = Infinity;
+  for (let b = 0; b <= 1.0001; b += 0.1) { const s = mooredSwellScale(b); assert.ok(s <= prev + 1e-12); prev = s; }
+  // clamps a bad blend so the sea is never AMPLIFIED past full nor driven negative
+  assert.equal(mooredSwellScale(-3), 1);
+  assert.ok(Math.abs(mooredSwellScale(9) - 0.2) < 1e-9);
+});
 
 test('easeInOut is a clamped smoothstep: 0→0, 1→1, midpoint 0.5, monotonic', () => {
   assert.equal(easeInOut(0), 0);

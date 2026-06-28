@@ -14,7 +14,20 @@ import {
   BARS,
   BEATS_PER_BAR,
   LOOP_BEATS,
+  STEPS_PER_BAR,
+  isDownbeat,
 } from '../../src/music.js';
+
+test('isDownbeat: true only on a bar boundary (the landfall stinger bar-clock, #102 ph2)', () => {
+  assert.equal(STEPS_PER_BAR, BEATS_PER_BAR * 2, 'eighth-note grid → 8 steps per bar');
+  assert.equal(isDownbeat(0), true);              // bar 1, beat 1
+  assert.equal(isDownbeat(STEPS_PER_BAR), true);  // next bar's downbeat
+  assert.equal(isDownbeat(2 * STEPS_PER_BAR), true);
+  for (let s = 1; s < STEPS_PER_BAR; s++) assert.equal(isDownbeat(s), false, `step ${s} is mid-bar`);
+  // tolerant of out-of-range / negative steps (never throws, wraps cleanly)
+  assert.equal(isDownbeat(-STEPS_PER_BAR), true);
+  assert.equal(isDownbeat(-1), false);
+});
 
 test('clamp01: clamps to [0,1]', () => {
   assert.equal(clamp01(-2), 0);

@@ -672,6 +672,13 @@ try {
   if (land.onLeave.phase !== 'leaving' || land.onLeave.townOpen) fail(`landfall: Set Sail did not begin the reverse + close the town (phase=${land.onLeave.phase} town=${land.onLeave.townOpen})`);
   if (!(land.onLeave.blend < land.ashore.blend)) fail(`landfall: the reverse did not ease back down (blend=${land.onLeave.blend?.toFixed(3)})`);
   if (land.backAtSea.phase !== 'idle' || land.backAtSea.blend !== 0) fail(`landfall: did not settle back under sail (phase=${land.backAtSea.phase} blend=${land.backAtSea.blend})`);
+  // Glassy "moored" swell settle (#102 ph2): full open-water swell under sail, eased to a calm
+  // glassy value once ashore, restored to full life back at sea. (The "made port" stinger is armed
+  // on this same TOWN transition; it fires silently headless and must not throw — the zero-console-
+  // errors gate below proves it.)
+  if (!(Math.abs(land.atSea.swellScale - 1) < 1e-9)) fail(`landfall: swell not at full life under sail (swellScale=${land.atSea.swellScale})`);
+  if (!(land.ashore.swellScale < 0.5)) fail(`landfall: the swell did not settle glassy-calm ashore (swellScale=${land.ashore.swellScale})`);
+  if (!(Math.abs(land.backAtSea.swellScale - 1) < 1e-9)) fail(`landfall: the swell did not return to full life back at sea (swellScale=${land.backAtSea.swellScale})`);
 
   // 2i) Ship-vs-ship collision (#76 b): the player BUMPS other vessels, never sailing clean
   // through them. Pursue the nearest NPC at full throttle and assert (1) the hulls actually MET

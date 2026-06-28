@@ -25,7 +25,7 @@ import { createCannons } from './cannons.js';
 import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
 import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading } from './systems/harbour.js';
-import { createLandfall } from './systems/landfall.js';
+import { createLandfall, mooredSwellScale } from './systems/landfall.js';
 import { mixHex } from './sea-color.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
@@ -229,7 +229,7 @@ const mode = createModeManager({
       // Landfall gesture (#102): a mode change isn't a snap — it's a crafted, eased moment. Entering
       // TOWN begins the "making port" gesture (camera eases to a moored framing, the light warms,
       // the town view takes the screen only once we're truly ashore); leaving it runs the mirror.
-      if (to === TOWN) { landfall.land(); hud.flashBanner('🏘️ Making port…', 'The helm goes quiet — the ship glides to her moorings as the light turns gold.'); }
+      if (to === TOWN) { landfall.land(); music.stinger(); hud.flashBanner('🏘️ Making port…', 'The helm goes quiet — the ship glides to her moorings as the light turns gold.'); } // a "made port" stinger lands on the next downbeat (#102 ph2)
       else if (from === TOWN) landfall.leave(); // Set Sail: the town falls astern, the open light returns
       // BATTLE keeps its own "Battle stations!" beat below; SAILING's return is signalled by control resuming.
     } catch { /* a flourish must never break the loop */ }
@@ -630,6 +630,11 @@ function update(dt, t) {
   if (harbourSettling && !wasHarbourSettling) hud.flashBanner('⚓ Easing into the berth…', BERTH_LINES[berthBeat++ % BERTH_LINES.length]);
   wasHarbourSettling = harbourSettling;
 
+  // Glassy "moored" swell settle (#102 ph2): as the landfall gesture eases in, the whole sea's
+  // swell amplitude lerps toward a calm, glassy "moored" value (and back to full life on Set Sail)
+  // — the paused helm = still water, a reactive verb. Drives the GPU shader + CPU sampler together
+  // so the moored ship rides exactly the swell it draws. blend 0 = untouched open-water swell.
+  ocean.setSwellScale(mooredSwellScale(landfall.blend));
   ocean.update(t, camera.position);
   daynight.update(dt);                          // optional day-night cycle (#58): no-op while OFF
   applyLandfallGrade();                         // warm "golden harbour" glow over the gesture (#102)
@@ -860,7 +865,7 @@ window.__tidewake = {
   // Landfall gesture (#102) QA surface: the crafted SAILING↔TOWN transition's live phase + eased
   // blend (0=at sea, 1=ashore) + whether it's in flight, plus the headless skip driver — so a
   // playtest can assert the moment EASES (not snaps), is deterministic, and is skippable.
-  get landfall() { return { phase: landfall.phase, blend: landfall.blend, active: landfall.active, townReady: landfall.townReady }; },
+  get landfall() { return { phase: landfall.phase, blend: landfall.blend, active: landfall.active, townReady: landfall.townReady, swellScale: ocean.swellScale }; },
   skipLandfall() { return skipLandfall(); },
   // Tavern "listen for word" (#103) QA surface: whether word is showing + the live rumours,
   // and a deterministic driver so a headless playtest can listen and assert the room speaks.

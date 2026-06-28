@@ -37,6 +37,22 @@ export function easeInOut(x) {
 }
 
 /**
+ * Glassy "moored" swell settle (#102 phase 2) — the ocean's swell amplitude eases toward a calm,
+ * glassy value as you come to rest ashore, then back to full open-water life as you set sail. A
+ * reactive verb: the paused helm = still water. PURE — reads off the gesture's eased `blend`, so
+ * the wiring just multiplies the swell (GPU uniform + CPU sampler) by this one number.
+ *   mooredSwellScale(0) === 1 (open sea, untouched) · mooredSwellScale(1) === glassy (moored calm).
+ * Monotonic-decreasing in blend; clamps blend to [0,1] so a bad frame never amplifies the sea.
+ * @param {number} blend  eased ashore-ness 0..1 (landfall.blend)
+ * @param {number} [glassy] the moored amplitude multiplier at full ashore (default 0.2)
+ * @returns {number} swell amplitude multiplier in [glassy, 1]
+ */
+export function mooredSwellScale(blend, glassy = 0.2) {
+  const g = clamp01(glassy);
+  return 1 - (1 - g) * clamp01(blend);
+}
+
+/**
  * Create a landfall transition controller.
  *   createLandfall({ landMs = 900, leaveMs = 700 }) -> {
  *     phase,                 // PHASES.* — the current stance of the gesture
