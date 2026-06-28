@@ -1,11 +1,27 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BUDGET, checkBudget, formatPerf, pixelRatioCap, DPR_CAP_DESKTOP, DPR_CAP_TOUCH } from '../../src/perf.js';
+import { BUDGET, checkBudget, formatPerf, pixelRatioCap, DPR_CAP_DESKTOP, DPR_CAP_TOUCH, isMeasuredFrame } from '../../src/perf.js';
 
 test('BUDGET ceilings sit above the measured current scene cost', () => {
   // Measured 2026-06-27: 77 draw calls, ~85.2k triangles. Ceilings must leave headroom.
   assert.ok(BUDGET.drawCalls > 77, 'draw-call ceiling should clear the measured 77');
   assert.ok(BUDGET.triangles > 85200, 'triangle ceiling should clear the measured ~85.2k');
+});
+
+// #107 perf-flake guard: a measured frame is one that actually drew something. updatePerf
+// latches counters only from measured frames so a throttled/empty headless paint (drawCalls 0)
+// can't clobber a good reading down to 0 and spuriously trip the "perf counters unpopulated" gate.
+test('isMeasuredFrame: a frame that drew something is a measurement', () => {
+  assert.equal(isMeasuredFrame({ calls: 35, triangles: 85114 }), true);
+  assert.equal(isMeasuredFrame({ calls: 1, triangles: 12 }), true);
+});
+
+test('isMeasuredFrame: an empty / throttled / missing frame is NOT a measurement', () => {
+  assert.equal(isMeasuredFrame({ calls: 0, triangles: 0 }), false, 'an empty paint is not a sample');
+  assert.equal(isMeasuredFrame(null), false);
+  assert.equal(isMeasuredFrame(undefined), false);
+  assert.equal(isMeasuredFrame({}), false, 'no calls field → not a sample');
+  assert.equal(isMeasuredFrame({ calls: '35' }), false, 'non-numeric calls → not a sample');
 });
 
 test('checkBudget passes when every metric is within its ceiling', () => {

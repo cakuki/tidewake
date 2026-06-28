@@ -178,6 +178,39 @@ describe('mode — multi-subscriber seam (#106)', () => {
   });
 });
 
+// #107 — mode-transition QA coverage (DL #3). The state space is now 3 modes × combat × town ×
+// audio; a whole mode can rot silently between captures. This table-driven matrix walks EVERY
+// MODES×MODES pair through the live manager and cross-checks it against the pure canTransition
+// guard — asserting the resulting `current`, `playerPaused`, and the onChange fire-count (incl.
+// the no-op re-entry). A future edit to the legal graph that desyncs the manager from the guard
+// fails HERE, cheaply, instead of rotting until a playtest capture catches it.
+describe('mode — N×N transition matrix at the manager level (#107)', () => {
+  for (const from of MODES) {
+    for (const to of MODES) {
+      const legal = canTransition(from, to);
+      const real = from !== to && legal; // a *real* transition fires an event + moves `current`
+      it(`enter(${to}) from ${from}: ${real ? 'transitions' : 'is a guarded no-op'}`, () => {
+        let fires = 0;
+        const m = createModeManager({ initial: from, onChange: () => { fires++; } });
+        const changed = m.enter(to);
+        assert.equal(changed, real, `enter() return for ${from}->${to}`);
+        assert.equal(m.current, real ? to : from, `current after ${from}->${to}`);
+        assert.equal(m.playerPaused, m.current !== SAILING, `playerPaused invariant at ${m.current}`);
+        assert.equal(fires, real ? 1 : 0, `onChange fire-count for ${from}->${to}`);
+      });
+    }
+  }
+
+  it('the manager-level matrix matches the pure canTransition guard for every pair', () => {
+    for (const from of MODES) {
+      for (const to of MODES) {
+        const m = createModeManager({ initial: from });
+        assert.equal(m.canEnter(to), canTransition(from, to), `canEnter mismatch ${from}->${to}`);
+      }
+    }
+  });
+});
+
 describe('mode — deterministic new-voyage reset + invariants (#106)', () => {
   it('reset() deterministically returns to SAILING from any stance', () => {
     for (const initial of MODES) {

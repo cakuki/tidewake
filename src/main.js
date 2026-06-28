@@ -32,7 +32,7 @@ import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat } from './renown.js';
 import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES } from './colours.js';
-import { BUDGET, formatPerf, pixelRatioCap } from './perf.js';
+import { BUDGET, formatPerf, pixelRatioCap, isMeasuredFrame } from './perf.js';
 import { isTouchDevice } from './input.js';
 import { GOAL, applyEvent, shouldShowGoal, normalizeFlags, currentStep } from './onboarding.js';
 
@@ -529,8 +529,14 @@ function updatePerf(frameMs) {
   perfMs = perfMs ? perfMs * 0.9 + frameMs * 0.1 : frameMs;
   perf.fps = window.__tidewake?.fps ?? 0;
   perf.ms = perfMs;
-  perf.drawCalls = info.render.calls;
-  perf.triangles = info.render.triangles;
+  // Latch the scene-cost counters only from a REAL measured frame (#107 perf-flake guard): a
+  // throttled/empty headless paint reports 0 draws, which is not a measurement — keep the last
+  // good reading so a stray 0-frame can never clobber it down and flake the gate. Always keep
+  // memory/program counts fresh (they're valid even on an empty frame).
+  if (isMeasuredFrame(info.render)) {
+    perf.drawCalls = info.render.calls;
+    perf.triangles = info.render.triangles;
+  }
   perf.geometries = info.memory.geometries;
   perf.textures = info.memory.textures;
   perf.programs = info.programs ? info.programs.length : 0;
@@ -949,6 +955,13 @@ window.__tidewake = {
     while (acc > 0) { const dt = Math.min(fixed, acc); simT += dt; update(dt, simT); acc -= dt; }
     return this.state;
   },
+  // Deterministic perf measurement (#107 flake fix). The perf counters are otherwise refreshed
+  // ONLY by the rAF render loop, which headless Chrome throttles so hard (fps≈0) that a play-test
+  // can read tw.perf before any real frame has latched — the intermittent "perf counters
+  // unpopulated (drawCalls=0)" flake. This renders one frame synchronously on the main thread and
+  // refreshes the snapshot, so the gate measures a real frame deterministically instead of racing
+  // the throttled loop. Same scene/camera as loop(); sim/state untouched.
+  qaRender() { renderer.render(scene, camera); updatePerf(0); return { ...perf }; },
   fps: 0,
 };
 

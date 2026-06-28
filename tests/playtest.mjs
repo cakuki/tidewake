@@ -66,6 +66,9 @@ try {
       h: mm ? mm.height : 0,
       frames: window.__minimapFrames || 0,
     };
+    // Deterministically measure perf from a REAL synchronous frame (#107 flake fix), instead of
+    // racing the headless-throttled rAF loop that left the counters at 0 intermittently.
+    if (tw.qaRender) tw.qaRender();
     return {
       version: tw.version,
       fps: tw.fps,
@@ -491,15 +494,24 @@ try {
     }
     const speedAtEngage = tw.state.speed;
     // Keep the throttle HELD — fighting must ignore it and ease the ship down anyway.
+    // Cross-mode "world keeps living" invariant (#107 slice 2): snapshot the fleet so we can
+    // prove the snap-freeze regression (#95) can't return via BATTLE either — the player's helm
+    // freezes but at least one other vessel sails on while we're paused mid-fight.
+    const npcBeforeFight = tw.npcs.map((n) => n.pos.slice());
     let settlingDuringFight = false, fightMinSpeed = Infinity;
     if (engaged) {
       for (let i = 0; i < 80; i++) { tw.step(0.1); if (tw.state.settling) settlingDuringFight = true; fightMinSpeed = Math.min(fightMinSpeed, tw.state.speed); }
     }
     const settledSpeed = tw.state.speed;
+    const npcAfterFight = tw.npcs.map((n) => n.pos.slice());
+    let worldMovedInFight = false;
+    for (let i = 0; i < Math.min(npcBeforeFight.length, npcAfterFight.length); i++) {
+      if (Math.hypot(npcAfterFight[i][0] - npcBeforeFight[i][0], npcAfterFight[i][1] - npcBeforeFight[i][1]) > 1) worldMovedInFight = true;
+    }
     // End the fight (broadside-spam is a guaranteed win), then confirm control returns.
     for (let r = 0; r < 20 && tw.cannons.active; r++) tw.cannonFire(0);
     tw.release('w'); tw.release('a'); tw.release('d');
-    const fight = { engaged, speedAtEngage, settlingDuringFight, fightMinSpeed, settledSpeed, fightEnded: !tw.cannons.active };
+    const fight = { engaged, speedAtEngage, settlingDuringFight, fightMinSpeed, settledSpeed, worldMovedInFight, fightEnded: !tw.cannons.active };
 
     tw.newVoyage(); tw.step(0.1); // clean slate for the screenshot
     return { harbour, fight };
@@ -516,6 +528,9 @@ try {
     if (!settle.fight.settlingDuringFight) fail('slow-to-stop: settle flag never went true during the fight');
     if (!(settle.fight.settledSpeed < 3)) fail(`slow-to-stop: ship did not ease to a near-stop in the fight (settledSpeed=${settle.fight.settledSpeed?.toFixed(1)})`);
     if (!(settle.fight.settledSpeed < settle.fight.speedAtEngage)) fail(`slow-to-stop: fight did not slow the ship (engage=${settle.fight.speedAtEngage?.toFixed(1)} → settled=${settle.fight.settledSpeed?.toFixed(1)})`);
+    // Cross-mode "world keeps living" invariant (#107): the helm froze (settledSpeed<3) yet the
+    // world sailed on — the snap-freeze regression (#95) can't return via BATTLE either.
+    if (!settle.fight.worldMovedInFight) fail('mode: the world snap-froze — no vessel moved while the player was paused in BATTLE (#95/#107)');
     if (!settle.fight.fightEnded) fail('slow-to-stop: fight did not resolve so control could return');
   }
 

@@ -32,6 +32,17 @@ export function checkBudget(perf, budget = BUDGET) {
   return { ok: violations.length === 0, violations };
 }
 
+// Is this renderer-info snapshot a REAL measured frame? (#107 perf-flake guard.)
+// The perf counters are only refreshed by the rAF render loop, which headless Chrome throttles
+// hard (fps reads ~0 under swiftshader). A frame that drew nothing — a throttled/empty paint, or
+// a read taken before the first real render — reports drawCalls===0, which is not a measurement.
+// updatePerf latches only measured frames so a stray empty frame can never clobber a good reading
+// down to 0 and trip the gate's "perf counters unpopulated" check spuriously. A genuine perf
+// regression still draws (drawCalls > 0) and so still reaches the budget violation check.
+export function isMeasuredFrame(render) {
+  return !!render && typeof render.calls === 'number' && render.calls > 0;
+}
+
 // Heat-aware device-pixel-ratio cap (#63, mobile). Rendering a per-vertex Gerstner ocean at
 // full 3x retina cooks a phone (the #62 device-spike / #56 feasibility finding: "pixelRatio
 // cap 2 heavy on 3x phones"). On a coarse-pointer (touch) device we cap the backing-store
