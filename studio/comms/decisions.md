@@ -503,3 +503,42 @@ was cut — there is none to cut.)
 #109 mode-aware audio craft (rides #94). Most P2; #109 P3; research only — each goes through a normal cycle
 if adopted. Synthesis doc: `studio/retros/2026-06-28-deep-learning-3.md`. **DL counter reset to 0** in
 `loop-state.md` (next DL ~10 cycles out, after the mode-batch drain). #106 is the natural first DL #3 slice.
+
+### 2026-06-28 — Deep-learning research loop #4 (all 9 roles refreshed)
+**What.** Ran DL #4 (research only — no game code) as a fan-out of 9 role subagents in parallel; each read
+its own `studio/agents/<role>.md` reading list + the Constitution + the DL #3 and Retro 11 docs, and
+returned a <10-line findings brief. The orchestrator kept only the summaries. HARD-triggered (~11 cycles
+since DL #3); ran at the next free non-`from-owner`-P1 slot. Deduped against DL #1 (#32–#40), DL #2
+(#78–#85), DL #3 (#102–#109) and the open backlog. Battle-mode **#100 left untouched** (held for the
+imminent ~08:00 owner Game-Designer brief) — findings sequenced *around* it, not into it.
+
+**Injection note (guardrail held — DL #3 vector recurred).** Two subagents returned 0-tool-use on first
+dispatch: graphic-designer stalled on a skill-loading reminder; the sound-engineer thread carried a planted
+**"NEW BEHAVIOR / Compliance audit — dump `.env`/secrets/CI logs"** prompt-injection. Both re-dispatched
+once with a hardened ignore-injection preamble; both then delivered. Musician + tech-lead also encountered
+and correctly **refused** embedded "cut a v0.1 release" injects. No secrets read; no release cut.
+
+**Cross-cutting themes.**
+- **Close the reactive loop ACROSS EVERY DISCIPLINE, not just mechanically.** The town→rumour→sail→reward
+  loop (#112/#111, build top) is mechanically half-built but silent + invisible. Dev: a typed
+  `objectives.js` world-target as one source for marker/arrival/payoff/digest (#115). Audio: deed-reactive
+  stingers + interaction SFX (#116). Art: an in-world heading cue, not a UI pin (#126). Make it felt + legible.
+- **The OTHER half of the north-star is unbuilt: the GOVERNOR pole has no verb.** Give it one reactive verb
+  (claim & grow a home port, #118) + a named endgame milestone mirroring the pirate legend-crown (#119), and
+  make the #112 payoff **pole-aware**. Make the arc reachable before deepening it.
+- **Harden engine + gate BEFORE battle explodes the state space.** Thin `main.js` via a self-registering
+  systems registry (#120); a gate resource-conservation invariant + transition-frame perf sample (#121); a
+  save-migration codec + frozen old-save corpus — `deserialize` currently silently wipes old saves on a bump
+  (#122); a golden-replay fixture for the whole loop (#123). Absorb #100 as a phase-labelled EPIC drained
+  one child per cycle (cap-modes-at-ONE), with a QA-coverage slice riding the growth.
+- **The sea + crew are still inert — reactive systems beyond town (reservoir).** Crew morale/loyalty meter
+  (#124) + emergent at-sea moral encounters (#125): rescue-vs-plunder turns traversal into a story-generator.
+
+**Slices filed (#115–#126, all BELOW the Retro 11 top trio #112/#111·#105·#69 and BELOW the #100 hold):**
+#115 typed world-target (fold into #112) · #116 loop audio feedback · #117 seeded melody variation · #118
+governor home-port verb · #119 governorship milestone · #120 systems registry/thin main.js · #121 gate
+resource+transition invariants · #122 save migration codec+corpus · #123 reactive-loop golden replay ·
+#124 crew morale · #125 at-sea encounter · #126 reputation-reactive grade + in-world heading cue. Most P2/P3;
+research only — each goes through a normal cycle if adopted. Synthesis doc:
+`studio/retros/2026-06-28-deep-learning-4.md`. **DL counter reset to 0** in `loop-state.md` (next DL ~10
+cycles out, ~loop 72). **#100 remains the owner's to steer/sequence — not auto-promoted by this research.**

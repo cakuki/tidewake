@@ -54,7 +54,10 @@ Re-sort if the owner steers #100 to the top after the brief.
    (#112) — turning "a tip that points the bow" into a full **town → rumour → sail there → reward**
    loop. — _why: value **high** (a verb with no payoff is a town with no destination, one layer up);
    complexity **medium**; deps #103 (done). CREATIVE SPARK: the regular's tip cashes out — chase the
-   word, claim the prize. Lead with the cheap #111 marker, then the #112 payoff._
+   word, claim the prize. Lead with the cheap #111 marker, then the #112 payoff. **DL #4:** fold
+   **#115** (typed `objectives.js` world-target — one source for marker/arrival/payoff/digest) into
+   this build instead of three string-parsers; make the payoff **pole-aware** (bounty→Infamy,
+   harbour-aid→Standing) so the loop drives the player up whichever pole they chose._
 
 2. **#105 — "While you were ashore…" digest** (design; living-world legibility). A one-line
    consequence shown on Leave Harbour — cheap legibility of the "world keeps living underneath"
@@ -73,6 +76,42 @@ Re-sort if the owner steers #100 to the top after the brief.
   (#106 ph1) + QA (#107) are already built; battle is the one empty room. The owner steers WHAT and
   sequences WHEN — surface the brief over the owner channel; do **NOT** promote above where the owner
   wants it. (When it lands it likely jumps the top; until then the build top is #112/#111.)
+
+## DL #4 candidates (research reservoir — 2026-06-28; below the top trio + the #100 hold)
+
+_Filed by **Deep-Learning #4** (9-role fan-out). See `studio/retros/2026-06-28-deep-learning-4.md`.
+Asset-light, original-work-only, reactive-verbs-first. Ordered by leverage; pull from these once the
+rumour loop closes and the #100 brief is absorbed._
+
+- **#115 — typed world-target model (`objectives.js`)** — keystone that turns rumours into real state
+  (one source for #111 marker / #112 arrival / #105 digest, instead of 3 string-parsers). _**Fold into
+  the #112/#111 build above** rather than running standalone. value high · complexity low-med · dev._
+- **Engine/gate de-risk quartet — highest-leverage of the new set because battle #100 is imminent;
+  several should ride WITH #100 (Retro 11: a QA-coverage slice on each state-space growth):**
+  - **#120 — self-registering systems registry → thin `main.js`** (~1019 lines/62 KB; battle owns its
+    sub-loop without forking main). No-behaviour-change refactor; also the natural home for #36. _tech P2._
+  - **#121 — gate resource-conservation invariant** (mesh leak across an N×N cycle) **+ transition-frame
+    perf sample** (the build/teardown spike, not the settled frame). _tech+qa P2; oracle for #106 slice-4._
+  - **#122 — declarative save-migration codec + frozen old-save corpus** (`deserialize` currently
+    hard-rejects old saves → silent progress wipe on every bump). _tech+qa P2; do before #100 bumps again._
+  - **#123 — QA golden-replay fixture for the full reactive loop** (seed→listen→sail→reward). _qa P2._
+- **Governor pole — make the unbuilt half of the north-star reachable (Product):**
+  - **#118 — governor's first reactive verb: claim & grow a home port (Your Harbour)** — spend coins for
+    Standing, watch the port visibly grow. _design P2; promotes the parked #104b stretch into a verb._
+  - **#119 — governorship endgame milestone** (title mirroring the pirate legend-crown #46). _design P3;
+    deps #118 + named isles #19._
+- **Loop feedback / charm (pull once the loop closes):**
+  - **#116 — diegetic feedback for the reactive loop** (listen/reach/payoff music stingers + interaction
+    SFX + a warmer remembered-port arrival cue). _audio P3; rides #112/#109; procedural-only._
+  - **#117 — seeded per-pass melody variation** (kill sail-loop fatigue; per-pass *time* variation,
+    orthogonal to #69 per-port). _audio P3._
+  - **#126 — reputation-reactive world grade** (look reflects the Infamy↔Standing pole) **+ in-world
+    heading cue for #111** (rhumb-line wisp/horizon haze, not a UI pin). _art P3; single fog/grade uniform._
+- **Reactive-world reservoir (after the loop closes / not-more-town depth):**
+  - **#124 — crew morale/loyalty meter** fed by your choices (DL #1's never-built earned-mutiny; also the
+    battle surrender/boarding currency). _design P3._
+  - **#125 — emergent at-sea encounter: a foundering ship, rescue vs plunder** (traversal as
+    story-generator; a worthy rumour payoff). _design P3; distinct from #70 sail-over curios._
 
 ## Charm / atmosphere fillers (from-owner; slot in around the depth slices)
 
@@ -148,6 +187,7 @@ _SHIPPED & CLOSED this block (Retro 11, loops 55–61): **#103** tavern "listen 
 + a **real perf-counter race fix** (CLOSED) · **#104** the port remembers you (save v9, CLOSED) ·
 **#71** islands TLC (CLOSED). **#70** ocean whitecaps (phase 1; **#70 STAYS OPEN [STANDING-RULE]**).
 Filed follow-ups: **#111/#112** rumour marker+payoff, **#104b** port-memory depth, **#113/#114** sea
-flourishes. Earlier (Retro 10, loops 48–54): #95/#67/#96/#66/#94-ph1/#106-ph1/#97-ph1/#93/#101-ph1+2
+flourishes. **DL #4 (2026-06-28) filed #115–#126** (see the "DL #4 candidates" section above +
+`studio/retros/2026-06-28-deep-learning-4.md`). Earlier (Retro 10, loops 48–54): #95/#67/#96/#66/#94-ph1/#106-ph1/#97-ph1/#93/#101-ph1+2
 + the DL #3 research loop. EPICs #1–#9 are umbrellas, not slices._
 </content>

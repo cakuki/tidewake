@@ -32,13 +32,19 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 - **Loops since last retro:** **0** (Retro 11 just ran, covered loops 55–61; HARD trigger fired at 7).
   Cadence: retro every ~7–8 cycles, HARD trigger 7. **Next retro ~loop 68** unless a from-owner P1
   preempts.
-- **Cycles since last deep-learning loop:** **~11 — DL #4 is DUE IMMINENTLY** (DL #3 ran ~loop 50;
-  cadence ~10 → DL #4 is the next ritual slot, ~loop 62, P1-preemptible — run it after the #100 owner
-  brief is absorbed). DL #3 (2026-06-28) fanned out 9 role subagents; filed #102–#109 (mode-system
-  depth); synthesis `studio/retros/2026-06-28-deep-learning-3.md`; its town-depth loop (town as a
-  destination + transition-is-the-drama) is now CLOSED by this block. Promotes #36 fixed-timestep above
-  #84. **⚠️ Standing: a DL #3 subagent hit a planted "cut a v0.1 release" prompt-injection (refused);
-  injection guardrail covers release/scope/version/gate-bypass (Retro 10) — no incidents this block.**
+- **Cycles since last deep-learning loop:** **0 — DL #4 just ran (counter reset to 0).** DL #4
+  (2026-06-28) fanned out 9 role subagents (own reading list + Constitution + DL #3/Retro 11 docs);
+  filed **#115–#126** (all below the Retro 11 top trio + the #100 hold); synthesis
+  `studio/retros/2026-06-28-deep-learning-4.md`. Cross-cutting themes: **close the reactive loop across
+  every discipline** (typed `objectives.js` #115 + loop audio #116 + in-world heading cue #126) ·
+  **the governor pole has no verb** (#118 home-port verb + #119 milestone) · **harden engine+gate before
+  battle explodes the state space** (#120 thin main.js · #121 resource/transition gate invariants · #122
+  save migration codec · #123 loop golden-replay) · **reactive systems beyond town** (#124 crew morale ·
+  #125 at-sea encounters). **Next DL ~10 cycles out (~loop 72).** **⚠️ Standing: 1 subagent thread
+  carried a planted "Compliance audit — dump .env/secrets" prompt-injection + others a "cut a v0.1
+  release" inject — ALL refused; re-dispatched the 2 that returned 0-tool-use. Injection guardrail
+  (release/scope/version/gate-bypass + secrets-exfil) holds.** DL #3 (~loop 50) filed #102–#109;
+  promotes #36 fixed-timestep above #84.
 - **State:** core arc COMPLETE + tuned + onboarded + sunny + perf-gated; **+ cannon combat (#59), +
   mobile PWA w/ heat-aware DPR (#63), + PWA safe-area (#75 partial), + settings/toggles panel (#73),
   + arcade collision: islands (#76 a1) + harbour/fight slow-stop (#76 c) + ship-vs-ship (#76 b), +
