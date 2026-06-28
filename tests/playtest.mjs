@@ -1537,6 +1537,72 @@ try {
   if (encounter.afterPlunder.active) fail('encounter: the founderer did not despawn after the plunder choice (#125)');
   if (!encounter.afterPlunder.balladHasShip) fail('encounter: the plunder did not sing into the Ballad by name (#125/#78)');
 
+  // 2s) Resource-conservation invariant + transition-frame perf (#121, DL#4 hardening). The leak
+  // class that draw/tri budgets and the settled-frame gate (#108) cannot see: a mesh/material/
+  // geometry that is BUILT on a mode transition but never DISPOSED on the way back, growing
+  // unbounded across repeated transitions. This drives an N×N cycle over every LEGAL mode edge
+  // (SAILING↔TOWN↔BATTLE) plus the full landfall enter/leave gesture, and asserts the renderer's
+  // own tracked GEOMETRY + TEXTURE counts (renderer.info.memory) return to their settled baseline
+  // — no growth — and that the worst TRANSITION-frame perf sample (the enter/leave instant, where
+  // a future mesh-heavy battle #100 would build while another mode tears down) stays in budget.
+  // Today the modes build no per-mode meshes, so this is GREEN: it is the oracle standing in front
+  // of the parked slice-4 disposal (#106), so mesh-heavy battle is safe to land behind a teeth-
+  // bearing gate. enter/leave drive mode.subscribe — the exact seam #100 will hook build/teardown
+  // into — so the day a transition leaks a geometry, THIS catches it before it ships.
+  const leak = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const STEP = 1 / 60;
+    // Run the full landfall gesture to completion (deterministic dt, never wall-clock). The ship
+    // sits still (throttle released) so it can't sail into a port and auto-trigger a fresh edge.
+    const runGesture = (untilTownReady) => {
+      for (let i = 0; i < 120; i++) {
+        if (untilTownReady ? tw.landfall.townReady : !tw.landfall.active) break;
+        tw.step(STEP);
+      }
+    };
+    const settleToSailing = () => { tw.leaveMode(); runGesture(false); };
+    // One pass over every legal edge, rendering each enter/leave INSTANT (where a build/teardown
+    // lands) and tracking the worst transition-frame perf seen. Battle is toggled WITHOUT a sim
+    // step so the "auto-leave when not fighting" wiring in update() can't race the toggle.
+    let worst = { drawCalls: 0, triangles: 0, geometries: 0, textures: 0 };
+    const sample = (p) => { if (p.drawCalls > worst.drawCalls) worst = { drawCalls: p.drawCalls, triangles: p.triangles, geometries: p.geometries, textures: p.textures }; };
+    function cyclePass() {
+      tw.enterMode('town'); sample(tw.qaRender()); // SAILING→TOWN: landfall begins
+      runGesture(true); sample(tw.qaRender());      // …ashore
+      tw.leaveMode(); sample(tw.qaRender());         // TOWN→SAILING: set sail
+      runGesture(false);
+      tw.enterMode('battle'); sample(tw.qaRender()); // SAILING→BATTLE
+      tw.leaveMode(); sample(tw.qaRender());          // BATTLE→SAILING
+      tw.enterMode('town'); sample(tw.qaRender());    // SAILING→TOWN
+      tw.enterMode('battle'); sample(tw.qaRender());  // TOWN→BATTLE: a fight erupts ashore
+      tw.leaveMode(); sample(tw.qaRender());           // BATTLE→SAILING
+      runGesture(false);
+    }
+    tw.newVoyage(); tw.step(0.1);
+    // Warm up: one full pass + settle flushes any ONE-TIME lazy GPU allocation, so the baseline is
+    // the true steady state (a leak is unbounded GROWTH across cycles, not first-touch init).
+    cyclePass(); settleToSailing();
+    const base = tw.qaRender();
+    const baseline = { geometries: base.geometries, textures: base.textures };
+    const N = 8;
+    for (let n = 0; n < N; n++) cyclePass();
+    settleToSailing();
+    const fin = tw.qaRender();
+    const final = { geometries: fin.geometries, textures: fin.textures };
+    tw.newVoyage(); tw.step(0.1); // clean slate for the screenshot
+    return {
+      N, baseline, final, worstTransition: worst,
+      geomGrowth: final.geometries - baseline.geometries,
+      texGrowth: final.textures - baseline.textures,
+    };
+  });
+  if (!(leak.baseline.geometries > 0)) fail(`leak-invariant: baseline geometry count unpopulated (${leak.baseline.geometries}) — cannot gate (#121)`);
+  if (leak.geomGrowth > 0) fail(`leak-invariant: geometry count GREW across ${leak.N} mode-transition cycles (baseline=${leak.baseline.geometries} → final=${leak.final.geometries}, +${leak.geomGrowth}) — a resource leak across mode transitions (#121)`);
+  if (leak.texGrowth > 0) fail(`leak-invariant: texture count GREW across ${leak.N} mode-transition cycles (baseline=${leak.baseline.textures} → final=${leak.final.textures}, +${leak.texGrowth}) — a resource leak (#121)`);
+  if (!(leak.worstTransition.drawCalls > 0)) fail('leak-invariant: no transition-frame perf sample was captured (#121)');
+  const transitionBudget = checkBudget(leak.worstTransition, BUDGET);
+  for (const v of transitionBudget.violations) fail(`leak-invariant: a mode-transition frame blew the perf budget: ${v.metric}=${v.value} > ${v.ceiling} (#121)`);
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -1559,7 +1625,8 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, errors }, null, 2));
+  console.log(`leak-invariant (#121): ${leak.N}× mode cycles · geom ${leak.baseline.geometries}→${leak.final.geometries} (+${leak.geomGrowth}) · tex ${leak.baseline.textures}→${leak.final.textures} (+${leak.texGrowth}) · worst transition ${leak.worstTransition.drawCalls} draws/${leak.worstTransition.triangles} tris`);
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, leak, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));
