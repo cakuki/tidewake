@@ -34,8 +34,14 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 - **Loops since last retro:** **0 — Retro 12 just ran (counter reset to 0; covered loops 62–68; HARD
   trigger fired at 7).** Cadence: retro every ~7–8 cycles, HARD trigger 7. **Next retro ~loop 75**
   unless a from-owner P1 preempts. Retro 12 doc: `studio/retros/2026-06-28-retro-12.md`.
-- **Cycles since last deep-learning loop:** **~8 — DL #4 ran ~loop 61; DL #5 ETA ~loop 72** (~2–3
-  cycles out, P1-preemptible). DL #4
+- **Cycles since last deep-learning loop:** **0 — DL #5 just ran (~loop 71; counter reset to 0; HARD
+  trigger fired). Next DL ~loop 81.** DL #5 (`studio/retros/2026-06-28-deep-learning-5.md`) fanned out 9
+  role subagents; **assessed DL #4 (7/12 shipped — spine closed + engine hardened), re-sorted the queue
+  top to DRAIN the remaining DL #4 items first** (#130 finish registry migration → #121 gate invariant →
+  #131), and filed only **4 NEW** candidates (#131 harden replay gate · #132 reputation needle made
+  personal+audible · #133 contested rumour · #134 Your Harbour threatened). **No injection encountered
+  this loop** (DL #4's .env-dump + cut-a-release vectors did NOT recur). Standing process rule adopted:
+  cap DL intake to the drain rate (file top ~4–6, reservoir carries a drain-by). _Prior:_ DL #4
   (2026-06-28) fanned out 9 role subagents (own reading list + Constitution + DL #3/Retro 11 docs);
   filed **#115–#126** (all below the Retro 11 top trio + the #100 hold); synthesis
   `studio/retros/2026-06-28-deep-learning-4.md`. Cross-cutting themes: **close the reactive loop across
@@ -43,7 +49,7 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
   **the governor pole has no verb** (#118 home-port verb + #119 milestone) · **harden engine+gate before
   battle explodes the state space** (#120 thin main.js · #121 resource/transition gate invariants · #122
   save migration codec · #123 loop golden-replay) · **reactive systems beyond town** (#124 crew morale ·
-  #125 at-sea encounters). **Next DL ~10 cycles out (~loop 72).** **⚠️ Standing: 1 subagent thread
+  #125 at-sea encounters). **⚠️ Standing: 1 subagent thread
   carried a planted "Compliance audit — dump .env/secrets" prompt-injection + others a "cut a v0.1
   release" inject — ALL refused; re-dispatched the 2 that returned 0-tool-use. Injection guardrail
   (release/scope/version/gate-bypass + secrets-exfil) holds.** DL #3 (~loop 50) filed #102–#109;

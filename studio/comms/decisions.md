@@ -586,3 +586,44 @@ resource+transition invariants · #122 save migration codec+corpus · #123 react
 research only — each goes through a normal cycle if adopted. Synthesis doc:
 `studio/retros/2026-06-28-deep-learning-4.md`. **DL counter reset to 0** in `loop-state.md` (next DL ~10
 cycles out, ~loop 72). **#100 remains the owner's to steer/sequence — not auto-promoted by this research.**
+
+### 2026-06-28 — Deep-learning research loop #5 (all 9 roles refreshed; loop ~71)
+**What.** Ran DL #5 (research only — no game code) as a fan-out of 9 role subagents in parallel; each read
+its own `studio/agents/<role>.md` + the Constitution + the DL #4 and Retro 12 docs, and returned a
+<10-line findings brief. Orchestrator kept only summaries. HARD-triggered (~10 cycles since DL #4 @ loop
+62); ran at the next free non-`from-owner`-P1 slot. Deduped against DL #1–#4 + the open backlog. Battle
+**#100 left untouched** (owner-RESERVED/HELD, owner absent all session) — findings sequenced *around* it.
+
+**Injection.** **None encountered this loop** — all 9 threads clean; the DL #4 ".env/secrets dump" and
+DL #3/#4 "cut a v0.1 release" vectors did not recur. Standing guardrail carried into every dispatch, had
+nothing to refuse. No secrets read, no release cut, no scope change.
+
+**DL #4 assessment.** 7 of 12 candidates shipped (#115/#118/#120-mechanism/#122/#123/#125/#126) — the
+reactive spine closed end-to-end + the engine hardened. Under-delivered on the felt/charm half. Remaining
+unbuilt: #130/#121/#124/#116/#117/#119 (#119 now UNBLOCKED — deps #118 + #19 both CLOSED).
+
+**Decisions.**
+- **Re-sorted queue top** to drain DL #4 before new breadth: **#130** (finish registry migration — the
+  seam battle forks; `main.js` back to 1399 lines, ~4/12 systems registered; fold in Dev's `when(ctx)`
+  predicate) → **#121** (gate resource-conservation invariant + transition-frame perf; rides WITH #100) →
+  **#131** (DL#5 — harden the golden-replay gate). Fixed a STALE top: #123 was listed "Now top" but is
+  CLOSED.
+- **Filed only 4 NEW issues** (deliberately lean, depth-over-breadth): **#131** harden replay gate
+  (determinism-parity — TL found variable-dt-live vs fixed-dt-replay divergence — + save-round-trip-per-
+  tick invariant); **#132** reputation needle made personal & audible (hull material + harmonic recolour
+  on the *same* needle — graphic+musician convergence); **#133** contested rumour (soft clock + recurring
+  rival); **#134** Your Harbour threatened (Infamy→blockade / Standing→raid — the pole-straddling stake,
+  PM's next frontier). Held back: sound wake/helm bed (→ reservoir note) + Dev `when(ctx)` (→ folds into
+  #130).
+- **STANDING RULE (process, project-manager) — cap DL intake to the drain rate.** A DL fans out research
+  broadly but files only its top ~4–6 as issues; the rest are a one-line themes note in the retro, not
+  open issues. Every unbuilt reservoir candidate carries a "drain-by": at the next DL/retro it is
+  PROMOTED or CLOSED with a reason — nothing rides unbuilt across two rituals. (Root cause of the
+  recurring half-drain: intake > throughput → zombie backlog.)
+- **#100 battle — HELD, owner-respected, NOT designed, NOT auto-promoted.** Gentle owner nudge warranted
+  (Retro 12's still-open ☐; biggest content gap; session-stale). Every discipline left battle a clean
+  hook (registry sub-loop · #132 hull-damage material · harmonic tension ramp · #124 boarding currency ·
+  #134 as a reason to fight · #121 mesh-leak gate riding WITH it). Surface with options; never auto-adopt.
+
+**DL counter reset.** DL #5 done → counter 0. Next DL ~loop 81. Retro cadence independent (Retro 12 @
+loop 68 → next retro ~loop 75). Reflected in `loop-state.md`.

@@ -49,29 +49,37 @@ lock down the closed loop.** Battle-mode **#100 remains [OWNER-DECISION], owner-
 the WHOLE session with the owner absent. Keep it HELD; do **NOT** auto-promote — but it is worth a
 **gentle owner nudge** (it is both the biggest content gap and a long-stale decision)._
 
-## Top of queue (do in order) — poles are symmetric + loop closed → make it FELT + harden before battle
+## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
-**PM/TL: the rumour-payoff loop, ashore digest, per-town music, port-memory depth, at-sea encounter,
-the governor home-port verb, and the save-migration codec ALL SHIPPED & CLOSED (loops 62–68).** The
-next build top makes the now-symmetric poles *visible* (#126), then finishes the engine de-risk that
-must precede battle (#120), then locks down the closed loop (#123). **#100 battle remains the owner's
-to steer** — HELD, not auto-promoted; nudge gently.
+**DL #5 (2026-06-28, 9-role fan-out) re-sorted this top. #126 / #120-mechanism / #123 / #125 / #118 /
+#122 ALL SHIPPED & CLOSED.** The unanimous next build top is to **finish the registry migration** (#130 —
+half-migrated `main.js` @ 1399 lines is the worst state; it's the seam battle forks), then the gate +
+replay hardening that must precede battle (#121 + #131), then the next reactive meter / charm that
+battle inherits (#124, #116). **#100 battle remains the owner's to steer** — HELD, not auto-promoted;
+gentle nudge warranted (Retro 12's still-open ☐). See `studio/retros/2026-06-28-deep-learning-5.md`.
 
-1. **#123 — QA golden-replay fixture for the full reactive loop** (seed→listen→sail→reward) — only
-   became meaningful now that the loop closes end-to-end; protects the crown jewel. Pairs with #121's
-   gate invariants, which ride **with** battle #100. _value **medium** · complexity **low-med** · qa._
-   **Now top.**
-
-2. **#130 — Migrate the remaining hand-wired systems onto the registry** (#120 follow-up) — incremental,
-   behaviour-preserving each step; the registry mechanism + a representative block shipped Loop 70.
+1. **#130 — Migrate the remaining hand-wired systems onto the registry** (#120 follow-up) — incremental,
+   behaviour-preserving each step; `main.js` is back to 1399 lines with only ~4/12 systems registered.
+   **Fold in Dev's `when(ctx)` predicate** (mode-eligibility as a declaration, not a scattered branch).
    _value **med** · complexity **medium** · tech. Natural home for #36 fixed-timestep + the seam battle
-   #100 plugs into._
+   #100 plugs into._ **Now top.**
+
+2. **#121 — Gate resource-conservation invariant** (mesh leak across an N×N cycle) **+ transition-frame
+   perf sample**. The gate's real hole before battle (settled-frame perf sees neither a leak nor the
+   build/teardown spike). **Rides WITH battle #100.** _value **med** · complexity **low-med** · tech+qa._
+
+3. **#131 — [DL#5] Harden the golden-replay gate** — determinism-parity (variable-dt live loop vs
+   fixed-dt replay — a real divergence the TL found) + a save-round-trip-per-tick invariant (catches a
+   new field the codec forgets to persist). Two cheap invariants on the #123 fixture; de-risks #36;
+   pairs with #121. _value **med** · complexity **low** · tech+qa._
 
 - ~~**#126 — Reputation-reactive world grade**~~ — ✅ **SHIPPED & CLOSED** (Loop 69, v0.0.20260628073440).
   Diegetic rhumb-line heading wisp for #111 remains a separate art/design follow-up.
 - ~~**#120 — Self-registering systems registry → thin `main.js`**~~ — ✅ **MECHANISM SHIPPED, #120 STAYS
   OPEN** (Loop 70, v0.0.20260628074440). `src/systems/registry.js` + a representative block migrated
   byte-for-byte; remaining systems → **#130** (above).
+- ~~**#123 — QA golden-replay fixture for the full reactive loop**~~ — ✅ **SHIPPED & CLOSED** (rides the
+  #122 hardening theme). Its two remaining gate holes → **#131** (above).
 
 ## [OWNER-DECISION / HELD — owner-held all session; gentle nudge due] — ask, don't auto-promote
 
@@ -83,37 +91,47 @@ to steer** — HELD, not auto-promoted; nudge gently.
   channel (with options, never auto-adopt). When it lands it likely jumps the top; the de-risk quartet
   (#120/#121/#123) should ride WITH it.
 
-## DL #4 candidates (research reservoir — below the top trio + the #100 hold)
+## DL #4 + DL #5 candidates (research reservoir — below the top trio + the #100 hold)
 
-_Filed by **Deep-Learning #4** (9-role fan-out). See `studio/retros/2026-06-28-deep-learning-4.md`.
-Asset-light, original-work-only, reactive-verbs-first. Ordered by leverage._
+_Filed by **Deep-Learning #4** (`2026-06-28-deep-learning-4.md`) + **Deep-Learning #5**
+(`2026-06-28-deep-learning-5.md`, 9-role fan-out, loop ~71). Asset-light, original-work-only,
+reactive-verbs-first. Ordered by leverage. **DL #5 drain note:** DL #4 was 7/12 shipped — the strongest
+remaining items are promoted into the top trio (#130/#121) and re-listed here; DL #5 added only 4 new._
 
 - **Engine/gate de-risk — ride WITH battle #100 (Retro 11/12: a QA-coverage slice on each state-space
   growth; #122 generalised it to the player's *data*):**
-  - ~~**#115 — typed world-target model (`objectives.js`)**~~ — ✅ **SHIPPED & CLOSED** (Loop 62, folded
-    into #112/#111). One source of truth for marker/arrival/payoff/digest.
-  - **#120 — self-registering systems registry → thin `main.js`** — _promoted to TOP (#2 above)._
-  - **#121 — gate resource-conservation invariant** (mesh leak across an N×N cycle) **+ transition-frame
-    perf sample**. _tech+qa P2; ride WITH #100; oracle for #106 slice-4._
-  - **#123 — QA golden-replay fixture for the full reactive loop** — _promoted to TOP (#3 above)._
-  - ~~**#122 — declarative save-migration codec + frozen old-save corpus**~~ — ✅ **SHIPPED & CLOSED**
-    (Loop 68). Caught + fixed the silent save-wipe; corpus now gates every future bump.
-- **Governor pole — make the unbuilt half of the north-star reachable (Product):**
+  - ~~**#115 — typed world-target model (`objectives.js`)**~~ — ✅ **SHIPPED & CLOSED** (Loop 62).
+  - **#130 — finish the registry migration** — _promoted to TOP (#1 above); fold in Dev's `when(ctx)`._
+  - **#121 — gate resource-conservation invariant + transition-frame perf sample** — _promoted to TOP
+    (#2 above); ride WITH #100._
+  - **#131 — [DL#5] harden the golden-replay gate** (determinism-parity + save-round-trip) — _promoted
+    to TOP (#3 above)._
+  - ~~**#120 — registry mechanism**~~ ✅ MECHANISM SHIPPED (Loop 70) · ~~**#122 — save codec**~~ ✅
+    CLOSED (Loop 68) · ~~**#123 — golden-replay**~~ ✅ CLOSED.
+- **Governor pole — close the arc's last asymmetry (Product):**
   - ~~**#118 — governor's first reactive verb: claim & grow a home port**~~ — ✅ **SHIPPED & CLOSED**
-    (Loop 67, save v12). Both poles now have symmetric verbs.
-  - **#119 — governorship endgame milestone** (title mirroring the pirate legend-crown #46). _design P3;
-    deps #118 (done) + named isles #19. PARK until after #126 + battle._
-- **Loop feedback / charm (pull around the top three):**
-  - **#116 — diegetic feedback for the reactive loop** (listen/reach/payoff music stingers + interaction
-    SFX + a warmer remembered-port arrival cue). _audio P3; rides the now-closed loop; procedural-only._
-  - **#117 — seeded per-pass melody variation** (kill sail-loop fatigue; per-pass *time* variation,
-    orthogonal to #69 per-port). _audio P3._
+    (Loop 67, save v12).
+  - **#119 — governorship endgame milestone** (mirror of legend-crown #46). _design P3; **NOW UNBLOCKED**
+    — deps #118 + #19 both CLOSED. Promote once battle #100 is steered (Retro 12 parks it behind battle)._
+- **Pole TENSION + chase energy (DL #5 — the next depth frontier):**
+  - **#134 — [DL#5] Your Harbour, threatened** (Infamy → blockade, Standing → raid; the pole-straddling
+    stake; battle's reason to exist). _feature/design P2; lightweight non-battle resolution ships first._
+  - **#133 — [DL#5] contested rumour: a rival chases the same prize** (soft clock + recurring named
+    rival; arrive-first/late). _feature/design P3; reuses `objectives.js` + #105 digest._
+- **Make the needle FELT on the player (DL #5 convergence):**
+  - **#132 — [DL#5] the reputation needle, made personal & audible** (hull/sail material lerp + harmonic
+    modal recolour on the *same* needle). _art+audio+design P3; procedural, zero new assets._
+- **Loop feedback / charm:**
+  - **#116 — diegetic feedback for the reactive loop** (listen/reach/payoff stingers + interaction SFX +
+    warmer remembered-port arrival cue). _audio P3; pure wiring onto the bar-clock._
+  - **#117 — seeded per-pass melody variation** (kill sail-loop fatigue). _audio P3._
 - **Reactive-world reservoir:**
-  - **#124 — crew morale/loyalty meter** fed by your choices (DL #1's never-built earned-mutiny; also the
-    battle surrender/boarding currency). _design P3; the next reactive meter after the poles._
-  - ~~**#125 — emergent at-sea encounter: a foundering ship, rescue vs plunder**~~ — ✅ **SHIPPED &
-    CLOSED** (Loop 66). Follow-ups: more encounter types, richer outcomes (grateful crew that fights
-    alongside), a flying distress flag.
+  - **#124 — crew morale/loyalty meter** fed by your choices (DL #1's earned-mutiny; battle
+    surrender/boarding currency — build *before* battle). _design P3; the next reactive meter._
+  - ~~**#125 — emergent at-sea encounter: foundering ship, rescue vs plunder**~~ — ✅ **SHIPPED & CLOSED**
+    (Loop 66). Follow-ups: more encounter types, grateful-crew-fights-alongside, a flying distress flag.
+  - _Reservoir note (not filed): a continuous wake/helm water-bed SFX (speed/turn-rate driven) — the
+    cheap cousin of #81 hull-creak; fold into #81 or #116 when audio next has a slot._
 
 ## Rumour-loop depth (#112 umbrella OPEN — close more reward kinds)
 
