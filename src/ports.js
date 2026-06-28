@@ -127,6 +127,9 @@ export function createPorts(world) {
     group,
     // Public, serialisable list for QA/tests.
     get ports() { return ports.map((p) => ({ name: p.name, pos: [p.x, p.z] })); },
+    // Full placements (incl. the jetty bearing) for world dressing (#101): props.js needs
+    // each port's seaward angle to lay barrels/crates along the planks and frame it with palms.
+    get portPlacements() { return ports.map((p) => ({ name: p.name, x: p.x, z: p.z, angle: p.angle })); },
     get docked() { return prevDocked; },
     // Look up a port's geometry by name — `{ x, z, angle }` — for the Leave Harbour seaward
     // nudge (#67). Null for an unknown/at-sea name.

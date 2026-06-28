@@ -1001,6 +1001,28 @@ try {
   if (!(fauna.shipShift > 20)) fail(`fauna: ship did not actually sail (shift=${fauna.shipShift?.toFixed(1)})`);
   if (!(fauna.centerShift > 5)) fail(`fauna: the flock did not track the player as they sailed (centreShift=${fauna.centerShift?.toFixed(1)})`);
 
+  // 2p) CC0 Pirate Kit port dressing (#101): each port is dressed with instanced barrels,
+  // crates & palms, and far clusters are distance-culled. Prove props were placed, that
+  // teleporting just off a port draws its cluster, and that the far open sea culls to zero.
+  const props = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);
+    const all = tw.props;
+    // Sail far from every port → all clusters culled.
+    tw.qaTeleport(8000, 8000); tw.step(0.1);
+    const farAway = tw.props.visible;
+    // Drop just off the first port (within cull, outside the dock radius) → its cluster draws.
+    const p = tw.ports[0].pos;
+    tw.qaTeleport(p[0] + 150, p[1]); tw.step(0.1);
+    const nearPort = tw.props.visible;
+    tw.newVoyage(); tw.step(0.1);
+    return { count: all.count, clusters: all.clusters, farAway, nearPort };
+  });
+  if (!(props.count > 0)) fail(`props: no port dressing placed (count=${props.count})`);
+  if (!(props.clusters > 0)) fail(`props: no port clusters built (clusters=${props.clusters})`);
+  if (props.farAway !== 0) fail(`props: far clusters not culled (visible=${props.farAway} at open sea)`);
+  if (!(props.nearPort > 0)) fail(`props: dressing not drawn near a port (visible=${props.nearPort})`);
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -1023,7 +1045,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, landfall, ballad, falseColours, marque, fauna, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, landfall, ballad, falseColours, marque, fauna, props, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

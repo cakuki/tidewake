@@ -1,0 +1,8 @@
+Kenney Pirate Kit (2.1) — world-dressing props
+Source: https://kenney.nl/assets/pirate-kit
+Author: Kenney (www.kenney.nl)
+License: Creative Commons Zero, CC0 1.0 Universal (public domain)
+         http://creativecommons.org/publicdomain/zero/1.0/
+
+No attribution is legally required; credited here and in /CREDITS.md as good
+open-source practice. Files: barrel.glb, crate.glb, palm-straight.glb.

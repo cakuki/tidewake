@@ -6,6 +6,7 @@ import { createWake } from './wake.js';
 import { createNpcs } from './npc.js';
 import { createFauna } from './fauna.js';
 import { createPorts, DOCK_RADIUS } from './ports.js';
+import { loadProps } from './props.js';
 import { createAudio } from './audio.js';
 import { createMusic } from './music.js';
 import { createInput } from './input.js';
@@ -82,6 +83,13 @@ const wake = createWake(ocean);
 scene.add(wake.points);
 const ports = createPorts(world);
 scene.add(ports.group);
+// CC0 Pirate Kit world dressing (#101): dress each port as a working harbour — barrels & crates
+// as dock cargo, palms framing the jetty foot — loaded like the #32 hull (GLTFLoader, graceful
+// fallback). Repeated props are InstancedMesh'd (one draw per type per port) and each cluster is
+// distance-culled wholesale, so a furnished world stays nearly free. Updated in update() so the
+// dressing pops in as you raise a port and vanishes again out at sea.
+const props = await loadProps({ ports: ports.portPlacements });
+scene.add(props.group);
 // Characterful island names + a one-time comedic landfall line (#19). Pure naming/approach
 // logic lives in src/islands.js; here we just fire the beat through the shared HUD toast.
 const islandNamer = createIslandNamer({ world });
@@ -560,6 +568,7 @@ function update(dt, t) {
   islandNamer.update(state.pos, onApproachIsland); // name + flavour the first time you near an isle (#19)
   wake.update(dt, state, t);                   // bow wake + trailing foam
   fauna.update(dt, t, { shipPos: [state.pos.x, state.pos.z], focus: camera.position }); // gull flock (#97): wheels with you, hugs the coast, culled off-stage
+  props.update([state.pos.x, state.pos.z]);    // port dressing (#101): show the nearest dressed harbour, cull the rest
   hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
   checkLegends();                              // endgame payoff: crown a new legend once (#46)
   checkOnboarding();                           // invisible onboarding: goal nudge + first-win beats (#60)
@@ -774,6 +783,13 @@ window.__tidewake = {
   // cull), whether it's roosting over a coast, and the live flock centre — so a headless
   // playtest can assert the sky is alive and tracks the player.
   get fauna() { return fauna.snapshot(); },
+  // CC0 Pirate Kit port dressing (#101) QA surface: how many props were placed, how many are
+  // currently drawn (distance cull), and how many port clusters exist — so a headless playtest
+  // can assert the harbours are furnished and that far clusters are culled to nothing.
+  get props() { return props.snapshot(); },
+  // QA teleport: drop the hull at a world XZ (e.g. just off a port) so a gallery shot can frame
+  // a dressed harbour without sailing there. Sim/state otherwise untouched.
+  qaTeleport(x, z) { state.pos.x = x; state.pos.z = z; return [state.pos.x, state.pos.z]; },
   // Ship-vs-ship collision (#76 b) QA surface: the forgiving hull radii so a headless playtest
   // can drive the player into an NPC and assert the hulls don't interpenetrate (bound = sum).
   get collisionRadii() { return { ship: SHIP_RADIUS, npc: NPC_RADIUS, bound: SHIP_RADIUS + NPC_RADIUS }; },
