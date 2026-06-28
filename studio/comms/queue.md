@@ -57,19 +57,21 @@ next build top makes the now-symmetric poles *visible* (#126), then finishes the
 must precede battle (#120), then locks down the closed loop (#123). **#100 battle remains the owner's
 to steer** — HELD, not auto-promoted; nudge gently.
 
-1. **#126 — Reputation-reactive world grade (+ in-world heading cue for #111)** — the sea/sky look
-   reflects the Infamy↔Standing needle; folds in a diegetic rhumb-line heading wisp for #111 (not a UI
-   pin). _value **high** · complexity **low** (single fog/grade uniform) · art/design. **Top.** Cheapest
-   high-charm payoff on this block's symmetric-pole work._
-
-2. **#120 — Self-registering systems registry → thin `main.js`** (~1019 lines; battle #100 forks its
-   own sub-loop without forking main; natural home for #36 fixed-timestep). No-behaviour-change
-   refactor — **do it before #100 lands**, while it's not a refactor-under-fire. _value **med-high** ·
-   complexity **medium** · tech. Now overlaps #106 slice 1 — sequence them together._
-
-3. **#123 — QA golden-replay fixture for the full reactive loop** (seed→listen→sail→reward) — only
+1. **#123 — QA golden-replay fixture for the full reactive loop** (seed→listen→sail→reward) — only
    became meaningful now that the loop closes end-to-end; protects the crown jewel. Pairs with #121's
    gate invariants, which ride **with** battle #100. _value **medium** · complexity **low-med** · qa._
+   **Now top.**
+
+2. **#130 — Migrate the remaining hand-wired systems onto the registry** (#120 follow-up) — incremental,
+   behaviour-preserving each step; the registry mechanism + a representative block shipped Loop 70.
+   _value **med** · complexity **medium** · tech. Natural home for #36 fixed-timestep + the seam battle
+   #100 plugs into._
+
+- ~~**#126 — Reputation-reactive world grade**~~ — ✅ **SHIPPED & CLOSED** (Loop 69, v0.0.20260628073440).
+  Diegetic rhumb-line heading wisp for #111 remains a separate art/design follow-up.
+- ~~**#120 — Self-registering systems registry → thin `main.js`**~~ — ✅ **MECHANISM SHIPPED, #120 STAYS
+  OPEN** (Loop 70, v0.0.20260628074440). `src/systems/registry.js` + a representative block migrated
+  byte-for-byte; remaining systems → **#130** (above).
 
 ## [OWNER-DECISION / HELD — owner-held all session; gentle nudge due] — ask, don't auto-promote
 
