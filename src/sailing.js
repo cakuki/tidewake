@@ -117,7 +117,12 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
       if (wantsToGo) state.throttle = Math.min(1, state.throttle + dt * 0.8);
       if (keys.has('s') || keys.has('arrowdown')) state.throttle = Math.max(0, state.throttle - dt * 1.2);
     }
-    const steer = fighting ? 0 : (keys.has('a') || keys.has('arrowleft') ? 1 : 0) - (keys.has('d') || keys.has('arrowright') ? 1 : 0);
+    // Steer command: keyboard A/D (±1) stays authoritative and unchanged; when it's idle, the
+    // analog ship's-wheel axis (#93, input.steerAxis from the on-screen helm) takes over, so a
+    // half-turn of the wheel gives a half rudder. Both feed the SAME eased rudder below (#20).
+    const kbSteer = (keys.has('a') || keys.has('arrowleft') ? 1 : 0) - (keys.has('d') || keys.has('arrowright') ? 1 : 0);
+    const wheelAxis = (input && typeof input.steerAxis === 'number') ? input.steerAxis : 0;
+    const steer = fighting ? 0 : (kbSteer !== 0 ? kbSteer : wheelAxis);
 
     // wind modifies achievable speed: sailing with the wind is faster. Then EASE that target
     // DOWN to settle for a fight / harbour approach (#76 c) — a fight forces a near-stop, a

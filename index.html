@@ -406,8 +406,22 @@
       bottom: calc(22px + env(safe-area-inset-bottom, 0px));
     }
     #touch-controls .tc-throttle { right: 18px; flex-direction: column; }
-    #touch-controls .tc-steer { left: 18px; }
     #touch-controls .tc-action { left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+    /* Ship's-wheel touch steering (#93): the rotatable helm sits in its OWN fixed control zone
+       (bottom-left, where the ◀▶ buttons were). pointer-events:auto + touch-action:none mean a
+       drag here turns the wheel and never bleeds into the full-screen camera-orbit drag. The JS
+       rotates it via transform; will-change keeps the spin smooth on a phone. */
+    #touch-controls #ship-wheel {
+      position: fixed; z-index: 13;
+      left: calc(16px + env(safe-area-inset-left, 0px));
+      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+      width: 128px; height: 128px;
+      pointer-events: auto; touch-action: none; cursor: grab;
+      user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+      filter: drop-shadow(0 5px 14px rgba(0,0,0,.55));
+      will-change: transform; opacity: .92;
+    }
+    #touch-controls #ship-wheel:active { cursor: grabbing; opacity: 1; }
     #touch-controls .tc-btn {
       pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none;
       width: 62px; height: 62px; display: grid; place-items: center; font-size: 23px; line-height: 1;
@@ -571,10 +585,40 @@
        on touch / coarse-pointer devices via the `touch` class on <body> (input.js). They
        feed the SAME key set the keyboard does, so every system works unchanged. -->
   <div id="touch-controls" aria-hidden="true">
-    <div class="tc-cluster tc-steer">
-      <button class="tc-btn" type="button" data-hold="a" aria-label="Steer to port (left)">◀</button>
-      <button class="tc-btn" type="button" data-hold="d" aria-label="Steer to starboard (right)">▶</button>
-    </div>
+    <!-- Ship's-wheel touch steering (#93): a rotatable brass-and-wood helm that REPLACES the old
+         ◀▶ steer buttons. Drag to turn — clockwise steers starboard, anti-clockwise to port; lift
+         off and it springs back amidships. Wired in src/ui/wheel.js (drag-rotation → analog steer
+         → the eased rudder #20). Inline SVG = license-clean, crisp at any DPR, near-zero weight. -->
+    <svg id="ship-wheel" viewBox="0 0 100 100" role="slider" aria-label="Ship's wheel — drag to steer" tabindex="-1">
+      <defs>
+        <radialGradient id="sw-brass" cx="50%" cy="38%" r="65%">
+          <stop offset="0%" stop-color="#ffe9a8"/><stop offset="55%" stop-color="#d6a942"/><stop offset="100%" stop-color="#8a6a1f"/>
+        </radialGradient>
+        <linearGradient id="sw-wood" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#9c6a38"/><stop offset="50%" stop-color="#6e4423"/><stop offset="100%" stop-color="#4a2c15"/>
+        </linearGradient>
+      </defs>
+      <!-- eight handle spikes beyond the rim -->
+      <g stroke="url(#sw-wood)" stroke-width="6" stroke-linecap="round">
+        <line x1="50" y1="50" x2="50" y2="6"/><line x1="50" y1="50" x2="50" y2="94"/>
+        <line x1="50" y1="50" x2="6" y2="50"/><line x1="50" y1="50" x2="94" y2="50"/>
+        <line x1="50" y1="50" x2="19" y2="19"/><line x1="50" y1="50" x2="81" y2="81"/>
+        <line x1="50" y1="50" x2="81" y2="19"/><line x1="50" y1="50" x2="19" y2="81"/>
+      </g>
+      <!-- brass handle knobs -->
+      <g fill="url(#sw-brass)">
+        <circle cx="50" cy="6" r="6.5"/><circle cx="50" cy="94" r="6.5"/>
+        <circle cx="6" cy="50" r="6.5"/><circle cx="94" cy="50" r="6.5"/>
+        <circle cx="19" cy="19" r="6.5"/><circle cx="81" cy="81" r="6.5"/>
+        <circle cx="81" cy="19" r="6.5"/><circle cx="19" cy="81" r="6.5"/>
+      </g>
+      <!-- wooden rim -->
+      <circle cx="50" cy="50" r="33" fill="none" stroke="url(#sw-wood)" stroke-width="9"/>
+      <circle cx="50" cy="50" r="33" fill="none" stroke="#2c1a0d" stroke-width="1.4" opacity=".5"/>
+      <!-- brass hub -->
+      <circle cx="50" cy="50" r="12" fill="url(#sw-brass)" stroke="#5c4214" stroke-width="1.5"/>
+      <circle cx="50" cy="50" r="4.5" fill="#5c4214"/>
+    </svg>
     <div class="tc-cluster tc-throttle">
       <button class="tc-btn" type="button" data-hold="w" aria-label="Throttle up">▲</button>
       <button class="tc-btn" type="button" data-hold="s" aria-label="Throttle down">▼</button>

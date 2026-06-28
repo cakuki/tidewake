@@ -287,7 +287,8 @@ try {
       standalone: !!(manifest && manifest.display === 'standalone'),
       icon512: !!(manifest && manifest.icons && manifest.icons.some((i) => i.sizes === '512x512')),
       appleOk,
-      touchControls: { steer: !!tc?.querySelector('[data-hold="a"]'), throttle: !!tc?.querySelector('[data-hold="w"]'), fire: !!tc?.querySelector('[data-tap="g"]'), duel: !!tc?.querySelector('[data-tap="f"]') },
+      // #93: steering is now the rotatable ship's-wheel (#ship-wheel), not the old ◀▶ buttons.
+      touchControls: { steer: !!tc?.querySelector('#ship-wheel'), throttle: !!tc?.querySelector('[data-hold="w"]'), fire: !!tc?.querySelector('[data-tap="g"]'), duel: !!tc?.querySelector('[data-tap="f"]') },
     };
   });
   if (!pwa.manifestLinked) fail('PWA: no <link rel="manifest"> in index.html');
@@ -297,8 +298,36 @@ try {
   if (!pwa.icon512) fail('PWA: manifest has no 512x512 icon');
   if (!pwa.appleOk) fail('PWA: apple-touch-icon did not load (200)');
   for (const [verb, present] of Object.entries(pwa.touchControls)) {
-    if (!present) fail(`touch controls: ${verb} button missing from #touch-controls`);
+    if (!present) fail(`touch controls: ${verb} control missing from #touch-controls`);
   }
+
+  // 2e′) Ship's-wheel touch steering (#93): rotating the on-screen helm must turn the ship,
+  // feeding the SAME eased rudder the keyboard does. Drive the wheel headlessly (no real touch):
+  // turn it to full lock, sail, and assert the heading swings; centre it and assert the rudder
+  // eases back toward amidships. Proves the analog wheel→steer→rudder→heading path end-to-end.
+  const wheelNav = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage();
+    tw.centreWheel();
+    tw.press('w'); tw.step(2);            // gather way so the rudder has authority
+    const h0 = tw.state.heading;
+    const steerStarboard = tw.steerWheel(2.2);   // hard clockwise = hard a-starboard
+    tw.step(2.5);
+    const turned = tw.state.heading;
+    const rudderHeld = tw.state.rudder;
+    tw.centreWheel();                      // lift off → self-centring helm
+    tw.step(2.5);
+    const rudderAfter = tw.state.rudder;
+    tw.release('w');
+    return {
+      steerStarboard, turnedBy: turned - h0, rudderHeld, rudderAfter,
+      axisAfterCentre: tw.wheel.steer,
+    };
+  });
+  if (!(Math.abs(wheelNav.turnedBy) > 0.15)) fail(`ship's-wheel: a full-lock helm did not turn the ship (Δheading=${wheelNav.turnedBy})`);
+  if (!(Math.abs(wheelNav.rudderHeld) > 0.4)) fail(`ship's-wheel: holding the wheel over did not build rudder (rudder=${wheelNav.rudderHeld})`);
+  if (!(Math.abs(wheelNav.rudderAfter) < Math.abs(wheelNav.rudderHeld))) fail(`ship's-wheel: releasing the wheel did not ease the rudder back (held=${wheelNav.rudderHeld}, after=${wheelNav.rudderAfter})`);
+  if (wheelNav.axisAfterCentre !== 0) fail(`ship's-wheel: centring the helm did not zero the steer axis (got ${wheelNav.axisAfterCentre})`);
 
   // 2f) Settings / options panel (#73): the panel opens, hosts the feature toggles, flipping a
   // toggle drives the wired behaviour, and a STORED toggle persists across a reload (defaults

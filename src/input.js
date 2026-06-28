@@ -2,6 +2,7 @@
 // event wiring so the rest of the game reads a tiny state surface: a Set of the
 // keys currently held and the camera yaw/pitch offsets. No three.js, no game logic
 // here — just turns DOM events into queryable state the sailing step samples.
+import { createWheel } from './ui/wheel.js';
 
 // Pure helper: the KeyboardEvent.code a given key would carry. Lets the on-screen
 // touch buttons synthesise events the existing keydown handlers recognise (hud.js
@@ -58,9 +59,21 @@ export function createInput(domElement, opts = {}) {
     wireTouchControls(keys, onGesture);
   }
 
+  // Ship's-wheel touch steering (#93): a rotatable on-screen helm whose drag-rotation feeds an
+  // ANALOG steer axis the sailing step samples (used when the keyboard is idle, so desktop A/D
+  // stay authoritative and unchanged). Built unconditionally — it only reacts to pointer events
+  // on #ship-wheel, hidden off touch — so the headless playtest can drive it via the QA hook.
+  let steerAxis = 0;
+  const wheel = (typeof document !== 'undefined')
+    ? createWheel(document, { onSteer: (s) => { steerAxis = s; }, onGesture })
+    : null;
+
   return {
     keys,
     touch,
+    wheel,
+    // Analog steer command from the ship's-wheel widget (#93), [-1,1]; 0 when idle/centred.
+    get steerAxis() { return steerAxis; },
     get camYaw() { return camYaw; },
     get camPitch() { return camPitch; },
     // Restore the default astern framing — called on a new voyage (#49) so a reset

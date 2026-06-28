@@ -820,6 +820,17 @@ window.__tidewake = {
   setColours(id) { if (colourById(id).id === id) { state.colours = id; applyColoursToShip(); hud.renderColours(state.colours); fooledArmed = true; persistence.write(); } return state.colours; },
   press(k) { input.keys.add(k); },
   release(k) { input.keys.delete(k); },
+  // Ship's-wheel touch steering (#93) QA surface: the analog steer axis the on-screen helm
+  // feeds, its visual rotation (radians), and whether it's being dragged — plus a headless
+  // driver that rotates the wheel to an angle and returns the resulting steer, so the playtest
+  // can prove a rotated wheel turns the ship without a real touch device. centreWheel() springs
+  // the helm back amidships (the self-centring release).
+  get wheel() {
+    const w = input.wheel;
+    return { steer: input.steerAxis ?? 0, angle: w ? w.angle : 0, active: !!(w && w.active) };
+  },
+  steerWheel(rad) { return input.wheel ? input.wheel.setAngle(rad) : 0; },
+  centreWheel() { if (input.wheel) input.wheel.reset(); return input.steerAxis ?? 0; },
   // QA visual-DoD camera (#65): force a top-down inspection view over the ship (and back).
   _qaCam: null,
   qaTopDown(height = 70, back = 0) { this._qaCam = { height, back }; return true; },
