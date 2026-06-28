@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { deserialize, migrate, serialize, SAVE_VERSION } from '../../src/save.js';
 import { START_COINS } from '../../src/economy.js';
+import { MORALE_START } from '../../src/systems/morale.js';
 
 // FROZEN OLD-SAVE CORPUS (#122, DL #4) — one real save blob per historical schema version, captured
 // in its OWN era's shape (only the fields that existed at that version). These strings are FROZEN: do
@@ -81,6 +82,12 @@ const CORPUS = [
     // must migrate forward to v14 (#133) intact, simply with no contest (a plain, uncontested chase).
     blob: '{"v":13,"heading":1.2,"speed":8,"throttle":0.5,"pos":[120.5,0,-340.25],"coins":250,"cargo":{"rum":3},"infamy":300,"standing":200,"legends":{"pirate":true,"governor":false},"onboarding":{"goal":true,"firstDock":true,"firstTrade":true,"firstRank":false},"voyageLog":[],"colours":"merchant","portMemory":{},"objective":{"kind":"rumour","target":{"kind":"port","name":"Barnacle Bottom","x":120,"z":-40},"payoff":{"coins":60},"status":"active"},"harbour":{"name":"Gullet\'s Rest","level":4,"invested":900},"governorship":true}',
     expect: { coins: 250, governorship: true, objective: { kind: 'rumour', target: { kind: 'port', name: 'Barnacle Bottom', x: 120, z: -40 }, payoff: { coins: 60 }, status: 'active' } },
+  },
+  {
+    v: 14, // contested-rumour rival + soft clock (#133) — a PRE-MORALE save: the v15 morale meter (#124)
+    // must migrate forward to the START baseline (a willing crew), never rejecting the otherwise-valid save.
+    blob: '{"v":14,"heading":1.2,"speed":8,"throttle":0.5,"pos":[120.5,0,-340.25],"coins":250,"cargo":{"rum":3},"infamy":300,"standing":200,"legends":{"pirate":true,"governor":false},"onboarding":{"goal":true,"firstDock":true,"firstTrade":true,"firstRank":false},"voyageLog":[],"colours":"merchant","portMemory":{},"objective":null,"harbour":{"name":"Gullet\'s Rest","level":4,"invested":900},"governorship":true}',
+    expect: { coins: 250, governorship: true, harbour: { name: "Gullet's Rest", level: 4, invested: 900 }, morale: MORALE_START },
   },
 ];
 

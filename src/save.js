@@ -20,6 +20,7 @@ import { COLOURS, DEFAULT_COLOURS } from './colours.js';
 import { sanitizePortMemory } from './systems/port-memory.js';
 import { sanitizeObjective } from './objectives.js';
 import { sanitizeHarbour } from './systems/home-port.js';
+import { sanitizeMorale } from './systems/morale.js';
 
 // The set of colours ids we'll accept back from storage (#79). Anything else loads as the
 // honest default rather than rejecting the whole save (flag choice is flavour, not physics).
@@ -48,8 +49,11 @@ export const SAVE_KEY = 'tidewake.save.v1';
 // racing you + the soft-clock state ({rival, budget, elapsed, claimed}, #133), so a reload can't
 // reset the race clock. It rides the existing `objective` field as an additive, fail-open sub-object
 // (sanitizeObjective drops a junk contest to a plain chase), so a pre-contest objective loads intact.
+// v15 added CREW MORALE — a single 0..100 loyalty meter moved by the player's choices (rescue/plunder/
+// a rumour win/a grounding, #124); an additive, fail-open number (junk/absent → the START baseline, so
+// an older save simply boards with a willing crew rather than rejecting).
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 14;
+export const SAVE_VERSION = 15;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -91,6 +95,7 @@ const migrations = {
   11: (s) => ({ ...s }), // claimed home harbour (#118)
   12: (s) => ({ ...s }), // home-isle governorship crown (#119)
   13: (s) => ({ ...s }), // contested-rumour rival + soft clock (#133): additive inside `objective`
+  14: (s) => ({ ...s }), // crew morale (#124): reader fail-opens an absent meter to the START baseline
 };
 
 /**
@@ -183,6 +188,9 @@ export function serialize(state) {
   // Home-isle governorship (#119): the lawful endgame crown. A plain boolean, coerced; a pre-crown
   // caller (no `governorship`) records it unearned. The named title is derived from `harbour` on read.
   const governorship = !!state.governorship;
+  // Crew morale (#124): the single 0..100 loyalty meter. Sanitised on the way out so junk stores as the
+  // START baseline (a willing crew) rather than a corrupt number.
+  const morale = sanitizeMorale(state.morale);
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -201,6 +209,7 @@ export function serialize(state) {
     objective,
     harbour,
     governorship,
+    morale,
   });
 }
 
@@ -320,6 +329,11 @@ export function deserialize(raw) {
   // save (fail open, not closed). The named title is derived from `harbour` by the reader.
   const governorship = !!obj.governorship;
 
+  // Crew morale (save v15, #124): like the other flavour fields it's not load-bearing physics —
+  // sanitizeMorale clamps a present value into range and fails open to the START baseline on junk or an
+  // absent meter (an older save boards with a willing crew) rather than rejecting an otherwise-valid save.
+  const morale = sanitizeMorale(obj.morale);
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -337,6 +351,7 @@ export function deserialize(raw) {
     objective,
     harbour,
     governorship,
+    morale,
     renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }

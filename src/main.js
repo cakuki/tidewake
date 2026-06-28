@@ -43,6 +43,7 @@ import {
 } from './systems/home-port.js';
 import { makeObjective, resolvesAt, payoffFor, sanitizeObjective, makeContestedObjective, tickContest, isContested, isClaimed, rivalName, shouldContest } from './objectives.js';
 import { createEncounter, HAIL_LINES, RESCUE_LINES, PLUNDER_LINES } from './systems/encounter.js';
+import { freshMorale, sanitizeMorale, applyMorale, moraleBeat, moraleTier } from './systems/morale.js';
 import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES } from './colours.js';
 import { BUDGET, formatPerf, pixelRatioCap, isMeasuredFrame } from './perf.js';
 import { isTouchDevice } from './input.js';
@@ -135,7 +136,7 @@ const bigmap = createBigMap({ world, ports, npcs });
 const sailing = createSailing({
   ship, ocean, camera, input, world, npcs,
   // Arcade island collision (#76 a1): a hard run-aground earns a comic harbour-banner quip.
-  onRunAground: (quip) => hud.flashBanner('⚓ Hard aground!', quip),
+  onRunAground: (quip) => { hud.flashBanner('⚓ Hard aground!', quip); applyMoraleEvent('aground'); }, // a reckless grounding sours the crew (#124)
   // Arcade ship-vs-ship collision (#76 b): shouldering another vessel earns a comic bump quip.
   onBump: (quip) => hud.flashBanner('🛶 Hulls collide!', quip),
 });
@@ -153,6 +154,22 @@ function logDeed(event) {
     const next = recordEvent(state.voyageLog, event);
     if (next !== state.voyageLog) { state.voyageLog = next; persistence.write(); }
   } catch { /* the ballad is a garnish, never a dependency */ }
+}
+
+// Crew morale / loyalty (#124): a single 0..100 meter moved ONLY by the deeds you choose — a rescue or
+// a rumour win lifts the crew; cruelty (plunder) or a reckless grounding sours them. funnels every hook
+// through the pure model (clamp + edge-triggered threshold beats), rings a low-morale grumble / a very-
+// low mutiny-risk WARNING on the downward crossing, then persists. A flourish must never break the loop.
+function applyMoraleEvent(event) {
+  try {
+    const prev = sanitizeMorale(state.morale);
+    const next = applyMorale(prev, event);
+    if (next === prev) return;
+    state.morale = next;
+    const beat = moraleBeat(prev, next);
+    if (beat) hud.flashBanner(beat.title, pickLine(beat.lines));
+    persistence.write(); // lock the morale shift the instant the deed lands (like a legend/onboarding beat)
+  } catch { /* crew morale is a reactive flourish, never a dependency — never break the loop */ }
 }
 
 // The port remembers your DEEDS (#104b): a notable thing done at/near a port is banked into that
@@ -292,15 +309,20 @@ const encounter = createEncounter({
       syncRenown(state);
       hud.flashBanner('🕊 A mercy at sea', `${pickLine(RESCUE_LINES)} (+${standing} standing)`);
       logDeed({ type: 'encounter', choice: 'rescue', ship: name, standing }); // #78
+      applyMoraleEvent('rescue'); // the crew loves a captain who saves souls (#124)
     } else {
       state.coins += coins;
       state.infamy += infamy;                                                 // the pirate pole (#45)
       syncRenown(state);
       hud.flashBanner('🏴 You take the spoils', `${pickLine(PLUNDER_LINES)} (+${coins}c · +${infamy} infamy)`);
       logDeed({ type: 'encounter', choice: 'plunder', ship: name, infamy, coins }); // #78
+      applyMoraleEvent('plunder'); // a crew left to a cold row curdles your own crew's loyalty (#124)
     }
     persistence.write(); // lock the deed + reward the instant the choice is made
   },
+  // A founderer you sailed past without choosing slips quietly under — a cold thing for the crew to
+  // watch, a small morale ding (#124). Guarded; no reward, just the loyalty cost of indifference.
+  onDespawn: () => applyMoraleEvent('missedRescue'),
 });
 
 // Mode system (#95): the explicit world-state machine — SAILING (helm yours, world sails) ↔
@@ -473,6 +495,9 @@ state.objective = sanitizeObjective(state.objective);
 // Claimed home harbour (#118): a restored voyage keeps the home port it claimed + its growth tier;
 // a fresh one starts with none. Sanitised so a junk save fails open to null (no home claimed).
 state.harbour = sanitizeHarbour(state.harbour);
+// Crew morale (#124): a restored voyage keeps the loyalty it earned; a fresh one (or a junk value)
+// boards with a willing crew at the START baseline. Sanitised so a corrupt meter fails open, never NaN.
+state.morale = sanitizeMorale(state.morale);
 
 // ---- False Colours (#79) -------------------------------------------------------------
 // The displayed flag: true black (honest pirate) vs false merchant (a disguise). A restored
@@ -557,6 +582,7 @@ function newVoyage() {
   state.portRecall = null; // ...and no remembered-return greeting in flight
   state.harbour = null; // ...and no home port claimed yet (#118 "Your Harbour")
   state.governorship = false; // ...and no governorship crowned yet (#119)
+  state.morale = freshMorale(); // ...and a fresh, willing crew at the START baseline (#124)
   state.objective = null; // a fresh voyage chases nothing yet — the chart starts unpinned (#111/#112)
   state.colours = DEFAULT_COLOURS; // a fresh voyage flies honest black again (#79)
   applyColoursToShip();
@@ -695,6 +721,7 @@ function investHarbour() {
     state.standing = Math.max(0, (state.standing ?? 0) + (res.standingGain || 0));
     syncRenown(state);
     logDeed({ type: 'harbour', deed: 'grow', port, level: res.level }); // sing the growth (#78)
+    applyMoraleEvent('harbourGrow');     // wages paid, warm berths kept — a prospering home lifts the crew (#124)
     persistence.write();                 // lock the investment the instant it's made
     hud.flashBanner('⚒ Your harbour grows',
       `You sink ${res.spent}c into ${port} — now ${harbourLevelName(res.level)}, and +${res.standingGain} standing for the prospering.`);
@@ -1123,6 +1150,7 @@ function onArrive(portName, line) {
         ? { type: 'rumour', name: portName, coins, rival, won: !claimed }
         : { type: 'rumour', name: portName, coins };
       logDeed(rumourDeed);                                 // sing it into the Ballad (#78)
+      if (coins > 0) applyMoraleEvent('rumourWin');        // a tip that paid off, coin shared round — a good day (#124)
       state.portMemory = recordDeed(state.portMemory, portName, deedPhrase(rumourDeed)); // #104b — this port remembers the chase
       state.objective = null;                              // the chase is done — clear the pin
       persistence.write();
@@ -1243,6 +1271,10 @@ window.__tidewake = {
       // Home-isle governorship (#119): whether the named lawful crown is earned + its title.
       governorship: !!state.governorship,
       governorTitle: state.governorship ? governorTitle(state.harbour) : null,
+      // Crew morale / loyalty (#124): the live 0..100 meter + its categorical tier — so a headless
+      // playtest can drive a deed (driveMorale) and assert the crew warms/sours and the thresholds fire.
+      morale: sanitizeMorale(state.morale),
+      moraleTier: moraleTier(state.morale),
     };
   },
   // Deterministic perf snapshot (#52): draw calls / triangles / geometries / textures /
@@ -1339,6 +1371,12 @@ window.__tidewake = {
   // the crown survives a save round-trip). The per-frame crowning runs on the #130 systems registry.
   get governorship() { return state.governorship ? governorTitle(state.harbour) : null; },
   get governorshipEarnable() { return earnedGovernorship({ harbour: state.harbour, standing: state.standing ?? 0 }); },
+  // Crew morale (#124, DL #4/#5) QA surface: the live 0..100 meter, and the deliberate deed driver —
+  // so a headless playtest can apply a real morale event (rescue/plunder/rumourWin/harbourGrow/aground/
+  // missedRescue) and assert the meter rises/falls, the grumble/mutiny beats fire, and it survives a
+  // save round-trip. driveMorale funnels through the SAME pure model + persistence the live deeds use.
+  get morale() { return sanitizeMorale(state.morale); },
+  driveMorale(event) { applyMoraleEvent(event); return sanitizeMorale(state.morale); },
   // Landfall gesture (#102) QA surface: the crafted SAILING↔TOWN transition's live phase + eased
   // blend (0=at sea, 1=ashore) + whether it's in flight, plus the headless skip driver — so a
   // playtest can assert the moment EASES (not snaps), is deterministic, and is skippable.
