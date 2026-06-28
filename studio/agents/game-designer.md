@@ -179,6 +179,43 @@ Takeaways for Tidewake:
    morale should visibly break (they flinch, strike colours), so the *juice is the simulation showing
    its state*, not a particle layer bolted on.
 
+### 2026-06-28 — Deep-learning loop #3: the mode system as a fantasy-shifter (landfall, ashore verbs, a world that doesn't wait)
+
+Grounded in the landing MODE SYSTEM (#95 scaffold → #67/#96 town/market mode → #94 mode-aware sound;
+battle #100 held for owner). Fresh reading: immersive-sim **hub-level** design (Deus Ex hubs as reactive
+social spaces you return to, GDC 2025 imm-sim panel) + **diegetic UI/transitions** (Dead Space holograms —
+the menu *is* a character action; town should be a *place*, not a pop-up). Deduped vs DL#1/#2.
+
+Takeaways for Tidewake:
+
+1. **The mode transition is the drama, not a loading screen.** "Make landfall" is a *verb you commit to* —
+   the moment sailing hands off to shore. Make it an authored, juiced beat (DL#2 juice applied to the
+   *transition*: eased camera/zoom in, music swells per #94, a "we've made port" punch; reverse on leave).
+   Each mode owns its camera + control grammar + sound identity. Smallest slice: 1s eased enter/leave.
+2. **A hub must be a goal-DISPENSER, or it's a vending machine (Burgess + imm-sim hubs).** The owner wants
+   "more to do ashore than buy/sell." The cheapest reactive verb is a **Tavern: "listen for word"** — 1–2
+   procedural rumour lines generated from *live world state + your reputation* (a fat merchant on the Salt
+   Run; a navy patrol hunting you for your Infamy). Town stops being a shop and starts *pointing you back
+   to sea with a purpose* — the rules manufacture the next goal, we don't script it.
+3. **The mode system's signature promise is "the world keeps living underneath" — make that legible.**
+   Linger has a cost: while ashore, sim-time passes (prices drift, a ship you spared returns, a rival sacks
+   a port). Smallest slice: a "while you were ashore…" digest (one real consequence) on the Leave-Port
+   button, driven by existing NPC/economy state. Gives the leave-verb weight and proves the claim.
+4. **Reputation already exists — spend it at the new town door.** Landfall reception reads your Infamy ↔
+   Standing: harbourmaster greeting, a **WANTED poster bearing your own deeds** vs a WELCOME banner, guard
+   posture — all state-driven text/tint, asset-light. Concrete heir to DL#1's abstract "ports read renown."
+
+🎲 **Wildcard — "The port remembers you" (persistent town state across visits):** each town carries a tiny
+persistent state shaped by your deeds — extort/sack it and next visit it's shuttered & hostile (gouged
+prices, wary guards); trade fair and it prospers (a friendly face, a standing discount, eventually your
+name on the dock). Reactive *across visits* = Levine "narrative atoms" applied to the new persistent town
+mode; asset-light via state-driven text/tint/props. The place you *visit* becomes a ledger of who you've
+become — the pirate↔governor branch made visible in a town you keep returning to.
+
+Sources: [Imm-sim hubs / Deus Ex (Wikipedia)](https://en.wikipedia.org/wiki/Immersive_sim),
+[Diegetic UI in game design (Wayline)](https://www.wayline.io/blog/diegetic-interfaces-game-design),
+[Diegesis & designing for immersion (Game Developer)](https://www.gamedeveloper.com/design/diegesis-and-designing-for-immersion).
+
 🎲 **Wildcard — "False Colours & a Letter of Marque":** let the player **fly a chosen nation's flag**
 (bought/earned at a friendly port) and **raise false colours** to approach a target unsuspected. Hold
 a *commission* and raiding that nation's enemies builds **Standing** (you're a privateer, ports cheer);

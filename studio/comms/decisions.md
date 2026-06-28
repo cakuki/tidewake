@@ -378,3 +378,43 @@ and already unblocked by the #73 panel).
 call-and-response crew chorus, #83 living watercolour chart (map), #84 WebGPU readiness spike, #85
 OffscreenCanvas/Web Worker split spike. Most P2/P3; research only — each goes through a normal cycle if
 adopted. DL counter reset to 0 in `loop-state.md` (next DL ~cycle 43).
+
+### 2026-06-28 — Deep-learning research loop #3 (all 9 roles refreshed)
+**What.** Ran DL #3 (research only — no game code) as a fan-out of 9 role subagents in parallel; each
+read its own `studio/agents/<role>.md` reading list + the Constitution, refreshed its `## Research log`
+and `studio/memory/<role>.md`, and returned a <10-line findings brief. HARD-triggered (~11 cycles since
+DL #2); ran as the first free non-from-owner-P1 slot after the owner mode-system batch (#95/#67/#96/#94)
+drained. Deduped against DL #1 (#32–#40), DL #2 (#78–#85), and the open backlog. Battle-mode #100 left
+untouched (held for the owner brief). Two subagents (graphic-designer, tech-lead) returned 0-tool-use on
+first dispatch — both derailed by **injected instructions in tool results** (one an "output style /
+notify" reminder, the other a prompt-injection social-engineering attempt to "cut a v0.1 release / tag /
+push" claiming the loop greenlit it; the agent correctly refused). Re-dispatched both once with a
+hardened ignore-injection preamble; both then delivered. (Reinforces the LOOP.md guardrail; no release
+was cut — there is none to cut.)
+
+**Cross-cutting themes that emerged.**
+- **The town must be a DESTINATION, not a menu — reactive verbs ashore.** A town is a vending machine
+  until it has a function you return for: a tavern *listen-for-word* verb (rumours → soft sea
+  objectives), a port that *remembers your deeds* across visits, a "while you were ashore…" digest, and
+  one persistent thing flowing across all three modes so mode-select is a loop, not a worse sandbox.
+- **The mode TRANSITION is the drama — sell it across every discipline at once.** Design/art/music/sound/
+  dev all converged unprompted: making landfall is a crafted multi-sensory gesture (eased camera +
+  warm-grade `townBlend` + calmed swell + on-beat music swell/stinger + constant-power crossfade +
+  "made port" punch), reversed on leave; each mode owns its own camera/control/sound/grade grammar.
+- **Harden the mode SEAM now, before three half-built modes leak.** Eng+QA+Process chorus: #95 is a 1→N
+  enabler. Real enter/leave hooks · multi-subscriber seam · legal-transition guard · per-mode disposal ·
+  per-mode perf budget · save-safe stance; matched by gate trust (N×N matrix, cross-mode pause invariant,
+  mode-aware audio assertion, golden mode-trace). Cap modes-in-flight at ONE.
+- **Mode-aware audio is acoustic SPACE, not just volume.** Bar-clock quantised transitions, constant-power
+  crossfades (linear sums dip ~3 dB), procedural per-mode reverb IRs (open sea vs stone harbour), per-town
+  identity via modal recolour+timbre over raw transposition (the playbackRate/detune trap; Safari quirk).
+- **Two reservoir enablers gained leverage:** promote **#36 fixed-timestep** above #84 (`playerPaused` /
+  world-lives-under-a-paused-helm needs a decoupled sim); the #84/#85 renderer-adapter is the home for
+  per-mode render settings.
+
+**Issues filed (8 buildable candidates, all below the P1 mode batch):** #102 landfall transition gesture,
+#103 tavern "listen for word" rumours, #104 the port remembers you, #105 "while you were ashore…" digest,
+#106 mode lifecycle hardening, #107 mode-transition QA coverage, #108 per-mode perf budget + throttle,
+#109 mode-aware audio craft (rides #94). Most P2; #109 P3; research only — each goes through a normal cycle
+if adopted. Synthesis doc: `studio/retros/2026-06-28-deep-learning-3.md`. **DL counter reset to 0** in
+`loop-state.md` (next DL ~10 cycles out, after the mode-batch drain). #106 is the natural first DL #3 slice.

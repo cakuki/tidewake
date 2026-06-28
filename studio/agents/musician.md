@@ -133,6 +133,41 @@ morale**: thriving crew = a rousing answer; demoralised = a thin, flat mutter; p
 On-tone (warm, witty, participatory), shareable (rides the SeaShantyTok instinct), and it makes the
 empty deck feel manned — adaptive music that's literally the crew talking back.
 
+### 2026-06-28 — Deep-learning loop #3: making the NEW mode system *musical* (sailing/town/battle + proximity)
+
+Web research, new + classic. Sources: FMOD/adaptive-music transition docs (quantised transitions,
+phrase branching, transitional segments/stingers — joffwinks, kitvarney, Wikipedia), Web Audio spec
+(`playbackRate`/`detune` couple pitch+tempo; Safari has no `detune`, Firefox caps ±1 octave — MDN,
+WebAudio#2487), Unreal "Crossfade by Distance" / "Design With Music In Mind" (proximity as a continuous
+RTPC parameter — Epic docs, gamedeveloper.com). Grounds the mode-aware-music landing; dedup vs DL#1
+(vertical layering / horizontal resequencing / mode-shift / comedy-layer / freygish) + DL#2 (interactive
+stems / call-and-response crew chorus).
+
+- **A shared bar-clock is the missing piece for clean mode swaps.** DL#1 named crossfade/stinger/bridge
+  but not *when* they fire. Mode changes (sailing↔town↔battle) should be **quantised**: hold the pending
+  swap until the next bar/downbeat so the cut lands musically instead of mid-phrase. One musical scheduler
+  (a running bar counter on the master bus) turns every transition primitive from "abrupt" to "on-beat" for
+  near-zero cost. This is the highest-leverage fix for the new mode system.
+- **"Transposition-first per-town" has a Web Audio trap — don't transpose the rhythm bed.** Pitch-shifting a
+  `BufferSource` via `playbackRate`/`detune` also changes **tempo** (so loops drift out of sync) and Safari
+  lacks `detune` entirely. So per-town key changes should retune only **oscillator/synth-generated pitched
+  layers** (lead/harmony), where pitch is a free parameter, while the **percussive bed stays fixed** — keeps
+  every town phase-coherent with the shared engine and dodges the tempo-coupling + Safari bug.
+- **Differentiate towns by *mode + timbre*, not key alone.** A semitone shift is subtle and risky in-browser;
+  recolouring the same theme into a different **church mode** (Dorian vs Mixolydian) and/or swapping the lead
+  **instrument timbre** gives each port a distinct identity far more cheaply and audibly than transposition —
+  same melody/palette, new character, zero extra asset.
+- **Proximity is a continuous parameter, not a boolean.** The "port nearby" cue should map **distance→gain**
+  on a curve (RTPC-style) so the town layer *blooms* in as you approach over the sailing bed, rather than
+  snapping on at a trigger radius — the single most atmospheric use of the layered engine for the open sea.
+
+🎵 **Wildcard — a "mode-transition stinger" kit keyed to the bar-clock.** Three tiny one-shots (a rising
+fiddle/accordion flourish *into* town, a sharp short-haul drum/brass *bridge into battle*, a soft fife
+*exhale* back to open sea) fired on the next downbeat to **mask the loop seam** during a mode swap — the
+ear hears an intentional musical gesture, not a crossfade. Asset-light (3 short stingers cover all six
+edges of the sailing/town/battle triangle), reactive-verb-first, and it makes the new mode system *feel*
+composed rather than switched.
+
 ## Practices adopted
 - 2026-06-27 — **Adaptive, not on-repeat**: write layered/branching cues that follow game
   state (interactive/adaptive-music practice, vertical layering + horizontal resequencing).

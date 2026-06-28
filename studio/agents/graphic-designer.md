@@ -134,3 +134,33 @@ parchment paper grain, hand-inked coastlines, a faintly drifting watercolour sea
 the player's wake drawn as a dotted rhumb-line that *writes itself* as you sail. It reuses data we
 already have (island positions, the route), reads instantly as "age of sail," and gives the map a
 character moment — the realism/charm split made literal: realistic sea outside, painted chart within.
+
+### 2026-06-28 — Deep-learning loop #3: TOWN-mode visual identity (mode system landed)
+
+Grounded in the new mode machine (`src/mode.js`: SAILING↔TOWN↔BATTLE, `playerPaused`), auto-harbour
+(`src/systems/harbour.js`), and the DOM market (`src/ui/town.js`). Today TOWN = a HUD banner + bell +
+a panel over a *still-sailing* sea — no distinct world identity. The lens: make "you've arrived
+somewhere" read in the **world**, asset-light, reactive to the mode flag. Dedup vs DL#1/#2 (those
+covered stylised water, CC0 kits, Fresnel/gradient-sky/height-fog trio, NPR-on-characters, the chart).
+
+- **Mode change is a grade + camera moment, not a panel reveal.** The strongest free identity move:
+  on `mode.onChange(TOWN)` tween a single `townBlend` 0→1 uniform that warms fog colour + lifts
+  exposure/ambient, and ease the camera to a moored 3/4 "ashore" framing. SAILING→TOWN becomes a
+  felt *settle*, reusing the onChange seam already wired. Reverses on `leave()`. Near-zero cost.
+- **Light = place: bias TOWN toward golden-harbour.** Sailing rides the real day-night cycle
+  (`daynight.js`); TOWN lerps the sun toward a warm low-angle "harbour glow" regardless of clock —
+  the cheapest "different light = different place" (re-confirms DL#1 "light tells the story"), driven
+  by the same `townBlend`. Slice: lerp sun colour/elevation + ambient while `mode.is(TOWN)`.
+- **The helm is paused → the water should calm (reactive verb).** In TOWN lerp swell amplitude
+  (`swell.js`/`ocean.js`) toward a low "moored" value and let the surface go glassy with lantern
+  reflections; sailing's streaming wake stops. The sea *behaving differently* sells the stance change
+  for free — pure parameter lerp keyed to the mode flag, no new geometry.
+- **A settlement glows: additive lantern dots at dusk.** A small `Points`/instanced cloud of warm
+  additive sprites clustered on the docked island, opacity = `townBlend × nightness`. At dusk/night
+  the harbour lights *come up* as you make port — "a living place," a handful of points, no models.
+
+🎨 **Wildcard — "harbour diorama":** treat TOWN as a **tilt-shift miniature** — a strong vignette +
+a thin in-focus band + gentle desaturation at the edges miniaturises the scene, so the open-horizon
+*passage* of sailing snaps into an intimate *place* the instant you dock. One fullscreen pass gated
+on `mode.is(TOWN)`, fading with `townBlend`; pair it with a quayside CSS skin (procedural woodgrain/
+parchment gradients, no images) on the `#town` panel so the DOM market reads as part of the same place.

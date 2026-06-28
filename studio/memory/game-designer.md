@@ -45,3 +45,18 @@ Durable design lessons, tuning notes, and fun hypotheses. Grows over time; keep 
 - 2026-06-27 (DL#2) 🎲 **Wildcard — "False Colours & a Letter of Marque"**: fly a nation's flag / raise
   false colours; commissioned raiding builds Standing, indiscriminate/uncommissioned builds Infamy; the
   world reacts (navy hunts / ports cheer). Strategic + moral + comedic (the smug flag-drop reveal). → filed.
+- 2026-06-28 (DL#3) — **The MODE SYSTEM is a fantasy-shifter; design the transitions and the ashore verbs,
+  not just the screens.** Grounded in #95/#67/#96/#94. Four leverage points: (1) **"Make landfall"** is the
+  drama — juice the *transition* (eased camera + #94 music swell + a "we've made port" punch); each mode owns
+  its camera/control/sound grammar; town is a *place*, not a pop-up (diegetic-UI lens). (2) A hub must be a
+  goal-**dispenser** (Burgess) — cheapest ashore verb = **Tavern "listen for word"**: 1–2 procedural rumours
+  from live world-state + reputation that point you back to sea with purpose (answers owner's "more to do
+  ashore than buy/sell"). (3) Make "the world keeps living underneath" *legible* — **linger has a cost**: a
+  "while you were ashore…" digest (one real consequence: price drift / spared ship returns / rival sacks a
+  port) on the Leave-Port button. (4) **Spend existing reputation at the town door** — landfall reception
+  reads Infamy↔Standing (WANTED poster of your own deeds vs WELCOME banner, guard posture; text/tint only).
+- 2026-06-28 (DL#3) 🎲 **Wildcard — "The port remembers you"**: persistent per-town state shaped by your
+  deeds — sack/extort → shuttered & hostile next visit (gouged prices); trade fair → it prospers (friendly
+  face, standing discount, eventually your name on the dock). Reactive *across visits* (Levine atoms) on the
+  new persistent town mode; asset-light text/tint/props. The town you revisit becomes a ledger of who you've
+  become — the pirate↔governor branch made visible. → candidate backlog issue.

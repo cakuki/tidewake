@@ -28,6 +28,18 @@ Durable art-direction decisions and asset notes. Grows over time; keep entries s
   dotted rhumb-line wake). Separate render target = freedom to be painterly without breaking world
   realism; realism outside, painted chart within. → filed.
 
+- 2026-06-28 (DL#3) — **TOWN-mode visual identity (mode system landed).** Today TOWN is just a HUD
+  banner + bell + DOM market panel over a still-sailing sea — no world identity. Asset-light, reactive
+  to the `mode` flag (`src/mode.js`), driven off the `onChange(TOWN)` seam already wired in main.js:
+  (1) tween one `townBlend` 0→1 uniform that warms fog + lifts exposure and eases the camera to a
+  moored "ashore" framing — mode change as a felt *settle*, not a panel reveal; (2) bias light toward
+  **golden-harbour** (lerp sun colour/elevation/ambient via `daynight.js`) — different light = different
+  place; (3) **calm the water** — lerp swell amplitude (`swell.js`/`ocean.js`) toward a "moored" glassy
+  value + stop the wake (helm paused → reactive verb); (4) additive **lantern dots** (`Points`) on the
+  docked island, opacity = townBlend × nightness, so the settlement glows up at dusk. 🎨 Wildcard —
+  **"harbour diorama"**: tilt-shift miniature (vignette + focus band + edge desaturation) gated on
+  `mode.is(TOWN)` to snap open-horizon *passage* into intimate *place*; pair with a procedural quayside
+  CSS skin on `#town` (woodgrain/parchment gradients, no images). Dedup-clean vs DL#1/#2. → filed.
 - 2026-06-27 (#55 sourcing research) — **Art-sourcing call: CC0-first, verified.** Go-to CC0
   3D = **Quaternius** + **Kenney** Pirate Kits (both confirmed CC0, glTF, no attribution
   required); HDRI/sky = **Poly Haven**; PBR surfaces = **ambientCG**; aggregator = **Poly Pizza**

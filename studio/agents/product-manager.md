@@ -172,6 +172,42 @@ screen, warm and witty, *shareable as an image*. It turns our existing systemic 
 "anecdote factory" retentive hook and gives the owner a ready-made thing to post. Cheap (text +
 event log we mostly already record), on-tone, and it makes a 4-minute web session feel like a tale.
 
+### 2026-06-28 — Deep-learning loop #3 (the mode-system pivot: structure, town-as-place, cross-mode loop)
+
+Sources: town/hub design craft (Game Design Junkie "make towns feel alive", Trace Dressen "design of
+hub worlds", Konstantinos Dimopoulos / Game Developer on game cities), sandbox-vs-directed retention
+(Game Developer "well-defined core loop"; gamedesignskills open-world), and port/trade hub loops
+(Port Royale 4 review, Game Rant merchant round-ups). New angle vs DL #1/#2 (which covered retention,
+wealth-buys-identity, the anecdote factory) = the owner's **mode system** reframe to STRUCTURE.
+
+- **A town is a destination only if it has a *function you return for* — ours must be the GOVERNOR
+  verb surface.** Hub-design craft is unanimous: function first, then worldbuilding. Today town =
+  the trade panel = a menu. The pirate pole already has reactive verbs (raid, false colours, duels);
+  the governor pole is still just a number. Town mode is the place to *act* on it. Cheapest function:
+  one repeatable town action that spends coins for governor standing (fund a repair / invest in the
+  harbour) and nudges a visible town detail — the thing only town can give.
+- **Modes are screens until one persistent thing flows across all three.** Directed structure beats
+  sandbox for the first session (a lost player churns), but modes must interlock: sail *earns* → town
+  *invests* → battle *defends/raids* → sail. Make the loop legible with a single carried resource +
+  one HUD line. Without this, the mode-select is just a worse sandbox.
+- **"Player impact" is the cheapest way to make a 3D town feel alive — and it's a reactive verb.**
+  Craft consensus: a hub that visibly changes with the player's progress (buildings added, flags,
+  NPCs wandering in) reads as alive. We already compute a renown tier; spatialising it (pirate town
+  boards up / flies your colours; governor town gains a built prop) is the 3D embodiment of DL #1's
+  flat reputation board, asset-light via the greenlit #101 Pirate Kit props.
+- **The hub should *hand you your next goal* (NPC with an ongoing problem).** Port Royale / merchant
+  sims retain because "each voyage feels like a step toward something bigger" and an NPC always has a
+  job. A harbourmaster offering ONE templated job per visit (deliver to next port / drive off that
+  raider) points the player back out to sail/battle — closing the mode loop *and* solving the web-game
+  FTUE "no point of reference" churn, now living inside town mode rather than a tutorial.
+
+🧭 **Wildcard — "Your Harbour" (a home port that grows with your legend):** let the player claim ONE
+home port and invest coins in it across sessions; it *physically* grows as governor renown rises — a
+built dock, a lit lighthouse, your flag over the keep — persisted. It's the governor-pole monument
+that the notoriety track is for the pirate pole: a place you keep returning to that becomes the
+visible record of who you became, and an irresistible "my port, then vs now" share image. Turns town
+mode from a market into a destination you own.
+
 ## Owner channel (two-way Telegram) — you own the front door
 
 The owner now steers the studio live over **Telegram** (`studio/comms/OWNER-CHANNEL.md`). **You own

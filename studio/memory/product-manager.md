@@ -37,3 +37,18 @@ Durable lessons, vision notes, and roadmap rationale. Grows over time; keep entr
   mini-ballad at session end from real events (ports, best trade, the winning insult, ship sunk/talked
   down, rank climbed), one shareable image. Cheapest "every session is a story" hook; ready-made owner
   share content. → filed as backlog issue.
+- 2026-06-28 (DL#3, mode-system pivot) — **A town is a menu until it has a *function you return for* —
+  make town mode the GOVERNOR verb surface.** Pirate pole has reactive verbs; governor pole is still a
+  number. Cheapest function: one repeatable town action (fund repair / invest harbour) that buys
+  governor standing + changes a visible town detail.
+- 2026-06-28 (DL#3) — **Modes are just screens until ONE persistent thing flows across all three**:
+  sail earns → town invests → battle defends/raids → sail. Make the loop legible with one carried
+  resource + one HUD line, else mode-select is a worse sandbox. Directed structure beats sandbox for
+  the first session; let the **harbourmaster hand the next goal** (one templated job/visit) to close
+  the loop and fix web-game FTUE churn inside town mode.
+- 2026-06-28 (DL#3) — **Player impact = cheapest "alive" town, and it's a reactive verb**: spatialise
+  the renown tier (pirate town boards up/flies your colours; governor town gains a built prop) — the
+  3D embodiment of DL#1's flat reputation board, asset-light via greenlit #101 props.
+- 2026-06-28 (DL#3) 🧭 **Wildcard — "Your Harbour"**: claim ONE home port, invest across sessions; it
+  physically grows with governor renown (dock, lit lighthouse, your flag), persisted. The governor-pole
+  monument (mirror of the pirate notoriety track) + an irresistible "my port, then vs now" share image.

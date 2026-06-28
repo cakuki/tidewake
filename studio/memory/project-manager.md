@@ -47,3 +47,15 @@ Durable lessons about the loop, flow, and process. Grows over time; keep entries
 - 2026-06-27 (DL#2) 🧩 **Wildcard — a "rework-rate" tile in the loop log**: per release, note whether a
   from-owner bug / fix-forward followed within ~N cycles. A rising count is the DORA AI-era early-warning
   that throughput is outrunning quality — one-glance health, zero new tooling. → noted (process).
+- 2026-06-28 (DL#3) — **The mode system (#95) is a 1→N keystone enabler, not a peer slice — flow-manage
+  it like a Thinnest Viable Platform (Team Topologies).** Five concrete rules: (1) freeze #95's mode
+  contract (enum · enter/leave API · pause-vs-continue · `__tidewake.mode`) as a one-line board entry +
+  shared assertion, and **gate #67/#96/#94/#100 on #95 being merged** (DL#1's shared-contract rule
+  generalised 2-peer→1→N — the batch's top collision risk). (2) Add a **mode-transition coverage gate**
+  to the headless playtest (sailing→town→sailing→battle→sailing, zero console errors, `mode` resolves
+  each hop) — instability hides in seams the gate never visits. (3) **Cap modes-in-flight at ONE** —
+  ship a mode end-to-end+tuned before opening the next (Little's Law on the mode axis; a half-built mode
+  is the costliest WIP). (4) **Return-to-sailing restore check** in the mode visual DoD (leaving restores
+  prior view/HUD/audio bed, the #58 byte-for-byte trick) — guards cross-mode state leak (#66/#96 class).
+  (5) **Fire rituals at mode boundaries, not mid-keystone.** 🧩 Wildcard: **mode-tagged rework tile** —
+  tag from-owner bugs by mode; the rising one is the next hardening target.

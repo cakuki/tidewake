@@ -72,33 +72,56 @@ HELD for an 08:00 2026-06-28 Game-Designer owner brief — its mode-switch infra
   Game-Designer owner brief**; scenario blocked pending the owner's steer. Its mode-switch infra is
   #95 (build that regardless). — surface the brief over the owner channel.
 
+## DL #3 candidates — mode-system depth (filed 2026-06-28; see `studio/retros/2026-06-28-deep-learning-3.md`)
+
+_Headline themes: (1) the town must be a **destination, not a menu**; (2) the **mode transition is the
+drama** — sell it across all disciplines; (3) **harden the mode seam** before three half-built modes leak;
+(4) mode-aware audio is acoustic **space**, not just volume; (5) **promote #36 fixed-timestep** + #84/#85
+adapter. Slot these after the P1 mode batch drains — **#106 (seam hardening) is the natural first DL #3
+slice**, with #107 alongside; #102–#105 turn the town into a place._
+
+10. **#106 — Mode lifecycle hardening** (enter/leave hooks · multi-subscriber seam · legal-transition
+    guard · per-mode disposal). P2 tech. _The seam everything else plugs into — do first of the DL #3 set._
+11. **#107 — Mode-transition QA coverage** (N×N matrix · cross-mode pause invariant · mode-aware audio
+    assertion · golden mode-trace). P2 tech+qa. _Rides #106; keeps the gate trustworthy as states multiply._
+12. **#102 — Landfall: the mode transition as a crafted multi-sensory gesture** (eased camera · townBlend
+    grade · calmed swell · music swell/stinger · "made port" punch; reverse on leave). P2 design+art+audio.
+13. **#103 — Town tavern "listen for word"** (procedural rumours from world-state + reputation → soft sea
+    objectives). P2 design. _Makes town a destination; fixes ashore aimlessness._
+14. **#104 — The port remembers you** (persistent per-town reputation state; "Your Harbour" home-port
+    stretch). P2 design. _The pirate↔governor branch made spatial across visits._
+15. **#105 — "While you were ashore…" digest** (one-line living-world consequence on Leave Harbour). P2
+    design. _Cheap legibility of the world-continues-underneath promise._
+16. **#108 — Per-mode perf budget + throttle world work in town** (gate ocean/wake + DPR by mode; per-mode
+    BUDGET). P2 tech. _Perf win the seam unlocks; promote **#36 fixed-timestep** above #84._
+17. **#109 — Mode-aware audio craft** (constant-power crossfade · bar-clock transitions · procedural
+    per-mode reverb · modal recolour). P3 audio. _Rides #94._
+
 ## Depth / DL #2 reservoir (between-mode fillers; prefer depth over breadth)
 
-- **DL #3 research loop is DUE** (~11 cycles since DL #2, cadence ~10) — run it as the next
-  **non-from-owner-P1** dispatch, i.e. once the P1 mode batch (#95/#96/#67/#94) drains or as the first
-  free non-P1 slot.
-10. **#72 — cannon-combat depth follow-ups** (hull-damage visuals, tougher foes/gunnery spread, more
+18. **#72 — cannon-combat depth follow-ups** (hull-damage visuals, tougher foes/gunnery spread, more
     aims, fleeing chase, cannon audio, foe initiative). Advanced in Loop 47; remainder open.
-11. **#80 — combat/harbour game-feel "juice" pass** (hit-stop, screenshake, camera punch; toggle-able).
-12. **#90 — Ballad richer composition** (more deed types · share-as-image) — deepens the #78 lever.
-13. **#40 / #35 — adaptive Klezmer 'freygish' combat tension layer + procedural cannon SFX** (pairs
+19. **#80 — combat/harbour game-feel "juice" pass** (hit-stop, screenshake, camera punch; toggle-able).
+20. **#90 — Ballad richer composition** (more deed types · share-as-image) — deepens the #78 lever.
+21. **#40 / #35 — adaptive Klezmer 'freygish' combat tension layer + procedural cannon SFX** (pairs
     with #94's battle track). DL reservoir: **#82 crew chorus**, **#81 hull creak**, **#83 watercolour
     chart**.
 
 ## Polish (cheap, charming, compounds shareability — natural fillers)
 
-14. **#15 — comedic loading-tip line pool.** — _humour surface, near-zero cost._
-15. **#21 — HUD coins placeholder + cleaner layout.** — _legibility; sets up future HUD work._
-16. **#88 — full weather (rain/storm/clouds), optional behind the #73 toggle.** — _extends day-night._
+22. **#15 — comedic loading-tip line pool.** — _humour surface, near-zero cost._
+23. **#21 — HUD coins placeholder + cleaner layout.** — _legibility; sets up future HUD work._
+24. **#88 — full weather (rain/storm/clouds), optional behind the #73 toggle.** — _extends day-night._
 
 ## Enablers / tech debt (schedule, don't let them perpetually lose)
 
-17. **#38 — lightweight PR-validation CI gate** (tests + headless playtest, no deploy). — _Retro 8's
+25. **#38 — lightweight PR-validation CI gate** (tests + headless playtest, no deploy). — _Retro 8's
     allow-list means script/test-only pushes no longer run unit tests at all; this is the proper home._
-18. **#37 — tolerance-based deterministic visual diff.** Open since cycle 10. — _automates the last
+26. **#37 — tolerance-based deterministic visual diff.** Open since cycle 10. — _automates the last
     manual visual-QA step._
-19. **#36 — fixed-timestep accumulator loop.** — _determinism unlocks record/replay golden traces._
-20. **#74 — PWA service worker (offline caching).** · **#75 — mobile safe-area/landscape/low-end
+27. **#36 — fixed-timestep accumulator loop.** — _determinism unlocks record/replay golden traces; **DL #3
+    promotes this above #84** — `playerPaused` (world-lives-under-a-paused-helm) needs a decoupled sim._
+28. **#74 — PWA service worker (offline caching).** · **#75 — mobile safe-area/landscape/low-end
     polish.** · **#84/#85 — WebGPU / OffscreenCanvas spikes** (DL #2 tech reservoir).
 
 ## Blocked / held

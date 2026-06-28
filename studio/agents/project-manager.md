@@ -208,6 +208,37 @@ from *Accelerate State of DevOps*; dora.dev, Google Cloud blog, getDX/RedMonk re
 failure mode) — turning an abstract metric into a one-glance health check the PM already reads each loop,
 with zero new tooling.
 
+### 2026-06-28 — Deep-learning loop #3: flow/risk as the mode system grows scope
+
+The owner's MODE SYSTEM batch (#95 scaffold → #67/#96 town, #94 sound, #100 battle) changed the
+dependency *shape*: #95 is a **1→N keystone enabler**, not a peer slice. New + classic sources:
+**Team Topologies** (Thinnest Viable Platform; an enabler that becomes a moving dependency *blocks*
+fast flow; X-as-a-Service interaction mode) and **state-transition / transition-pair coverage** for
+finite-state machines. Takeaways (each generalises a prior lesson to the new keystone-fan-out shape):
+
+- **Treat #95 as a Thinnest Viable Platform with a frozen mode contract; gate consumers on its
+  stability.** Don't fan out #67/#96/#94/#100 until #95 is merged AND its seam is a one-line board
+  contract — *mode enum · transition API (enter/leave) · pause-vs-continue · `__tidewake.mode` shape*
+  — with a tiny assertion both sides test. This is DL#1's shared-contract rule generalised from
+  2-peer to 1→N; the keystone is the batch's top collision risk.
+- **Mode-transition coverage gate in the headless playtest.** The gate proves "boots+sails"; as modes
+  multiply, regressions hide *inside* a mode/transition. Drive sailing→town→sailing→battle→sailing and
+  assert zero console errors + `__tidewake.mode` resolves each hop. AI-era instability lives in seams
+  the gate never visits — without this a whole mode rots silently between captures (DORA failure mode).
+- **Cap modes-in-flight at ONE.** Ship a mode end-to-end (playable + tuned) before opening the next:
+  with #95 down, finish town (#67/#96) before #94 full-audio or #100 battle. A half-built mode is the
+  most expensive WIP — an untested seam against the spine (Little's Law on the mode axis).
+- **Return-to-sailing restore check in the mode visual DoD.** Any mode slice captures its own gallery
+  shot AND asserts leaving restores the prior sailing view/HUD/audio bed (the byte-for-byte trick #58
+  used). Modes leak state across transitions — the #66/#96 control-overlap bug is exactly this class.
+- **Fire rituals at mode boundaries, not mid-keystone.** Keep the hard DL/retro counter, but never
+  split an enabler from its first consumer — let it preempt the NEXT slice at a seam (after #95 merges
+  / after a mode lands), so a keystone is never stranded mid-flight from its contract.
+
+🧩 **Wildcard — mode-tagged rework tile.** Extend DL#2's rework signal: tag each from-owner bug by the
+*mode* it hit. The mode with the rising count is the next hardening target (transition UI is already
+the hotspot, per #66) — points the gate-hardening effort with zero new tooling.
+
 ## Owner channel (two-way Telegram) — keep it in lockstep
 
 The owner steers live over **Telegram** (`studio/comms/OWNER-CHANNEL.md`). On the **process** side
