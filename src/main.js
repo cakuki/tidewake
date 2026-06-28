@@ -20,6 +20,7 @@ import { createSailing } from './sailing.js';
 import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
 import { createCannons } from './cannons.js';
+import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
@@ -198,6 +199,20 @@ const cannons = createCannons({
   },
 });
 
+// Mode system (#95): the explicit world-state machine — SAILING (helm yours, world sails) ↔
+// TOWN / BATTLE (helm paused, world keeps living). The pure machine lives in src/mode.js; here
+// we only drive it (BATTLE from combat, below in update()) and surface it. It is the shared
+// seam town mode (#67/#96), battle mode (#100) and mode-aware sound (#94) all plug into — the
+// current mode becomes their `context.mode`. A mode change rings the ship's bell beat once.
+const mode = createModeManager({
+  onChange: (to) => {
+    try {
+      if (to === TOWN) hud.flashBanner('🏘️ Making port…', 'The helm goes quiet — boots on the planks, the town comes alive around you.');
+      // BATTLE keeps its own "Battle stations!" beat below; SAILING's return is signalled by control resuming.
+    } catch { /* a flourish must never break the loop */ }
+  },
+});
+
 // Audio: procedural sea ambience + adaptive sailing theme (start on first user gesture).
 // The music shares the audio engine's one context + master bus + mute toggle.
 // CREATIVE SPARK (#76 follow-up): the very first time the audio unlocks (the first tap — the
@@ -292,6 +307,7 @@ addEventListener('pagehide', persistence.write);
 function newVoyage() {
   duel.cancel();
   cannons.cancel();
+  mode.leave(); // a fresh voyage always starts under sail (#95)
   persistence.clear();
   sailing.reset();
   islandNamer.reset(); // a fresh voyage re-arms the island landfall greetings (#19)
@@ -433,48 +449,58 @@ const BERTH_LINES = [
 let wasFighting = false, wasHarbourSettling = false, fightBeat = 0, berthBeat = 0;
 
 function update(dt, t) {
-  // Slow-to-stop for harbour & combat (#76 c): the ship is no longer teleport-frozen for a
-  // fight or a berth — it EASES to a near-stop. sailing.step always runs; a settle reason eases
-  // the target speed smoothly toward ~0 (combat) or coasts it down as the hull nears a port
-  // (harbouring), all via approach(). Helm input is ignored during a fight (crew's at the guns).
+  // Mode system (#95): drive the explicit world-state machine from combat — a live duel or
+  // cannonade IS the BATTLE mode; ending it returns the helm to SAILING. (TOWN is entered
+  // deliberately via its own seam — tw.enterMode — pending the town-scene slice #67/#96.) The
+  // mode is the single source of truth for "is the player's helm paused?", replacing the old
+  // implicit `duel.active || cannons.active` gate with zero behaviour change for a fight.
   const fighting = duel.state.active || cannons.state.active;
+  if (fighting) { if (!mode.is(BATTLE)) mode.enter(BATTLE); }
+  else if (mode.is(BATTLE)) mode.leave();
+  const paused = mode.playerPaused; // true in TOWN/BATTLE: helm pauses, world keeps living
+
+  // Slow-to-stop for harbour & combat (#76 c): the ship is no longer teleport-frozen for a
+  // fight or a berth — it EASES to a near-stop. sailing.step always runs; a paused helm (fight
+  // or town) eases the target speed smoothly toward ~0, or it coasts down as the hull nears a
+  // port (harbouring), all via approach(). Helm input is ignored while paused (crew's elsewhere).
   let harbourDistance = Infinity;              // distance to the nearest port point (for the coast-in)
   for (const p of ports.ports) {
     const d = Math.hypot(state.pos.x - p.pos[0], state.pos.z - p.pos[1]);
     if (d < harbourDistance) harbourDistance = d;
   }
-  sailing.step(dt, t, { fighting, harbourDistance, harbourRadius: DOCK_RADIUS });
-  if (!fighting) {
-    // False Colours (#79) + Seen-through (#91): NPCs react to the colours SHOWN. Fly your true
-    // black flag while feared and nearby vessels scatter; fly false merchant colours and they
-    // stay calm — UNLESS, at high Infamy, the disguise is rumbled on approach (then they read
-    // your true renown and flee anyway). The disposition + risk math is pure (colours.js).
-    let seenThrough = false;
-    if (isDeceptive(state.colours)) {
-      if (duel.inRange()) {
-        // First frame in range this approach: roll the bluff's risk ONCE and latch it, then fire
-        // the matching beat — the smug "they bought it" (#79), or the "rumbled!" reveal (#91).
-        if (fooledArmed) {
-          fooledArmed = false;
-          seenThroughLatched = isSeenThrough(state.infamy ?? 0, state.colours, detectRng);
-          if (seenThroughLatched) hud.flashBanner('🕵 Rumbled!', pickLine(SEEN_THROUGH_LINES));
-          else hud.flashBanner('🏳 They wave you in…', pickLine(FOOLED_LINES));
-        }
-        seenThrough = seenThroughLatched;
-      } else {
-        fooledArmed = true;       // out of range → the next approach re-rolls the risk
-        seenThroughLatched = false;
+  sailing.step(dt, t, { fighting: paused, harbourDistance, harbourRadius: DOCK_RADIUS });
+
+  // The world keeps living (#95): other vessels sail on EVERY frame — even while the player is
+  // paused for a fight or making port — so the world never snap-freezes around you. Only the
+  // disguise-disposition beats (which assume you're free to creep up on a mark) stay gated to a
+  // free helm. False Colours (#79) + Seen-through (#91): NPCs react to the colours SHOWN — fly
+  // your true black while feared and they scatter; fly false merchant colours and they stay calm
+  // unless, at high Infamy, the bluff is rumbled on approach. The risk math is pure (colours.js).
+  let seenThrough = false;
+  if (!paused && isDeceptive(state.colours)) {
+    if (duel.inRange()) {
+      // First frame in range this approach: roll the bluff's risk ONCE and latch it, then fire
+      // the matching beat — the smug "they bought it" (#79), or the "rumbled!" reveal (#91).
+      if (fooledArmed) {
+        fooledArmed = false;
+        seenThroughLatched = isSeenThrough(state.infamy ?? 0, state.colours, detectRng);
+        if (seenThroughLatched) hud.flashBanner('🕵 Rumbled!', pickLine(SEEN_THROUGH_LINES));
+        else hud.flashBanner('🏳 They wave you in…', pickLine(FOOLED_LINES));
       }
+      seenThrough = seenThroughLatched;
+    } else {
+      fooledArmed = true;       // out of range → the next approach re-rolls the risk
+      seenThroughLatched = false;
     }
-    const flee = npcFlees({ colours: state.colours, infamy: state.infamy ?? 0, seenThrough });
-    npcs.update(dt, t, { playerPos: [state.pos.x, state.pos.z], flee });
   }
+  const flee = npcFlees({ colours: state.colours, infamy: state.infamy ?? 0, seenThrough });
+  npcs.update(dt, t, { playerPos: [state.pos.x, state.pos.z], flee });
 
   // CREATIVE SPARK (#76 c): one light arcade beat as the ship squares up for a fight or coasts
   // into a berth — transition-guarded so it never spams, rotated so it never gets stale.
   if (fighting && !wasFighting) hud.flashBanner('⚔ Battle stations!', FIGHT_REEF_LINES[fightBeat++ % FIGHT_REEF_LINES.length]);
   wasFighting = fighting;
-  const harbourSettling = !fighting && state.settling;
+  const harbourSettling = !paused && state.settling;
   if (harbourSettling && !wasHarbourSettling) hud.flashBanner('⚓ Easing into the berth…', BERTH_LINES[berthBeat++ % BERTH_LINES.length]);
   wasHarbourSettling = harbourSettling;
 
@@ -668,6 +694,12 @@ window.__tidewake = {
   // Route-planning chart (#54) QA surface: read its open-state + drive the toggle headlessly.
   get bigmap() { return { open: bigmap.open }; },
   mapToggle() { bigmap.toggle(); syncMapToggle(); return bigmap.open; },
+  // Mode system (#95) QA surface: the current world-state, and the deliberate enter/leave seam
+  // (drives town/battle plumbing). BATTLE is normally driven by combat; TOWN is entered here
+  // until the town-scene slice (#67/#96) owns it. enter/leave return true if the mode changed.
+  get mode() { return mode.current; },
+  enterMode(m) { return mode.enter(m); },
+  leaveMode() { return mode.leave(); },
   get npcs() { return npcs.snapshot(); },
   // Ship-vs-ship collision (#76 b) QA surface: the forgiving hull radii so a headless playtest
   // can drive the player into an NPC and assert the hulls don't interpenetrate (bound = sum).

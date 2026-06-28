@@ -487,6 +487,40 @@ try {
     if (!settle.fight.fightEnded) fail('slow-to-stop: fight did not resolve so control could return');
   }
 
+  // 2h) Mode system (#95): the explicit world-state machine. Boots in SAILING; entering TOWN
+  // pauses the player's helm (the ship eases to a near-stop with the throttle still HELD) while
+  // other vessels keep sailing — the world doesn't snap-freeze around you — and leaving returns
+  // to SAILING. (A live fight drives BATTLE automatically, exercised by the fight section above.)
+  const mode = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);
+    const boot = tw.mode;
+    tw.press('w'); tw.step(3);                 // build some way before making port
+    const speedBeforeTown = tw.state.speed;
+    const npcBefore = tw.npcs.map((n) => n.pos.slice());
+    const entered = tw.enterMode('town');      // deliberately enter TOWN with the throttle HELD
+    const inTown = tw.mode;
+    let settled = false;
+    for (let i = 0; i < 60; i++) { tw.step(0.1); if (tw.state.settling) settled = true; }
+    const speedInTown = tw.state.speed;
+    const npcAfter = tw.npcs.map((n) => n.pos.slice());
+    let worldMoved = false;                     // did at least one vessel sail on while paused?
+    for (let i = 0; i < Math.min(npcBefore.length, npcAfter.length); i++) {
+      if (Math.hypot(npcAfter[i][0] - npcBefore[i][0], npcAfter[i][1] - npcBefore[i][1]) > 1) worldMoved = true;
+    }
+    tw.release('w');
+    const left = tw.leaveMode();
+    const afterLeave = tw.mode;
+    tw.newVoyage(); tw.step(0.1);
+    return { boot, entered, inTown, speedBeforeTown, speedInTown, settled, worldMoved, left, afterLeave };
+  });
+  if (mode.boot !== 'sailing') fail(`mode: game did not boot in SAILING (got ${mode.boot})`);
+  if (!mode.entered || mode.inTown !== 'town') fail(`mode: enterMode('town') did not switch the world-state (mode=${mode.inTown})`);
+  if (!mode.settled) fail('mode: the player helm did not ease to settle when paused in town');
+  if (!(mode.speedInTown < mode.speedBeforeTown)) fail(`mode: ship did not slow on entering town (before=${mode.speedBeforeTown?.toFixed(1)} → in-town=${mode.speedInTown?.toFixed(1)})`);
+  if (!mode.worldMoved) fail('mode: the world snap-froze — no vessel moved while the player was paused in town (#95)');
+  if (!mode.left || mode.afterLeave !== 'sailing') fail(`mode: leaveMode() did not return to SAILING (got ${mode.afterLeave})`);
+
   // 2i) Ship-vs-ship collision (#76 b): the player BUMPS other vessels, never sailing clean
   // through them. Pursue the nearest NPC at full throttle and assert (1) the hulls actually MET
   // (closest approach reached the combined boundary) and (2) the player was NEVER let deep inside
