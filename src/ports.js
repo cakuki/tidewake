@@ -131,6 +131,18 @@ export function createPorts(world) {
     // each port's seaward angle to lay barrels/crates along the planks and frame it with palms.
     get portPlacements() { return ports.map((p) => ({ name: p.name, x: p.x, z: p.z, angle: p.angle })); },
     get docked() { return prevDocked; },
+    // The nearest port's NAME to a ship position (never null while ports exist) — drives the
+    // per-town music identity (#69): the tavern drone re-keys to whichever harbour you're closest
+    // to, so you hear a town in its own key before you can see it. No allocation (3-port scan).
+    nearestPortName(pos) {
+      if (!pos) return prevDocked;
+      let best = null, bestD = Infinity;
+      for (const p of ports) {
+        const d = Math.hypot(pos.x - p.x, pos.z - p.z);
+        if (d < bestD) { bestD = d; best = p.name; }
+      }
+      return best;
+    },
     // Look up a port's geometry by name — `{ x, z, angle }` — for the Leave Harbour seaward
     // nudge (#67). Null for an unknown/at-sea name.
     portInfo(name) {

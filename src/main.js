@@ -9,6 +9,7 @@ import { createPorts, DOCK_RADIUS } from './ports.js';
 import { loadProps } from './props.js';
 import { createAudio } from './audio.js';
 import { createMusic } from './music.js';
+import { townMusicIdentity } from './town-theme.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';
 import { createSettings } from './ui/settings.js';
@@ -388,6 +389,7 @@ function newVoyage() {
   mode.reset(); // a fresh voyage always starts under sail — deterministic (#95/#106)
   landfall.reset(); // ...and with no landfall gesture mid-flight (#102)
   leftHarbour = false; // a fresh voyage re-arms auto-harbour from a clean slate (#67)
+  themePort = null;    // re-key the tavern drone to wherever the fresh voyage starts (#69)
   persistence.clear();
   sailing.reset();
   islandNamer.reset(); // a fresh voyage re-arms the island landfall greetings (#19)
@@ -520,6 +522,10 @@ function chaseObjective(target) {
 // `leftHarbour` latch on the way out — it suspends the harbour slow-to-stop assist (so the
 // seaward nudge can actually carry the hull out) and drops once we've cleared the harbour mouth.
 let leftHarbour = false;
+// Per-town music identity (#69): the nearest port whose musical identity the tavern drone is
+// currently keyed to. We re-key only when this CHANGES (debounce) so re-tuning is a rare, smooth
+// crossfade, not a per-frame thrash — a town always sounds like itself, the instant you near it.
+let themePort = null;
 let bodyTown = false; // cached so we only touch the <body> class on a real change
 function leaveHarbour() {
   if (!mode.is(TOWN)) return false;
@@ -713,6 +719,15 @@ function update(dt, t) {
   hud.renderDuel(duel.snapshot());             // insult-duel panel + "hail/fire" prompt (#33)
   hud.renderCannons(cannons.snapshot());       // cannon-broadside panel (#59)
   audio.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
+  // Per-town music identity (#69): re-key the tavern drone to the nearest harbour, only on a change
+  // (debounced) so the port layer already sounds like that town as it swells in on approach — and
+  // making landfall somewhere new FEELS new. Deterministic per port name; headless-safe (no-op
+  // until the audio engine is up). TEMPO stays fixed this slice (transposition-first, TL call).
+  const nearPort = ports.nearestPortName(state.pos);
+  if (nearPort && nearPort !== themePort) {
+    themePort = nearPort;
+    music.setTownTheme(townMusicIdentity(nearPort));
+  }
   // Mode-aware sound (#94): hand the music director WHERE the player is — the mode (#95) plus the
   // nearest-port distance from the harbour loop above — so the bed crossfades into a port's tavern
   // layer on approach (the #67 audible cue), settles for BATTLE, and is the open-sea bed at sail.
@@ -1011,6 +1026,15 @@ window.__tidewake = {
   get islandsIntroduced() { return islandNamer.introduced; },
   get nearestIsland() { return islandNamer.nearestIsland(state.pos); },
   get docked() { return ports.docked; },
+  // Per-town music identity (#69) QA surface: which port the tavern drone is currently keyed to and
+  // its full deterministic identity (key/mode/tint/tremolo/chord), plus a pure lookup for ANY port —
+  // so a headless playtest can sail between harbours and assert each town sounds like itself, that
+  // the identity is stable across reloads, and that distinct towns get distinct musical characters.
+  get townMusic() {
+    const port = themePort || ports.docked || null;
+    return { port, identity: port ? townMusicIdentity(port) : null };
+  },
+  townMusicFor(name) { return townMusicIdentity(name); },
   // Invisible onboarding (#60) QA surface: the live progress flags, the next step, and
   // whether the seeded goal card is currently on screen.
   get onboarding() {

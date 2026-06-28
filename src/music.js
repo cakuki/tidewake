@@ -165,6 +165,10 @@ export function createMusic() {
   let musicGain = null;     // master music sub-gain under the bus (mute covers it)
   let seaLayerGain = null;  // the sailing theme lives here (mode-aware mix, #94)
   let portLayerGain = null; // the tavern/port drone lives here (swells on approach, #94)
+  let portLP = null;        // the port drone's lowpass — per-town timbre tint (#69)
+  let portTremLfo = null;   // the bellows wheeze LFO — per-town tremolo rate (#69)
+  let portChordOscs = null; // the 4 drone oscillators — re-tuned per town (transposition, #69)
+  let currentTownTheme = null; // the last per-town identity set (applied on start once the engine is up)
   let leadBus = null;       // soft lowpass colouring the lead
   let started = false;
   let muted = false;
@@ -277,31 +281,32 @@ export function createMusic() {
     portLayerGain.gain.value = 0;        // silent until you approach a port
     portLayerGain.connect(musicGain);
 
-    const lp = ctx.createBiquadFilter();
-    lp.type = 'lowpass';
-    lp.frequency.value = 1400;           // warm, woody, "indoors" timbre
-    lp.connect(portLayerGain);
+    portLP = ctx.createBiquadFilter();
+    portLP.type = 'lowpass';
+    portLP.frequency.value = 1400;       // warm, woody default; per-town tint re-aims it (#69)
+    portLP.connect(portLayerGain);
 
-    // Accordion-bellows tremolo over the whole pad.
+    // Accordion-bellows tremolo over the whole pad (its rate is a per-town flavour, #69).
     const trem = ctx.createGain();
     trem.gain.value = 0.7;
-    trem.connect(lp);
-    const lfo = ctx.createOscillator();
-    lfo.type = 'sine';
-    lfo.frequency.value = 2.6;           // a cosy wheeze
+    trem.connect(portLP);
+    portTremLfo = ctx.createOscillator();
+    portTremLfo.type = 'sine';
+    portTremLfo.frequency.value = 2.6;   // a cosy wheeze
     const lfoDepth = ctx.createGain();
     lfoDepth.gain.value = 0.18;
-    lfo.connect(lfoDepth).connect(trem.gain);
-    lfo.start();
+    portTremLfo.connect(lfoDepth).connect(trem.gain);
+    portTremLfo.start();
 
-    // A warm D-major chord drone (tonic / third / fifth / octave), softly detuned for body —
-    // the same key centre as the sailing theme, so the score feels like one voice.
+    // A warm D-major chord drone (tonic / third / fifth / octave), softly detuned for body — the
+    // DEFAULT key centre (matches the sailing theme). setTownTheme() re-tunes these four oscillators
+    // per port so each town sounds like itself (#69); the oscillators persist (no clicks).
     const chord = [
       noteNameToMidi('D3'), noteNameToMidi('F#3'),
       noteNameToMidi('A3'), noteNameToMidi('D4'),
     ];
     const detunes = [-4, 3, -2, 5];
-    chord.forEach((midi, i) => {
+    portChordOscs = chord.map((midi, i) => {
       const osc = ctx.createOscillator();
       osc.type = i % 2 === 0 ? 'triangle' : 'sine';
       osc.frequency.value = midiToFreq(midi);
@@ -310,6 +315,7 @@ export function createMusic() {
       g.gain.value = 0.05;               // each voice soft; the layer gain rides the swell
       osc.connect(g).connect(trem);
       osc.start();
+      return osc;
     });
   }
 
@@ -393,6 +399,9 @@ export function createMusic() {
       leadBus.connect(leadLP).connect(seaLayerGain);
 
       buildPortLayer();
+      // Apply any per-town identity chosen before the engine came up (#69) — so the drone is
+      // already in the nearest port's key the instant the audio bus starts.
+      if (currentTownTheme) setTownTheme(currentTownTheme);
 
       buildSchedule();
       step = 0;
@@ -409,6 +418,9 @@ export function createMusic() {
       musicGain = null;
       seaLayerGain = null;
       portLayerGain = null;
+      portLP = null;
+      portTremLfo = null;
+      portChordOscs = null;
       started = false;
     }
   }
@@ -424,6 +436,35 @@ export function createMusic() {
       portLayerGain.gain.setTargetAtTime(clamp01(port), now, 0.6);
     } catch {
       /* a bad frame must never throw */
+    }
+  }
+
+  // Per-town music identity (#69): re-voice the tavern drone toward a port's identity — transpose
+  // the four chord oscillators to its key/mode (chordMidi), re-aim the lowpass to its timbre tint
+  // and the LFO to its wheeze rate. Every change is a smooth setTargetAtTime GLIDE (a click-free
+  // crossfade, debounced to the nearest port by the caller). TEMPO is untouched this slice (the
+  // scheduler is left alone — TL constraint). Safe before the engine is up: it just stores the
+  // identity, which start() applies once the bus exists. A bad identity never throws.
+  function setTownTheme(identity) {
+    if (!identity) return;
+    currentTownTheme = identity;
+    if (!ctx || !portChordOscs) return;
+    try {
+      const now = ctx.currentTime;
+      const tc = 0.6; // glide ~matches the layer crossfade — re-keying a town never clicks
+      const chord = Array.isArray(identity.chordMidi) ? identity.chordMidi : [];
+      portChordOscs.forEach((osc, i) => {
+        const f = midiToFreq(chord[i]);
+        if (Number.isFinite(f) && f > 0) osc.frequency.setTargetAtTime(f, now, tc);
+      });
+      if (portLP && Number.isFinite(identity.lowpassHz)) {
+        portLP.frequency.setTargetAtTime(identity.lowpassHz, now, tc);
+      }
+      if (portTremLfo && Number.isFinite(identity.tremoloHz)) {
+        portTremLfo.frequency.setTargetAtTime(identity.tremoloHz, now, tc);
+      }
+    } catch {
+      /* a bad theme must never break the frame */
     }
   }
 
@@ -470,5 +511,5 @@ export function createMusic() {
   // is up — it just arms a flag the scheduler reads once the music is running and unmuted.
   function stinger() { stingerArmed = true; }
 
-  return { start, setMute, update, setMix, stinger };
+  return { start, setMute, update, setMix, setTownTheme, stinger };
 }
