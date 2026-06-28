@@ -17,7 +17,7 @@ export const MAX_EVENTS = 60;
 
 // The deeds the balladeer knows how to sing. A future slice can add more (best trade,
 // rank climbed, ports visited) by extending NARRATORS + sanitizeEvent below.
-export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter', 'harbour'];
+export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter', 'harbour', 'governorship'];
 
 export const BALLAD_TITLE = 'The Ballad of Your Voyage';
 
@@ -87,6 +87,12 @@ export function sanitizeEvent(ev) {
       return isStr(ev.port)
         ? { type: 'harbour', deed: ev.deed, port: String(ev.port).trim(), level: nonNegInt(ev.level) }
         : null;
+    case 'governorship':
+      // The home-isle governorship (#119): the lawful arc's NAMED capstone — the home port you
+      // raised + the title the isle crowned you with. The mirror of the `legend` crown verse.
+      return isStr(ev.port) && isStr(ev.title)
+        ? { type: 'governorship', port: String(ev.port).trim(), title: String(ev.title).trim() }
+        : null;
     default:
       return null;
   }
@@ -100,6 +106,8 @@ function dedupKey(ev) {
   if (ev.type === 'legend') return `legend:${ev.pole}`;
   // Your Harbour (#118): a claim and each growth tier is sung once — never twice on a reload.
   if (ev.type === 'harbour') return `harbour:${ev.deed}:${ev.port}:${ev.level}`;
+  // Governorship (#119): the named home-isle crown is sung once per isle — never twice on a reload.
+  if (ev.type === 'governorship') return `governorship:${ev.port}`;
   return null;
 }
 
@@ -176,6 +184,11 @@ const NARRATORS = {
       ? `At ${e.port} you carved your name into the harbour post and called it home; the wharf, against all pirate custom, was glad of it.`
       : `${e.port} prospered another notch under your hand — they'll tell their grandchildren the harbour grew the day your sails came in.`),
   ],
+  // Governorship (#119): the lawful arc's NAMED capstone — the mirror of the legend crown, sung for
+  // the very isle you raised. Warm grandeur with a wink.
+  governorship: [
+    (e) => `And the isles laid down their ledgers to make it law: ${e.title}. You did not seize the place — you raised it from a bare berth, and ${e.port} crowned you for the building.`,
+  ],
 };
 
 // False-colours strikes (#79) get their own treacherous verse — the smug last-second reveal.
@@ -237,7 +250,8 @@ function tally(events) {
   for (const e of events) {
     if (e.type === 'landfall') isles++;
     else if (e.type === 'duel' || e.type === 'cannon') fights++;
-    else if (e.type === 'legend') legends++;
+    // The named home-isle governorship (#119) counts as a crown alongside the pole legends (#46).
+    else if (e.type === 'legend' || e.type === 'governorship') legends++;
   }
   return { isles, fights, legends };
 }
@@ -270,7 +284,7 @@ export function composeBallad(events, opts = {}) {
     lines = [EMPTY_LINE];
   } else {
     lines = [OPENING];
-    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0, harbour: 0 };
+    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0, harbour: 0, governorship: 0 };
     for (const e of log) {
       // An at-sea encounter sings a rescue/plunder verse by the choice made; a treacherous fight
       // sings a false-colours verse; a lawful pirate-hunt the privateer verse; else the honest pool.

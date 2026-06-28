@@ -16,7 +16,7 @@ import { renownTier, dominantPole } from '../renown.js';
 import { composeRumours } from '../rumours.js';
 import {
   isHome, canClaim, canInvest, investCost, investStanding, harbourGreeting, harbourLevelName,
-  CLAIM_STANDING, MAX_LEVEL,
+  governorTitle, CLAIM_STANDING, MAX_LEVEL,
 } from '../systems/home-port.js';
 
 export function createTown(opts = {}) {
@@ -180,9 +180,15 @@ export function createTown(opts = {}) {
         : (coins >= cost
             ? `<button id="town-invest" class="town-invest" type="button">⚒ Invest ${cost}c — grow your harbour <span class="town-invest-gain">(+${investStanding(harbour)} standing)</span></button>`
             : `<div class="town-harbour-need">Grow ${esc(port)} for <b>${cost}c</b> (+${investStanding(harbour)} standing) — you have ${coins}c.</div>`);
+      // Governorship acknowledgement (#119): once the isle has crowned you its governor, your home
+      // quay greets its governor by title every landfall — the lawful arc's NAMED endgame, made felt.
+      const gov = state.governorship
+        ? `<div class="town-harbour-gov">⚖ ${esc(governorTitle(harbour))} — the council rises when you enter the hall, and the harbour bell rings twice for its governor.</div>`
+        : '';
       return `<div class="town-harbour town-harbour-home">`
         + `<div class="town-harbour-h">🏠 Your Harbour — ${esc(harbourLevelName(lvl))} <span class="town-harbour-lvl">lvl ${lvl}/${MAX_LEVEL}</span></div>`
         + `<div class="town-harbour-greet">${esc(greet)}</div>`
+        + gov
         + action
         + `</div>`;
     }
@@ -224,7 +230,7 @@ export function createTown(opts = {}) {
     const master = recall || info.harbourmaster || 'The harbourmaster nods you ashore.';
     // Cheap cache: only touch the DOM when something the player can see changes.
     const chasing = (state.objective && state.objective.target && state.objective.target.name) || '';
-    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing + '|' + JSON.stringify(state.harbour ?? null) + '|' + (state.standing ?? 0);
+    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing + '|' + JSON.stringify(state.harbour ?? null) + '|' + (state.standing ?? 0) + '|' + (state.governorship ? 1 : 0);
     if (sig === lastSig) return;
     lastSig = sig;
 

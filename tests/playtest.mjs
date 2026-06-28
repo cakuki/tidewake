@@ -849,6 +849,67 @@ try {
   if (!home.persisted || home.persisted.level !== 2) fail('your-harbour: the home harbour did not survive a save (#118)');
   if (home.afterNewVoyage) fail('your-harbour: a fresh voyage did not clear the claimed home harbour (#118)');
 
+  // 2h2e) Governorship endgame (#119, DL #4) — the lawful arc's NAMED capstone, the mirror of the
+  // pirate legend-crown (#46). Claim a home port, GROW it to its top tier, and climb Standing past
+  // the governor gate; the per-frame check (on the #130 registry) must then crown you "Governor of
+  // [home isle]": the crown overlay shows, a Ballad verse is sung, your home quay acknowledges its
+  // governor, and the title is locked into the save (survives a round-trip, clears on a new voyage).
+  const gov = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);
+    const port = tw.ports[0];
+    const [px, pz] = port.pos;
+    tw.qaTeleport(px, pz); tw.step(0.1);
+    for (let i = 0; i < 80 && !(tw.mode === 'town' && tw.town.open); i++) tw.step(0.1);
+    // Claim, then fund + grow the harbour all the way to its top tier.
+    tw.setStanding(200); tw.claimHarbour();
+    tw.setCoins(100000);
+    let grows = 0;
+    for (let i = 0; i < 10 && tw.harbourCanInvest.ok; i++) { tw.investHarbour(); grows++; }
+    const topHarbour = tw.harbour;
+    // Not yet a governor: at the top tier but Standing below the gate.
+    tw.setStanding(50);
+    tw.step(0.2);
+    const beforeGate = tw.governorship;          // null — the gate isn't met
+    const earnableBefore = tw.governorshipEarnable;
+    // Climb Standing past the governor gate; the per-frame check crowns you.
+    tw.setStanding(1200);
+    for (let i = 0; i < 20 && !tw.governorship; i++) tw.step(0.1);
+    const crowned = tw.governorship;             // "Governor of <port>"
+    const snap = tw.state.governorship;          // the QA snapshot flag
+    const overlayShown = document.getElementById('legend')?.classList.contains('show');
+    const overlayText = document.getElementById('legend')?.textContent || '';
+    const verse = tw.voyageLog.find((e) => e.type === 'governorship') || null;
+    const badge = document.getElementById('legend-badge')?.textContent || '';
+    const greetEl = document.querySelector('#town .town-harbour-gov');
+    const ackText = greetEl ? greetEl.textContent : '';
+    // Persist + reload-shape: save, confirm it survives, and a fresh voyage clears it.
+    tw.save();
+    const persisted = tw.governorship;
+    // Re-fire guard: stepping again must NOT re-crown (no duplicate verse).
+    tw.step(0.3);
+    const verseCount = tw.voyageLog.filter((e) => e.type === 'governorship').length;
+    tw.newVoyage(); tw.step(0.1);
+    const afterNewVoyage = tw.governorship;
+    return {
+      portName: port.name, grows, topLevel: topHarbour ? topHarbour.level : 0,
+      beforeGate, earnableBefore, crowned, snap, overlayShown, overlayText, verse, badge,
+      ackText, persisted, verseCount, afterNewVoyage,
+    };
+  });
+  if (gov.topLevel < 4) fail(`governorship: the home harbour did not grow to its top tier (level=${gov.topLevel}, grows=${gov.grows}) (#119)`);
+  if (gov.beforeGate || gov.earnableBefore) fail(`governorship: crowned before the Standing gate was met (title=${gov.beforeGate}) (#119)`);
+  if (!gov.crowned || !gov.crowned.includes(gov.portName)) fail(`governorship: the isle did not crown you its governor by name (title=${gov.crowned}) (#119)`);
+  if (!gov.snap) fail('governorship: the QA state snapshot did not flag the earned crown (#119)');
+  if (!gov.overlayShown) fail('governorship: the crown overlay did not show on earning the governorship (#119)');
+  if (!/GOVERNOR/i.test(gov.overlayText) || !gov.overlayText.includes(gov.portName)) fail(`governorship: the overlay did not proclaim the named governorship ("${gov.overlayText.slice(0, 80)}") (#119)`);
+  if (!gov.verse || !gov.verse.title.includes(gov.portName)) fail(`governorship: the crown did not sing into the Ballad/voyage log (${JSON.stringify(gov.verse)}) (#78/#119)`);
+  if (!gov.badge.includes(gov.portName)) fail(`governorship: the persistent HUD badge does not show the governorship ("${gov.badge}") (#119)`);
+  if (!gov.ackText || !gov.ackText.includes(gov.portName)) fail(`governorship: the home quay did not acknowledge its governor on landfall ("${gov.ackText}") (#119)`);
+  if (!gov.persisted) fail('governorship: the crown did not survive a save (#119)');
+  if (gov.verseCount !== 1) fail(`governorship: the crown re-fired (verseCount=${gov.verseCount}) — it must crown ONCE (#119)`);
+  if (gov.afterNewVoyage) fail('governorship: a fresh voyage did not clear the earned governorship (#119)');
+
   // 2h3) Landfall gesture (#102): making port is a crafted, EASED moment, not a snap. Drive the
   // mode transition headlessly and assert the gesture (a) starts under sail (blend 0), (b) eases
   // blend UP over the sim's dt without jumping straight to 1 (deterministic, not wall-clock), (c)

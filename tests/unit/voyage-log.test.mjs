@@ -290,3 +290,20 @@ test('the ballad sings a claimed harbour, deduped per claim/grow tier (#118)', (
   const text = composeBallad(log).text;
   assert.ok(text.includes("Gullet's Rest"), 'the home port is named in the ballad');
 });
+
+test('sanitizeEvent accepts a governorship crown and rejects junk (#119)', () => {
+  assert.deepEqual(sanitizeEvent({ type: 'governorship', port: "Gullet's Rest", title: "Governor of Gullet's Rest" }),
+    { type: 'governorship', port: "Gullet's Rest", title: "Governor of Gullet's Rest" });
+  assert.equal(sanitizeEvent({ type: 'governorship', port: 'P' }), null);          // no title
+  assert.equal(sanitizeEvent({ type: 'governorship', title: 'Governor of P' }), null); // no port
+});
+
+test('the ballad sings a governorship once per isle, naming the isle (#119)', () => {
+  let log = [];
+  log = recordEvent(log, { type: 'governorship', port: "Gullet's Rest", title: "Governor of Gullet's Rest" });
+  log = recordEvent(log, { type: 'governorship', port: "Gullet's Rest", title: "Governor of Gullet's Rest" }); // dup → no-op
+  assert.equal(log.length, 1, 'the named crown is sung once per isle, never twice on reload');
+  const ballad = composeBallad(log);
+  assert.ok(ballad.text.includes("Gullet's Rest"), 'the governed isle is named in the ballad');
+  assert.ok(/crown/.test(ballad.lines.at(-2)), 'a governorship counts as a crown in the closing tally');
+});

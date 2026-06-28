@@ -447,3 +447,24 @@ test('deserialize tolerates a malformed harbour (never rejects the save) (#118)'
   assert.ok(r, 'a junk harbour must not reject the whole save');
   assert.equal(r.harbour, null);
 });
+
+// ---- home-isle governorship (save v13, #119) -----------------------------------------------
+
+test('serialize → deserialize round-trips the earned governorship crown (#119)', () => {
+  const harbour = { name: "Gullet's Rest", level: 4, invested: 1200 };
+  const restored = deserialize(serialize({ ...economyState(), harbour, governorship: true }));
+  assert.equal(restored.governorship, true);
+  assert.deepEqual(restored.harbour, harbour, 'the home isle the title names survives too');
+  // An unearned voyage records it false.
+  const fresh = deserialize(serialize(economyState()));
+  assert.equal(fresh.governorship, false);
+});
+
+test('deserialize coerces a junk governorship and never rejects the save (#119)', () => {
+  const good = JSON.parse(serialize(economyState()));
+  const r = deserialize(JSON.stringify({ ...good, governorship: 'yes' }));
+  assert.ok(r, 'a junk governorship must not reject the whole save');
+  assert.equal(r.governorship, true, 'truthy junk coerces to earned');
+  const r2 = deserialize(JSON.stringify({ ...good, governorship: 0 }));
+  assert.equal(r2.governorship, false);
+});

@@ -41,8 +41,11 @@ export const SAVE_KEY = 'tidewake.save.v1';
 // v12 added the claimed HOME HARBOUR — the governor pole's first reactive verb: the port you've
 // claimed as your own ({name, level, invested}), grown a level at a time by investing coin for
 // Standing (#118, "Your Harbour"); an additive, fail-open field (junk → no claim).
+// v13 added the home-isle GOVERNORSHIP — the lawful arc's named endgame crown, earned by growing
+// your home port to its top tier while highly respected (#119); a plain boolean, the mirror of the
+// `legends` crowns, coerced + fail-open (junk → not earned).
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 12;
+export const SAVE_VERSION = 13;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -82,6 +85,7 @@ const migrations = {
   9: (s) => ({ ...s }), // chased-rumour objective (#111/#112/#115)
   10: (s) => ({ ...s }), // deepened port memory: lastDeed + home port (#104b)
   11: (s) => ({ ...s }), // claimed home harbour (#118)
+  12: (s) => ({ ...s }), // home-isle governorship crown (#119)
 };
 
 /**
@@ -171,6 +175,9 @@ export function serialize(state) {
   // Claimed home harbour (#118): the governor pole's home port + its growth tier. Sanitised on the
   // way out so only a clean claim persists; an unclaimed caller stores null (no home yet).
   const harbour = sanitizeHarbour(state.harbour);
+  // Home-isle governorship (#119): the lawful endgame crown. A plain boolean, coerced; a pre-crown
+  // caller (no `governorship`) records it unearned. The named title is derived from `harbour` on read.
+  const governorship = !!state.governorship;
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -188,6 +195,7 @@ export function serialize(state) {
     portMemory,
     objective,
     harbour,
+    governorship,
   });
 }
 
@@ -302,6 +310,11 @@ export function deserialize(raw) {
   // rejecting an otherwise-valid save (fail open).
   const harbour = sanitizeHarbour(obj.harbour);
 
+  // Home-isle governorship (save v13, #119): like legends it's a celebration flag, not load-bearing
+  // physics — coerced to a safe boolean; junk/absent → not earned, never rejects an otherwise-valid
+  // save (fail open, not closed). The named title is derived from `harbour` by the reader.
+  const governorship = !!obj.governorship;
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -318,6 +331,7 @@ export function deserialize(raw) {
     portMemory,
     objective,
     harbour,
+    governorship,
     renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }

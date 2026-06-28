@@ -71,6 +71,11 @@ const CORPUS = [
     blob: '{"v":11,"heading":1.2,"speed":8,"throttle":0.5,"pos":[120.5,0,-340.25],"coins":250,"cargo":{"rum":3},"infamy":300,"standing":200,"legends":{"pirate":true,"governor":false},"onboarding":{"goal":true,"firstDock":true,"firstTrade":true,"firstRank":false},"voyageLog":[],"colours":"merchant","portMemory":{"Saltpurse Quay":{"visits":4,"lastTier":2,"lastPole":"governor","lastDeed":"the day you sent the Black Gull to the seabed in these waters"}},"objective":null}',
     expect: { coins: 250, portMemory: { 'Saltpurse Quay': { visits: 4, lastTier: 2, lastPole: 'governor', lastDeed: 'the day you sent the Black Gull to the seabed in these waters' } } },
   },
+  {
+    v: 12, // claimed home harbour — the governor pole's first reactive verb (#118 "Your Harbour")
+    blob: '{"v":12,"heading":1.2,"speed":8,"throttle":0.5,"pos":[120.5,0,-340.25],"coins":250,"cargo":{"rum":3},"infamy":300,"standing":200,"legends":{"pirate":true,"governor":false},"onboarding":{"goal":true,"firstDock":true,"firstTrade":true,"firstRank":false},"voyageLog":[],"colours":"merchant","portMemory":{},"objective":null,"harbour":{"name":"Gullet\'s Rest","level":2,"invested":150}}',
+    expect: { coins: 250, harbour: { name: "Gullet's Rest", level: 2, invested: 150 }, governorship: false },
+  },
 ];
 
 // A subset-deep-equality assert: every key in `expect` matches in `actual` (deep), but `actual` may

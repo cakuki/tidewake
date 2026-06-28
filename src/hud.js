@@ -6,6 +6,7 @@
 import { VERSION } from './version.js';
 import { GOODS, PORTS, HOLD_CAP, market, buy, sell, cargoUsed } from './economy.js';
 import { rankForRenown, renownTier, titleFor, dominantPole, legendBeat } from './renown.js';
+import { governorshipBeat } from './systems/home-port.js';
 import { colourById } from './colours.js';
 import { createCompass } from './ui/compass.js';
 
@@ -385,8 +386,10 @@ export function createHud() {
     $legend.classList.remove('show');
     if (legendTimer) { clearTimeout(legendTimer); legendTimer = null; }
   }
-  function showLegend(pole, stats = {}) {
-    const beat = legendBeat(pole);
+  // The shared crown overlay: a near-full-screen proclamation, reused by the pole legends (#46)
+  // and the named home-isle governorship (#119). `beat` carries the title + flavour; `kicker` is
+  // the small heading above it ("A LEGEND IS MADE" / "A GOVERNOR IS NAMED").
+  function showCrown(beat, stats = {}, kicker = 'A LEGEND IS MADE') {
     if (!$legend || !beat) return;
     const crown = `${beat.icon} You are now THE ${beat.title.toUpperCase()}`;
     const both = stats.both
@@ -394,7 +397,7 @@ export function createHud() {
       : '';
     $legend.innerHTML =
       `<div class="legend-card">`
-      + `<div class="legend-kicker">A LEGEND IS MADE</div>`
+      + `<div class="legend-kicker">${kicker}</div>`
       + `<div class="legend-title">${crown}</div>`
       + `<div class="legend-proclaim">${beat.proclaim}</div>`
       + `<div class="legend-flourish">${beat.flourish}</div>`
@@ -408,6 +411,15 @@ export function createHud() {
     // auto-timer just guarantees it can never get permanently stuck if input is lost.
     if (legendTimer) clearTimeout(legendTimer);
     legendTimer = setTimeout(hideLegend, 12000);
+  }
+  function showLegend(pole, stats = {}) {
+    showCrown(legendBeat(pole), stats, 'A LEGEND IS MADE');
+  }
+  // The home-isle governorship crown (#119) — the named mirror of showLegend, driven by the
+  // captain's claimed home harbour.
+  function showGovernorship(harbour, stats = {}) {
+    const beat = governorshipBeat(harbour);
+    showCrown(beat, stats, beat ? beat.kicker : 'A GOVERNOR IS NAMED');
   }
   // Dismiss on the player's next deliberate input — a fresh keydown or a click/tap.
   // We ignore OS key-repeat (e.repeat) so a *held* throttle key (W/A/S/D, often down the
@@ -432,14 +444,17 @@ export function createHud() {
     const earned = [];
     if (lg.pirate) earned.push(legendBeat('pirate'));
     if (lg.governor) earned.push(legendBeat('governor'));
-    const sig = earned.map((e) => e.title).join('+');
+    // The named home-isle governorship (#119) earns its own badge segment alongside the pole legends.
+    const govBeat = state.governorship ? governorshipBeat(state.harbour) : null;
+    const sig = earned.map((e) => e.title).join('+') + (govBeat ? `|gov:${govBeat.title}` : '');
     if (sig === lastBadgeSig) return;
     lastBadgeSig = sig;
-    if (!earned.length) { $legendBadge.classList.remove('show'); $legendBadge.textContent = ''; return; }
-    const label = earned.length === 2
-      ? '★ Legend of the Tidewake'
-      : `${earned[0].icon} Legend: ${earned[0].title}`;
-    $legendBadge.textContent = label;
+    const labels = [];
+    if (earned.length === 2) labels.push('★ Legend of the Tidewake');
+    else if (earned.length === 1) labels.push(`${earned[0].icon} Legend: ${earned[0].title}`);
+    if (govBeat) labels.push(`${govBeat.icon} ${govBeat.title}`);
+    if (!labels.length) { $legendBadge.classList.remove('show'); $legendBadge.textContent = ''; return; }
+    $legendBadge.textContent = labels.join('  ·  ');
     $legendBadge.classList.add('show');
   }
 
@@ -457,5 +472,5 @@ export function createHud() {
     compass.update(state);
   }
 
-  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderEncounter, flashBanner, showLegend, showGoal, hideGoal };
+  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderEncounter, flashBanner, showLegend, showGovernorship, showGoal, hideGoal };
 }

@@ -39,6 +39,7 @@ import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legen
 import { recallLine, rememberArrival, sanitizePortMemory, recordDeed, deedPhrase, homePort } from './systems/port-memory.js';
 import {
   sanitizeHarbour, claim as claimHome, invest as investHome, canClaim, canInvest, harbourLevelName,
+  earnedGovernorship, governorTitle,
 } from './systems/home-port.js';
 import { makeObjective, resolvesAt, payoffFor, sanitizeObjective } from './objectives.js';
 import { createEncounter, HAIL_LINES, RESCUE_LINES, PLUNDER_LINES } from './systems/encounter.js';
@@ -555,6 +556,7 @@ function newVoyage() {
   state.portMemory = {}; // a clean slate — no port remembers your face yet (#104)
   state.portRecall = null; // ...and no remembered-return greeting in flight
   state.harbour = null; // ...and no home port claimed yet (#118 "Your Harbour")
+  state.governorship = false; // ...and no governorship crowned yet (#119)
   state.objective = null; // a fresh voyage chases nothing yet — the chart starts unpinned (#111/#112)
   state.colours = DEFAULT_COLOURS; // a fresh voyage flies honest black again (#79)
   applyColoursToShip();
@@ -958,6 +960,8 @@ systems.register({ name: 'hud', order: 210, update: (f) => hud.update(f.state, s
 systems.register({ name: 'reputation-needle', order: 215, update: (f) => repNeedle.update(f.state, f.dt) });
 // — endgame legend crowns (#46) + invisible onboarding nudge/beats (#60).
 systems.register({ name: 'legends', order: 220, update: () => checkLegends() });
+// — endgame governorship (#119): the lawful arc's NAMED capstone, just after the pole legends.
+systems.register({ name: 'governorship', order: 221, update: () => checkGovernorship() });
 systems.register({ name: 'onboarding', order: 230, update: () => checkOnboarding() });
 // — the charts: north-up radar (#16) + route-planning chart (only redraws while open) (#54).
 systems.register({ name: 'minimap', order: 240, update: (f) => minimap.update(f.state) });
@@ -1012,6 +1016,27 @@ function checkLegends() {
       persistence.write(); // lock the legend in the moment it's earned
     }
   }
+}
+
+// Endgame governorship (#119): the lawful arc's NAMED capstone — the mirror of the legend-crown
+// (#46). The first frame your home port stands at its top tier AND your Standing crosses the
+// governor threshold, the isle proclaims you its Governor: a one-time crown overlay, a Ballad
+// verse, the title locked into the save, and an acknowledgement waiting at your home quay. The
+// sandbox sails on after — a milestone, not a game-over.
+function checkGovernorship() {
+  if (state.governorship) return;
+  if (!earnedGovernorship({ harbour: state.harbour, standing: state.standing ?? 0 })) return;
+  state.governorship = true;
+  const title = governorTitle(state.harbour);
+  logDeed({ type: 'governorship', port: state.harbour.name, title }); // crown the Ballad (#78)
+  hud.showGovernorship(state.harbour, {
+    infamy: state.infamy ?? 0,
+    standing: state.standing ?? 0,
+    renown: state.renown ?? ((state.infamy ?? 0) + (state.standing ?? 0)),
+    coins: state.coins ?? 0,
+    title,
+  });
+  persistence.write(); // lock the governorship the moment it's earned
 }
 
 // ---- Invisible onboarding (#60) -------------------------------------------------------
@@ -1159,6 +1184,9 @@ window.__tidewake = {
       pole: dominantPole(infamy, standing),
       // Endgame crowns (#46): which legends this voyage has earned.
       legends: { pirate: !!state.legends?.pirate, governor: !!state.legends?.governor },
+      // Home-isle governorship (#119): whether the named lawful crown is earned + its title.
+      governorship: !!state.governorship,
+      governorTitle: state.governorship ? governorTitle(state.harbour) : null,
     };
   },
   // Deterministic perf snapshot (#52): draw calls / triangles / geometries / textures /
@@ -1249,6 +1277,12 @@ window.__tidewake = {
   get harbourCanInvest() { return canInvest({ harbour: state.harbour, port: state.port, coins: state.coins ?? 0 }); },
   claimHarbour() { return claimHarbour(); },
   investHarbour() { return investHarbour(); },
+  // Governorship endgame (#119, DL #4) QA surface: the earned named crown ("Governor of [home isle]"
+  // or null) + the point-in-time eligibility — so a headless playtest can grow a home port to its top
+  // tier, climb Standing past the gate, and assert the isle crowns the captain its governor (and that
+  // the crown survives a save round-trip). The per-frame crowning runs on the #130 systems registry.
+  get governorship() { return state.governorship ? governorTitle(state.harbour) : null; },
+  get governorshipEarnable() { return earnedGovernorship({ harbour: state.harbour, standing: state.standing ?? 0 }); },
   // Landfall gesture (#102) QA surface: the crafted SAILING↔TOWN transition's live phase + eased
   // blend (0=at sea, 1=ashore) + whether it's in flight, plus the headless skip driver — so a
   // playtest can assert the moment EASES (not snaps), is deterministic, and is skippable.

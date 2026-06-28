@@ -193,3 +193,63 @@ export function harbourGreeting(harbour, port) {
   const line = LEVEL_LINES[clampLevel(harbour.level)] || '';
   return line ? line.replace(/\{port\}/g, port) : null;
 }
+
+// ---- Governorship endgame (#119, DL #4) — the lawful arc's NAMED capstone ---------------------
+// The pirate pole's summit crowns a legend (#46): cross the top of Infamy and you are THE Terror of
+// the Tidewake. The governor pole's PERSONAL capstone is the mirror, tied to the very port you
+// RAISED — grow your home harbour to its top tier AND climb Standing high enough, and the isle
+// proclaims you its GOVERNOR: a persisted title "Governor of [your home port]", crowned ONCE with
+// the same fanfare + persistence as the legend-crown (banner + Ballad verse + saved + acknowledged
+// on landfall). It lands EARLIER than the Tidewake-wide "Governor of the Tidewake" legend (renown
+// 2400) — you govern the isle you raised before the whole sea proclaims you — so the lawful climb
+// gains a nearer, NAMED destination and a felt distance to it (DL #4).
+
+// Standing for your home isle to proclaim you its governor. Growing the home port to its top tier
+// already banks ~245 Standing of investment (the 40 claim gate + 15 claim + 40/70/120 grows); this
+// gate sits a little above that, so a focused governor tips over with a sale or two more —
+// reachable, not a grind (mirrors how #46's LEGEND_AT rewards a dedicated climb), and well below
+// the 2400-renown legend summit so the named home crown comes first.
+export const GOVERNOR_STANDING = 400;
+
+/**
+ * Has the captain earned the governorship of their home isle RIGHT NOW? Earned when the home harbour
+ * is grown to its top tier (MAX_LEVEL) AND Standing has reached GOVERNOR_STANDING. Point-in-time +
+ * junk-safe; the caller ORs it into a persistent flag (crowned once, like a legend). Pure; never
+ * throws; never mutates its input.
+ * @param {{harbour:({name:string,level:number}|null), standing:number}} o
+ * @returns {boolean}
+ */
+export function earnedGovernorship({ harbour, standing } = {}) {
+  const h = sanitizeHarbour(harbour);
+  if (!h || h.level < MAX_LEVEL) return false;
+  return Number.isFinite(standing) && standing >= GOVERNOR_STANDING;
+}
+
+/**
+ * The captain's governor title for their home isle ("Governor of [port]"), or null with no claim.
+ * @param {{name:string}|null} harbour
+ * @returns {string|null}
+ */
+export function governorTitle(harbour) {
+  const h = sanitizeHarbour(harbour);
+  return h ? `Governor of ${h.name}` : null;
+}
+
+/**
+ * The celebration beat for the home-isle governorship — the NAMED mirror of renown.js's legendBeat
+ * (#46), read by the HUD crown overlay/badge and the Ballad. Null with no claimed harbour. Original
+ * to Tidewake: warm grandeur with a wink of comedy (Constitution).
+ * @param {{name:string,level:number}|null} harbour
+ * @returns {{title:string, icon:string, kicker:string, proclaim:string, flourish:string}|null}
+ */
+export function governorshipBeat(harbour) {
+  const h = sanitizeHarbour(harbour);
+  if (!h) return null;
+  return {
+    title: `Governor of ${h.name}`,
+    icon: '⚖',
+    kicker: 'A GOVERNOR IS NAMED',
+    proclaim: `${h.name}, the jewel you raised from a bare berth, proclaims you its own — and runs your colours up the council mast.`,
+    flourish: 'A street now bears your name. So, against all advice, does a remarkably good pie.',
+  };
+}

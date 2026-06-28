@@ -97,6 +97,13 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     // Chased-rumour objective (persisted since save v10): a returning captain keeps the pin they
     // were steering toward, so a reload never drops the active chase (#111/#112/#115).
     state.objective = saved.objective || null;
+    // Claimed home harbour (persisted since save v12): a returning captain keeps the port they
+    // raised + its growth tier; main.js sanitises it after restore (#118). (The raw value is
+    // copied here so the home port — and any governorship riding on it — survives a reload.)
+    if (saved.harbour) state.harbour = saved.harbour;
+    // Home-isle governorship (persisted since save v13): keep the earned crown so a reload never
+    // re-fires the proclamation and the badge/acknowledgement persist (#119).
+    if (saved.governorship) state.governorship = true;
   }
 
   // Respawn at the origin, dead in the water. Clear economy so initEconomy re-seeds defaults.
@@ -106,6 +113,8 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     delete state.coins; delete state.cargo;
     delete state.infamy; delete state.standing; delete state.renown;
     delete state.legends; // a new voyage starts legend-less; the crowns are yet to earn
+    delete state.harbour; // ...with no home port claimed yet (#118)
+    delete state.governorship; // ...and no governorship crowned (#119)
     delete state.onboarding; // a fresh voyage re-teaches: the goal + first-win beats arm again (#60)
     delete state.voyageLog; // a new voyage is a blank page — the Ballad starts unwritten (#78)
     delete state.portMemory; // a new voyage = a clean slate; no port remembers you yet (#104)

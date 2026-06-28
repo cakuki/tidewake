@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {
   freshHarbour, sanitizeHarbour, isHome, harbourLevelName, investCost, investStanding,
   canClaim, claim, canInvest, invest, harbourGreeting,
-  CLAIM_STANDING, CLAIM_REWARD, MAX_LEVEL,
+  earnedGovernorship, governorTitle, governorshipBeat,
+  CLAIM_STANDING, CLAIM_REWARD, MAX_LEVEL, GOVERNOR_STANDING,
 } from '../../src/systems/home-port.js';
 
 // ---- freshHarbour / sanitizeHarbour (fail-open save round-trip) -----------------------------
@@ -140,4 +141,39 @@ test('harbourGreeting names the port and changes as the harbour grows', () => {
   assert.ok(l1.includes("Gullet's Rest") && !l1.includes('{port}'));
   assert.ok(l4.includes("Gullet's Rest"));
   assert.notEqual(l1, l4, 'the greeting warms as the harbour grows');
+});
+
+// ---- Governorship endgame (#119, DL #4) — the lawful arc's NAMED capstone -------------------
+test('earnedGovernorship needs BOTH a top-tier home port AND the Standing gate', () => {
+  const max = { name: 'P', level: MAX_LEVEL, invested: 1200 };
+  // no harbour → never
+  assert.equal(earnedGovernorship({ harbour: null, standing: 99999 }), false);
+  // top tier but standing below the gate → not yet
+  assert.equal(earnedGovernorship({ harbour: max, standing: GOVERNOR_STANDING - 1 }), false);
+  // standing met but the port isn't fully grown → not yet
+  assert.equal(earnedGovernorship({ harbour: { name: 'P', level: MAX_LEVEL - 1, invested: 0 }, standing: GOVERNOR_STANDING + 50 }), false);
+  // both conditions met → earned
+  assert.equal(earnedGovernorship({ harbour: max, standing: GOVERNOR_STANDING }), true);
+});
+
+test('earnedGovernorship is junk-safe and reachable below the legend summit', () => {
+  for (const junk of [undefined, {}, { harbour: 'x', standing: 'y' }, { harbour: {}, standing: NaN }]) {
+    assert.equal(earnedGovernorship(junk), false);
+  }
+  // The named home crown lands well before the Tidewake-wide legend (renown 2400) — a nearer goal.
+  assert.ok(GOVERNOR_STANDING < 2400);
+});
+
+test('governorTitle reads "Governor of [home isle]" (and null with no claim)', () => {
+  assert.equal(governorTitle({ name: "Gullet's Rest", level: MAX_LEVEL, invested: 0 }), "Governor of Gullet's Rest");
+  assert.equal(governorTitle(null), null);
+  assert.equal(governorTitle({ name: '' }), null);
+});
+
+test('governorshipBeat is the named mirror of a legend crown (or null with no claim)', () => {
+  assert.equal(governorshipBeat(null), null);
+  const beat = governorshipBeat({ name: 'Saltpurse Quay', level: MAX_LEVEL, invested: 0 });
+  assert.equal(beat.title, 'Governor of Saltpurse Quay');
+  assert.ok(beat.icon && beat.kicker && beat.proclaim && beat.flourish, 'carries the fanfare fields the HUD reads');
+  assert.ok(beat.proclaim.includes('Saltpurse Quay'), 'the proclamation names the isle');
 });
