@@ -944,6 +944,34 @@ try {
   if (!marque.seen.sawSeenThrough) fail('seen-through: a notorious captain under false colours was never rumbled on approach');
   if (!marque.seen.fled) fail('seen-through: a rumbled disguise did not make the vessel react to true renown (flee)');
 
+  // 2o) Living sea fauna (#97): a small instanced gull flock keeps the ship company — the sky
+  // is alive. Assert the flock exists + is drawn at the start, then sail for a few seconds and
+  // confirm the flock CENTRE tracks the player (the reactive verb: the world wheels with you).
+  // It's one InstancedMesh, so the global perf-budget gate below proves it stays nearly free.
+  const fauna = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.2);
+    const start = tw.fauna;
+    const shipStart = tw.state.pos.slice();
+    tw.press('w'); tw.step(4); tw.release('w');   // sail a while
+    const moved = tw.fauna;
+    const shipEnd = tw.state.pos.slice();
+    tw.newVoyage(); tw.step(0.1);
+    return {
+      count: start.count,
+      visibleAtStart: start.visible,
+      hasCenter: Array.isArray(start.center) && start.center.length === 2,
+      centerShift: Math.hypot(moved.center[0] - start.center[0], moved.center[1] - start.center[1]),
+      shipShift: Math.hypot(shipEnd[0] - shipStart[0], shipEnd[2] - shipStart[2]),
+    };
+  });
+  if (!(fauna.count > 0)) fail(`fauna: no gulls in the flock (count=${fauna.count})`);
+  if (!fauna.visibleAtStart) fail('fauna: the flock was not drawn at the start (should be wheeling over the ship)');
+  if (!fauna.hasCenter) fail('fauna: flock centre not exposed via tw.fauna.center');
+  // The flock follows the player: as the ship sails away, the flock centre eases after it.
+  if (!(fauna.shipShift > 20)) fail(`fauna: ship did not actually sail (shift=${fauna.shipShift?.toFixed(1)})`);
+  if (!(fauna.centerShift > 5)) fail(`fauna: the flock did not track the player as they sailed (centreShift=${fauna.centerShift?.toFixed(1)})`);
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -966,7 +994,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, landfall, ballad, falseColours, marque, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, landfall, ballad, falseColours, marque, fauna, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

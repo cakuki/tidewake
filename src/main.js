@@ -4,6 +4,7 @@ import { loadShip } from './ship-loader.js';
 import { createWorld } from './world.js';
 import { createWake } from './wake.js';
 import { createNpcs } from './npc.js';
+import { createFauna } from './fauna.js';
 import { createPorts, DOCK_RADIUS } from './ports.js';
 import { createAudio } from './audio.js';
 import { createMusic } from './music.js';
@@ -86,6 +87,12 @@ scene.add(ports.group);
 const islandNamer = createIslandNamer({ world });
 const npcs = createNpcs({ ocean, world, count: 3 });
 scene.add(npcs.group);
+// Living sea fauna (#97): a small instanced flock of gulls that keeps the ship company —
+// wheeling overhead at sea, drifting to hang over the shore as you raise an island. One
+// InstancedMesh (one draw call), hidden wholesale beyond the cull radius, so the sky lives
+// for almost nothing. Ticked every frame in update() so it carries on while the helm pauses.
+const fauna = createFauna({ world });
+scene.add(fauna.group);
 
 // Game systems
 // `audio` is declared below; the thunk only runs on a real user gesture (long after module
@@ -552,6 +559,7 @@ function update(dt, t) {
   if (inTown !== bodyTown) { bodyTown = inTown; if (document.body) document.body.classList.toggle('town', inTown); }
   islandNamer.update(state.pos, onApproachIsland); // name + flavour the first time you near an isle (#19)
   wake.update(dt, state, t);                   // bow wake + trailing foam
+  fauna.update(dt, t, { shipPos: [state.pos.x, state.pos.z], focus: camera.position }); // gull flock (#97): wheels with you, hugs the coast, culled off-stage
   hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
   checkLegends();                              // endgame payoff: crown a new legend once (#46)
   checkOnboarding();                           // invisible onboarding: goal nudge + first-win beats (#60)
@@ -762,6 +770,10 @@ window.__tidewake = {
   get town() { return { open: town.isOpen, port: town.port, leftHarbour }; },
   leaveHarbour() { return leaveHarbour(); },
   get npcs() { return npcs.snapshot(); },
+  // Living sea fauna (#97) QA surface: the gull flock's count, whether it's drawn (distance
+  // cull), whether it's roosting over a coast, and the live flock centre — so a headless
+  // playtest can assert the sky is alive and tracks the player.
+  get fauna() { return fauna.snapshot(); },
   // Ship-vs-ship collision (#76 b) QA surface: the forgiving hull radii so a headless playtest
   // can drive the player into an NPC and assert the hulls don't interpenetrate (bound = sum).
   get collisionRadii() { return { ship: SHIP_RADIUS, npc: NPC_RADIUS, bound: SHIP_RADIUS + NPC_RADIUS }; },
