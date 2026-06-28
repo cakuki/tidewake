@@ -27,6 +27,7 @@ import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
 import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading } from './systems/harbour.js';
 import { createLandfall, mooredSwellScale } from './systems/landfall.js';
+import { reputationLean, leanPole, gradeHaze, gradeSun, gradeSunKey } from './systems/reputation-grade.js';
 import { snapshotAshore, composeAshoreDigest } from './systems/ashore-digest.js';
 import { mixHex } from './sea-color.js';
 import { initEconomy, syncRenown } from './economy.js';
@@ -361,6 +362,68 @@ function applyLandfallGrade() {
     if (skyBottom && gradeBase.skyBottom != null) skyBottom.setHex(gradeBase.skyBottom);
     gradeBase = null; // forget it: fully back under sail
   }
+}
+
+// Reputation-reactive world grade (#126, DL #4): the look reflects WHO YOU ARE BECOMING. The whole
+// spine is the Infamy↔Standing pole — this eases the live scene grade (sea-haze / fog / sun / sky
+// horizon) toward your dominant pole: infamous → colder, stormier, lower-key; lawful → warmer,
+// golden; balanced → today's sunny default, untouched. PURE mapping in src/systems/reputation-grade.js.
+//
+// COMPOSITION (the contract's CRITICAL note): this runs AFTER daynight.update (which rewrites the
+// base palette each frame) and BEFORE applyLandfallGrade (which warms over the top). So it eases
+// FROM the live day-night base when the cycle owns the look, else from the captured sunny default —
+// never compounding (it re-sources its base every frame), never leaking (neutral restores the
+// default), and never fighting #58 or #102. Colour/uniform writes only — no new draws.
+let repGradeDefaults = null; // the un-graded sunny base, captured once (mirrors daynight's own capture)
+let repTinted = false;       // is a reputation tint currently laid on the live scene?
+let repLean = 0;             // the live signed lean (QA surface)
+function applyReputationGrade() {
+  const lean = reputationLean(state.infamy ?? 0, state.standing ?? 0);
+  repLean = lean;
+  const oceanHaze = ocean?.uniforms?.uHaze?.value;       // sea-haze toward the horizon (#58 mutates it too)
+  const oceanGraded = oceanHaze && !ocean.fellBack;       // flat-fallback sea has no uniforms
+  const skyBottom = world?.sky?.bottom?.value;            // the sky dome's horizon band
+  if (!repGradeDefaults) repGradeDefaults = {
+    haze: scene.background.getHex(),
+    fog: scene.fog ? scene.fog.color.getHex() : null,
+    sunColor: sun.color.getHex(),
+    sunIntensity: sun.intensity,
+    oceanHaze: oceanGraded ? oceanHaze.getHex() : null,
+    skyBottom: skyBottom ? skyBottom.getHex() : null,
+  };
+  if (lean === 0) {
+    // Neutral = the sunny default. If a tint lingers and day-night isn't the one owning the base,
+    // restore the default exactly so nothing leaks; under day-night the cycle already rewrote it.
+    if (repTinted && !daynight.enabled) {
+      scene.background.setHex(repGradeDefaults.haze);
+      if (scene.fog && repGradeDefaults.fog != null) scene.fog.color.setHex(repGradeDefaults.fog);
+      sun.color.setHex(repGradeDefaults.sunColor);
+      sun.intensity = repGradeDefaults.sunIntensity;
+      if (oceanGraded && repGradeDefaults.oceanHaze != null) oceanHaze.setHex(repGradeDefaults.oceanHaze);
+      if (skyBottom && repGradeDefaults.skyBottom != null) skyBottom.setHex(repGradeDefaults.skyBottom);
+    }
+    repTinted = false;
+    return;
+  }
+  // Ease FROM the clean base: day-night's live palette when the cycle owns the look (it just wrote
+  // it this frame), else the captured sunny default (re-sourced each frame, so it never compounds).
+  const base = daynight.enabled
+    ? {
+        haze: scene.background.getHex(),
+        fog: scene.fog ? scene.fog.color.getHex() : null,
+        sunColor: sun.color.getHex(),
+        sunIntensity: sun.intensity,
+        oceanHaze: oceanGraded ? oceanHaze.getHex() : null,
+        skyBottom: skyBottom ? skyBottom.getHex() : null,
+      }
+    : repGradeDefaults;
+  scene.background.setHex(gradeHaze(base.haze, lean));
+  if (scene.fog && base.fog != null) scene.fog.color.setHex(gradeHaze(base.fog, lean));
+  sun.color.setHex(gradeSun(base.sunColor, lean));
+  sun.intensity = base.sunIntensity * gradeSunKey(lean);
+  if (oceanGraded && base.oceanHaze != null) oceanHaze.setHex(gradeHaze(base.oceanHaze, lean * 0.85));
+  if (skyBottom && base.skyBottom != null) skyBottom.setHex(gradeHaze(base.skyBottom, lean * 0.8));
+  repTinted = true;
 }
 
 // Audio: procedural sea ambience + adaptive sailing theme (start on first user gesture).
@@ -849,6 +912,7 @@ function update(dt, t) {
   ocean.setSwellScale(mooredSwellScale(landfall.blend));
   ocean.update(t, camera.position);
   daynight.update(dt);                          // optional day-night cycle (#58): no-op while OFF
+  applyReputationGrade();                        // reputation-reactive world cast (#126): over #58, under #102
   applyLandfallGrade();                         // warm "golden harbour" glow over the gesture (#102)
   ports.update(state, onArrive, t);            // arrival detection (fires once → auto-harbour) + buoy bob
   // Auto-harbour bookkeeping (#67/#96): drop the leave-latch once we've cleared the harbour mouth
@@ -1102,6 +1166,20 @@ window.__tidewake = {
     };
   },
   setDayPhase(t) { daynight.phase = t; return daynight.phase; },
+  // Reputation-reactive world grade (#126, DL #4) QA surface: the live signed lean off the
+  // Infamy↔Standing pole (>0 pirate / <0 governor / 0 neutral), its categorical pole, whether a
+  // tint is currently laid on the scene, and the live graded haze — so a headless playtest can
+  // drive the ledger (setInfamy/setStanding) and assert the world's cast shifts cold vs warm and
+  // restores to the sunny default at neutral. Deterministic; reads the same uniforms #58/#102 touch.
+  get grade() {
+    return {
+      lean: repLean,
+      pole: leanPole(repLean),
+      tinted: repTinted,
+      haze: scene.background.getHex(),
+      sunIntensity: sun.intensity,
+    };
+  },
   // Route-planning chart (#54) QA surface: read its open-state + drive the toggle headlessly.
   get bigmap() { return { open: bigmap.open }; },
   mapToggle() { bigmap.toggle(); syncMapToggle(); return bigmap.open; },

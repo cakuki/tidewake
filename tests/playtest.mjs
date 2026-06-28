@@ -958,6 +958,39 @@ try {
   if (!(daynight.restored.haze === daynight.offDefault.haze)) fail(`day-night: OFF did not restore the sunny haze exactly (${daynight.restored.haze} != ${daynight.offDefault.haze})`);
   if (!(daynight.restored.sunIntensity === daynight.offDefault.sunIntensity)) fail('day-night: OFF did not restore the sunny sun intensity exactly');
 
+  // 2j-2) Reputation-reactive world grade (#126, DL #4): the WORLD reflects who you're becoming.
+  // A fresh captain sees the sunny default. Drive the ledger infamous → the cast turns colder and
+  // lower-key (darker haze, dimmer sun); drive it lawful → warmer and brighter (warmer haze, lifted
+  // sun). Return to neutral and the sunny default must restore EXACTLY — proving it composes over
+  // day-night (#58) and leaves no residue. Driven deterministically via the QA ledger hooks.
+  const grade = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);            // clean slate: neutral, the sunny default
+    const neutral = { ...tw.grade };
+    tw.setInfamy(2000); tw.setStanding(0);   // a feared pirate
+    tw.step(0.1);
+    const infamous = { ...tw.grade };
+    tw.setInfamy(0); tw.setStanding(2000);   // a respected governor
+    tw.step(0.1);
+    const lawful = { ...tw.grade };
+    tw.newVoyage(); tw.step(0.1);            // back to a neutral ledger
+    const restored = { ...tw.grade };
+    return { neutral, infamous, lawful, restored };
+  });
+  const lum = (h) => (((h >> 16) & 0xff) + ((h >> 8) & 0xff) + (h & 0xff)) / 3; // overall key
+  const warmth = (h) => ((h >> 16) & 0xff) - (h & 0xff);                        // R - B: >0 warmer
+  if (grade.neutral.lean !== 0 || grade.neutral.tinted) fail('rep-grade: a fresh captain is not the sunny neutral default');
+  if (grade.infamous.pole !== 'pirate' || !(grade.infamous.lean > 0)) fail(`rep-grade: infamy did not lean pirate (${JSON.stringify(grade.infamous)})`);
+  if (grade.lawful.pole !== 'governor' || !(grade.lawful.lean < 0)) fail(`rep-grade: standing did not lean governor (${JSON.stringify(grade.lawful)})`);
+  if (!grade.infamous.tinted || !grade.lawful.tinted) fail('rep-grade: a committed captain left no tint on the scene');
+  if (!(lum(grade.infamous.haze) < lum(grade.neutral.haze))) fail(`rep-grade: infamous cast is not lower-key/stormier (${grade.infamous.haze} vs ${grade.neutral.haze})`);
+  if (!(grade.infamous.sunIntensity < grade.neutral.sunIntensity)) fail('rep-grade: infamous did not lower the sun key (stormy/ominous)');
+  if (!(warmth(grade.lawful.haze) > warmth(grade.neutral.haze))) fail(`rep-grade: lawful cast is not warmer (${grade.lawful.haze} vs ${grade.neutral.haze})`);
+  if (!(grade.lawful.sunIntensity > grade.neutral.sunIntensity)) fail('rep-grade: lawful did not lift the sun key (golden/prosperous)');
+  if (grade.restored.lean !== 0 || grade.restored.tinted) fail('rep-grade: neutral did not clear the tint');
+  if (!(grade.restored.haze === grade.neutral.haze)) fail(`rep-grade: neutral did not restore the sunny default exactly (${grade.restored.haze} != ${grade.neutral.haze})`);
+  if (!(grade.restored.sunIntensity === grade.neutral.sunIntensity)) fail('rep-grade: neutral did not restore the sunny sun key exactly');
+
   // 2k) Island names + landfall flavour (#19): every island carries a characterful name, and
   // the FIRST time you sail close to one, a one-time toast hails it by name with a comedic line.
   // Sail straight at the nearest isle and assert (1) it has a name, (2) the approach beat fired
@@ -1410,7 +1443,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, landfall, ballad, falseColours, marque, fauna, props, islandStyle, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, landfall, ballad, falseColours, marque, fauna, props, islandStyle, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));
