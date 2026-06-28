@@ -158,11 +158,12 @@ export function createOcean() {
         // The crest window + smoothstep are generated from sea-foam.js so JS and GPU agree.
         float crest = smoothstep(${glf(FOAM_LO)}, ${glf(FOAM_HI)}, vHeight);
         // patchy streaks that DRIFT across the crests (camera-relative space → small mobile
-        // numbers); the product breaks the foam into moving patches instead of a solid band.
-        float s1 = 0.5 + 0.5 * sin(w.x * 0.16 + uTime * ${glf(FOAM_DRIFT)})
-                              * sin(w.y * 0.19 - uTime * ${glf(FOAM_DRIFT * 0.8)});
-        float s2 = 0.5 + 0.5 * sin((w.x + w.y) * 0.09 - uTime * ${glf(FOAM_DRIFT * 0.5)});
-        float streak = smoothstep(0.45, 0.95, s1 * s2 + 0.12);
+        // numbers); a sum of slow sines in ~[-1,1] breaks the foam into moving patches so the
+        // crests froth unevenly instead of as one solid band — but enough of them catch to read.
+        float p = 0.5 * sin(w.x * 0.16 + uTime * ${glf(FOAM_DRIFT)})
+                + 0.3 * sin(w.y * 0.19 - uTime * ${glf(FOAM_DRIFT * 0.8)})
+                + 0.2 * sin((w.x + w.y) * 0.09 - uTime * ${glf(FOAM_DRIFT * 0.5)});
+        float streak = smoothstep(-0.15, 0.6, p);
         float foam = clamp(crest * streak, 0.0, 1.0);
         col = mix(col, uFoam, foam * ${glf(FOAM_STRENGTH)});
 
