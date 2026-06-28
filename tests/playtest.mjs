@@ -625,15 +625,22 @@ try {
       const s = tw.economy.sell(good, 1);
       traded = !!(b && b.ok && s && s.ok);
     }
+    // "While you were ashore…" digest (#105): the landfall snapshot must be live while ashore.
+    const snapWhileAshore = tw.ashore && tw.ashore.snapshot ? { coins: tw.ashore.snapshot.coins } : null;
     // Leave Harbour: the single explicit, reversible exit — back to SAILING, bow nudged seaward.
     const left = tw.leaveHarbour();
+    // On Set Sail the digest is composed from the visit's REAL deltas (we traded above) and the
+    // landfall snapshot is consumed (back to null at sea). Capture both for the gate below.
+    const dg = tw.ashore && tw.ashore.digest;
+    const digest = dg ? { title: dg.title, lineCount: dg.lines.length, body: dg.lines.join(' · ') } : null;
+    const snapAfterLeave = tw.ashore ? tw.ashore.snapshot : 'missing';
     const afterLeave = { mode: tw.mode, left };
     // Make sail: the harbour assist stands down so the nudge carries us clear of the dock radius.
     let clearedHarbour = false;
     for (let i = 0; i < 600; i++) { tw.step(0.1); if (!tw.docked) { clearedHarbour = true; break; } }
     const sailedOut = { clearedHarbour, mode: tw.mode, townOpen: tw.town.open, bodyTown: document.body.classList.contains('town') };
     tw.newVoyage(); tw.step(0.1);
-    return { entered, onLanding, traded, coinsMoved, afterLeave, sailedOut };
+    return { entered, onLanding, traded, coinsMoved, afterLeave, sailedOut, snapWhileAshore, digest, snapAfterLeave };
   });
   if (!harbour.entered || harbour.onLanding.mode !== 'town') fail(`auto-harbour: sailing into a port did not make landfall into TOWN (mode=${harbour.onLanding.mode})`);
   if (!harbour.onLanding.townOpen) fail('auto-harbour: the town view did not open on landfall');
@@ -646,6 +653,13 @@ try {
   if (!harbour.sailedOut.clearedHarbour) fail('auto-harbour: the seaward nudge never carried the ship clear of the dock radius (trap risk #67)');
   if (harbour.sailedOut.townOpen) fail('auto-harbour: the town view stayed open after leaving');
   if (harbour.sailedOut.bodyTown) fail('auto-harbour: body.town lingered after leaving (controls stayed hidden)');
+  // "While you were ashore…" digest (#105): the landfall snapshot is live in town, and Set Sail
+  // composes an in-character digest from the visit's REAL deltas (we traded above), then clears the
+  // snapshot. The digest must speak (a titled, non-empty recap) and mention the deltas it surfaced.
+  if (!harbour.snapWhileAshore) fail('ashore-digest: no landfall snapshot was captured on entering TOWN (#105)');
+  if (!harbour.digest) fail('ashore-digest: Set Sail did not compose a "while you were ashore" digest (#105)');
+  if (!/ashore/i.test(harbour.digest.title) || harbour.digest.lineCount < 1) fail(`ashore-digest: digest empty/mistitled (${JSON.stringify(harbour.digest)})`);
+  if (harbour.snapAfterLeave !== null) fail(`ashore-digest: the landfall snapshot was not consumed on Set Sail (got ${JSON.stringify(harbour.snapAfterLeave)})`);
 
   // 2h2b) The port remembers you (#104): a port keeps a persistent per-town memory of your prior
   // dealings and reflects it back on return. Drive two landfalls at the SAME port (teleport-driven

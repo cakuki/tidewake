@@ -26,6 +26,7 @@ import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
 import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading } from './systems/harbour.js';
 import { createLandfall, mooredSwellScale } from './systems/landfall.js';
+import { snapshotAshore, composeAshoreDigest } from './systems/ashore-digest.js';
 import { mixHex } from './sea-color.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
@@ -225,13 +226,18 @@ const cannons = createCannons({
 // we only drive it (BATTLE from combat, below in update()) and surface it. It is the shared
 // seam town mode (#67/#96), battle mode (#100) and mode-aware sound (#94) all plug into — the
 // current mode becomes their `context.mode`. A mode change rings the ship's bell beat once.
+// "While you were ashore…" digest (#105): snapshot the delta-able world-state the instant town
+// takes the screen, so Set Sail can read back what your time ashore amounted to. `lastAshoreDigest`
+// keeps the most recent composed digest for the QA hook.
+let ashoreSnapshot = null;
+let lastAshoreDigest = null;
 const mode = createModeManager({
   onChange: (to, from) => {
     try {
       // Landfall gesture (#102): a mode change isn't a snap — it's a crafted, eased moment. Entering
       // TOWN begins the "making port" gesture (camera eases to a moored framing, the light warms,
       // the town view takes the screen only once we're truly ashore); leaving it runs the mirror.
-      if (to === TOWN) { landfall.land(); music.stinger(); hud.flashBanner('🏘️ Making port…', 'The helm goes quiet — the ship glides to her moorings as the light turns gold.'); } // a "made port" stinger lands on the next downbeat (#102 ph2)
+      if (to === TOWN) { ashoreSnapshot = snapshotAshore(state); landfall.land(); music.stinger(); hud.flashBanner('🏘️ Making port…', 'The helm goes quiet — the ship glides to her moorings as the light turns gold.'); } // a "made port" stinger lands on the next downbeat (#102 ph2)
       else if (from === TOWN) landfall.leave(); // Set Sail: the town falls astern, the open light returns
       // BATTLE keeps its own "Battle stations!" beat below; SAILING's return is signalled by control resuming.
     } catch { /* a flourish must never break the loop */ }
@@ -518,13 +524,23 @@ let bodyTown = false; // cached so we only touch the <body> class on a real chan
 function leaveHarbour() {
   if (!mode.is(TOWN)) return false;
   const docked = ports.docked;
+  // "While you were ashore…" digest (#105): compose the in-character recap from the landfall→now
+  // deltas BEFORE we cast off, so leaving town reads back what the visit amounted to (a fuller
+  // purse, a name that travels, a heading to chase) — making the living-world promise legible.
+  let digest = null;
+  try { if (ashoreSnapshot) digest = composeAshoreDigest(ashoreSnapshot, snapshotAshore(state), { port: docked || 'the port' }); }
+  catch { digest = null; } // a flourish must never break the loop
+  lastAshoreDigest = digest;
+  ashoreSnapshot = null;
   mode.leave();                       // back under sail — the helm is yours again
   leftHarbour = true;                 // suspend the harbour assist until we clear the mouth
   state.throttle = Math.max(state.throttle, 0.7); // re-enable way: a firm push off the berth
   const info = ports.portInfo(docked);
   state.heading = seawardHeading(info && info.angle, state.heading); // point the bow at open water
-  try { hud.flashBanner('⛵ Making sail…', 'You cast off — the town falls astern and the open sea opens up ahead.'); }
-  catch { /* a flourish must never break the loop */ }
+  try {
+    if (digest) hud.flashBanner(digest.title, digest.lines.join(' · '));
+    else hud.flashBanner('⛵ Making sail…', 'You cast off — the town falls astern and the open sea opens up ahead.');
+  } catch { /* a flourish must never break the loop */ }
   return true;
 }
 
@@ -934,6 +950,11 @@ window.__tidewake = {
   // blend (0=at sea, 1=ashore) + whether it's in flight, plus the headless skip driver — so a
   // playtest can assert the moment EASES (not snaps), is deterministic, and is skippable.
   get landfall() { return { phase: landfall.phase, blend: landfall.blend, active: landfall.active, townReady: landfall.townReady, swellScale: ocean.swellScale }; },
+  // "While you were ashore…" digest (#105) QA surface: the live landfall snapshot (the delta-able
+  // world-state captured when town took the screen, or null at sea) + the last digest composed on
+  // Set Sail (title + lines, or null) — so a headless playtest can land, trade, sail off, and assert
+  // the digest reads back the REAL deltas deterministically. Compose stays pure in ashore-digest.js.
+  get ashore() { return { snapshot: ashoreSnapshot, digest: lastAshoreDigest }; },
   // Drifting whitecaps (#70) QA surface: the foam tuning + the live crest-foam factor sampled
   // at the ship on the SAME swell it rides (lock-step with #102). A headless playtest sails a
   // few seconds and asserts the sunny sea grows foam on its crests somewhere along the way.
