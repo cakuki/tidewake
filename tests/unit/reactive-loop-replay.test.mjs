@@ -27,6 +27,7 @@ import {
 import { recordEvent, composeBallad } from '../../src/voyage-log.js';
 import { snapshotAshore, composeAshoreDigest } from '../../src/systems/ashore-digest.js';
 import { createLandfall } from '../../src/systems/landfall.js';
+import { serialize, deserialize } from '../../src/save.js';
 
 // A faithful PURE replica of main.js's reactive-loop wiring around a tiny shared `state`. Returns
 // the live state, an `events` log of every step, and the intent drivers. Each driver mirrors the
@@ -34,13 +35,20 @@ import { createLandfall } from '../../src/systems/landfall.js';
 function makeVoyage(seed = {}) {
   const events = [];
   const state = {
+    // Ship-physics fields (the helm) — the load-bearing half of a save (#131 2nd invariant wires the
+    // REAL save.js codec over this state, so it must carry the full saveable shape, not just the
+    // reactive-loop fields). Non-trivial defaults so the round-trip proves real numbers survive.
+    heading: seed.heading ?? 0.75,
+    speed: seed.speed ?? 14,
+    throttle: seed.throttle ?? 0.6,
+    pos: seed.pos ?? [40, 0, -25],
     coins: seed.coins ?? 100,
     infamy: seed.infamy ?? 0,
     standing: seed.standing ?? 0,
     cargo: {},
     objective: null,
     voyageLog: [],
-    docked: null,
+    docked: null, // transient session state — which town's screen is up; NEVER persisted (you reload at sea)
   };
   let ashoreSnapshot = null; // captured the instant town takes the screen (main.js: onChange→TOWN)
 
@@ -61,6 +69,7 @@ function makeVoyage(seed = {}) {
       events.push(['reward', coins]);
     }
     state.docked = port;
+    state.speed = 0; // you've come to rest at the quay (live helm state the save must round-trip)
     ashoreSnapshot = snapshotAshore(state); // town takes the screen
     events.push(['make-port', port]);
     return state;
@@ -87,6 +96,8 @@ function makeVoyage(seed = {}) {
     const digest = composeAshoreDigest(ashoreSnapshot, snapshotAshore(state), { port });
     ashoreSnapshot = null;
     state.docked = null;
+    state.speed = 18; // back to cruise, and the helm carries you on (live state the save must round-trip)
+    state.pos = [state.pos[0] + 50, state.pos[1], state.pos[2] - 20];
     events.push(['set-sail', port]);
     return digest;
   }
@@ -284,4 +295,125 @@ test('determinism-parity — the landfall gesture eases to the same blend under 
   assert.equal(replayDone.phase, liveDone.phase, 'fixed-dt also reaches ashore');
   assert.equal(liveDone.blend, 1);
   assert.equal(replayDone.blend, 1);
+});
+
+// ---- SAVE-ROUND-TRIP SURVIVES THE REPLAY (#131, DL #5 — the 2nd invariant) ----------------------
+// The gap this closes (the QA half of #131): the frozen save corpus (#122) proves OLD blobs migrate
+// forward, and the golden replay above proves the LIVE state sequence — but NEITHER covers a newly-
+// added runtime field the real codec forgets to persist. That's a SILENT loss on the *next* save (not
+// at a version bump): the field rides live state fine all session, then evaporates the first time the
+// game writes to storage — the exact class that bit us pre-#122.
+//
+// So we wire the ACTUAL src/save.js serialize/deserialize codec (NOT the replay's simplified replica)
+// directly over the evolving replay state, and at EACH tick of the seeded golden run assert
+// deserialize(serialize(state)) round-trips byte-identical AND that every live persistent field comes
+// back with its value intact. Iterating the live state's OWN keys (minus the transient session
+// allowlist) turns "every new field is persisted" into an ENFORCED invariant: add a runtime field to
+// the saveable state and forget to teach the codec, and the gate trips here — not in a player's
+// vanished progress. (Pairs with the determinism-parity invariant above to fully harden the gate.)
+
+// Session-only state that is deliberately NOT persisted (you reload at sea, never mid-town-menu), so
+// it's excluded from the per-field round-trip assertion below. Everything else in the live state is a
+// save-contract field and MUST survive.
+const TRANSIENT_FIELDS = new Set(['docked']);
+
+// Round-trip the live state through the REAL save.js codec and assert the save contract holds at this
+// instant: it deserialises (a mid-run state never corrupts to null), re-serialises byte-identical, and
+// every persistent live field returns with its exact value. Returns the reloaded state so a caller can
+// CONTINUE the replay from the save — proving the reload is a true resume, not a silent reset.
+function assertRoundTrips(state, label) {
+  const blob = serialize(state);
+  const restored = deserialize(blob);
+  assert.ok(restored, `${label}: a live mid-run state must always deserialize (never corrupt to null)`);
+  assert.equal(serialize(restored), blob, `${label}: deserialize(serialize(state)) must round-trip byte-identical`);
+  for (const f of Object.keys(state)) {
+    if (TRANSIENT_FIELDS.has(f)) continue;
+    assert.deepEqual(restored[f], state[f], `${label}: persistent field "${f}" must survive the save round-trip`);
+  }
+  return restored;
+}
+
+test('save-round-trip invariant — the codec round-trips live state byte-identical at EVERY replay tick', () => {
+  // Seed non-zero poles + a non-default helm so EVERY persistent field carries a real value the codec
+  // must carry through — a field the codec silently zeroes (not just one already 0) trips the guard.
+  const v = makeVoyage({ coins: 100, infamy: 120, standing: 75 });
+  assertRoundTrips(v.state, 'fresh voyage');
+
+  v.arrive('Saltpurse Quay');
+  assertRoundTrips(v.state, 'after first landfall');
+
+  const heard = v.listen({ count: 2, nonce: 0 });
+  assertRoundTrips(v.state, 'after listening for word');
+
+  v.chase(heard[1].target);
+  // The live chart now carries an ACTIVE objective — the highest-churn save field. It MUST survive.
+  assert.equal(v.state.objective.status, 'active');
+  assertRoundTrips(v.state, 'with an active chased objective in flight');
+
+  v.setSail();
+  assertRoundTrips(v.state, 'after casting off (helm back to cruise)');
+
+  v.arrive('Barnacle Bottom');
+  // The chase paid off: coins moved, the pin cleared, a verse joined the log — all in one tick. The
+  // round-trip must carry the new purse, the cleared objective, AND the freshly-sung Ballad verse.
+  assert.equal(v.state.coins, 160);
+  assert.equal(v.state.objective, null);
+  assert.equal(v.state.voyageLog.length, 1);
+  assertRoundTrips(v.state, 'after the rumour paid off (coins + log mutated)');
+
+  v.setSail();
+  assertRoundTrips(v.state, 'after leaving the reward port');
+});
+
+test('save-round-trip invariant — a save taken mid-run RESUMES the replay byte-identical (no silent reset)', () => {
+  // Run the golden spine twice: once clean, once where after EVERY step the live state is replaced by
+  // a real save round-trip (a reload at every tick). A codec that drops a field the spine reads (the
+  // active objective, the purse, the log) would make the reloaded run diverge — the events, the final
+  // purse, or the Ballad would differ. They must be byte-identical.
+  function run(reloadEachStep) {
+    const v = makeVoyage({ coins: 100, infamy: 120, standing: 75 });
+    const reload = () => {
+      if (!reloadEachStep) return;
+      // Overwrite ONLY the persistent fields from the reloaded save, preserving transient session
+      // state (docked + the digest snapshot the closure holds) — exactly what a real reload restores.
+      const restored = deserialize(serialize(v.state));
+      for (const f of Object.keys(v.state)) {
+        if (!TRANSIENT_FIELDS.has(f)) v.state[f] = restored[f];
+      }
+    };
+    v.arrive('Saltpurse Quay'); reload();
+    const heard = v.listen({ count: 2, nonce: 0 }); reload();
+    v.chase(heard[1].target); reload();
+    v.setSail(); reload();
+    v.arrive('Barnacle Bottom'); reload();
+    v.setSail(); reload();
+    return { events: v.events, coins: v.state.coins, ballad: v.ballad().text, objective: v.state.objective };
+  }
+  const clean = run(false);
+  const reloaded = run(true);
+  assert.deepEqual(reloaded.events, clean.events, 'reloading at every tick must not change the spine');
+  assert.equal(reloaded.coins, clean.coins, 'the purse must survive every reload');
+  assert.equal(reloaded.ballad, clean.ballad, 'the Ballad (deeds log) must survive every reload');
+  assert.deepEqual(reloaded.objective, clean.objective, 'the chased pin must survive every reload');
+});
+
+test('save-round-trip invariant — a CONTESTED objective (the newest v14 codec field) survives mid-run', () => {
+  // The most recently-added save field (#133, save v14) is the contest sub-object riding inside the
+  // active objective — exactly the "new runtime field the codec might forget" class this invariant
+  // guards. Pin it: a live contested chase, mid-soft-clock, must round-trip rival + clock byte-identical.
+  const v = makeVoyage({ coins: 100, infamy: 120, standing: 75 });
+  v.arrive('Saltpurse Quay');
+  v.state.objective = makeContestedObjective(
+    { kind: 'port', name: 'Barnacle Bottom', x: 300, z: -120 },
+    { rival: 'The Gull', budget: 5, fromX: 0, fromZ: 0 },
+  );
+  // Advance the soft clock so `elapsed` is a live non-zero value the codec must carry through a save.
+  v.state.objective = tickContest(v.state.objective, 1.5);
+  assert.equal(v.state.objective.contest.elapsed, 1.5);
+
+  const restored = assertRoundTrips(v.state, 'mid contested chase');
+  assert.equal(restored.objective.contest.rival, 'The Gull', 'the rival name must persist');
+  assert.equal(restored.objective.contest.elapsed, 1.5, 'the soft-clock elapsed must persist (no race reset on reload)');
+  assert.equal(restored.objective.contest.budget, 5);
+  assert.equal(restored.objective.contest.claimed, false);
 });
