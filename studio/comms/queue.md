@@ -145,7 +145,7 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
 4. **#106 — Mode-seam hardening, slice 1** (declarative `{[mode]:{onEnter,onLeave}}` registry — sugar
    over the bus). Cheap; **now overlaps #120's systems registry — sequence them together.** _(slice 4
    per-mode disposal PARKED — blocked on #100 battle meshes.)_
-5. **#110 — Living fauna phase 2: jumping dolphins** (#97 continues; gulls shipped). P2 from-owner.
+5. ~~**#110 — Living fauna phase 2: jumping dolphins**~~ **SHIPPED + CLOSED Loop 75 (v0.0.20260628094945)** — instanced pod arcs alongside the moving ship, deterministic + distance-culled, ≤1 extra draw. _#97 stays OPEN for phase 3 (other animals)._
 6. **#101 — props phase 3: loose props** (lanterns/market stalls **feed the town mode** #96/#103).
    P2 from-owner. _(island dressing shipped via #71; texture-embed + extra variety PARKED.)_
 7. **#129 — Per-town music, richer** (distinct melodies/instrument sets + a dedicated docked cue +
