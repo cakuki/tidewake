@@ -286,19 +286,27 @@ export function createHud() {
     if ($prompt) $prompt.classList.remove('show'); // an active fight hides the prompt
     const pPct = Math.round((c.playerHull / c.maxHull) * 100);
     const ePct = Math.round((c.enemyHull / c.maxHull) * 100);
-    const sig = `${c.foeName}|${pPct}|${ePct}|${c.lastLine}|${c.round}`;
+    // Their crew NERVE (#72): break it with chain-shot and they strike their colours (a capture,
+    // not a kill). Older snapshots without morale degrade gracefully (no nerve bar shown).
+    const hasMorale = typeof c.enemyMorale === 'number' && c.maxMorale > 0;
+    const mPct = hasMorale ? Math.round((c.enemyMorale / c.maxMorale) * 100) : 0;
+    const sig = `${c.foeName}|${pPct}|${ePct}|${mPct}|${c.lastLine}|${c.round}`;
     if (sig === lastCannonSig && $cannons.classList.contains('show')) return;
     lastCannonSig = sig;
     const opts = c.options.map((o) => `<li data-aim="${o.i}"><b>${o.i + 1}</b>${o.label}</li>`).join('');
+    const nerveBar = hasMorale
+      ? `<div class="duel-bar nerve"><div class="lab"><span>Their nerve</span><span>${Math.round(c.enemyMorale)}</span></div><div class="meter"><div class="fill" style="width:${mPct}%"></div></div></div>`
+      : '';
     $cannons.innerHTML =
       `<div class="cannon-h">🔥 Cannon Broadside — ${c.foeName}</div>`
       + '<div class="duel-bars">'
       + `<div class="duel-bar you"><div class="lab"><span>Your hull</span><span>${Math.round(c.playerHull)}</span></div><div class="meter"><div class="fill" style="width:${pPct}%"></div></div></div>`
       + `<div class="duel-bar them"><div class="lab"><span>Their hull</span><span>${Math.round(c.enemyHull)}</span></div><div class="meter"><div class="fill" style="width:${ePct}%"></div></div></div>`
+      + nerveBar
       + '</div>'
       + `<div class="duel-line">“${c.lastLine}”</div>`
       + `<ul class="duel-opts cannon-opts">${opts}</ul>`
-      + `<div class="duel-help">${TOUCH ? 'Tap' : 'Press <b>1–2</b>'} to fire · a broadside hits hard but they hit back · chain-shot is safer</div>`;
+      + `<div class="duel-help">${TOUCH ? 'Tap' : 'Press <b>1–2</b>'} to fire · broadside sinks her for infamy · chain-shot breaks their nerve — they may strike their colours</div>`;
     $cannons.classList.add('show');
   }
 

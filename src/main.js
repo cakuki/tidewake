@@ -186,6 +186,11 @@ const cannons = createCannons({
           `${foeName} slips beneath the waves — you haul ${reward.coins}c from the wreckage and your legend gains ${reward.infamy} infamy.`);
       }
       logDeed({ type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins, treachery: !!reward.treachery, lawful: !!reward.lawful }); // #78/#79/#91
+    } else if (result === 'capture') {
+      // She struck her colours (#72): the merciful road — a ransom + lawful Standing, less Infamy.
+      hud.flashBanner('🏳️ She strikes her colours!',
+        `${foeName} has had enough — you spare the crew and take a ${reward.coins}c ransom: +${reward.standing} standing for the mercy, and ${reward.infamy} infamy for the swagger.`);
+      logDeed({ type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins, captured: true }); // #72
     } else {
       hud.flashBanner('💥 Hull breached!',
         `${foeName} rakes you stem to stern — you break off and limp away, ${penalty.coins} coins lighter for the repairs.`);

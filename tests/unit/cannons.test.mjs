@@ -1,8 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  MAX_HULL, AIMS,
+  MAX_HULL, AIMS, MORALE_MAX,
   clampHull, isSunk, resolveExchange, spoils, repairToll, makeFoe, fireQuip,
+  crewShock, strikesColours, captureSpoils, strikeLine,
 } from '../../src/cannons.js';
 
 const half = () => 0.5;   // deterministic rng → jitter multiplier == 1.0
@@ -104,4 +105,75 @@ test('fireQuip: returns a non-empty original line for a given outcome', () => {
     const q = fireQuip(outcome, half);
     assert.ok(typeof q === 'string' && q.length > 0);
   }
+});
+
+// ---- Crew morale & "strike the colours" (#72) -------------------------------
+
+test('crewShock: chain-shot rattles a crew far more than a clean broadside', () => {
+  const bs = crewShock({ outcome: 'broadside', enemyHull: 100 }, half);
+  const ch = crewShock({ outcome: 'rigging', enemyHull: 100 }, half);
+  assert.ok(ch > bs, 'shredded rigging shocks the crew more than a hull-punch');
+  assert.ok(bs >= 0);
+});
+
+test('crewShock: a wounded hull frightens the crew more (fear scales as hull falls)', () => {
+  const healthy = crewShock({ outcome: 'broadside', enemyHull: 90 }, half);
+  const wounded = crewShock({ outcome: 'broadside', enemyHull: 10 }, half);
+  assert.ok(wounded > healthy, 'a crew watching its hull cave loses its nerve faster');
+});
+
+test('strikesColours: only a wounded AND nerve-broken foe yields; a fresh ship never does', () => {
+  assert.equal(strikesColours({ enemyHull: 40, morale: 10 }), true);
+  assert.equal(strikesColours({ enemyHull: 90, morale: 10 }), false, 'a healthy hull holds out');
+  assert.equal(strikesColours({ enemyHull: 40, morale: 80 }), false, 'steady nerve holds out');
+  assert.equal(strikesColours({ enemyHull: 0, morale: 0 }), false, 'a sunk foe cannot strike');
+});
+
+test('resolveExchange: morale erodes and is reported; defaults to full nerve', () => {
+  const r = resolveExchange({ aim: 'chain', enemyHull: 100, playerHull: 100 }, half);
+  assert.ok(r.enemyMorale < MORALE_MAX, 'a volley costs the foe some nerve');
+  assert.ok(r.enemyMorale >= 0 && r.enemyMorale <= MORALE_MAX);
+  assert.equal(typeof r.yielded, 'boolean');
+});
+
+test('full engagement: chain-shot breaks the crew so the foe YIELDS rather than sinks', () => {
+  // The merciful road: sawing the rigging rattles the crew until they strike their colours.
+  for (const rng of [lo, half, hi]) {
+    let enemyHull = MAX_HULL, playerHull = MAX_HULL, morale = MORALE_MAX, rounds = 0, yielded = false;
+    while (!isSunk(enemyHull) && !isSunk(playerHull) && !yielded && rounds < 20) {
+      const r = resolveExchange({ aim: 'chain', enemyHull, playerHull, morale, gunnery: 1.0 }, rng);
+      enemyHull = r.enemyHull; playerHull = r.playerHull; morale = r.enemyMorale; yielded = r.yielded; rounds++;
+    }
+    assert.ok(yielded, `chain-shot should break the crew (rng), hull=${enemyHull} morale=${morale}`);
+    assert.ok(!isSunk(enemyHull), 'a yielded foe is captured, not sunk');
+    assert.ok(!isSunk(playerHull), 'the player survives the merciful road');
+  }
+});
+
+test('full engagement: broadside-spam SINKS before the crew ever yields (playtest stays deterministic)', () => {
+  // The headless playtest spams full broadsides and asserts a SINKING win — morale must NOT
+  // short-circuit that into a capture. A broadside drowns them before their nerve breaks.
+  for (const rng of [lo, half, hi]) {
+    let enemyHull = MAX_HULL, playerHull = MAX_HULL, morale = MORALE_MAX, rounds = 0, yielded = false;
+    while (!isSunk(enemyHull) && !isSunk(playerHull) && !yielded && rounds < 20) {
+      const r = resolveExchange({ aim: 'broadside', enemyHull, playerHull, morale, gunnery: 1.1 }, rng);
+      enemyHull = r.enemyHull; playerHull = r.playerHull; morale = r.enemyMorale; yielded = r.yielded; rounds++;
+    }
+    assert.equal(yielded, false, `broadside-spam must sink, never capture (hull=${enemyHull})`);
+    assert.ok(isSunk(enemyHull), 'the foe is drowned by broadsides');
+  }
+});
+
+test('captureSpoils: a ransom + lawful Standing, far less Infamy than a sinking (the mercy mirror)', () => {
+  const cap = captureSpoils({ playerHull: 100, enemyMaxHull: 100 });
+  const sink = spoils({ playerHull: 100, enemyMaxHull: 100 });
+  assert.ok(cap.coins > 0 && cap.infamy > 0 && cap.standing > 0);
+  assert.ok(cap.infamy < sink.infamy, 'mercy is far less infamous than a sinking');
+  assert.ok(cap.standing > 0, 'sparing a beaten crew earns lawful standing');
+  assert.ok(cap.coins <= 140, 'ransom stays modest');
+});
+
+test('strikeLine: returns a non-empty original surrender cry', () => {
+  const s = strikeLine(half);
+  assert.ok(typeof s === 'string' && s.length > 0);
 });

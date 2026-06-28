@@ -24,6 +24,15 @@ import { isDeceptive, treacheryBonus, surpriseDamage, DEFAULT_COLOURS, lawfulSta
 
 export const MAX_HULL = 100;
 
+// A foe's crew NERVE (#72). A fight isn't only about hulls: a crew can lose its bottle
+// and STRIKE ITS COLOURS — surrender rather than drown. The aim you choose decides the
+// foe's fate. A full broadside drowns them (bloody, the loud Infamy road); chain-shot
+// shreds the rigging and RATTLES the crew, so keep sawing through their sheets and their
+// nerve breaks — they yield, and you take the merciful Standing road (a ransom, not a wreck).
+export const MORALE_MAX = 100;
+const MORALE_BREAK = 25;     // nerve at/below this + a wounded hull = the colours come down
+const YIELD_HULL_CEIL = 50;  // a crew only loses heart once the hull is genuinely hurt
+
 // The two ways to lay a gun. A genuine risk/reward choice each exchange:
 //   broadside — pound their hull. Heavy damage, but side-on you take the full reply.
 //   chain     — chain-shot their rigging. Lighter hull damage, but it shreds their sails
@@ -61,6 +70,15 @@ const DEFEAT_LINES = [
   'Down she goes! I shall haunt your bilge, see if I don’t!',
 ];
 
+// What a broken-nerved foe yells as it STRIKES ITS COLOURS — surrender, not a sinking (#72).
+// The merciful road's beat: you rattled the crew off the fight rather than drowning them.
+const STRIKE_LINES = [
+  'We strike! We strike our colours — spare the crew, you salt-crusted menace!',
+  'Enough! Down comes the flag — take the ransom and let us limp home, mercy!',
+  'Quarter! QUARTER! The lads have had their fill of your chain-shot, blast you!',
+  'She yields! Curse you, she yields — only stop sawing through my poor rigging!',
+];
+
 // Comic quips that punctuate a volley landing — keyed by exchange outcome.
 const QUIPS = {
   broadside: [
@@ -95,19 +113,46 @@ function pickIndex(rng, n) {
 }
 
 /**
+ * Crew nerve lost in ONE exchange (#72). Chain-shot/rigging hits rattle a crew far more
+ * than a clean hull-punch (timber they can patch; shredded sheets and a topmast over the
+ * side they cannot), and a crew watching its own hull cave panics — so fear scales up as
+ * the hull falls. PURE + injectable rng. `enemyHull` is the hull AFTER your volley landed.
+ * @param {{outcome:'broadside'|'rigging', enemyHull:number}} args
+ * @returns {number} morale points lost (>= 0)
+ */
+export function crewShock({ outcome, enemyHull }, rng = Math.random) {
+  const jitter = 0.8 + rng() * 0.4; // ±20% wobble, == 1 when rng()==0.5
+  const base = outcome === 'rigging' ? 26 : 10; // chain-shot terrifies; a broadside mostly drowns
+  const fear = enemyHull < 50 ? (50 - enemyHull) * 0.35 : 0; // a wounded crew loses its bottle
+  return Math.round((base + fear) * jitter);
+}
+
+/**
+ * Does a foe STRIKE ITS COLOURS this exchange (#72)? It yields only when its nerve has
+ * broken AND its hull is genuinely wounded — a fresh ship never surrenders. PURE.
+ * @param {{enemyHull:number, morale:number}} args
+ */
+export function strikesColours({ enemyHull, morale }) {
+  return !isSunk(enemyHull) && enemyHull <= YIELD_HULL_CEIL && morale <= MORALE_BREAK;
+}
+
+/**
  * Resolve ONE cannon exchange: you fire with `aim`, then the foe fires back IF it is
  * still afloat afterwards. PURE — returns the new hulls + the hit sizes, never mutates.
  * `rng` is injectable so the whole thing is deterministic under test.
  *
  * The player holds the initiative (you opened fire), so firing broadsides is a reliable
- * win — but you'll take real damage, and a badly wounded ship can still be sunk.
+ * win — but you'll take real damage, and a badly wounded ship can still be sunk. Chain-shot
+ * also erodes the foe's crew NERVE; break it and they strike their colours (`yielded`) — a
+ * capture, not a kill (#72).
  *
- * @param {{aim:string, enemyHull:number, playerHull:number, gunnery?:number}} args
+ * @param {{aim:string, enemyHull:number, playerHull:number, gunnery?:number, morale?:number}} args
  * @param {() => number} [rng]
  * @returns {{enemyHit:number, playerHit:number, enemyHull:number, playerHull:number,
- *            outcome:'broadside'|'rigging', sunkEnemy:boolean, sunkPlayer:boolean}}
+ *            outcome:'broadside'|'rigging', sunkEnemy:boolean, sunkPlayer:boolean,
+ *            enemyMorale:number, yielded:boolean}}
  */
-export function resolveExchange({ aim, enemyHull, playerHull, gunnery = 1 }, rng = Math.random) {
+export function resolveExchange({ aim, enemyHull, playerHull, gunnery = 1, morale = MORALE_MAX }, rng = Math.random) {
   const jitter = () => 0.8 + rng() * 0.4; // ±20% fairness wobble (==1 when rng()==0.5)
   let enemyHit, returnScale, outcome;
   if (aim === 'chain') {
@@ -125,14 +170,21 @@ export function resolveExchange({ aim, enemyHull, playerHull, gunnery = 1 }, rng
     ? 0
     : Math.round(BASE * 1.0 * gunnery * returnScale * jitter());
   const newPlayerHull = clampHull(playerHull - playerHit, MAX_HULL);
+  const sunkEnemy = isSunk(newEnemyHull);
+  const sunkPlayer = isSunk(newPlayerHull);
+  // Crew nerve only matters while the foe is still afloat — a drowned crew has no colours to strike.
+  const enemyMorale = clampHull(morale - crewShock({ outcome, enemyHull: newEnemyHull }, rng), MORALE_MAX);
+  const yielded = !sunkEnemy && !sunkPlayer && strikesColours({ enemyHull: newEnemyHull, morale: enemyMorale });
   return {
     enemyHit,
     playerHit,
     enemyHull: newEnemyHull,
     playerHull: newPlayerHull,
     outcome,
-    sunkEnemy: isSunk(newEnemyHull),
-    sunkPlayer: isSunk(newPlayerHull),
+    sunkEnemy,
+    sunkPlayer,
+    enemyMorale,
+    yielded,
   };
 }
 
@@ -146,6 +198,21 @@ export function spoils({ playerHull = 0, enemyMaxHull = MAX_HULL } = {}) {
   const coins = Math.round(45 + enemyMaxHull * 0.25 + playerHull * 0.15);
   const infamy = Math.round(coins * 2.3);
   return { coins, infamy };
+}
+
+/**
+ * Spoils for CAPTURING a foe that struck its colours (#72) — the merciful road's reward.
+ * A ransom purse (a touch less than a sinking's plunder) and, crucially, a chunk of lawful
+ * **Standing** (the governor pole): sparing a beaten crew is honourable work. Pays far LESS
+ * Infamy than sinking — mercy isn't infamous. The deliberate mirror of `spoils`: sink for
+ * Infamy, capture for Standing.
+ * @returns {{coins:number, infamy:number, standing:number}}
+ */
+export function captureSpoils({ playerHull = 0, enemyMaxHull = MAX_HULL } = {}) {
+  const coins = Math.round(40 + enemyMaxHull * 0.2 + playerHull * 0.15);
+  const infamy = Math.round(coins * 0.8);
+  const standing = Math.round(coins * 0.6);
+  return { coins, infamy, standing };
 }
 
 /** A comic-but-real setback for losing the gun-duel — repairs cost a few coins. */
@@ -168,6 +235,11 @@ export function fireOpener(rng = Math.random) {
 /** A defeated foe's parting cry. */
 export function defeatLine(rng = Math.random) {
   return DEFEAT_LINES[pickIndex(rng, DEFEAT_LINES.length)];
+}
+
+/** A foe's cry as it strikes its colours and yields (#72). */
+export function strikeLine(rng = Math.random) {
+  return STRIKE_LINES[pickIndex(rng, STRIKE_LINES.length)];
 }
 
 /** A comic quip for a landed volley, keyed by exchange outcome ('broadside'|'rigging'). */
@@ -203,9 +275,11 @@ export function createCannons({ npcs, getShipPos, getColours, applyReward, apply
     playerHull: MAX_HULL,
     enemyHull: MAX_HULL,
     maxHull: MAX_HULL,
+    enemyMorale: MORALE_MAX, // the foe crew's nerve (#72) — break it and they strike their colours
+    maxMorale: MORALE_MAX,
     lastLine: '',
     lastOutcome: '',
-    result: null, // 'win' | 'lose' | null
+    result: null, // 'win' (sunk) | 'capture' (yielded #72) | 'lose' | null
     round: 0,
     treachery: false, // were the guns run out under FALSE colours? (#79)
     targetKind: 'merchant', // the struck vessel's disposition — pirate/merchant (#91)
@@ -253,6 +327,8 @@ export function createCannons({ npcs, getShipPos, getColours, applyReward, apply
     state.playerHull = MAX_HULL;
     state.enemyHull = clampHull(MAX_HULL - surpriseDamage(engagedColours), MAX_HULL);
     state.maxHull = MAX_HULL;
+    state.enemyMorale = MORALE_MAX; // a fresh crew starts with full nerve (#72)
+    state.maxMorale = MORALE_MAX;
     state.lastLine = fireOpener(rng);
     state.lastOutcome = '';
     state.result = null;
@@ -267,29 +343,35 @@ export function createCannons({ npcs, getShipPos, getColours, applyReward, apply
     const name = typeof aim === 'number' ? AIMS[aim] : aim;
     if (!AIMS.includes(name)) return null;
     const r = resolveExchange(
-      { aim: name, enemyHull: state.enemyHull, playerHull: state.playerHull, gunnery: foe.gunnery },
+      { aim: name, enemyHull: state.enemyHull, playerHull: state.playerHull, gunnery: foe.gunnery, morale: state.enemyMorale },
       rng
     );
     state.enemyHull = r.enemyHull;
     state.playerHull = r.playerHull;
+    state.enemyMorale = r.enemyMorale;
     state.lastOutcome = r.outcome;
     state.round++;
 
-    const ending = r.sunkEnemy || r.sunkPlayer;
-    if (!ending) {
-      state.lastLine = fireQuip(r.outcome, rng);
-      ping('cut'); // a solid hit
-    }
     if (r.sunkEnemy) return finish('win');
     if (r.sunkPlayer) return finish('lose');
+    if (r.yielded) return finish('capture'); // their nerve broke — they strike their colours (#72)
+    state.lastLine = fireQuip(r.outcome, rng);
+    ping('cut'); // a solid hit
     return r;
   }
 
   function finish(result) {
     state.result = result;
-    ping(result === 'win' ? 'win' : 'lose');
+    ping(result === 'lose' ? 'lose' : 'win'); // a sinking AND a capture are both victories
     let reward_ = null, penalty_ = null;
-    if (result === 'win') {
+    if (result === 'capture') {
+      // They struck their colours (#72): the merciful road — a ransom + lawful Standing, modest
+      // Infamy. The foe lives; the wreck-clear respawn just sails a beaten ship off over the horizon.
+      state.lastLine = strikeLine(rng);
+      reward_ = { ...captureSpoils({ playerHull: state.playerHull, enemyMaxHull: state.maxHull }), captured: true };
+      if (applyReward) applyReward(reward_);
+      if (npcs && npcs.respawn) npcs.respawn(state.foeIndex);
+    } else if (result === 'win') {
       state.lastLine = defeatLine(rng);
       reward_ = spoils({ playerHull: state.playerHull, enemyMaxHull: state.maxHull });
       // Treachery payoff (#79): a kill under false colours pays a perfidy bonus to Infamy.
@@ -326,6 +408,8 @@ export function createCannons({ npcs, getShipPos, getColours, applyReward, apply
       playerHull: state.playerHull,
       enemyHull: state.enemyHull,
       maxHull: state.maxHull,
+      enemyMorale: state.enemyMorale, // the foe crew's nerve (#72) — the HUD draws a "their nerve" bar
+      maxMorale: state.maxMorale,
       lastLine: state.lastLine,
       lastOutcome: state.lastOutcome,
       result: state.result,

@@ -57,7 +57,8 @@ export function sanitizeEvent(ev) {
     case 'cannon': {
       if (!isStr(ev.foe)) return null;
       const out = { type: 'cannon', foe: String(ev.foe).trim(), infamy: nonNegInt(ev.infamy), coins: nonNegInt(ev.coins) };
-      if (ev.treachery) out.treachery = true; // an ambush under false colours (#79)
+      if (ev.captured) out.captured = true;   // she struck her colours — a merciful capture (#72)
+      else if (ev.treachery) out.treachery = true; // an ambush under false colours (#79)
       else if (ev.lawful) out.lawful = true;  // a sanctioned pirate-hunt under true colours (#91)
       return out;
     }
@@ -167,6 +168,15 @@ const LAWFUL_NARRATORS = {
   ],
 };
 
+// A merciful capture (#72) sings its own verse — you broke their nerve, not their hull, and
+// spared the crew. Chosen over the honest pool whenever the deed carries `captured: true`.
+const CAPTURE_NARRATORS = {
+  cannon: [
+    (e) => `You sawed ${e.foe}'s rigging to ribbons until her nerve gave and the colours came down — you spared the crew and sailed off ${e.coins} coins the richer and a touch more respectable.`,
+    (e) => `${e.foe} struck her colours rather than her keel: a beaten crew, a ${e.coins}-coin ransom, and a captain who, just this once, chose mercy over a grave.`,
+  ],
+};
+
 const OPENING = 'Gather round and hear it sung — the ballad of a captain, a small boat, and a sea with opinions.';
 
 function tally(events) {
@@ -211,7 +221,8 @@ export function composeBallad(events, opts = {}) {
     for (const e of log) {
       // A treacherous fight sings a false-colours verse; a lawful pirate-hunt sings the
       // privateer verse; everything else, the honest pool.
-      const pool = (e.treachery && TREACHERY_NARRATORS[e.type])
+      const pool = (e.captured && CAPTURE_NARRATORS[e.type])
+        || (e.treachery && TREACHERY_NARRATORS[e.type])
         || (e.lawful && LAWFUL_NARRATORS[e.type])
         || NARRATORS[e.type];
       if (!pool) continue;
