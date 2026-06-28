@@ -405,3 +405,25 @@ test('deserialize tolerates a malformed objective (never rejects the save) (#115
   assert.ok(r, 'a junk objective must not reject the whole save');
   assert.equal(r.objective, null);
 });
+
+// ---- claimed home harbour (save v12, #118 "Your Harbour") ----------------------------
+
+test('serialize → deserialize round-trips a claimed home harbour (#118)', () => {
+  const harbour = { name: "Gullet's Rest", level: 2, invested: 150 };
+  const restored = deserialize(serialize({ ...economyState(), harbour }));
+  assert.deepEqual(restored.harbour, harbour);
+});
+
+test('serialize drops a junk / absent harbour to null (no home claimed) (#118)', () => {
+  const junk = JSON.parse(serialize({ ...economyState(), harbour: { name: '' } }));
+  assert.equal(junk.harbour, null);
+  const fresh = JSON.parse(serialize(economyState())); // no harbour field
+  assert.equal(fresh.harbour, null);
+});
+
+test('deserialize tolerates a malformed harbour (never rejects the save) (#118)', () => {
+  const good = JSON.parse(serialize(economyState()));
+  const r = deserialize(JSON.stringify({ ...good, harbour: 'not an object' }));
+  assert.ok(r, 'a junk harbour must not reject the whole save');
+  assert.equal(r.harbour, null);
+});

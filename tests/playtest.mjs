@@ -783,6 +783,72 @@ try {
   if (!chase.hasVerse) fail('rumour-chase: the chased rumour did not sing into the Ballad/voyage log (#78/#112)');
   if (chase.afterNewVoyage) fail('rumour-chase: a fresh voyage did not clear the chased objective (#111/#112)');
 
+  // 2h2d) Your Harbour (#118, DL #4) — the GOVERNOR pole's first reactive verb: CLAIM a home port,
+  // then INVEST coin to GROW it. Make landfall, assert the claim is GATED on Standing (locked when
+  // poor, open when respected), claim the docked port (earns Standing + a homecoming greeting in the
+  // town panel), then invest coin to grow it a level (spends coin, earns Standing, sings a Ballad
+  // verse) and persists. Proves the lawful pole now has a real, visible, persisted verb end-to-end.
+  const home = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);
+    const port = tw.ports[0];
+    const [px, pz] = port.pos;
+    async function arrive(x, z) {
+      tw.qaTeleport(x, z); tw.step(0.1);
+      for (let i = 0; i < 80 && !(tw.mode === 'town' && tw.town.open); i++) tw.step(0.1);
+    }
+    await arrive(px, pz);
+    // Gate: a poor captain cannot claim a home port.
+    tw.setStanding(0);
+    const lockedGate = tw.harbourCanClaim;
+    // Earn a respected name, then claim the docked port.
+    tw.setStanding(200);
+    const openGate = tw.harbourCanClaim;
+    const standingBeforeClaim = tw.state.standing;
+    const claimRes = tw.claimHarbour();
+    const afterClaim = tw.harbour;
+    const standingAfterClaim = tw.state.standing;
+    const atHome = tw.town.atHome;
+    const greetEl = document.querySelector('#town .town-harbour-greet');
+    const greetText = greetEl ? greetEl.textContent : '';
+    // Invest coin to grow the harbour one level.
+    tw.setCoins(5000);
+    const investGate = tw.harbourCanInvest;
+    const coins0 = tw.state.coins;
+    const standing0 = tw.state.standing;
+    const investRes = tw.investHarbour();
+    const afterInvest = tw.harbour;
+    const coinsSpent = coins0 - tw.state.coins;
+    const standingGain = tw.state.standing - standing0;
+    const hasVerse = tw.voyageLog.some((e) => e.type === 'harbour');
+    const investEl = document.querySelector('#town .town-invest');
+    // Persist, then prove a fresh voyage clears it (the claim is per-save state).
+    tw.save();
+    const persisted = tw.harbour;
+    tw.newVoyage(); tw.step(0.1);
+    const afterNewVoyage = tw.harbour;
+    return {
+      portName: port.name, lockedGate, openGate, standingBeforeClaim, claimRes, afterClaim,
+      standingAfterClaim, atHome, greetText, investGate, investRes, afterInvest, coinsSpent,
+      standingGain, hasVerse, investShown: !!investEl, persisted, afterNewVoyage,
+    };
+  });
+  if (home.lockedGate.ok || home.lockedGate.reason !== 'low-standing') fail(`your-harbour: a poor captain was allowed to claim (gate=${JSON.stringify(home.lockedGate)}) (#118)`);
+  if (!home.openGate.ok) fail(`your-harbour: a respected captain could not claim a home port (gate=${JSON.stringify(home.openGate)}) (#118)`);
+  if (!home.claimRes.ok) fail(`your-harbour: claiming the home port failed (${JSON.stringify(home.claimRes)}) (#118)`);
+  if (!home.afterClaim || home.afterClaim.name !== home.portName || home.afterClaim.level !== 1) fail(`your-harbour: the claim did not record a level-1 home harbour (${JSON.stringify(home.afterClaim)}) (#118)`);
+  if (!(home.standingAfterClaim > home.standingBeforeClaim)) fail(`your-harbour: claiming did not earn Standing (${home.standingBeforeClaim}→${home.standingAfterClaim}) (#118)`);
+  if (!home.atHome) fail('your-harbour: the town did not recognise the docked port as your home (#118)');
+  if (!home.greetText || !home.greetText.includes(home.portName)) fail(`your-harbour: no homecoming greeting naming the port in the town panel ("${home.greetText}") (#118)`);
+  if (!home.investGate.ok) fail(`your-harbour: could not invest to grow the home harbour (gate=${JSON.stringify(home.investGate)}) (#118)`);
+  if (!home.investRes.ok || home.afterInvest.level !== 2) fail(`your-harbour: investing did not grow the harbour a level (${JSON.stringify(home.investRes)}) (#118)`);
+  if (!(home.coinsSpent === home.investRes.spent && home.coinsSpent > 0)) fail(`your-harbour: investing did not spend coin (spent=${home.coinsSpent} vs ${home.investRes.spent}) (#118)`);
+  if (!(home.standingGain > 0)) fail(`your-harbour: investing did not earn Standing (gain=${home.standingGain}) (#118)`);
+  if (!home.hasVerse) fail('your-harbour: claiming/growing the home port did not sing into the Ballad/voyage log (#78/#118)');
+  if (!home.investShown) fail('your-harbour: the town panel showed no invest affordance for your home port (#118)');
+  if (!home.persisted || home.persisted.level !== 2) fail('your-harbour: the home harbour did not survive a save (#118)');
+  if (home.afterNewVoyage) fail('your-harbour: a fresh voyage did not clear the claimed home harbour (#118)');
+
   // 2h3) Landfall gesture (#102): making port is a crafted, EASED moment, not a snap. Drive the
   // mode transition headlessly and assert the gesture (a) starts under sail (blend 0), (b) eases
   // blend UP over the sim's dt without jumping straight to 1 (deterministic, not wall-clock), (c)

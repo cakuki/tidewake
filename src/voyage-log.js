@@ -17,7 +17,7 @@ export const MAX_EVENTS = 60;
 
 // The deeds the balladeer knows how to sing. A future slice can add more (best trade,
 // rank climbed, ports visited) by extending NARRATORS + sanitizeEvent below.
-export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter'];
+export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter', 'harbour'];
 
 export const BALLAD_TITLE = 'The Ballad of Your Voyage';
 
@@ -80,6 +80,13 @@ export function sanitizeEvent(ev) {
         type: 'encounter', choice: ev.choice, ship: String(ev.ship).trim(),
         standing: nonNegInt(ev.standing), infamy: nonNegInt(ev.infamy), coins: nonNegInt(ev.coins),
       };
+    case 'harbour':
+      // Your Harbour (#118): you claimed a home port, or grew it a tier. `deed` decides the verse;
+      // `port` is the home water and `level` its growth tier.
+      if (ev.deed !== 'claim' && ev.deed !== 'grow') return null;
+      return isStr(ev.port)
+        ? { type: 'harbour', deed: ev.deed, port: String(ev.port).trim(), level: nonNegInt(ev.level) }
+        : null;
     default:
       return null;
   }
@@ -91,6 +98,8 @@ export function sanitizeEvent(ev) {
 function dedupKey(ev) {
   if (ev.type === 'landfall') return `landfall:${ev.name}`;
   if (ev.type === 'legend') return `legend:${ev.pole}`;
+  // Your Harbour (#118): a claim and each growth tier is sung once — never twice on a reload.
+  if (ev.type === 'harbour') return `harbour:${ev.deed}:${ev.port}:${ev.level}`;
   return null;
 }
 
@@ -157,6 +166,15 @@ const NARRATORS = {
     (e) => `You chased a tavern whisper clean to ${e.name}, and for once the rumour ran true — ${e.coins} coins the richer for trusting a hunched regular with a thirst.`,
     (e) => `A corner-table tip swore ${e.name} was worth the crossing; you went, and it was — ${e.coins} coins, and a nod to the old soak who'd called it.`,
     (e) => `Word said make for ${e.name}, so you did — and the sea, astonishingly, kept its promise: ${e.coins} coins for following a rumour to its end.`,
+  ],
+  // Your Harbour (#118): the governor pole's payoff — you don't take a place, you RAISE one.
+  harbour: [
+    (e) => (e.deed === 'claim'
+      ? `You claimed ${e.port} as your own home water, your colours run up over the quay — and for once a captain came not to plunder a port, but to keep one.`
+      : `You poured your coin into ${e.port} and watched it rise — new jetties, fuller berths, lamps lit early for your homecoming, all of it bearing your name.`),
+    (e) => (e.deed === 'claim'
+      ? `At ${e.port} you carved your name into the harbour post and called it home; the wharf, against all pirate custom, was glad of it.`
+      : `${e.port} prospered another notch under your hand — they'll tell their grandchildren the harbour grew the day your sails came in.`),
   ],
 };
 
@@ -252,7 +270,7 @@ export function composeBallad(events, opts = {}) {
     lines = [EMPTY_LINE];
   } else {
     lines = [OPENING];
-    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0 };
+    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0, harbour: 0 };
     for (const e of log) {
       // An at-sea encounter sings a rescue/plunder verse by the choice made; a treacherous fight
       // sings a false-colours verse; a lawful pirate-hunt the privateer verse; else the honest pool.

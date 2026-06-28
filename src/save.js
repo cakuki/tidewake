@@ -19,6 +19,7 @@ import { sanitizeLog } from './voyage-log.js';
 import { COLOURS, DEFAULT_COLOURS } from './colours.js';
 import { sanitizePortMemory } from './systems/port-memory.js';
 import { sanitizeObjective } from './objectives.js';
+import { sanitizeHarbour } from './systems/home-port.js';
 
 // The set of colours ids we'll accept back from storage (#79). Anything else loads as the
 // honest default rather than rejecting the whole save (flag choice is flavour, not physics).
@@ -37,8 +38,11 @@ export const SAVE_KEY = 'tidewake.save.v1';
 // v11 deepened per-port memory — each port now also remembers your LAST notable DEED there, recalled
 // by name on return, and a most-visited "home port" emerges (#104b, the "Your Harbour" seed); the
 // deed rides the existing portMemory store as an additive, fail-open per-record field.
+// v12 added the claimed HOME HARBOUR — the governor pole's first reactive verb: the port you've
+// claimed as your own ({name, level, invested}), grown a level at a time by investing coin for
+// Standing (#118, "Your Harbour"); an additive, fail-open field (junk → no claim).
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 11;
+export const SAVE_VERSION = 12;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -106,6 +110,9 @@ export function serialize(state) {
   // steering toward. Sanitised on the way out so only a clean ACTIVE objective persists; a
   // resolved/absent one stores as null (no pin in flight).
   const objective = sanitizeObjective(state.objective);
+  // Claimed home harbour (#118): the governor pole's home port + its growth tier. Sanitised on the
+  // way out so only a clean claim persists; an unclaimed caller stores null (no home yet).
+  const harbour = sanitizeHarbour(state.harbour);
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -122,6 +129,7 @@ export function serialize(state) {
     colours,
     portMemory,
     objective,
+    harbour,
   });
 }
 
@@ -225,6 +233,11 @@ export function deserialize(raw) {
   // (no pin) rather than rejecting an otherwise-valid save (fail open).
   const objective = sanitizeObjective(obj.objective);
 
+  // Claimed home harbour (save v12, #118): like the other flavour fields it's not load-bearing
+  // physics — sanitizeHarbour drops a junk/absent claim to null (no home port) rather than
+  // rejecting an otherwise-valid save (fail open).
+  const harbour = sanitizeHarbour(obj.harbour);
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -240,6 +253,7 @@ export function deserialize(raw) {
     colours,
     portMemory,
     objective,
+    harbour,
     renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }

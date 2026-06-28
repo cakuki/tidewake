@@ -14,6 +14,10 @@
 import { GOODS, PORTS, market, buy, sell, cargoUsed, HOLD_CAP } from '../economy.js';
 import { renownTier, dominantPole } from '../renown.js';
 import { composeRumours } from '../rumours.js';
+import {
+  isHome, canClaim, canInvest, investCost, investStanding, harbourGreeting, harbourLevelName,
+  CLAIM_STANDING, MAX_LEVEL,
+} from '../systems/home-port.js';
 
 export function createTown(opts = {}) {
   const getState = typeof opts.getState === 'function' ? opts.getState : () => null;
@@ -21,6 +25,10 @@ export function createTown(opts = {}) {
   // Chase a rumour (#111/#112/#115): hand the chosen rumour's TYPED target up to main.js, which
   // sets the active objective (a map marker + an arrival payoff). No-op if not wired.
   const onChase = typeof opts.onChase === 'function' ? opts.onChase : () => {};
+  // Your Harbour (#118): claim the docked port as your home harbour, or invest coin to grow it.
+  // main.js owns applying Standing/coin + persisting; here we just route the tap. No-op if unwired.
+  const onClaim = typeof opts.onClaim === 'function' ? opts.onClaim : () => {};
+  const onInvest = typeof opts.onInvest === 'function' ? opts.onInvest : () => {};
   const root = opts.root ?? (typeof document !== 'undefined' ? document : null);
   // Touch parity (#17/#66): taps drive trades + the Leave plank when there's no keyboard.
   const TOUCH = !!(root && root.body && root.body.classList && root.body.classList.contains('touch'));
@@ -97,6 +105,8 @@ export function createTown(opts = {}) {
       $panel.addEventListener('click', (e) => {
         if (e.target.closest?.('#town-leave')) { e.preventDefault(); onLeave(); return; }
         if (e.target.closest?.('#town-listen')) { e.preventDefault(); listen(); return; }
+        if (e.target.closest?.('#town-claim')) { e.preventDefault(); onClaim(); return; }
+        if (e.target.closest?.('#town-invest')) { e.preventDefault(); onInvest(); return; }
         const chaseBtn = e.target.closest?.('.town-chase');
         if (chaseBtn) { e.preventDefault(); chase(Number(chaseBtn.dataset.idx)); return; }
         const tr = e.target.closest?.('.trow');
@@ -150,6 +160,48 @@ export function createTown(opts = {}) {
       + `</div>`;
   }
 
+  // Your Harbour (#118) — the governor pole's reactive verb, shown ashore. At your claimed home
+  // port: its growth tier, a warming homecoming line, and an "invest" plank that grows it a level
+  // (spend coin → Standing). At any other port: a "claim this as your home port" plank, gated on
+  // Standing (a clear hint when you're not yet respected enough, or already have a home elsewhere).
+  function harbourHTML(state) {
+    const port = state.port;
+    if (!port) return '';
+    const harbour = state.harbour || null;
+    const standing = Number.isFinite(state.standing) ? state.standing : 0;
+    const coins = Number.isFinite(state.coins) ? state.coins : 0;
+    const TKEY = TOUCH ? '' : '';
+    if (isHome(harbour, port)) {
+      const lvl = harbour.level;
+      const greet = harbourGreeting(harbour, port) || '';
+      const cost = investCost(harbour);
+      const action = cost === null
+        ? `<div class="town-harbour-max">⚓ ${esc(port)} is fully grown — a ${esc(harbourLevelName(MAX_LEVEL))}. The whole Tidewake knows it as yours.</div>`
+        : (coins >= cost
+            ? `<button id="town-invest" class="town-invest" type="button">⚒ Invest ${cost}c — grow your harbour <span class="town-invest-gain">(+${investStanding(harbour)} standing)</span></button>`
+            : `<div class="town-harbour-need">Grow ${esc(port)} for <b>${cost}c</b> (+${investStanding(harbour)} standing) — you have ${coins}c.</div>`);
+      return `<div class="town-harbour town-harbour-home">`
+        + `<div class="town-harbour-h">🏠 Your Harbour — ${esc(harbourLevelName(lvl))} <span class="town-harbour-lvl">lvl ${lvl}/${MAX_LEVEL}</span></div>`
+        + `<div class="town-harbour-greet">${esc(greet)}</div>`
+        + action
+        + `</div>`;
+    }
+    // Not your home port: offer the claim (or explain why you can't yet).
+    const gate = canClaim({ harbour, port, standing });
+    let body;
+    if (gate.ok) {
+      body = `<div class="town-harbour-sub">A respected captain may put down roots here — make ${esc(port)} your home water.</div>`
+        + `<button id="town-claim" class="town-claim" type="button">⚓ Claim ${esc(port)} as your home port${TKEY}</button>`;
+    } else if (gate.reason === 'has-home') {
+      body = `<div class="town-harbour-sub">Your home port is <b>${esc(harbour.name)}</b> — sail there to grow it. (One home water at a time, captain.)</div>`;
+    } else if (gate.reason === 'low-standing') {
+      body = `<div class="town-harbour-need">Earn the standing of a respected captain to claim a home port — reach <b>${CLAIM_STANDING}</b> standing (you have ${Math.floor(standing)}). Trade honestly and the lanes will have you.</div>`;
+    } else {
+      return '';
+    }
+    return `<div class="town-harbour"><div class="town-harbour-h">🏠 A Home Port</div>${body}</div>`;
+  }
+
   function render() {
     ensureBuilt();
     if (!$panel) return;
@@ -172,7 +224,7 @@ export function createTown(opts = {}) {
     const master = recall || info.harbourmaster || 'The harbourmaster nods you ashore.';
     // Cheap cache: only touch the DOM when something the player can see changes.
     const chasing = (state.objective && state.objective.target && state.objective.target.name) || '';
-    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing;
+    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing + '|' + JSON.stringify(state.harbour ?? null) + '|' + (state.standing ?? 0);
     if (sig === lastSig) return;
     lastSig = sig;
 
@@ -195,6 +247,7 @@ export function createTown(opts = {}) {
       + `<div class="town-barker">${esc(cry)}</div>`
       + tavernHTML()
       + `<div class="town-purse">⛃ <b>${state.coins ?? 0}</b> coins · Hold <b>${used}/${HOLD_CAP}</b>${standingNote}</div>`
+      + harbourHTML(state)
       + `<div class="town-market-h">⚖ The Market</div>`
       + `<table class="town-t"><thead><tr><th></th><th>good</th><th>buy</th><th>sell</th><th>hold</th></tr></thead><tbody>${rows}</tbody></table>`
       + `<div class="town-msg">${flash && Date.now() < flashUntil ? esc(flash) : '&nbsp;'}</div>`
@@ -232,6 +285,8 @@ export function createTown(opts = {}) {
     init, render, setOpen, listen, chase,
     get isOpen() { return open; },
     get port() { const s = getState(); return (s && s.port) || null; },
+    // Your Harbour (#118): whether the docked port is the captain's claimed home (for QA/parity).
+    get atHome() { const s = getState() || {}; return isHome(s.harbour, s.port); },
     // Tavern "listen for word" (#103) QA surface: whether word is showing + the live rumours
     // (text only, the #103 contract). Typed entries (#115) are exposed via `rumourTargets`.
     get listening() { return listening; },

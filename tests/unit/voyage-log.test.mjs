@@ -270,3 +270,23 @@ test('an at-sea encounter is NOT deduped — each founderer is its own anecdote'
   log = recordEvent(log, { type: 'encounter', choice: 'plunder', ship: 'the Saltwidow', infamy: 120, coins: 80 });
   assert.equal(log.length, 2);
 });
+
+// ---- Your Harbour deeds (#118) ------------------------------------------------------
+test('sanitizeEvent accepts harbour claim/grow and rejects junk (#118)', () => {
+  assert.deepEqual(sanitizeEvent({ type: 'harbour', deed: 'claim', port: 'P', level: 1 }),
+    { type: 'harbour', deed: 'claim', port: 'P', level: 1 });
+  assert.deepEqual(sanitizeEvent({ type: 'harbour', deed: 'grow', port: 'P', level: 2 }),
+    { type: 'harbour', deed: 'grow', port: 'P', level: 2 });
+  assert.equal(sanitizeEvent({ type: 'harbour', deed: 'sink', port: 'P' }), null);
+  assert.equal(sanitizeEvent({ type: 'harbour', deed: 'claim', port: '' }), null);
+});
+
+test('the ballad sings a claimed harbour, deduped per claim/grow tier (#118)', () => {
+  let log = [];
+  log = recordEvent(log, { type: 'harbour', deed: 'claim', port: "Gullet's Rest", level: 1 });
+  log = recordEvent(log, { type: 'harbour', deed: 'claim', port: "Gullet's Rest", level: 1 }); // dup → no-op
+  log = recordEvent(log, { type: 'harbour', deed: 'grow', port: "Gullet's Rest", level: 2 });
+  assert.equal(log.length, 2);
+  const text = composeBallad(log).text;
+  assert.ok(text.includes("Gullet's Rest"), 'the home port is named in the ballad');
+});

@@ -34,6 +34,9 @@ import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat, renownTier } from './renown.js';
 import { recallLine, rememberArrival, sanitizePortMemory, recordDeed, deedPhrase, homePort } from './systems/port-memory.js';
+import {
+  sanitizeHarbour, claim as claimHome, invest as investHome, canClaim, canInvest, harbourLevelName,
+} from './systems/home-port.js';
 import { makeObjective, resolvesAt, payoffFor, sanitizeObjective } from './objectives.js';
 import { createEncounter, HAIL_LINES, RESCUE_LINES, PLUNDER_LINES } from './systems/encounter.js';
 import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES } from './colours.js';
@@ -392,6 +395,9 @@ state.portMemory = sanitizePortMemory(state.portMemory);
 // Chased-rumour objective (#111/#112/#115): a restored voyage keeps the pin it was steering
 // toward; a fresh one starts unpinned. Sanitised so a junk/stale objective fails open to null.
 state.objective = sanitizeObjective(state.objective);
+// Claimed home harbour (#118): a restored voyage keeps the home port it claimed + its growth tier;
+// a fresh one starts with none. Sanitised so a junk save fails open to null (no home claimed).
+state.harbour = sanitizeHarbour(state.harbour);
 
 // ---- False Colours (#79) -------------------------------------------------------------
 // The displayed flag: true black (honest pirate) vs false merchant (a disguise). A restored
@@ -474,6 +480,7 @@ function newVoyage() {
   state.voyageLog = []; // a new voyage = a blank page; the Ballad starts unwritten (#78)
   state.portMemory = {}; // a clean slate — no port remembers your face yet (#104)
   state.portRecall = null; // ...and no remembered-return greeting in flight
+  state.harbour = null; // ...and no home port claimed yet (#118 "Your Harbour")
   state.objective = null; // a fresh voyage chases nothing yet — the chart starts unpinned (#111/#112)
   state.colours = DEFAULT_COLOURS; // a fresh voyage flies honest black again (#79)
   applyColoursToShip();
@@ -570,8 +577,55 @@ ballad.init();
 // src/ui component (the #53 standard) that paints the docked port's market and the single
 // "⚓ Set Sail" plank. It reads the live ship state for the market board and the purse; its
 // Leave control routes back through leaveHarbour() below — the one obvious, reversible way out.
-const town = createTown({ getState: () => state, onLeave: () => leaveHarbour(), onChase: (target) => chaseObjective(target) });
+const town = createTown({
+  getState: () => state,
+  onLeave: () => leaveHarbour(),
+  onChase: (target) => chaseObjective(target),
+  onClaim: () => claimHarbour(),
+  onInvest: () => investHarbour(),
+});
 town.init();
+
+// ---- Your Harbour (#118, DL #4) — the governor pole's first reactive verb -------------------
+// At your docked port: CLAIM it as your home harbour (at sufficient Standing), then SPEND coin to
+// GROW it a level at a time. The pure gate/grow logic lives in src/systems/home-port.js; here we
+// just apply the result to the shared state (Standing + coin + the harbour record), sing it into
+// the Ballad (#78), and persist. Fully guarded — a flourish must never break the loop.
+function claimHarbour() {
+  try {
+    initEconomy(state);
+    const port = state.port;
+    const res = claimHome({ harbour: state.harbour, port, standing: state.standing ?? 0 });
+    if (!res.ok) return res;
+    state.harbour = res.harbour;
+    state.standing = Math.max(0, (state.standing ?? 0) + (res.standingGain || 0));
+    syncRenown(state);
+    logDeed({ type: 'harbour', deed: 'claim', port, level: res.harbour.level }); // crown the Ballad (#78)
+    persistence.write();                 // lock the claim the instant it's made
+    hud.flashBanner('⚓ A home port claimed',
+      `${port} is yours now, captain — your colours over the quay, and +${res.standingGain} standing for putting down roots.`);
+    town.render();
+    return res;
+  } catch { return { ok: false, reason: 'error' }; }
+}
+function investHarbour() {
+  try {
+    initEconomy(state);
+    const port = state.port;
+    const res = investHome({ harbour: state.harbour, port, coins: state.coins ?? 0 });
+    if (!res.ok) return res;
+    state.coins = Math.max(0, (state.coins ?? 0) - res.spent);
+    state.harbour = res.harbour;
+    state.standing = Math.max(0, (state.standing ?? 0) + (res.standingGain || 0));
+    syncRenown(state);
+    logDeed({ type: 'harbour', deed: 'grow', port, level: res.level }); // sing the growth (#78)
+    persistence.write();                 // lock the investment the instant it's made
+    hud.flashBanner('⚒ Your harbour grows',
+      `You sink ${res.spent}c into ${port} — now ${harbourLevelName(res.level)}, and +${res.standingGain} standing for the prospering.`);
+    town.render();
+    return res;
+  } catch { return { ok: false, reason: 'error' }; }
+}
 
 // ---- Chased-rumour objectives (#111/#112/#115) --------------------------------------------
 // A tavern rumour you choose to chase becomes a tracked sea-objective: a marker on the chart
@@ -1060,7 +1114,7 @@ window.__tidewake = {
   // Town / market mode (#67/#96) QA surface: whether the town view is open + which port it's
   // showing, and the deliberate Leave Harbour seam (re-enables the helm + nudges the bow
   // seaward). Auto-harbour itself is driven by sailing into a port's dock radius (onArrive).
-  get town() { return { open: town.isOpen, port: town.port, leftHarbour }; },
+  get town() { return { open: town.isOpen, port: town.port, leftHarbour, atHome: town.atHome }; },
   leaveHarbour() { return leaveHarbour(); },
   // The port remembers you (#104) QA surface: the persistent per-port memory store (visit count +
   // your standing snapshot as seen locally) and the live remembered-return greeting (null on a
@@ -1070,6 +1124,15 @@ window.__tidewake = {
   // #104b "Your Harbour" seed: the captain's most-visited port, once it's recognisably theirs (null
   // until one clears the home threshold) — so a playtest can assert a frequented port becomes home.
   get homePort() { return homePort(state.portMemory); },
+  // Your Harbour (#118, DL #4) QA surface: the CLAIMED home harbour record ({name, level, invested}
+  // or null), plus the deliberate claim/invest seams — so a headless playtest can dock at a port,
+  // claim it (at sufficient Standing), invest coin to grow a level, and assert Standing/level/coin
+  // move and survive a save round-trip. The verbs return the pure result {ok, reason?, ...}.
+  get harbour() { return sanitizeHarbour(state.harbour); },
+  get harbourCanClaim() { return canClaim({ harbour: state.harbour, port: state.port, standing: state.standing ?? 0 }); },
+  get harbourCanInvest() { return canInvest({ harbour: state.harbour, port: state.port, coins: state.coins ?? 0 }); },
+  claimHarbour() { return claimHarbour(); },
+  investHarbour() { return investHarbour(); },
   // Landfall gesture (#102) QA surface: the crafted SAILING↔TOWN transition's live phase + eased
   // blend (0=at sea, 1=ashore) + whether it's in flight, plus the headless skip driver — so a
   // playtest can assert the moment EASES (not snaps), is deterministic, and is skippable.
@@ -1206,6 +1269,8 @@ window.__tidewake = {
   setRenown(n) { initEconomy(state); state.standing = Math.max(0, Number(n) || 0); syncRenown(state); return state.renown; },
   setInfamy(n) { initEconomy(state); state.infamy = Math.max(0, Number(n) || 0); syncRenown(state); return state.infamy; },
   setStanding(n) { initEconomy(state); state.standing = Math.max(0, Number(n) || 0); syncRenown(state); return state.standing; },
+  // QA purse setter (#118): set the coin purse directly so a playtest can fund a harbour investment.
+  setCoins(n) { initEconomy(state); state.coins = Math.max(0, Number(n) || 0); return state.coins; },
   greet(renown = state.renown ?? 0, pole = dominantPole(state.infamy, state.standing)) {
     return greetPlayer(renown, ports.docked || ports.ports[0]?.name || 'the port', () => 0, pole);
   },
