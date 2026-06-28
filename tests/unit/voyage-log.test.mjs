@@ -232,3 +232,41 @@ test('a chased rumour is NOT deduped — each chase is its own anecdote', () => 
   log = recordEvent(log, { type: 'rumour', name: 'Barnacle Bottom', coins: 60 });
   assert.equal(log.length, 2);
 });
+
+// ---- at-sea encounter verse (#125: rescue vs plunder) ---------------------------------
+
+test('sanitizeEvent accepts an encounter (ship + a valid choice), rejects a bad one', () => {
+  assert.deepEqual(
+    sanitizeEvent({ type: 'encounter', choice: 'rescue', ship: 'the Saltwidow', standing: 120 }),
+    { type: 'encounter', choice: 'rescue', ship: 'the Saltwidow', standing: 120, infamy: 0, coins: 0 },
+  );
+  assert.deepEqual(
+    sanitizeEvent({ type: 'encounter', choice: 'plunder', ship: 'the Last Ducat', infamy: 120, coins: 80 }),
+    { type: 'encounter', choice: 'plunder', ship: 'the Last Ducat', standing: 0, infamy: 120, coins: 80 },
+  );
+  assert.equal(sanitizeEvent({ type: 'encounter', choice: 'rescue' }), null);         // no ship name
+  assert.equal(sanitizeEvent({ type: 'encounter', ship: 'the Saltwidow' }), null);    // no choice
+  assert.equal(sanitizeEvent({ type: 'encounter', choice: 'dither', ship: 'X' }), null); // bad choice
+});
+
+test('composeBallad sings a distinct RESCUE verse — the lawful, grateful road', () => {
+  const b = composeBallad([{ type: 'encounter', choice: 'rescue', ship: 'the Saltwidow', standing: 120 }]);
+  assert.match(b.text, /the Saltwidow/);
+  assert.match(b.text, /120/);
+  assert.match(b.text, /haul|clear|took them off|rescue|kindness|good name|blessed|decent/i);
+  assert.ok(!/plunder|stripped|helped yourself/i.test(b.text));
+});
+
+test('composeBallad sings a distinct PLUNDER verse — the cold, coin road', () => {
+  const b = composeBallad([{ type: 'encounter', choice: 'plunder', ship: 'the Last Ducat', infamy: 120, coins: 80 }]);
+  assert.match(b.text, /the Last Ducat/);
+  assert.match(b.text, /80/);          // the coin haul
+  assert.match(b.text, /helped yourself|stripped|cargo|took her|cold|wince|infamy/i);
+});
+
+test('an at-sea encounter is NOT deduped — each founderer is its own anecdote', () => {
+  let log = [];
+  log = recordEvent(log, { type: 'encounter', choice: 'rescue', ship: 'the Saltwidow', standing: 120 });
+  log = recordEvent(log, { type: 'encounter', choice: 'plunder', ship: 'the Saltwidow', infamy: 120, coins: 80 });
+  assert.equal(log.length, 2);
+});

@@ -35,6 +35,7 @@ import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat, renownTier } from './renown.js';
 import { recallLine, rememberArrival, sanitizePortMemory, recordDeed, deedPhrase, homePort } from './systems/port-memory.js';
 import { makeObjective, resolvesAt, payoffFor, sanitizeObjective } from './objectives.js';
+import { createEncounter, HAIL_LINES, RESCUE_LINES, PLUNDER_LINES } from './systems/encounter.js';
 import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES } from './colours.js';
 import { BUDGET, formatPerf, pixelRatioCap, isMeasuredFrame } from './perf.js';
 import { isTouchDevice } from './input.js';
@@ -85,6 +86,14 @@ const daynight = createDayNight({
 });
 const ship = await loadShip(); // CC0 glTF sloop (#32); falls back to procedural hull on error
 scene.add(ship);
+// Foundering-ship encounter (#125): reuse the hero hull for the stricken vessel — its OWN GLB
+// instance (independent materials, so the player's False-Colours pennant tint never leaks onto it).
+// Hidden until an encounter is live; heeled over + settled low each frame so she reads foundering.
+// Only one at a time and only shown when near, so she costs ~1 draw call exactly when on screen.
+const founderMesh = await loadShip();
+try { if (founderMesh.userData && founderMesh.userData.flag) founderMesh.userData.flag.visible = false; } catch { /* flag is optional dressing */ }
+founderMesh.visible = false;
+scene.add(founderMesh);
 const wake = createWake(ocean);
 scene.add(wake.points);
 const ports = createPorts(world);
@@ -241,6 +250,49 @@ const cannons = createCannons({
       hud.flashBanner('💥 Hull breached!',
         `${foeName} rakes you stem to stern — you break off and limp away, ${penalty.coins} coins lighter for the repairs.`);
     }
+  },
+});
+
+// Emergent at-sea encounter (#125, DL#4): while sailing the open sea you occasionally come upon a
+// foundering ship and face a real CHOICE — RESCUE her crew (the lawful road → Standing, a grateful
+// line) or PLUNDER the wreck (the dark road → Infamy + coin, a colder line). One systemic moral beat
+// turns SAILING — our most-used but least-reactive mode — into a story generator (the #79/#72 DNA).
+// The pure cadence + choice→pole resolution live in src/systems/encounter.js; here we seed the RNG
+// (deterministic per voyage), apply the reward on the shared ledger, and sing it into the Ballad (#78).
+function makeEncounterRng() {
+  let a = 0x125 ^ 0x9e3779b9;
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let encounterRng = makeEncounterRng();
+const encounter = createEncounter({
+  getShipPos: () => [state.pos.x, state.pos.z],
+  getShipHeading: () => state.heading,
+  rng: () => encounterRng(),                // a fresh voyage re-seeds this for a repeatable sequence
+  onSpawn: ({ name }) => {
+    try { hud.flashBanner('🆘 A ship in distress!', `${pickLine(HAIL_LINES)} (${name})`); }
+    catch { /* a flourish must never break the loop */ }
+  },
+  // The CHOICE resolves to the right pole + reward + a Ballad verse, then the wreck despawns cleanly.
+  onResolve: ({ choice, name, standing, infamy, coins }) => {
+    initEconomy(state);
+    if (choice === 'rescue') {
+      state.standing = Math.max(0, (state.standing || 0) + standing); // the governor pole (#45)
+      syncRenown(state);
+      hud.flashBanner('🕊 A mercy at sea', `${pickLine(RESCUE_LINES)} (+${standing} standing)`);
+      logDeed({ type: 'encounter', choice: 'rescue', ship: name, standing }); // #78
+    } else {
+      state.coins += coins;
+      state.infamy += infamy;                                                 // the pirate pole (#45)
+      syncRenown(state);
+      hud.flashBanner('🏴 You take the spoils', `${pickLine(PLUNDER_LINES)} (+${coins}c · +${infamy} infamy)`);
+      logDeed({ type: 'encounter', choice: 'plunder', ship: name, infamy, coins }); // #78
+    }
+    persistence.write(); // lock the deed + reward the instant the choice is made
   },
 });
 
@@ -408,6 +460,9 @@ addEventListener('pagehide', persistence.write);
 function newVoyage() {
   duel.cancel();
   cannons.cancel();
+  encounterRng = makeEncounterRng();   // a fresh voyage re-rolls the encounter cadence from a clean seed (#125)
+  encounter.reset();                   // ...and meets no founderer mid-flight
+  founderMesh.visible = false;
   mode.reset(); // a fresh voyage always starts under sail — deterministic (#95/#106)
   landfall.reset(); // ...and with no landfall gesture mid-flight (#102)
   leftHarbour = false; // a fresh voyage re-arms auto-harbour from a clean slate (#67)
@@ -438,6 +493,13 @@ addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'n') newVoyage(
 // only claims them while docked.)
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
+  // Foundering-ship choice (#125): while a founderer is alongside, 1 RESCUES, 2 PLUNDERS. The
+  // encounter claims the keys and blocks hailing/firing so the moral beat isn't stepped on.
+  if (encounter.state.active) {
+    if (e.key === '1') encounter.choose('rescue');
+    else if (e.key === '2') encounter.choose('plunder');
+    return;
+  }
   if (k === 'f') { if (!cannons.state.active) duel.tryChallenge(); return; }
   if (k === 'g') { if (!duel.state.active) cannons.openFire(); return; }
   if (duel.state.active) {
@@ -702,6 +764,22 @@ function update(dt, t) {
   const flee = npcFlees({ colours: state.colours, infamy: state.infamy ?? 0, seenThrough });
   npcs.update(dt, t, { playerPos: [state.pos.x, state.pos.z], flee });
 
+  // Emergent at-sea encounter (#125): drive the seeded spawn cadence off distance SAILED — only
+  // while the helm is yours and under sail (no spawning mid-fight or in town). When a founderer is
+  // live, settle her low in the water and heel her over so she reads stricken; hide her otherwise
+  // (one mesh, shown only when near → ~1 draw call exactly when on screen).
+  encounter.update(dt, { canSpawn: !paused });
+  if (encounter.state.active && encounter.state.ship) {
+    const fx = encounter.state.ship.x, fz = encounter.state.ship.z;
+    const fy = ocean.sampleHeight(fx, fz, t);
+    founderMesh.position.set(fx, fy - 0.8, fz);                 // settled low — taking on water
+    const heel = 0.34 + Math.sin(t * 0.8) * 0.05;              // a sick, heaving list to one side
+    founderMesh.rotation.set(Math.sin(t * 1.1) * 0.06, encounter.state.bearing, heel);
+    if (!founderMesh.visible) founderMesh.visible = true;
+  } else if (founderMesh.visible) {
+    founderMesh.visible = false;
+  }
+
   // CREATIVE SPARK (#76 c): one light arcade beat as the ship squares up for a fight or coasts
   // into a berth — transition-guarded so it never spams, rotated so it never gets stale.
   if (fighting && !wasFighting) hud.flashBanner('⚔ Battle stations!', FIGHT_REEF_LINES[fightBeat++ % FIGHT_REEF_LINES.length]);
@@ -740,6 +818,7 @@ function update(dt, t) {
   bigmap.update(state);                         // route-planning chart (only redraws while open) (#54)
   hud.renderDuel(duel.snapshot());             // insult-duel panel + "hail/fire" prompt (#33)
   hud.renderCannons(cannons.snapshot());       // cannon-broadside panel (#59)
+  hud.renderEncounter(encounter.snapshot());   // foundering-ship rescue/plunder choice panel (#125)
   audio.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
   // Per-town music identity (#69): re-key the tavern drone to the nearest harbour, only on a change
   // (debounced) so the port layer already sounds like that town as it swells in on approach — and
@@ -1081,6 +1160,12 @@ window.__tidewake = {
   get cannons() { return cannons.snapshot(); },
   openFire() { return cannons.openFire(); },
   cannonFire(aim) { return cannons.fire(aim); },
+  // Foundering-ship encounter (#125) QA surface: read the live encounter (the founderer + the
+  // choice/reward, or inactive), force a deterministic spawn (the spawn hook the contract asks
+  // for), and make the choice headlessly. encounterChoose('rescue'|'plunder') resolves it.
+  get encounter() { return encounter.snapshot(); },
+  encounterSpawn() { return encounter.forceSpawn(); },
+  encounterChoose(choice) { return encounter.choose(choice); },
   // False Colours (#79) QA surface: read the colours flown, whether they're a disguise, the
   // pure NPC flee verdict for the current colours+infamy, plus drive the flag headlessly.
   get colours() {

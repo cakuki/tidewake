@@ -215,6 +215,24 @@
     #cannons .duel-opts li b { color: #ff8b6a; margin-right: 6px; }
     #cannons .duel-help { margin-top: 9px; text-align: center; color: #8fb4d6; font-size: 10.5px; }
     #cannons .duel-help b { color: #ff8b6a; }
+    /* Foundering-ship choice panel (#125) — the rescue-vs-plunder moral beat, in a teal distress
+       accent. Reuses the duel panel's inner line/opts classes, scoped here with its own colour. */
+    #encounter {
+      position: fixed; left: 50%; top: 50%; z-index: 14; transform: translate(-50%, -50%) scale(.98);
+      width: min(92vw, 460px); pointer-events: none;
+      color: #eaf3f0; background: rgba(7, 18, 31, .9); border: 1px solid rgba(120,220,210,.5);
+      border-radius: 12px; padding: 16px 18px; backdrop-filter: blur(6px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.6); font-size: 13px;
+      opacity: 0; transition: opacity .25s ease, transform .25s ease;
+    }
+    #encounter.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #encounter .enc-h { color: #7be0d2; font-weight: 700; font-size: 15px; letter-spacing: .04em; text-align: center; }
+    #encounter .duel-line { font-style: italic; color: #cdeee7; text-align: center; min-height: 34px; margin: 8px 4px 12px; line-height: 1.4; }
+    #encounter .duel-opts { list-style: none; display: grid; gap: 6px; }
+    #encounter .duel-opts li { background: rgba(255,255,255,.05); border: 1px solid rgba(120,220,210,.24); border-radius: 7px; padding: 8px 10px; line-height: 1.35; }
+    #encounter .duel-opts li b { color: #7be0d2; margin-right: 6px; }
+    #encounter .duel-help { margin-top: 10px; text-align: center; color: #8fb4d6; font-size: 10.5px; }
+    #encounter .duel-help b { color: #7be0d2; }
     #challenge-prompt {
       position: fixed; left: 50%; bottom: 70px; z-index: 11; transform: translate(-50%, 8px);
       color: #ffb478; background: rgba(7, 18, 31, .7); border: 1px solid rgba(255,180,120,.45);
@@ -440,8 +458,8 @@
     body.touch #trade { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
     /* Make the trade/duel panels tappable only while shown, so the center of the
        screen stays free for camera drag when they're hidden. */
-    body.touch #trade.show, body.touch #duel.show, body.touch #cannons.show { pointer-events: auto; }
-    #trade .trow td, #duel .duel-opts li, #cannons .duel-opts li { cursor: pointer; }
+    body.touch #trade.show, body.touch #duel.show, body.touch #cannons.show, body.touch #encounter.show { pointer-events: auto; }
+    #trade .trow td, #duel .duel-opts li, #cannons .duel-opts li, #encounter .duel-opts li { cursor: pointer; }
     body.touch #challenge-prompt { bottom: calc(170px + env(safe-area-inset-bottom, 0px)); }
     @media (max-width: 560px) {
       #hud { font-size: 11px; max-width: 64vw; padding: 6px 9px; }
@@ -545,6 +563,7 @@
     body.town #touch-controls,
     body.town #trade,
     body.town #challenge-prompt,
+    body.town #encounter,
     body.town #goal { display: none !important; }
 
     a { color: #ffd98a; }
@@ -583,6 +602,7 @@
   <div id="challenge-prompt" role="status">⚔ <b>F</b> to out-jeer &nbsp;·&nbsp; 🔥 <b>G</b> to open fire</div>
   <div id="duel" role="dialog" aria-live="polite"></div>
   <div id="cannons" role="dialog" aria-live="polite"></div>
+  <div id="encounter" role="dialog" aria-live="polite"></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <!-- Invisible onboarding (#60): a brand-new captain's seeded first goal. Filled + shown
        by hud.js/main.js on a fresh voyage; self-clears the moment they make their first port. -->

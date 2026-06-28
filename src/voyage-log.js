@@ -17,7 +17,7 @@ export const MAX_EVENTS = 60;
 
 // The deeds the balladeer knows how to sing. A future slice can add more (best trade,
 // rank climbed, ports visited) by extending NARRATORS + sanitizeEvent below.
-export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour'];
+export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter'];
 
 export const BALLAD_TITLE = 'The Ballad of Your Voyage';
 
@@ -71,6 +71,15 @@ export function sanitizeEvent(ev) {
       return isStr(ev.name)
         ? { type: 'rumour', name: String(ev.name).trim(), coins: nonNegInt(ev.coins) }
         : null;
+    case 'encounter':
+      // An at-sea founderer met and answered (#125): the stricken ship's name + which way you
+      // leaned (rescue → Standing / plunder → Infamy + coin). `choice` decides the verse.
+      if (!isStr(ev.ship)) return null;
+      if (ev.choice !== 'rescue' && ev.choice !== 'plunder') return null;
+      return {
+        type: 'encounter', choice: ev.choice, ship: String(ev.ship).trim(),
+        standing: nonNegInt(ev.standing), infamy: nonNegInt(ev.infamy), coins: nonNegInt(ev.coins),
+      };
     default:
       return null;
   }
@@ -187,6 +196,22 @@ const CAPTURE_NARRATORS = {
   ],
 };
 
+// At-sea encounters (#125): a foundering ship met on the open water sings one of two verses by
+// the CHOICE you made — the grateful rescue (Standing, the lawful road) or the cold plunder
+// (Infamy + coin). Chosen by `e.choice` in composeBallad, ahead of the type-keyed NARRATORS.
+const ENCOUNTER_NARRATORS = {
+  rescue: [
+    (e) => `You came on ${e.ship} foundering in open water and chose the hard, decent thing — hauled her crew clear and sailed off ${e.standing} standing the better, blessed in three languages.`,
+    (e) => `${e.ship} was going down with souls at the rail; you took them off and asked nothing, and the ports added ${e.standing} to your good name for it.`,
+    (e) => `You found ${e.ship} sinking and her people praying — so you answered, plucked them from the brine, and your standing rose ${e.standing} for a kindness the sea will remember.`,
+  ],
+  plunder: [
+    (e) => `You found ${e.ship} wallowing and helpless, and helped yourself instead — ${e.coins} coins from her hold and ${e.infamy} infamy from the telling, and her crew left to a long cold row.`,
+    (e) => `${e.ship} begged for rescue; you took her cargo. ${e.coins} coins the richer, ${e.infamy} infamy the darker, and not a saint left who'll vouch for you.`,
+    (e) => `You boarded the foundering ${e.ship} and stripped her as she settled — ${e.coins} coins, ${e.infamy} infamy, and a name that now travels with a wince.`,
+  ],
+};
+
 const OPENING = 'Gather round and hear it sung — the ballad of a captain, a small boat, and a sea with opinions.';
 
 function tally(events) {
@@ -227,11 +252,12 @@ export function composeBallad(events, opts = {}) {
     lines = [EMPTY_LINE];
   } else {
     lines = [OPENING];
-    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0 };
+    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0 };
     for (const e of log) {
-      // A treacherous fight sings a false-colours verse; a lawful pirate-hunt sings the
-      // privateer verse; everything else, the honest pool.
-      const pool = (e.captured && CAPTURE_NARRATORS[e.type])
+      // An at-sea encounter sings a rescue/plunder verse by the choice made; a treacherous fight
+      // sings a false-colours verse; a lawful pirate-hunt the privateer verse; else the honest pool.
+      const pool = (e.type === 'encounter' && ENCOUNTER_NARRATORS[e.choice])
+        || (e.captured && CAPTURE_NARRATORS[e.type])
         || (e.treachery && TREACHERY_NARRATORS[e.type])
         || (e.lawful && LAWFUL_NARRATORS[e.type])
         || NARRATORS[e.type];

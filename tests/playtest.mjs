@@ -1260,6 +1260,68 @@ try {
   });
   if (islandStylePersist !== islandStyle.signature) fail('islands TLC: an isle\'s look changed across a reload — it must be deterministic/stable (#71)');
 
+  // 2r) Emergent at-sea encounter (#125, DL#4): a foundering ship, RESCUE vs PLUNDER. The whole
+  // moral beat must be REAL state end-to-end: a deterministic spawn raises a founderer + presents
+  // the choice; choosing RESCUE pays the GOVERNOR pole (Standing) and PLUNDER pays the PIRATE pole
+  // (Infamy + coin); each despawns cleanly and sings its own Ballad verse. Driven through the QA
+  // spawn hook (deterministic + headless-safe) so it never depends on sailing a fixed distance.
+  const encounter = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    // RESCUE → Standing, no coin/infamy, a grateful Ballad verse naming the ship.
+    tw.newVoyage(); tw.step(0.1);
+    const spawned = tw.encounterSpawn();
+    const live = tw.encounter;
+    const standingBefore = tw.state.standing, coinsBeforeR = tw.state.coins, infamyBeforeR = tw.state.infamy;
+    const rescueShip = live.name;
+    const rescue = tw.encounterChoose('rescue');
+    tw.step(0.1);
+    const afterRescue = {
+      active: tw.encounter.active,
+      standingGain: tw.state.standing - standingBefore,
+      coinDelta: tw.state.coins - coinsBeforeR,
+      infamyDelta: tw.state.infamy - infamyBeforeR,
+      balladHasShip: rescueShip && tw.ballad.includes(rescueShip),
+    };
+    // PLUNDER → coin + Infamy, no Standing, a colder verse.
+    tw.newVoyage(); tw.step(0.1);
+    tw.encounterSpawn();
+    const plunderLive = tw.encounter;
+    const coinsBeforeP = tw.state.coins, infamyBeforeP = tw.state.infamy, standingBeforeP = tw.state.standing;
+    const plunderShip = plunderLive.name;
+    const plunder = tw.encounterChoose('plunder');
+    tw.step(0.1);
+    const afterPlunder = {
+      active: tw.encounter.active,
+      coinGain: tw.state.coins - coinsBeforeP,
+      infamyGain: tw.state.infamy - infamyBeforeP,
+      standingDelta: tw.state.standing - standingBeforeP,
+      balladHasShip: plunderShip && tw.ballad.includes(plunderShip),
+    };
+    // The reward + deed must survive a save round-trip (the Ballad verse persists).
+    tw.save();
+    tw.newVoyage(); tw.step(0.1);
+    return {
+      spawned, liveActive: live.active, liveInRange: live.inRange, liveName: live.name,
+      rescue, afterRescue, plunder, afterPlunder,
+    };
+  });
+  if (!encounter.spawned || !encounter.liveActive) fail('encounter: the QA spawn hook did not raise a founderer (#125)');
+  if (!encounter.liveName) fail('encounter: a spawned founderer had no name (#125)');
+  if (!encounter.liveInRange) fail('encounter: a fresh founderer should spawn within the choice range (#125)');
+  // RESCUE → governor pole only.
+  if (!encounter.rescue || encounter.rescue.pole !== 'governor') fail(`encounter: rescue did not resolve to the governor pole (${JSON.stringify(encounter.rescue)}) (#125)`);
+  if (!(encounter.afterRescue.standingGain > 0)) fail(`encounter: rescue did not award Standing (gain=${encounter.afterRescue.standingGain}) (#125)`);
+  if (encounter.afterRescue.coinDelta !== 0 || encounter.afterRescue.infamyDelta !== 0) fail(`encounter: rescue should not pay coin/infamy (coin=${encounter.afterRescue.coinDelta}, infamy=${encounter.afterRescue.infamyDelta}) (#125)`);
+  if (encounter.afterRescue.active) fail('encounter: the founderer did not despawn after the rescue choice (#125)');
+  if (!encounter.afterRescue.balladHasShip) fail('encounter: the rescue did not sing into the Ballad by name (#125/#78)');
+  // PLUNDER → pirate pole only.
+  if (!encounter.plunder || encounter.plunder.pole !== 'pirate') fail(`encounter: plunder did not resolve to the pirate pole (${JSON.stringify(encounter.plunder)}) (#125)`);
+  if (!(encounter.afterPlunder.coinGain > 0)) fail(`encounter: plunder did not award coin (gain=${encounter.afterPlunder.coinGain}) (#125)`);
+  if (!(encounter.afterPlunder.infamyGain > 0)) fail(`encounter: plunder did not award Infamy (gain=${encounter.afterPlunder.infamyGain}) (#125)`);
+  if (encounter.afterPlunder.standingDelta !== 0) fail(`encounter: plunder should not pay Standing (gain=${encounter.afterPlunder.standingDelta}) (#125)`);
+  if (encounter.afterPlunder.active) fail('encounter: the founderer did not despawn after the plunder choice (#125)');
+  if (!encounter.afterPlunder.balladHasShip) fail('encounter: the plunder did not sing into the Ballad by name (#125/#78)');
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });

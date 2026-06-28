@@ -24,6 +24,7 @@ export function createHud() {
   const $trade = document.getElementById('trade');
   const $duel = document.getElementById('duel');
   const $cannons = document.getElementById('cannons');
+  const $encounter = document.getElementById('encounter'); // foundering-ship choice panel (#125)
   const $prompt = document.getElementById('challenge-prompt');
   const $legend = document.getElementById('legend');
   const $legendBadge = document.getElementById('legend-badge');
@@ -111,6 +112,17 @@ export function createHud() {
       const li = e.target.closest('.cannon-opts li');
       if (!li || li.dataset.aim === undefined) return;
       const n = Number(li.dataset.aim) + 1;
+      dispatchEvent(new KeyboardEvent('keydown', { key: String(n), code: 'Digit' + n, bubbles: true }));
+    });
+  }
+
+  // Tappable rescue/plunder choice (#125, touch only): tap a choice to dispatch the same digit
+  // keydown the keyboard would (1 rescue / 2 plunder), so main.js's encounter handler runs unchanged.
+  if (TOUCH && $encounter) {
+    $encounter.addEventListener('click', (e) => {
+      const li = e.target.closest('.enc-opts li');
+      if (!li || !li.dataset.enc) return;
+      const n = li.dataset.enc === 'rescue' ? 1 : 2;
       dispatchEvent(new KeyboardEvent('keydown', { key: String(n), code: 'Digit' + n, bubbles: true }));
     });
   }
@@ -310,6 +322,40 @@ export function createHud() {
     $cannons.classList.add('show');
   }
 
+  // ---- Foundering-ship encounter panel (#125) -------------------------------
+  // Reads a plain encounter snapshot and paints the rescue-vs-plunder choice — the founderer's
+  // name + a plea line + the two numbered choices. Reuses the duel panel's inner classes (scoped
+  // under #encounter with its own accent in index.html). Cheap cache so the hot path only touches
+  // the DOM on a real change. While a founderer is alongside it also hides the at-sea hail/fire
+  // prompt (it runs after renderDuel/renderCannons each frame, so the moral beat wins the prompt).
+  let lastEncSig = '';
+  const ENC_PLEA = [
+    'Help us, for pity\'s sake — she\'s going down beneath us!',
+    'Captain! We\'re foundering — take us off before she sinks!',
+    'For mercy\'s sake, throw us a line — we can\'t hold her!',
+  ];
+  function renderEncounter(enc) {
+    if (!$encounter) return;
+    if (!enc || !enc.active) {
+      if ($encounter.classList.contains('show')) { $encounter.classList.remove('show'); lastEncSig = ''; }
+      return;
+    }
+    if ($prompt) $prompt.classList.remove('show'); // a live founderer claims the moment
+    const plea = ENC_PLEA[(enc.name || '').length % ENC_PLEA.length];
+    const sig = `${enc.name}|${enc.inRange}`;
+    if (sig === lastEncSig && $encounter.classList.contains('show')) return;
+    lastEncSig = sig;
+    $encounter.innerHTML =
+      `<div class="enc-h">🆘 ${enc.name} — foundering!</div>`
+      + `<div class="duel-line">“${plea}”</div>`
+      + `<ul class="duel-opts enc-opts">`
+      + `<li data-enc="rescue"><b>1</b> Rescue her crew — the lawful road (Standing)</li>`
+      + `<li data-enc="plunder"><b>2</b> Plunder the wreck — take the spoils (coin · Infamy)</li>`
+      + `</ul>`
+      + `<div class="duel-help">${TOUCH ? 'Tap a choice' : 'Press <b>1</b> to rescue · <b>2</b> to plunder'} · who you become is your answer</div>`;
+    $encounter.classList.add('show');
+  }
+
   // Rank-up flash — reuses the arrival toast, dressed in the ledger's green.
   const RANKUP_LINES = [
     'Word of your deeds travels the tideways.',
@@ -411,5 +457,5 @@ export function createHud() {
     compass.update(state);
   }
 
-  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, flashBanner, showLegend, showGoal, hideGoal };
+  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderEncounter, flashBanner, showLegend, showGoal, hideGoal };
 }
