@@ -44,5 +44,14 @@ with the item files in `inbox/`. Raw items are never deleted — only their stat
 | 2026-06-28-arcade-battle-modes | idea | accepted | Owner chose **Option 2 → then 4**, small incremental steps; battle epic filed | [#135](https://github.com/cakuki/tidewake/issues/135) · design [#100](https://github.com/cakuki/tidewake/issues/100) |
 | 2026-06-28-delivery-operating-principles | feedback | accepted | Standing doctrine: self-eval (testable/human-gated) + BAU + focused-lane delivery with a lane-switch gate; in ROADMAP | — (roadmap + memories) |
 | 2026-06-28-community-manager-role | idea | raw | **RECORD-ONLY** (owner): hire a Community Manager (4th test layer — post updates, gather player feedback); start after weekly usage reset | — (held) |
+| 2026-06-28-batch-… · leaderboard | idea | raw | Rank player among notorious captains (marquees) — loop to refine/prio | [#136](https://github.com/cakuki/tidewake/issues/136) |
+| 2026-06-28-batch-… · nations | idea | raw | Nations own cities; ship allegiance; fight for/capture cities (big, split) | [#137](https://github.com/cakuki/tidewake/issues/137) |
+| 2026-06-28-batch-… · localities | idea | raw | More islands/cities + size tiers (camp/town/city) | [#138](https://github.com/cakuki/tidewake/issues/138) |
+| 2026-06-28-batch-… · online-mp | idea | raw | **Owner-decision**: online/multiplayer session — major architecture, needs options brief | [#139](https://github.com/cakuki/tidewake/issues/139) |
+| 2026-06-28-batch-… · map-support | idea | raw | Fixed maps and/or random map generation | [#140](https://github.com/cakuki/tidewake/issues/140) |
+| 2026-06-28-batch-… · shipyards | idea | raw | Shipyards: buy ships & parts; small→big ship progression | [#141](https://github.com/cakuki/tidewake/issues/141) |
+| 2026-06-28-batch-… · named-persons | idea | raw | USP vs SMP: persona creation + every person named with traits | [#142](https://github.com/cakuki/tidewake/issues/142) |
+| 2026-06-28-batch-… · ship-fights (folded) | idea | raw | Visible NPC-vs-NPC fights → noted on battle epic | [#135](https://github.com/cakuki/tidewake/issues/135) |
+| 2026-06-28-batch-… · named-crew (folded) | idea | raw | Named crew + per-member skills + loyalty/mutiny → extends crew epic | [#4](https://github.com/cakuki/tidewake/issues/4) + [#124](https://github.com/cakuki/tidewake/issues/124) |
 | 2026-06-28-multiple-bg-music | feature | accepted | Unified sound system: multiple sailing/town/battle tracks + crossfade (absorbs #69; future zones #99) | [#94](https://github.com/cakuki/tidewake/issues/94) |
 | 2026-06-28-use-cc0-pirate-kit-assets | feature | accepted | Start using CC0 Pirate Kit (Quaternius/Kenney) — ships (#32 greenlit) + props (#101) | [#32](https://github.com/cakuki/tidewake/issues/32) + [#101](https://github.com/cakuki/tidewake/issues/101) |
