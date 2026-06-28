@@ -76,6 +76,53 @@ test('register guards: a missing name, a non-function update, and a duplicate na
   assert.throws(() => r.register({ name: 'dup', update: () => {} }), /already/);
 });
 
+test('when(ctx)=>false skips a system; when(ctx)=>true runs it (mode-eligibility as a declaration)', () => {
+  const r = createSystemsRegistry();
+  const ran = [];
+  r.register({ name: 'always', order: 10, update: () => ran.push('always') });
+  r.register({ name: 'gated-off', order: 20, when: () => false, update: () => ran.push('gated-off') });
+  r.register({ name: 'gated-on', order: 30, when: () => true, update: () => ran.push('gated-on') });
+  r.run({});
+  assert.deepEqual(ran, ['always', 'gated-on'], 'the false-gated system is skipped, order otherwise preserved');
+});
+
+test('when receives the SAME frame ctx as update (predicate reads live frame state)', () => {
+  const r = createSystemsRegistry();
+  let seenInWhen = null;
+  const ctx = { paused: true };
+  r.register({
+    name: 'mode-aware', order: 10,
+    when: (c) => { seenInWhen = c; return !c.paused; },
+    update: () => { throw new Error('must not run while paused'); },
+  });
+  r.run(ctx);
+  assert.equal(seenInWhen, ctx, 'when is handed the exact frame ctx object');
+});
+
+test('when is re-evaluated every frame (a system gates in and out as ctx changes)', () => {
+  const r = createSystemsRegistry();
+  const ran = [];
+  r.register({ name: 'only-when-sailing', order: 10, when: (c) => c.mode === 'sailing', update: (c) => ran.push(c.mode) });
+  r.run({ mode: 'town' });    // skipped
+  r.run({ mode: 'sailing' }); // runs
+  r.run({ mode: 'battle' });  // skipped
+  r.run({ mode: 'sailing' }); // runs
+  assert.deepEqual(ran, ['sailing', 'sailing']);
+});
+
+test('a when that is present but not a function throws (a bad predicate is a bug, not silent)', () => {
+  const r = createSystemsRegistry();
+  assert.throws(() => r.register({ name: 'bad', when: 'nope', update: () => {} }), /when/);
+});
+
+test('names lists every registered system regardless of its when gate (wiring view, not run view)', () => {
+  const r = createSystemsRegistry();
+  r.register({ name: 'a', order: 10, when: () => false, update: () => {} });
+  r.register({ name: 'b', order: 20, update: () => {} });
+  assert.deepEqual(r.names, ['a', 'b'], 'a gated-off system is still wired and visible to QA');
+  assert.equal(r.count, 2);
+});
+
 test('clear empties the registry', () => {
   const r = createSystemsRegistry();
   r.register({ name: 'a', update: () => {} });

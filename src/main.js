@@ -817,163 +817,163 @@ const BERTH_LINES = [
 ];
 let wasFighting = false, wasHarbourSettling = false, fightBeat = 0, berthBeat = 0;
 
-// ---- Per-frame systems registry (#120, DL #4) ------------------------------------------------
-// The self-registering update backbone (src/systems/registry.js). Each system registers its per-
-// frame tick with an explicit `order`; the registry dispatches them in that deterministic order
-// from update() — keeping main.js thin and letting a FUTURE slice (battle #100, fixed-timestep
-// #36) plug a system in with one register() call instead of hand-editing the loop. THIS SLICE
-// migrates a representative contiguous block (wake → fauna → props → hud) onto it as the proven
-// pattern, BYTE-FOR-BYTE preserving the old call order + arguments; the remaining hand-wired
-// systems migrate in a follow-up. Orders are spaced by 10 so a new system slots between two
-// existing ones without renumbering.
+// ---- Per-frame systems registry (#120 → #130, DL #5) -----------------------------------------
+// The self-registering update backbone (src/systems/registry.js) is now the DEFAULT path: the WHOLE
+// per-frame loop is registered systems, dispatched in deterministic `order` from update(). #120
+// migrated a representative block (wake → fauna → props → hud); #130 finishes the job — every
+// remaining hand-wired tick is migrated here, BYTE-FOR-BYTE preserving the old call order + args, so
+// main.js no longer hand-wires the loop and a future slice (battle #100, fixed-timestep #36) plugs a
+// system in with ONE register() call instead of editing update().
+//
+// Two mechanisms keep it from re-bloating (DL #5):
+//   • the SAME mutable frame `ctx` flows through every system — the `mode` system threads the frame's
+//     control-state onto it (fighting/paused/mode/harbourDistance/seenThrough), replacing the old
+//     loop-local vars, so a later system reads them off ctx instead of a shared closure local.
+//   • `when(ctx)` declares a system's mode/condition gate (e.g. only while NOT paused) — folding the
+//     old scattered inline `if (!paused)` / `if (blend > 0)` guards into a declaration on the system.
+// Orders are spaced by 10 so a new system slots between two existing ones without renumbering.
 const systems = createSystemsRegistry();
-systems.register({ name: 'wake', order: 10, update: (f) => wake.update(f.dt, f.state, f.t) });                                              // bow wake + trailing foam
-systems.register({ name: 'fauna', order: 20, update: (f) => fauna.update(f.dt, f.t, { shipPos: [f.state.pos.x, f.state.pos.z], focus: camera.position }) }); // gull flock (#97)
-systems.register({ name: 'props', order: 30, update: (f) => props.update([f.state.pos.x, f.state.pos.z]) });                                // port dressing (#101)
-systems.register({ name: 'hud', order: 40, update: (f) => hud.update(f.state, sailing.MAX_SPEED) });                                        // heading/speed/wind compass/point-of-sail
-
-function update(dt, t) {
-  // Mode system (#95): drive the explicit world-state machine from combat — a live duel or
-  // cannonade IS the BATTLE mode; ending it returns the helm to SAILING. (TOWN is entered
-  // deliberately via its own seam — tw.enterMode — pending the town-scene slice #67/#96.) The
-  // mode is the single source of truth for "is the player's helm paused?", replacing the old
-  // implicit `duel.active || cannons.active` gate with zero behaviour change for a fight.
-  const fighting = duel.state.active || cannons.state.active;
-  if (fighting) { if (!mode.is(BATTLE)) mode.enter(BATTLE); }
+// — control state: combat drives BATTLE (ending it returns the helm to SAILING); thread the frame's
+//   fighting/paused/mode onto ctx for the systems below + the battle seam (#95/#100). No behaviour change.
+systems.register({ name: 'mode', order: 10, update: (f) => {
+  f.fighting = duel.state.active || cannons.state.active;
+  if (f.fighting) { if (!mode.is(BATTLE)) mode.enter(BATTLE); }
   else if (mode.is(BATTLE)) mode.leave();
-  const paused = mode.playerPaused; // true in TOWN/BATTLE: helm pauses, world keeps living
-  landfall.step(dt); // advance the SAILING↔TOWN gesture on the sim's dt (deterministic, headless-safe) (#102)
-
-  // Slow-to-stop for harbour & combat (#76 c): the ship is no longer teleport-frozen for a
-  // fight or a berth — it EASES to a near-stop. sailing.step always runs; a paused helm (fight
-  // or town) eases the target speed smoothly toward ~0, or it coasts down as the hull nears a
-  // port (harbouring), all via approach(). Helm input is ignored while paused (crew's elsewhere).
-  let harbourDistance = Infinity;              // distance to the nearest port point (for the coast-in)
-  // The slow-to-stop assist coasts you IN — but stands down while leaving (the leftHarbour
-  // latch), so the seaward nudge can carry the hull out instead of being braked at the berth (#67).
+  f.paused = mode.playerPaused; // true in TOWN/BATTLE: helm pauses, world keeps living
+  f.mode = mode.current;
+} });
+// — advance the SAILING↔TOWN gesture on the sim's dt (deterministic, headless-safe) (#102)
+systems.register({ name: 'landfall-step', order: 20, update: (f) => landfall.step(f.dt) });
+// — distance to the nearest port for the harbour coast-in; suspended while leaving (#67). Used by
+//   the sailing assist (below) and the mode-aware music bed (#94). Infinity = assist stood down.
+systems.register({ name: 'harbour-distance', order: 30, update: (f) => {
+  f.harbourDistance = Infinity;
   if (harbourAssistActive(leftHarbour)) {
     for (const p of ports.ports) {
-      const d = Math.hypot(state.pos.x - p.pos[0], state.pos.z - p.pos[1]);
-      if (d < harbourDistance) harbourDistance = d;
+      const d = Math.hypot(f.state.pos.x - p.pos[0], f.state.pos.z - p.pos[1]);
+      if (d < f.harbourDistance) f.harbourDistance = d;
     }
   }
-  sailing.step(dt, t, { fighting: paused, harbourDistance, harbourRadius: DOCK_RADIUS });
-
-  // Landfall camera ease (#102): sailing.step just set the open-water chase framing; as the gesture
-  // eases in, slide the camera toward a closer, lower, 3/4 "ashore" framing of the moored ship — so
-  // making port FEELS like coasting to your berth, not a teleport. blend 0 = untouched chase cam.
+} });
+// — the ship physics step (#76 c): always runs; a paused helm eases to a near-stop, a harbour
+//   approach coasts in. Helm input is ignored while paused.
+systems.register({ name: 'sailing', order: 40, update: (f) => sailing.step(f.dt, f.t, { fighting: f.paused, harbourDistance: f.harbourDistance, harbourRadius: DOCK_RADIUS }) });
+// — landfall camera ease (#102): only while the gesture is in flight (when blend>0), slide the
+//   chase cam toward a closer "ashore" framing of the moored ship.
+systems.register({ name: 'landfall-camera', order: 50, when: () => landfall.blend > 0, update: (f) => {
   const lfBlend = landfall.blend;
-  if (lfBlend > 0) {
-    const hy = ship.position.y;
-    const ax = state.pos.x - Math.sin(state.heading + 0.55) * 40; // pulled in beside the bow, 3/4 on
-    const az = state.pos.z - Math.cos(state.heading + 0.55) * 40;
-    camera.position.lerp(new THREE.Vector3(ax, hy + 16, az), lfBlend); // mix(chase, ashore, blend)
-    camera.lookAt(state.pos.x, hy + 8 - 3 * lfBlend, state.pos.z);      // settle the gaze onto the deck
-  }
-
-  // The world keeps living (#95): other vessels sail on EVERY frame — even while the player is
-  // paused for a fight or making port — so the world never snap-freezes around you. Only the
-  // disguise-disposition beats (which assume you're free to creep up on a mark) stay gated to a
-  // free helm. False Colours (#79) + Seen-through (#91): NPCs react to the colours SHOWN — fly
-  // your true black while feared and they scatter; fly false merchant colours and they stay calm
-  // unless, at high Infamy, the bluff is rumbled on approach. The risk math is pure (colours.js).
-  let seenThrough = false;
-  if (!paused && isDeceptive(state.colours)) {
-    if (duel.inRange()) {
-      // First frame in range this approach: roll the bluff's risk ONCE and latch it, then fire
-      // the matching beat — the smug "they bought it" (#79), or the "rumbled!" reveal (#91).
-      if (fooledArmed) {
-        fooledArmed = false;
-        seenThroughLatched = isSeenThrough(state.infamy ?? 0, state.colours, detectRng);
-        if (seenThroughLatched) hud.flashBanner('🕵 Rumbled!', pickLine(SEEN_THROUGH_LINES));
-        else hud.flashBanner('🏳 They wave you in…', pickLine(FOOLED_LINES));
-      }
-      seenThrough = seenThroughLatched;
-    } else {
-      fooledArmed = true;       // out of range → the next approach re-rolls the risk
-      seenThroughLatched = false;
+  const hy = ship.position.y;
+  const ax = f.state.pos.x - Math.sin(f.state.heading + 0.55) * 40; // pulled in beside the bow, 3/4 on
+  const az = f.state.pos.z - Math.cos(f.state.heading + 0.55) * 40;
+  camera.position.lerp(new THREE.Vector3(ax, hy + 16, az), lfBlend); // mix(chase, ashore, blend)
+  camera.lookAt(f.state.pos.x, hy + 8 - 3 * lfBlend, f.state.pos.z);  // settle the gaze onto the deck
+} });
+// — disguise disposition beats (#79/#91): only while the helm is free AND flying false colours
+//   (the `when` gate replaces the old inline `if (!paused && isDeceptive)`). Latches the seen-through
+//   verdict once per approach and fires the matching beat; writes ctx.seenThrough for npcs (below).
+systems.register({ name: 'disguise', order: 60, when: (f) => !f.paused && isDeceptive(f.state.colours), update: (f) => {
+  if (duel.inRange()) {
+    if (fooledArmed) {
+      fooledArmed = false;
+      seenThroughLatched = isSeenThrough(f.state.infamy ?? 0, f.state.colours, detectRng);
+      if (seenThroughLatched) hud.flashBanner('🕵 Rumbled!', pickLine(SEEN_THROUGH_LINES));
+      else hud.flashBanner('🏳 They wave you in…', pickLine(FOOLED_LINES));
     }
+    f.seenThrough = seenThroughLatched;
+  } else {
+    fooledArmed = true;       // out of range → the next approach re-rolls the risk
+    seenThroughLatched = false;
   }
-  const flee = npcFlees({ colours: state.colours, infamy: state.infamy ?? 0, seenThrough });
-  npcs.update(dt, t, { playerPos: [state.pos.x, state.pos.z], flee });
-
-  // Emergent at-sea encounter (#125): drive the seeded spawn cadence off distance SAILED — only
-  // while the helm is yours and under sail (no spawning mid-fight or in town). When a founderer is
-  // live, settle her low in the water and heel her over so she reads stricken; hide her otherwise
-  // (one mesh, shown only when near → ~1 draw call exactly when on screen).
-  encounter.update(dt, { canSpawn: !paused });
+} });
+// — the world keeps living (#95): other vessels sail on every frame, reacting to the colours SHOWN
+//   (False Colours #79 / Seen-through #91 read ctx.seenThrough from the disguise system above).
+systems.register({ name: 'npcs', order: 70, update: (f) => {
+  const flee = npcFlees({ colours: f.state.colours, infamy: f.state.infamy ?? 0, seenThrough: f.seenThrough });
+  npcs.update(f.dt, f.t, { playerPos: [f.state.pos.x, f.state.pos.z], flee });
+} });
+// — emergent at-sea encounter (#125): seeded spawn (only while under sail, helm free); pose the
+//   founderer low + heeled when live, hide her otherwise (~1 draw call exactly when on screen).
+systems.register({ name: 'encounter', order: 80, update: (f) => {
+  encounter.update(f.dt, { canSpawn: !f.paused });
   if (encounter.state.active && encounter.state.ship) {
     const fx = encounter.state.ship.x, fz = encounter.state.ship.z;
-    const fy = ocean.sampleHeight(fx, fz, t);
+    const fy = ocean.sampleHeight(fx, fz, f.t);
     founderMesh.position.set(fx, fy - 0.8, fz);                 // settled low — taking on water
-    const heel = 0.34 + Math.sin(t * 0.8) * 0.05;              // a sick, heaving list to one side
-    founderMesh.rotation.set(Math.sin(t * 1.1) * 0.06, encounter.state.bearing, heel);
+    const heel = 0.34 + Math.sin(f.t * 0.8) * 0.05;            // a sick, heaving list to one side
+    founderMesh.rotation.set(Math.sin(f.t * 1.1) * 0.06, encounter.state.bearing, heel);
     if (!founderMesh.visible) founderMesh.visible = true;
   } else if (founderMesh.visible) {
     founderMesh.visible = false;
   }
-
-  // CREATIVE SPARK (#76 c): one light arcade beat as the ship squares up for a fight or coasts
-  // into a berth — transition-guarded so it never spams, rotated so it never gets stale.
-  if (fighting && !wasFighting) hud.flashBanner('⚔ Battle stations!', FIGHT_REEF_LINES[fightBeat++ % FIGHT_REEF_LINES.length]);
-  wasFighting = fighting;
-  const harbourSettling = !paused && state.settling;
+} });
+// — light arcade beats (#76 c) as the ship squares up for a fight or coasts into a berth.
+systems.register({ name: 'combat-beats', order: 90, update: (f) => {
+  if (f.fighting && !wasFighting) hud.flashBanner('⚔ Battle stations!', FIGHT_REEF_LINES[fightBeat++ % FIGHT_REEF_LINES.length]);
+  wasFighting = f.fighting;
+  const harbourSettling = !f.paused && f.state.settling;
   if (harbourSettling && !wasHarbourSettling) hud.flashBanner('⚓ Easing into the berth…', BERTH_LINES[berthBeat++ % BERTH_LINES.length]);
   wasHarbourSettling = harbourSettling;
-
-  // Glassy "moored" swell settle (#102 ph2): as the landfall gesture eases in, the whole sea's
-  // swell amplitude lerps toward a calm, glassy "moored" value (and back to full life on Set Sail)
-  // — the paused helm = still water, a reactive verb. Drives the GPU shader + CPU sampler together
-  // so the moored ship rides exactly the swell it draws. blend 0 = untouched open-water swell.
+} });
+// — the sea: glassy "moored" swell settle over the landfall gesture (#102 ph2), then the ocean tick.
+systems.register({ name: 'ocean', order: 100, update: (f) => {
   ocean.setSwellScale(mooredSwellScale(landfall.blend));
-  ocean.update(t, camera.position);
-  daynight.update(dt);                          // optional day-night cycle (#58): no-op while OFF
-  applyReputationGrade();                        // reputation-reactive world cast (#126): over #58, under #102
-  applyLandfallGrade();                         // warm "golden harbour" glow over the gesture (#102)
-  ports.update(state, onArrive, t);            // arrival detection (fires once → auto-harbour) + buoy bob
-  // Auto-harbour bookkeeping (#67/#96): drop the leave-latch once we've cleared the harbour mouth
-  // (so a later approach harbours cleanly again), and keep the TOWN view + the at-sea-control
-  // hiding (#66) in lock-step with the mode. town.js caches its own renders, so this is cheap.
-  leftHarbour = nextLeftHarbour(leftHarbour, { docked: ports.docked, leaving: false });
-  // The town view takes the screen only once the landfall gesture is fully ASHORE (#102) — so the
-  // eased camera/grade play out in the open first, then the town opens; on Set Sail it closes at
-  // once (townReady drops the instant we leave) and the reverse gesture eases us back to sea.
+  ocean.update(f.t, camera.position);
+} });
+// — optional day-night cycle (#58): no-op while OFF.
+systems.register({ name: 'daynight', order: 110, update: (f) => daynight.update(f.dt) });
+// — scene grade composition (CRITICAL ORDER): reputation cast (#126) over day-night (#58), warm
+//   "golden harbour" glow (#102) over the top — exactly the old applyReputationGrade→applyLandfallGrade order.
+systems.register({ name: 'reputation-grade', order: 120, update: () => applyReputationGrade() });
+systems.register({ name: 'landfall-grade', order: 130, update: () => applyLandfallGrade() });
+// — arrival detection (fires onArrive once → auto-harbour) + buoy bob (#67/#96).
+systems.register({ name: 'ports', order: 140, update: (f) => ports.update(f.state, onArrive, f.t) });
+// — auto-harbour bookkeeping: drop the leave-latch once we've cleared the harbour mouth (#67/#96).
+systems.register({ name: 'left-harbour', order: 150, update: () => { leftHarbour = nextLeftHarbour(leftHarbour, { docked: ports.docked, leaving: false }); } });
+// — the town view takes the screen only once the gesture is fully ASHORE (#102), and the <body> class
+//   tracks it (cached so we only touch the DOM on a real change).
+systems.register({ name: 'town-view', order: 160, update: () => {
   const showTown = mode.is(TOWN) && landfall.townReady;
   town.setOpen(showTown);
   if (showTown !== bodyTown) { bodyTown = showTown; if (document.body) document.body.classList.toggle('town', showTown); }
-  islandNamer.update(state.pos, onApproachIsland); // name + flavour the first time you near an isle (#19)
-  // Per-frame systems registry (#120): tick the migrated systems in their registered order — this is
-  // byte-for-byte the old wake → fauna → props → hud sequence (#97 gulls wheel with you & hug the
-  // coast; #101 port dressing shows the nearest harbour & culls the rest; the HUD compass refreshes),
-  // now dispatched by the registry so future systems plug in here without editing the loop.
-  systems.run({ dt, t, state });
-  checkLegends();                              // endgame payoff: crown a new legend once (#46)
-  checkOnboarding();                           // invisible onboarding: goal nudge + first-win beats (#60)
-  minimap.update(state);                       // north-up radar: isles/ports/ships (#16)
-  bigmap.update(state);                         // route-planning chart (only redraws while open) (#54)
-  hud.renderDuel(duel.snapshot());             // insult-duel panel + "hail/fire" prompt (#33)
-  hud.renderCannons(cannons.snapshot());       // cannon-broadside panel (#59)
-  hud.renderEncounter(encounter.snapshot());   // foundering-ship rescue/plunder choice panel (#125)
-  audio.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
-  // Per-town music identity (#69): re-key the tavern drone to the nearest harbour, only on a change
-  // (debounced) so the port layer already sounds like that town as it swells in on approach — and
-  // making landfall somewhere new FEELS new. Deterministic per port name; headless-safe (no-op
-  // until the audio engine is up). TEMPO stays fixed this slice (transposition-first, TL call).
-  const nearPort = ports.nearestPortName(state.pos);
+} });
+// — name + flavour the first time you near a named isle (#19).
+systems.register({ name: 'islands', order: 170, update: (f) => islandNamer.update(f.state.pos, onApproachIsland) });
+// — the #120-migrated block, unchanged: wake (bow foam) → fauna (#97 gulls) → props (#101 dressing) → hud compass.
+systems.register({ name: 'wake', order: 180, update: (f) => wake.update(f.dt, f.state, f.t) });
+systems.register({ name: 'fauna', order: 190, update: (f) => fauna.update(f.dt, f.t, { shipPos: [f.state.pos.x, f.state.pos.z], focus: camera.position }) });
+systems.register({ name: 'props', order: 200, update: (f) => props.update([f.state.pos.x, f.state.pos.z]) });
+systems.register({ name: 'hud', order: 210, update: (f) => hud.update(f.state, sailing.MAX_SPEED) });
+// — endgame legend crowns (#46) + invisible onboarding nudge/beats (#60).
+systems.register({ name: 'legends', order: 220, update: () => checkLegends() });
+systems.register({ name: 'onboarding', order: 230, update: () => checkOnboarding() });
+// — the charts: north-up radar (#16) + route-planning chart (only redraws while open) (#54).
+systems.register({ name: 'minimap', order: 240, update: (f) => minimap.update(f.state) });
+systems.register({ name: 'bigmap', order: 250, update: (f) => bigmap.update(f.state) });
+// — combat/encounter HUD panels (#33/#59/#125).
+systems.register({ name: 'hud-duel', order: 260, update: () => hud.renderDuel(duel.snapshot()) });
+systems.register({ name: 'hud-cannons', order: 270, update: () => hud.renderCannons(cannons.snapshot()) });
+systems.register({ name: 'hud-encounter', order: 280, update: () => hud.renderEncounter(encounter.snapshot()) });
+// — sea ambience + adaptive sailing theme level (#48).
+systems.register({ name: 'audio', order: 290, update: (f) => audio.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED }) });
+// — per-town music identity (#69): re-key the tavern drone to the nearest harbour, only on a change.
+systems.register({ name: 'town-music', order: 300, update: (f) => {
+  const nearPort = ports.nearestPortName(f.state.pos);
   if (nearPort && nearPort !== themePort) {
     themePort = nearPort;
     music.setTownTheme(townMusicIdentity(nearPort));
   }
-  // Mode-aware sound (#94): hand the music director WHERE the player is — the mode (#95) plus the
-  // nearest-port distance from the harbour loop above — so the bed crossfades into a port's tavern
-  // layer on approach (the #67 audible cue), settles for BATTLE, and is the open-sea bed at sail.
-  music.update({
-    speed: state.speed,
-    maxSpeed: sailing.MAX_SPEED,
-    mode: mode.current,
-    portDistance: harbourDistance,
-    dockRadius: DOCK_RADIUS,
-  });
+} });
+// — mode-aware music bed (#94): WHERE the player is (mode + nearest-port distance) drives the crossfade.
+systems.register({ name: 'music', order: 310, update: (f) => music.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED, mode: mode.current, portDistance: f.harbourDistance, dockRadius: DOCK_RADIUS }) });
+
+function update(dt, t) {
+  // The WHOLE per-frame loop is the systems registry now (#130, DL #5). Every system registered
+  // above ticks here in deterministic `order`, each handed the SAME mutable frame ctx: dt/t/state
+  // plus the control-state the `mode` system threads onto it (fighting/paused/mode/harbourDistance)
+  // and the disguise system's seenThrough (seeded false each frame so a skipped disguise tick reads
+  // exactly as the old `let seenThrough = false`). main.js no longer hand-wires the loop — battle
+  // (#100) registers its ordered sub-loop with one register() + a when(ctx) gate, not by editing this.
+  systems.run({ dt, t, state, seenThrough: false });
 }
 
 // Endgame legends (#46): each frame, see if the ledger has just crossed the top of a
