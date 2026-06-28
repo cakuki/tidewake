@@ -167,7 +167,10 @@ function applyMoraleEvent(event) {
     if (next === prev) return;
     state.morale = next;
     const beat = moraleBeat(prev, next);
-    if (beat) hud.flashBanner(beat.title, pickLine(beat.lines));
+    if (beat) {
+      hud.flashBanner(beat.title, pickLine(beat.lines));
+      logDeed({ type: 'morale', tier: beat.tier }); // #90/#124: a loyalty crossing the Ballad remembers
+    }
     persistence.write(); // lock the morale shift the instant the deed lands (like a legend/onboarding beat)
   } catch { /* crew morale is a reactive flourish, never a dependency — never break the loop */ }
 }

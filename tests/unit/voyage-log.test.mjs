@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   recordEvent, sanitizeEvent, sanitizeLog, composeBallad,
-  MAX_EVENTS, BALLAD_TITLE, EMPTY_LINE,
+  MAX_EVENTS, BALLAD_TITLE, EMPTY_LINE, EVENT_TYPES,
 } from '../../src/voyage-log.js';
 
 // ---- recordEvent: record + order ------------------------------------------------------
@@ -334,5 +334,79 @@ test('the ballad sings a governorship once per isle, naming the isle (#119)', ()
   assert.equal(log.length, 1, 'the named crown is sung once per isle, never twice on reload');
   const ballad = composeBallad(log);
   assert.ok(ballad.text.includes("Gullet's Rest"), 'the governed isle is named in the ballad');
-  assert.ok(/crown/.test(ballad.lines.at(-2)), 'a governorship counts as a crown in the closing tally');
+  // a governorship counts as a crown in the closing tally line (now followed by a pole couplet + footer)
+  assert.ok(ballad.lines.some((l) => /crown/.test(l)), 'a governorship counts as a crown in the closing tally');
+});
+
+// ---- crew-morale deeds (#124: a loyalty crossing the crew will remember) ---------------
+
+test('morale is a known event type, accepting only the low/mutiny tiers', () => {
+  assert.ok(EVENT_TYPES.includes('morale'));
+  assert.deepEqual(sanitizeEvent({ type: 'morale', tier: 'low' }), { type: 'morale', tier: 'low' });
+  assert.deepEqual(sanitizeEvent({ type: 'morale', tier: 'mutiny' }), { type: 'morale', tier: 'mutiny' });
+  assert.equal(sanitizeEvent({ type: 'morale' }), null);              // no tier
+  assert.equal(sanitizeEvent({ type: 'morale', tier: 'high' }), null); // not a crossing we sing
+});
+
+test('composeBallad sings a distinct grumble vs mutiny-risk verse, and each crossing is its own anecdote', () => {
+  const low = composeBallad([{ type: 'morale', tier: 'low' }]);
+  const mutiny = composeBallad([{ type: 'morale', tier: 'mutiny' }]);
+  assert.match(low.text, /grumbl|mutter|sullen|patience|article/i);
+  assert.match(mutiny.text, /mutiny|loyalty|knife|took the ship|aft/i);
+  assert.notEqual(low.text, mutiny.text);
+  // not deduped — a crew can slump, recover, and slump again
+  let log = [];
+  log = recordEvent(log, { type: 'morale', tier: 'low' });
+  log = recordEvent(log, { type: 'morale', tier: 'low' });
+  assert.equal(log.length, 2);
+});
+
+// ---- richer composition: a closing couplet reflecting your dominant pole ----------------
+
+test('composeBallad closes on a PIRATE couplet when infamy deeds dominate', () => {
+  const b = composeBallad([
+    { type: 'cannon', foe: 'HMS Folly', infamy: 80, coins: 40 },
+    { type: 'encounter', choice: 'plunder', ship: 'the Last Ducat', infamy: 60, coins: 50 },
+  ]);
+  // the couplet sits between the tally and the footer
+  assert.match(b.lines.at(-2), /black flag|feared|terror|frighten/i);
+});
+
+test('composeBallad closes on a GOVERNOR couplet when standing deeds dominate', () => {
+  const b = composeBallad([
+    { type: 'encounter', choice: 'rescue', ship: 'the Saltwidow', standing: 120 },
+    { type: 'harbour', deed: 'claim', port: "Gullet's Rest", level: 1 },
+    { type: 'governorship', port: "Gullet's Rest", title: "Governor of Gullet's Rest" },
+  ]);
+  assert.match(b.lines.at(-2), /lamps|harbour|built|better than|patron|raised/i);
+});
+
+test('the pole couplet does not appear on an empty log', () => {
+  const b = composeBallad([]);
+  assert.equal(b.lines.length, 1);
+  assert.deepEqual(b.lines, [EMPTY_LINE]);
+});
+
+// ---- thin verse pools rounded out to three deterministic variants (#90) ----------------
+
+test('each repeated capture cycles three distinct verses (a 3-variant pool)', () => {
+  // SAME foe each time so only the verse TEMPLATE can make the lines differ — a real pool-size check.
+  let log = [];
+  for (let i = 0; i < 3; i++) log = recordEvent(log, { type: 'cannon', foe: 'the Prize', coins: 20, captured: true });
+  const verses = composeBallad(log).lines.filter((l) => /the Prize/.test(l));
+  assert.equal(verses.length, 3);
+  assert.equal(new Set(verses).size, 3, 'three captures sing three distinct verses');
+});
+
+test('three lawful pirate-hunts and three treacheries each sing three distinct verses', () => {
+  let lawful = [];
+  let treach = [];
+  for (let i = 0; i < 3; i++) {
+    lawful = recordEvent(lawful, { type: 'duel', foe: 'the Outlaw', infamy: 10, coins: 10, lawful: true });
+    treach = recordEvent(treach, { type: 'duel', foe: 'the Mark', infamy: 10, coins: 10, treachery: true });
+  }
+  const lv = composeBallad(lawful).lines.filter((l) => /the Outlaw/.test(l));
+  const tv = composeBallad(treach).lines.filter((l) => /the Mark/.test(l));
+  assert.equal(new Set(lv).size, 3, 'three lawful wins sing three distinct verses');
+  assert.equal(new Set(tv).size, 3, 'three treacheries sing three distinct verses');
 });

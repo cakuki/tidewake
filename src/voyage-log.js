@@ -17,7 +17,7 @@ export const MAX_EVENTS = 60;
 
 // The deeds the balladeer knows how to sing. A future slice can add more (best trade,
 // rank climbed, ports visited) by extending NARRATORS + sanitizeEvent below.
-export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter', 'harbour', 'governorship'];
+export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter', 'harbour', 'governorship', 'morale'];
 
 export const BALLAD_TITLE = 'The Ballad of Your Voyage';
 
@@ -97,6 +97,14 @@ export function sanitizeEvent(ev) {
       return isStr(ev.port) && isStr(ev.title)
         ? { type: 'governorship', port: String(ev.port).trim(), title: String(ev.title).trim() }
         : null;
+    case 'morale':
+      // A crew-morale CROSSING the voyage will remember (#124): the loyalty meter dipped past a felt
+      // threshold — the grumble ('low') or the mutiny-risk brush ('mutiny'). Only the two downward
+      // edges the morale system actually rings are sung; each crossing is its own anecdote (no dedup),
+      // since a crew can slump, be won back, and slump again across one voyage.
+      return (ev.tier === 'low' || ev.tier === 'mutiny')
+        ? { type: 'morale', tier: ev.tier }
+        : null;
     default:
       return null;
   }
@@ -173,6 +181,12 @@ const NARRATORS = {
     (e) => (e.pole === 'pirate'
       ? `And the isles learned to whisper it across the water: ${e.title} — feared from one horizon clean to the other.`
       : `And the isles, with a single voice, proclaimed you ${e.title} — and meant it kindly, mostly.`),
+    (e) => (e.pole === 'pirate'
+      ? `They stopped saying your name in the open after a while; ${e.title}, they'd murmur, and bolt the shutters against the tide.`
+      : `Children were named for you that year, and a fair-day too — ${e.title}, the ports agreed, and toasted you in the good rum.`),
+    (e) => (e.pole === 'pirate'
+      ? `Somewhere a clerk struck your true name from the rolls and wrote only ${e.title} — for the rolls, too, had learned to be afraid.`
+      : `A statue, they threatened, though you talked them down to a plaque: ${e.title}, it reads, and the gulls respect it not at all.`),
   ],
   rumour: [
     (e) => `You chased a tavern whisper clean to ${e.name}, and for once the rumour ran true — ${e.coins} coins the richer for trusting a hunched regular with a thirst.`,
@@ -187,11 +201,16 @@ const NARRATORS = {
     (e) => (e.deed === 'claim'
       ? `At ${e.port} you carved your name into the harbour post and called it home; the wharf, against all pirate custom, was glad of it.`
       : `${e.port} prospered another notch under your hand — they'll tell their grandchildren the harbour grew the day your sails came in.`),
+    (e) => (e.deed === 'claim'
+      ? `You dropped anchor at ${e.port} and, for the first time, meant to stay — a home water at last, and the harbourmaster left the lamp lit just in case.`
+      : `Coin in, ${e.port} out: another quay, another berth, another reason for the chandler to wave you in by name and not by bounty.`),
   ],
   // Governorship (#119): the lawful arc's NAMED capstone — the mirror of the legend crown, sung for
   // the very isle you raised. Warm grandeur with a wink.
   governorship: [
     (e) => `And the isles laid down their ledgers to make it law: ${e.title}. You did not seize the place — you raised it from a bare berth, and ${e.port} crowned you for the building.`,
+    (e) => `${e.port} put it to a vote it could not lose and named you ${e.title} — a pirate-turned-patron, the wharf still half-amazed it had wagered right.`,
+    (e) => `They struck a seal and a sash and a deal of speeches, and made you ${e.title} of ${e.port} — the rarest legend at sea: the one who stayed to govern what he found.`,
   ],
 };
 
@@ -201,10 +220,12 @@ const TREACHERY_NARRATORS = {
   duel: [
     (e) => `You hailed ${e.foe} under honest merchant colours, traded pleasantries — then traded barbs and ran up the black, all in one breath. They struck their colours weeping; ${e.infamy} infamy for the loveliest lie at sea.`,
     (e) => `${e.foe} waved you alongside, friendly as anything. A pity about the flag you swapped at the last — and the ${e.infamy} infamy you sailed off with, grinning.`,
+    (e) => `You played the meek trader to ${e.foe} until the very last word, then dropped the act and the false colours both — ${e.infamy} infamy, and a story they tell with a shudder.`,
   ],
   cannon: [
     (e) => `You crept up on ${e.foe} under merchant colours, all smiles and waving — then ran out the guns and the black flag together. ${e.foe} never saw it coming; ${e.infamy} infamy the richer for the treachery.`,
     (e) => `Old ${e.foe} took you for a humble trader right up until the broadside. The black snapped up as she went down — ${e.infamy} infamy, and not an ounce of it honest.`,
+    (e) => `A friendly hail, a friendly course, a friendly nothing — until ${e.foe} was abeam and the guns spoke before the flag could. ${e.infamy} infamy, earned the crooked way.`,
   ],
 };
 
@@ -215,10 +236,12 @@ const LAWFUL_NARRATORS = {
   duel: [
     (e) => `You hailed the outlaw ${e.foe} under your own true colours and shamed them off the sea — lawful work, and the harbourmaster filed it under "miracles". ${e.coins} coins and a clean conscience.`,
     (e) => `${e.foe} flew the blood-dark flag of a pirate; you flew yours honest, and out-jeered them anyway. A magistrate somewhere is delighted, and frankly so are you.`,
+    (e) => `Letter of marque in hand, you called ${e.foe} to account with words alone and won — ${e.coins} coins, lawfully got, and the novel sensation of being on the right side of it.`,
   ],
   cannon: [
     (e) => `You ran down the pirate ${e.foe} under honest colours and sent her under — no lie, no bluff, just lawful thunder. ${e.coins} coins from the wreck and a nod from every port that fears her name.`,
     (e) => `Old ${e.foe} was an outlaw, fair game, and you took her square under your true flag. The privateer's road: feared by pirates, toasted by governors, ${e.coins} coins the richer.`,
+    (e) => `You hunted ${e.foe} down for the bounty she was, colours flying true the whole chase, and brought her in lawful and proud — ${e.coins} coins, and a wink from every honest captain in the roads.`,
   ],
 };
 
@@ -228,6 +251,7 @@ const CAPTURE_NARRATORS = {
   cannon: [
     (e) => `You sawed ${e.foe}'s rigging to ribbons until her nerve gave and the colours came down — you spared the crew and sailed off ${e.coins} coins the richer and a touch more respectable.`,
     (e) => `${e.foe} struck her colours rather than her keel: a beaten crew, a ${e.coins}-coin ransom, and a captain who, just this once, chose mercy over a grave.`,
+    (e) => `You shot away ${e.foe}'s steerage and let the sea do the arguing until she yielded — no graves, just a ${e.coins}-coin ransom and a crew that lived to grumble about you.`,
   ],
 };
 
@@ -262,6 +286,22 @@ const RUMOUR_RACE_LOST = [
   (e) => `You dawdled, and ${e.rival} did not — by the time you raised ${e.name} the prize had sailed, and a grudge took its place in the hold.`,
 ];
 
+// Crew morale crossings (#124): a loyalty meter that answers to the deeds you CHOOSE, sung when it dips
+// past a felt line. The grumble ('low') is rueful comedy; the mutiny-risk brush ('mutiny') is a real
+// scare you talked your way back from. Selected by `e.tier` in composeBallad, ahead of NARRATORS.
+const MORALE_NARRATORS = {
+  low: [
+    (e) => `The crew took to muttering at the capstan — short of rations and shorter of patience, and every dark glance aimed square at the quarterdeck.`,
+    (e) => `Morale sank low enough that the bosun came aft to "discuss the articles", which is sailor for a grumble with its boots on.`,
+    (e) => `A sullen quiet settled over the deck, and you learned the particular silence of a crew deciding whether you're worth the following.`,
+  ],
+  mutiny: [
+    (e) => `It came within a whisker of mutiny — the hands gathered aft with hard eyes, and only a kinder turn of deeds talked them down off the wheel.`,
+    (e) => `A knife stood quivering in the mast by the watch-bill; the crew were long past grumbling, and you sailed the next league on borrowed loyalty.`,
+    (e) => `Loyalty failed near to breaking — they all but took the ship, and the ballad nearly ended there, with a different captain to sing it.`,
+  ],
+};
+
 const OPENING = 'Gather round and hear it sung — the ballad of a captain, a small boat, and a sea with opinions.';
 
 function tally(events) {
@@ -285,6 +325,44 @@ function closingLine(events) {
   return `So sails the voyage thus far${t} — ${events.length} deed${events.length === 1 ? '' : 's'} worth the telling, and the tide still rolling on beneath the keel.`;
 }
 
+// Which pole the voyage LEANS to (#90 richer composition): weigh the deeds the player chose — the
+// pirate road (raids, false colours, plunder, a feared crown) against the governor road (rescues, a
+// home port raised, a lawful hunt, a governorship). A clear lean closes on its own couplet; a tie
+// closes on the "both" couplet. Neutral deeds (landfall, rumour, morale) don't tug the needle.
+function poleLean(events) {
+  let pirate = 0, governor = 0;
+  for (const e of events) {
+    switch (e.type) {
+      case 'duel':
+      case 'cannon':
+        if (e.lawful) governor += 1; else pirate += 1;
+        if (e.treachery) pirate += 1;
+        break;
+      case 'encounter':
+        if (e.choice === 'rescue') governor += 2; else pirate += 2;
+        break;
+      case 'harbour': governor += 1; break;
+      case 'governorship': governor += 2; break;
+      case 'legend': if (e.pole === 'pirate') pirate += 2; else governor += 2; break;
+      default: break; // landfall, rumour, morale — neutral
+    }
+  }
+  return { pirate, governor };
+}
+
+// The closing couplet — a last sung line that reflects who the voyage made you. Deterministic by the
+// dominant pole; warm + a wink either way, and frank delight at being ungovernably both.
+function closingCouplet(events) {
+  const { pirate, governor } = poleLean(events);
+  if (pirate > governor) {
+    return `And when the tale is told, it's the black flag they remember — a name the calm ports still use to frighten the children to bed.`;
+  }
+  if (governor > pirate) {
+    return `And when the tale is told, it's the lamps you lit they remember — a captain who, against every pirate custom, left the harbours better than he found them.`;
+  }
+  return `And when the tale is told, they'll never agree the half of it — terror to some, patron to others, and you grinning at being thoroughly both.`;
+}
+
 /**
  * PURE — compose the voyage log into "The Ballad of Your Voyage": an opening, a verse per
  * deed (in order), a closing tally, and a balladeer's footer. Deterministic — the same log
@@ -303,11 +381,13 @@ export function composeBallad(events, opts = {}) {
     lines = [EMPTY_LINE];
   } else {
     lines = [OPENING];
-    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0, harbour: 0, governorship: 0 };
+    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0, harbour: 0, governorship: 0, morale: 0 };
     for (const e of log) {
-      // An at-sea encounter sings a rescue/plunder verse by the choice made; a treacherous fight
-      // sings a false-colours verse; a lawful pirate-hunt the privateer verse; else the honest pool.
+      // An at-sea encounter sings a rescue/plunder verse by the choice made; a morale crossing sings
+      // its tier verse; a treacherous fight a false-colours verse; a lawful pirate-hunt the privateer
+      // verse; else the honest pool.
       const pool = (e.type === 'encounter' && ENCOUNTER_NARRATORS[e.choice])
+        || (e.type === 'morale' && MORALE_NARRATORS[e.tier])
         || (e.type === 'rumour' && e.rival && (e.won ? RUMOUR_RACE_WON : RUMOUR_RACE_LOST))
         || (e.captured && CAPTURE_NARRATORS[e.type])
         || (e.treachery && TREACHERY_NARRATORS[e.type])
@@ -318,6 +398,7 @@ export function composeBallad(events, opts = {}) {
       lines.push(pool[i](e));
     }
     lines.push(closingLine(log));
+    lines.push(closingCouplet(log)); // #90: a last couplet reflecting your dominant pole
     lines.push(BALLAD_FOOTER);
   }
 
