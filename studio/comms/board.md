@@ -15,12 +15,13 @@ Keep `Doing` small (limit WIP). Cards: `#issue — short title — owner`.
 ## To do (next — owner MODE-SYSTEM P1 batch, set by Retro 9)
 - **#94 — Unified mode-aware sound & music — Phases 2-5** (rotating sea themes · per-town identities (#69) · real battle cue · real audio files behind `loadTrack`). Phase 1 (proximity crossfade + mode-aware bed) **shipped** v0.0.20260628010142; #94 stays OPEN.
 - **[OWNER-DECISION] #100 — arcade battle-modes** — HELD for the 08:00 2026-06-28 Game-Designer owner brief (infra = #95).
-- **DL #3 research loop is DUE** (~11 cycles) — run as the next non-from-owner-P1 dispatch.
+- **DL #3 research loop — DONE** (ran after the P1 batch; filed #102–#109). Charm fillers now slot in: **#97 fauna phase 1 (gulls) shipped** — next phases (dolphins / other species) + **#93** ship's-wheel touch · **#101** CC0 props · **#106 slices 1+4** · **#107** mode-transition QA.
 
 ## Doing
 - _(empty)_
 
 ## Done
+- Loop 52: #97 **Living sea fauna — gull flock (Phase 1)** — the first fauna beat: a small instanced flock of GULLS that keeps the ship company, wheeling overhead at sea and **drifting to hang over the shore** as you raise an island (reactive verb). One `THREE.InstancedMesh` (one draw call) of a two-triangle gull silhouette with a Y-scale wing-beat, **distance-culled wholesale** (0 draws) off-stage. Pure three-free `src/fauna-math.js` TDD'd first; thin `createFauna({world})` in `src/fauna.js`; ticked every frame so it lives on while the helm pauses. QA hook `window.__tidewake.fauna`. CREATIVE SPARK: gulls trail your wake for galley scraps, then peel off over the coast (pairs with gull SFX #68). +6 tests (456); playtest asserts the flock exists/draws/tracks the player; perf **32/130 draws · 83.8k/150k tris**. Gallery `…014411-fauna-gulls.png`. **#97 stays OPEN** — phase 2 dolphins + phase 3 other animals to follow (v0.0.20260628014411).
 - Loop 0: v0 shipped — playable build + auto-release + studio structure.
 - Loop 27: #59 Cannon Broadside — open fire (G) alongside the Insult Broadside duel; closed, depth follow-up #72 filed (v0.0.20260627130215).
 - Loop 28: #63 Mobile MVP — installable PWA (manifest + brass-anchor icons, Add-to-Home-Screen) + heat-aware DPR cap atop existing touch controls/responsive HUD; closed. Follow-ups #74 (SW offline) + #75 (safe-area/landscape/low-end polish); docked overlap tracked in #66 (v0.0.20260627131832).
