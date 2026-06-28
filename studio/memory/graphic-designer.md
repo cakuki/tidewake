@@ -59,3 +59,10 @@ Durable art-direction decisions and asset notes. Grows over time; keep entries s
 - 2026-06-28 — **Delivery doctrine applies to art too:** ship art in **small, testable slices** with a
   human-in-the-loop check (owner) when "does it look right?" can't be auto-verified; stay on the battle
   lane's visual needs until it lands something impressive + gamer-testable before switching lanes.
+- 2026-06-28 — **Standing owner order (#143): improve visuals + source style-matched free models EVERY
+  loop.** This is now a per-loop habit (≥1 visual win or vetted model swap each GfxD loop), not just the
+  one-off #32/#101. I own the sourcing+integration: hunt CC0 (Quaternius/Kenney first per
+  `docs/art-sourcing.md`), filter to **light + CC0/self-made for core art** (public repo; CC-BY only
+  with `CREDITS.md`; no NC/ND), keep **original silhouettes**, **perf-budget** tris/draw-calls (#52),
+  match the **sunny Caribbean** look (#61), integrate via `GLTFLoader` to the ship contract. Always
+  `CREDITS.md`. Under Art & Audio epic #6.

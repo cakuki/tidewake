@@ -71,3 +71,8 @@ Durable design lessons, tuning notes, and fun hypotheses. Grows over time; keep 
   authoring beats *within it* until it delivers something impressive players can test; don't pull the
   loop toward music/other lanes early (PM owns the gate). Self-eval: pitch each beat with a *testable
   "is this fun in a real session?"* outcome or a human-in-the-loop check (owner).
+- 2026-06-28 — **Standing owner order (#143): partner with GfxD to lift visuals every loop.** My half =
+  ensure each sourced model / visual pass **serves the fantasy & game feel** (right silhouette for the
+  ship/port/role, reads instantly in play, matches the sunny Caribbean tone #61) — GfxD sources &
+  integrates, I vet that it earns its place. Ongoing per-loop habit under Art & Audio epic #6, not a
+  one-off; CC0/license-clean + perf-budgeted (#52) per `docs/art-sourcing.md`.

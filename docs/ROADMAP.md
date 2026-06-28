@@ -220,6 +220,11 @@ Tie the experience together and make it sing.
   loop), not just the game. Pairs with #53 (self-tested UI) and the retro/self-eval cadence.
 - **Business as usual:** always keep delivering **bug fixes + UI improvements** alongside the headline
   lane — the lights stay on.
+- **Continuous visual quality (GD + GfxD, every loop):** the Game Designer and Graphic Designer keep
+  **improving the visuals** and **sourcing free-to-use, style-matched models** as a standing per-loop
+  habit (≥1 visual win / vetted model swap per loop) — **#143**, under Art & Audio epic #6. Guardrails:
+  **CC0/self-made for core art** (public repo; CC-BY only with `CREDITS.md`; no NC/ND), original
+  silhouettes, perf-budgeted (#52), matched to the sunny Caribbean look (#61). Pipeline: `docs/art-sourcing.md`, #32, #101.
 - **Focused-lane delivery + lane-switch GATE:** work the single most important improvement lane and
   **do not switch to another roadmap lane until the current one has shipped something impressive AND
   gamer-testable** over several loops. *Example: don't switch from the battle-system lane (#135) to the

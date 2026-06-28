@@ -53,5 +53,6 @@ with the item files in `inbox/`. Raw items are never deleted — only their stat
 | 2026-06-28-batch-… · named-persons | idea | raw | USP vs SMP: persona creation + every person named with traits | [#142](https://github.com/cakuki/tidewake/issues/142) |
 | 2026-06-28-batch-… · ship-fights (folded) | idea | raw | Visible NPC-vs-NPC fights → noted on battle epic | [#135](https://github.com/cakuki/tidewake/issues/135) |
 | 2026-06-28-batch-… · named-crew (folded) | idea | raw | Named crew + per-member skills + loyalty/mutiny → extends crew epic | [#4](https://github.com/cakuki/tidewake/issues/4) + [#124](https://github.com/cakuki/tidewake/issues/124) |
+| 2026-06-28-continuous-visual-quality | feedback | accepted | Standing: GD+GfxD improve visuals + source CC0 style-matched models every loop | [#143](https://github.com/cakuki/tidewake/issues/143) |
 | 2026-06-28-multiple-bg-music | feature | accepted | Unified sound system: multiple sailing/town/battle tracks + crossfade (absorbs #69; future zones #99) | [#94](https://github.com/cakuki/tidewake/issues/94) |
 | 2026-06-28-use-cc0-pirate-kit-assets | feature | accepted | Start using CC0 Pirate Kit (Quaternius/Kenney) — ships (#32 greenlit) + props (#101) | [#32](https://github.com/cakuki/tidewake/issues/32) + [#101](https://github.com/cakuki/tidewake/issues/101) |
