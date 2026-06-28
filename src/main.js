@@ -889,6 +889,17 @@ window.__tidewake = {
   // blend (0=at sea, 1=ashore) + whether it's in flight, plus the headless skip driver — so a
   // playtest can assert the moment EASES (not snaps), is deterministic, and is skippable.
   get landfall() { return { phase: landfall.phase, blend: landfall.blend, active: landfall.active, townReady: landfall.townReady, swellScale: ocean.swellScale }; },
+  // Drifting whitecaps (#70) QA surface: the foam tuning + the live crest-foam factor sampled
+  // at the ship on the SAME swell it rides (lock-step with #102). A headless playtest sails a
+  // few seconds and asserts the sunny sea grows foam on its crests somewhere along the way.
+  get sea() {
+    return {
+      swellScale: ocean.swellScale,
+      foam: ocean.foam,
+      whitecapHere: ocean.whitecapAt ? ocean.whitecapAt(state.pos.x, state.pos.z, simT) : 0,
+    };
+  },
+  whitecapAt(x, z, t) { return ocean.whitecapAt ? ocean.whitecapAt(x, z, t ?? simT) : 0; },
   skipLandfall() { return skipLandfall(); },
   // Tavern "listen for word" (#103) QA surface: whether word is showing + the live rumours,
   // and a deterministic driver so a headless playtest can listen and assert the room speaks.

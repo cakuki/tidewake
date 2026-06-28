@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { WAVES, MAX_SWELL, swellHeight } from './swell.js';
 import { DEEP, SHALLOW, oceanFallbackColor } from './sea-color.js';
+import { FOAM_LO, FOAM_HI, FOAM_COLOR, FOAM_DRIFT, FOAM_STRENGTH, crestFoam } from './sea-foam.js';
 
 // Re-export so existing importers (and the swell unit test) can read the crest height.
 export { MAX_SWELL };
@@ -45,6 +46,9 @@ export function createOcean() {
     // eases 1→0.2 as you come to rest ashore, then back to 1 as you set sail. 1 = full open-water
     // swell (the at-sea default). Mirrored on the CPU sampler so the ship never drifts off the sea.
     uSwellScale: { value: 1 },
+    // Drifting whitecap foam (#70): the tint the wave crests froth toward. A uniform (like the
+    // wake's uFoam) so a future day-night pass could warm it at golden hour. Colour write only.
+    uFoam: { value: new THREE.Color(FOAM_COLOR) },
   };
 
   const mat = new THREE.ShaderMaterial({
@@ -103,6 +107,7 @@ export function createOcean() {
       uniform vec3 uHaze;
       uniform vec3 uPaper;
       uniform vec3 uSun;
+      uniform vec3 uFoam; // drifting whitecap tint (#70)
       varying vec3 vNormal;
       varying float vHeight;
       varying vec3 vRel;
@@ -145,6 +150,21 @@ export function createOcean() {
         vec3 sunCol = vec3(1.0, 0.97, 0.86);
 
         vec3 col = base + fres * 0.22 + glint * sunCol;
+
+        // Drifting whitecaps (#70): foam catches the upper crests and breaks apart as the
+        // swell rolls, so the sunny sea reads alive and in motion. Pure shader maths — no
+        // geometry, no extra draws — and it reads vHeight (already lock-step with the CPU
+        // sampleHeight #102/#65), so it never touches the swell the ship/wake/ports ride.
+        // The crest window + smoothstep are generated from sea-foam.js so JS and GPU agree.
+        float crest = smoothstep(${glf(FOAM_LO)}, ${glf(FOAM_HI)}, vHeight);
+        // patchy streaks that DRIFT across the crests (camera-relative space → small mobile
+        // numbers); the product breaks the foam into moving patches instead of a solid band.
+        float s1 = 0.5 + 0.5 * sin(w.x * 0.16 + uTime * ${glf(FOAM_DRIFT)})
+                              * sin(w.y * 0.19 - uTime * ${glf(FOAM_DRIFT * 0.8)});
+        float s2 = 0.5 + 0.5 * sin((w.x + w.y) * 0.09 - uTime * ${glf(FOAM_DRIFT * 0.5)});
+        float streak = smoothstep(0.45, 0.95, s1 * s2 + 0.12);
+        float foam = clamp(crest * streak, 0.0, 1.0);
+        col = mix(col, uFoam, foam * ${glf(FOAM_STRENGTH)});
 
         // distance fog toward a BRIGHT sunny sea-haze — measured from the CAMERA so it
         // follows the ship instead of staying pinned to the world origin. length(vRel.xz)
@@ -205,6 +225,13 @@ export function createOcean() {
       }
     },
     sampleHeight,
+    // Drifting-whitecap QA surface (#70): the crest-foam factor (0..1) a point would froth,
+    // sampled on the SAME swell the ship rides (sampleHeight, so it tracks uSwellScale too).
+    // The shader gates this by a drifting streak; this returns the deterministic crest factor
+    // so a headless playtest can sail and assert the sunny sea grows foam on its crests.
+    whitecapAt(x, z, t) { return crestFoam(sampleHeight(x, z, t)); },
+    // The foam tuning travels with the ocean so QA/tooling can self-check the window is reachable.
+    foam: { lo: FOAM_LO, hi: FOAM_HI, strength: FOAM_STRENGTH },
     // Glassy "moored" swell settle (#102 ph2): ease the whole sea's amplitude as the ship comes to
     // rest ashore (1 = full open-water swell, 0.2 = glassy moored calm). Drives BOTH the GPU shader
     // (uSwellScale) and the CPU sampler in lock-step so the ship rides exactly the swell it draws.
