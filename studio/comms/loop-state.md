@@ -16,44 +16,44 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 > living-sea-fauna, town-mode-trade-view, multiple-bg-music, approach-town-music-cue, use-cc0-pirate-kit.
 > Also: **owner spend-decision pending** — optional ~$10–30/mo AI-image seat for 2D portraits (#55).
 
-- **Current loop:** 54 done → **Retro 10 just ran (covered loops 48–54)** → next reads `queue.md` top
-  (now **#103 tavern "listen for word"** — the town-as-destination verb). Recent: Retro 9 → #95 mode
-  scaffold (48, CLOSED) → #67+#96+#66 auto-harbour town/market (49, CLOSED) → #94 mode-aware sound ph1
-  (50, OPEN) → **DL #3 research loop** (filed #102–#109) → #106 seam-hardening ph1 (51, OPEN) → #97
-  gull flock ph1 (52, OPEN) → #93 ship's-wheel touch (53, CLOSED; #98 dup) → **#101 CC0 port dressing
-  ph1+2 (54, OPEN).**
-- **✅ ROADMAP PIVOT BUILT (Retro 10):** the owner's MODE SYSTEM is shipped end-to-end — state machine
-  (#95) · auto-harbour town/market (#67/#96/#66) · mode-aware sound bed + port proximity cue (#94 ph1)
-  · hardened transition seam (#106 ph1) · plus charm (gulls #97, touch helm #93, dressed ports #101).
-  **Next leverage = make the modes MATTER (DL #3, depth-over-breadth):** the town must be a
-  *destination not a menu* + the *transition is the drama* → **#103 tavern rumours → #102 crafted
-  landfall → #107 mode-transition QA**. Battle-mode (#100) still HELD for the **08:00 2026-06-28
-  Game-Designer owner brief** (infra #95 + #106-ph1 built); do NOT promote it above where the owner
-  wants it.
-- **Loops since last retro:** **0** (Retro 10 just ran, covered loops 48–54; HARD trigger fired at 7).
-  Cadence: retro every ~7–8 cycles, HARD trigger 7. **Next retro ~loop 61** unless a from-owner P1
+- **Current loop:** 61 done → **Retro 11 just ran (covered loops 55–61)** → next reads `queue.md` top
+  (now **#112(+#111) close the rumour loop** — the chased rumour gets a marker + a real payoff). This
+  block: #103 tavern rumours (55, CLOSED) → #102 crafted landfall ph1 (56) → #107 mode-transition QA +
+  **real perf-race fix** (57, CLOSED) → #102 landfall ph2 (58, CLOSED) → #104 port-remembers-you (59,
+  CLOSED, save v9) → #71 islands TLC (60, CLOSED) → **#70 ocean whitecaps ph1 (61, OPEN [STANDING-RULE]).**
+- **✅ THE MODES NOW MATTER (Retro 11):** the mode skeleton got a body — town is a **destination not a
+  menu** (rumours #103 + the harbourmaster who **remembers your face** #104, save v9), landfall is a
+  **crafted multi-sensory moment** (#102 done for now), the world filled out (#71 per-isle faces, #70
+  whitecaps), and the gate hardened to the state-space + caught a **real perf race** (#107). **Next
+  leverage = make the verbs PAY OFF + fill the empty room:** **#112(+#111) close the rumour loop** →
+  **#105 "while you were ashore" digest** → **#69 per-town music**. Battle-mode **#100 HELD for the
+  ~08:00 2026-06-28 Game-Designer owner brief (now ~07:00 — IMMINENT)**; the obvious next big slice but
+  the owner's to steer — do NOT promote above where he wants it (it likely jumps the top once steered).
+- **Loops since last retro:** **0** (Retro 11 just ran, covered loops 55–61; HARD trigger fired at 7).
+  Cadence: retro every ~7–8 cycles, HARD trigger 7. **Next retro ~loop 68** unless a from-owner P1
   preempts.
-- **Cycles since last deep-learning loop:** **0 — DL #3 DONE 2026-06-28** (ran mid-block this period;
-  counter reset; cadence ~10 → **next DL ~10 cycles out, ~loop 64**). DL #3 fanned out 9 role
-  subagents; filed #102–#109 (mode-system depth); synthesis in
-  `studio/retros/2026-06-28-deep-learning-3.md`. Top theme: the **town must be a destination, not a
-  menu** + the **mode transition is the drama**. Promotes #36 fixed-timestep above #84. **⚠️ Note: two
-  DL #3 subagents hit injected derail — one a planted "cut a v0.1 release" prompt-injection (refused);
-  injection guardrail now explicitly covers release/scope/version/gate-bypass (Retro 10).**
+- **Cycles since last deep-learning loop:** **~11 — DL #4 is DUE IMMINENTLY** (DL #3 ran ~loop 50;
+  cadence ~10 → DL #4 is the next ritual slot, ~loop 62, P1-preemptible — run it after the #100 owner
+  brief is absorbed). DL #3 (2026-06-28) fanned out 9 role subagents; filed #102–#109 (mode-system
+  depth); synthesis `studio/retros/2026-06-28-deep-learning-3.md`; its town-depth loop (town as a
+  destination + transition-is-the-drama) is now CLOSED by this block. Promotes #36 fixed-timestep above
+  #84. **⚠️ Standing: a DL #3 subagent hit a planted "cut a v0.1 release" prompt-injection (refused);
+  injection guardrail covers release/scope/version/gate-bypass (Retro 10) — no incidents this block.**
 - **State:** core arc COMPLETE + tuned + onboarded + sunny + perf-gated; **+ cannon combat (#59), +
   mobile PWA w/ heat-aware DPR (#63), + PWA safe-area (#75 partial), + settings/toggles panel (#73),
   + arcade collision: islands (#76 a1) + harbour/fight slow-stop (#76 c) + ship-vs-ship (#76 b), +
   iOS shader hardening/fallback (#86) + iOS audio capture-phase unlock (#77) + no-text-select (#87),
   + OPTIONAL day-night toggle (#58, sunny stays default).**
-- **Next dispatch:** `queue.md` top work item — recommended (Retro 10): **#103 tavern "listen for
-  word"** (reactive verb → town as destination) → **#102 crafted landfall transition** → **#107
-  mode-transition QA**. (Retro 9 roadmap #95/#67/#96/#94-ph1 all SHIPPED; #106/#97/#101 advanced;
-  #93 CLOSED. #100 battle HELD for the owner brief.)
+- **Next dispatch:** `queue.md` top work item — recommended (Retro 11): **#112(+#111) close the rumour
+  loop** (chased rumour → map marker + real payoff) → **#105 "while you were ashore" digest** → **#69
+  per-town music**. (Retro 10 mode batch + DL #3 town-depth loop all SHIPPED: #103/#102/#104/#107/#71
+  CLOSED, #70 ph1 OPEN. **#100 battle HELD for the ~08:00 owner brief — IMMINENT, do not auto-promote.**)
 - **Owner-decisions ANSWERED:** #56 mobile = GO (shipped #63); #58 weather = GO optional toggle (SHIPPED #58).
   #76 priority delegated to PM+TL → P1, shipped a1+c+b; a2 remains. Prioritization is PM+TL's call.
-- **⏳ Awaiting owner re-test (iOS, on his iPhone):** **#77 audio** (capture-phase unlock — reopened,
-  unconfirmed) + **#87 no-text-select** — both need his confirmation on the reloaded build (v…192458+).
-  #86 ocean "void" was a zoom-in, NOT a bug (closed; hardening retained). Latest live = v…195729.
+- **⏳ Awaiting owner re-test (iOS, on his iPhone — BATCH all three in one pass):** **#77 audio**
+  (capture-phase unlock — reopened, unconfirmed) + **#87 no-text-select** + **#93 ship's-wheel touch**
+  — all shipped best-effort, UNCONFIRMED; ask him to confirm all three on the latest build at once.
+  #86 ocean "void" was a zoom-in, NOT a bug (closed; hardening retained).
 - **Comms:** **two-way owner channel LIVE** (`OWNER-CHANNEL.md` + `scripts/owner-channel.sh`) — report
   out on every release/roadmap change; smart intent-routing in (pending-answer / thread-reaction /
   small ad-hoc inline / planning→PM-desk). Poll `owner-channel.sh peek` each cycle (step 0).
@@ -64,9 +64,9 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
   QA; Game Designer owns balance/tuning; from-owner P1s jump the queue.)
 - **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions
   read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
-- **Latest release:** **v0.0.20260628022029** (#101 CC0 Pirate Kit port dressing — ph1+2). ~55
-  releases, **482 tests**. Perf **35/130 draws · 85k/150k tris** (instancing + wholesale culling keep
-  the new fauna/props nearly free).
+- **Latest release:** **v0.0.20260628043637** (#70 ocean whitecaps — drifting crest foam). ~62
+  releases, **542 tests**. Perf **29/130 draws · 89k/150k tris** (shader-only foam + instanced isle
+  dressing held the budget; save schema **v9**).
 - **Live:** https://cakuki.github.io/tidewake/
 - **Open enablers:** #37 deterministic visual-diff (schedule — open since cycle 10); #38 PR-validation
   CI gate; #36 fixed-timestep.

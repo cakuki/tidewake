@@ -18,141 +18,136 @@ his reply back (never auto-adopt).
 **QUEUE-SYNC RULE (Retro 9):** after any PM-desk intake batch, **re-sort this queue's top before the
 next build dispatch** — a flat "items to file" list in `loop-state.md` is not a prioritised queue.
 
-**PHASE-LABEL RULE (Retro 10):** several umbrellas (#94/#97/#101/#106) shipped a phase and stay OPEN.
-"OPEN" ≠ "untouched" — each line states **what shipped vs. what remains** so priority tracks
-*delivered* value, not the issue's open/closed flag. A from-owner P1 whose headline acceptance is
-already met (e.g. #94 phase 1) does NOT auto-sit at the top.
+**PHASE-LABEL RULE (Retro 10, extended Retro 11):** several umbrellas (#94/#97/#101/#106/#70) shipped
+a phase and stay OPEN. "OPEN" ≠ "untouched" — each line states **what shipped vs. what remains** so
+priority tracks *delivered* value, not the issue's open/closed flag. **Retro 11 addition:** an
+umbrella that **hosts a standing rule** (e.g. **#70** = the "1–2 sea-delight beats per loop" rule)
+stays OPEN *deliberately* and is marked **[STANDING-RULE]** — it is **not** a candidate to close even
+when its latest slice shipped.
 
 ---
 
-_Set by **Retro 10** (2026-06-28). State: the owner **MODE-SYSTEM pivot is built** — a sailing/town/
-battle state machine (#95), a real auto-harbour **town/market mode** (#67/#96/#66), a **mode-aware
-sound bed** with a port proximity cue (#94 ph1), and a **hardened transition seam** (#106 ph1) — plus
-the first charm back on top: a living **gull flock** (#97 ph1), a **ship's-wheel touch helm** (#93),
-and **dressed CC0 harbours** (#101 ph1+2). **482 tests**, perf **35/130 draws · 85k/150k tris**.
-Latest `v0.0.20260628022029`._
+_Set by **Retro 11** (2026-06-28). State: the **mode spine now MATTERS.** Town is a **destination,
+not a menu** — a tavern *listen-for-word* verb spins live state into **rumours that name a real
+target** (#103), and the harbourmaster **remembers your face** across visits (#104, save v9).
+Landfall is a **crafted multi-sensory moment** — eased camera + golden grade + glassy moored swell +
+on-beat "made port" stinger, skippable, reversed on leave (#102, done for now). The world between
+ports filled out: **every isle wears its own face** (#71) and the **sunny sea drifts with whitecaps**
+(#70 slice 1). The gate hardened to the exploding mode state-space and caught a **real perf race**
+(#107). **542 tests**, perf **29/130 draws · 89k/150k tris**. Latest `v0.0.20260628043637`._
 
-_**The next leverage is depth, not more rooms (DL #3):** the spine exists but the **town must become a
-destination, not a menu**, and the **mode transition is the drama**. Lead with a reactive **verb
-ashore** (#103), then **sell the transition** (#102), then **harden the gate** (#107). Battle-mode
-#100 is HELD for the 08:00 2026-06-28 Game-Designer owner brief — do NOT promote it above where the
-owner wants it._
+_**The next leverage is to make the verbs PAY OFF and fill the one empty room.** The rumour verb
+points the bow but has no reward yet → **close the loop** (#112 payoff + #111 marker). Battle-mode
+**#100 is HELD for the ~08:00 2026-06-28 Game-Designer owner brief (now ~07:00 — IMMINENT)** — it is
+the obvious next big slice but it is the owner's to steer/sequence; do **NOT** auto-promote it above
+where the owner wants it._
 
-## Top of queue (do in order) — PIVOT TO BREADTH (the mode spine + landfall craft are "done for now")
+## Top of queue (do in order) — CLOSE THE REACTIVE LOOP, then fill the empty room
 
-_(Loop 55 shipped **#103** tavern rumours · Loop 56 shipped **#102 phase 1** landfall · Loop 57
-shipped & CLOSED **#107** mode-transition QA + the perf-counter flake fix · Loop 58 shipped &
-**CLOSED #102 phase 2** (glassy moored swell settle + downbeat "made port" stinger) — **landfall
-craft is now done for now**. Top re-sorted below: the loop **pivots from depth to breadth.**)_
+**PM/TL: the build top is the rumour-payoff loop (#112 + #111).** It's the highest-value depth slice
+that does NOT depend on the battle brief — a good single dispatch to run now, around the ~08:00 brief.
+Re-sort if the owner steers #100 to the top after the brief.
 
-**PM/TL: sequence the breadth trio (#104 / #71 / #70) before the next build dispatch** — value ·
-complexity · dependencies. Provisional order below; re-sort if PM disagrees.
+1. **#112 — Rumours that pay off** (+ **#111 — chased-heading map marker**) (design; reactive-verb
+   payoff, closes the #103 loop). A rumour you choose to chase gets a **map marker for its heading**
+   (#111, cheap legibility) and **arriving / acting on it pays off** via economy or bounty hooks
+   (#112) — turning "a tip that points the bow" into a full **town → rumour → sail there → reward**
+   loop. — _why: value **high** (a verb with no payoff is a town with no destination, one layer up);
+   complexity **medium**; deps #103 (done). CREATIVE SPARK: the regular's tip cashes out — chase the
+   word, claim the prize. Lead with the cheap #111 marker, then the #112 payoff._
 
-1. **#104 — The port remembers you** (design; reactive verb ashore, DL #3 theme 1). Persistent
-   per-town reputation / a "Your Harbour" home-port beat — the town reacts to who you've become and
-   what you've done *there*. Rides the #67/#96 town mode + #78 voyage log. — _why: value **high**
-   (turns the town from a place into a relationship); complexity **medium** (needs a small persisted
-   per-port store); deps done. CREATIVE SPARK: the harbourmaster greets you by reputation._
+2. **#105 — "While you were ashore…" digest** (design; living-world legibility). A one-line
+   consequence shown on Leave Harbour — cheap legibility of the "world keeps living underneath"
+   promise the #95 seam already delivers mechanically but never tells the player; pairs with the #104
+   memory just shipped. — _why: value **medium**; complexity **low**; deps #67 + #104 (done)._
 
-2. **#71 — islands TLC** (art/world; breadth). More/varied isles + dressing (palms/rocks/huts),
-   coordinate with the #61 Caribbean sea + #101 island dressing. — _why: value **medium-high** (the
-   sea between ports is the canvas); complexity **medium**; pairs with #101 props._
+3. **#69 — Per-town music identities** (#94 phase 3) (audio). Each port now has a *character* (a
+   memory, its own rumours, its own dressing) — give it its own sound via modal recolour/timbre over
+   raw transposition. — _why: value **medium**; complexity **medium**; deps #94 ph1 + #67 (done).
+   The town depth shipped this block finally gives the score something distinct to say per port._
 
-3. **#70 — ocean micro-details & sail-over delight** (world/feel; breadth). Sea variety / the
-   standing "1–2 delight beats per loop". — _why: value **medium**; complexity **low-medium**._
+## [OWNER-DECISION / HELD — IMMINENT] — ask, don't auto-promote
 
-_Then (lower, tech follow-up — not breadth):_ **#94 — gate-level mode-aware mix assertion +
-transition bell** (surfaced by #107). Expose the resolved mix on `__tidewake` (`tw.mix`) so the
-playtest can assert SAILING≠TOWN≠BATTLE *live* (the pure decision is already unit-tested), and add a
-once-per-real-transition audio beat. — _value **medium**; complexity **low**; deps #95/#106 (done)._
+- **#100 — arcade battle-modes** (combat/loadouts/boarding). **HELD for the ~08:00 2026-06-28
+  Game-Designer owner brief (now ~07:00 — IMMINENT).** Its mode-switch infra (#95) + seam hardening
+  (#106 ph1) + QA (#107) are already built; battle is the one empty room. The owner steers WHAT and
+  sequences WHEN — surface the brief over the owner channel; do **NOT** promote above where the owner
+  wants it. (When it lands it likely jumps the top; until then the build top is #112/#111.)
 
 ## Charm / atmosphere fillers (from-owner; slot in around the depth slices)
-_(#71 islands + #70 ocean are **promoted to the breadth top** above; left here for context.)_
 
-4. **#106 — Mode-seam hardening, slice 1** (declarative `{[mode]:{onEnter,onLeave}}` registry — sugar
-   over the bus). Cheap; rides alongside #107. _(slice 4 per-mode disposal PARKED — blocked on #100
-   battle meshes.)_
-5. **#110 — Living fauna phase 2: jumping dolphins** (#97 continues; gulls shipped). P2 from-owner.
-6. **#101 — props phase 3: loose props + island dressing** (lanterns/market stalls **feed the town
-   mode**; palms/rocks/huts on islands — pairs with #71). P2 from-owner. _(texture-embed + extra
-   variety PARKED.)_
-7. **#71 — islands TLC** (palette/variety/props, coordinate with the #61 Caribbean sea + #101 island
-   dressing). P2 from-owner.
-8. **#70 — ocean micro-details & sail-over delight** (+ the standing "1–2 delight beats per loop"
-   rule). P2 from-owner.
+4. **#104b — Port-memory depth** (per-port **last deed recalled by name**; the "Your Harbour"
+   home-port stretch; familiarity decay). Cheap town-depth follow-on to the just-shipped #104; slot
+   alongside #105. _Park the home-port stretch until the rumour loop (#112) closes._
+5. **#106 — Mode-seam hardening, slice 1** (declarative `{[mode]:{onEnter,onLeave}}` registry — sugar
+   over the bus). Cheap; rides alongside any new mode work. _(slice 4 per-mode disposal PARKED —
+   blocked on #100 battle meshes.)_
+6. **#110 — Living fauna phase 2: jumping dolphins** (#97 continues; gulls shipped). P2 from-owner.
+7. **#101 — props phase 3: loose props** (lanterns/market stalls **feed the town mode** #96/#103).
+   P2 from-owner. _(island dressing shipped via #71; texture-embed + extra variety PARKED.)_
+8. **#70 [STANDING-RULE] — ocean sail-over curios** (flotsam/turtle/bottle → SFX + witty-line pool —
+   the issue's *original* slice 1) + **#113** bow-spray flourish + **#114** sea-colour variation /
+   current streaks. **#70 stays OPEN deliberately** as the home of the "1–2 sea-delight beats per
+   loop" rule — do NOT close it. P2 from-owner.
 9. **#68 — seagulls: louder calls near the coast** (SFX exists) + tie to the #97 visual flock. P2 from-owner.
-
-## Town-depth follow-ons (DL #3 — slot in after #103/#102 prove the town is a place)
-
-10. **#104 — The port remembers you** (persistent per-town reputation; "Your Harbour" home-port
-    stretch). P2 design. _The pirate↔governor branch made spatial across visits._
-11. **#105 — "While you were ashore…" digest** (one-line living-world consequence on Leave Harbour).
-    P2 design. _Cheap legibility of the world-continues-underneath promise._
-12. **#69 — per-town music identities** (modal recolour/timbre over raw transposition) — the **#94
-    phase-3** slice; ships once town depth gives each port a character to score. P2 audio from-owner.
 
 ## #94 remaining phases (P1 OPEN — but phase-1 headline acceptance is MET; not top-of-queue)
 
-13. **#94 — rotating sea themes** (phase 2) + **real battle cue** (phase 4, rides #100) + **real audio
-    files behind `loadTrack`** (phase 5 — **PARKED on an asset/owner decision**). #69 above is phase 3.
-    _Proximity crossfade + mode-aware bed already shipped (Loop 50)._
-14. **#109 — mode-aware audio craft** (constant-power crossfade · bar-clock transitions · procedural
+10. **#94 — rotating sea themes** (phase 2) + **real battle cue** (phase 4, rides #100) + **real audio
+    files behind `loadTrack`** (phase 5 — **PARKED on an asset/owner decision**). #69 (phase 3, per-town)
+    is promoted to the top trio above. _Proximity crossfade + mode-aware bed already shipped (Loop 50)._
+11. **#109 — mode-aware audio craft** (constant-power crossfade · bar-clock transitions · procedural
     per-mode reverb · modal recolour). P3 audio. _Rides #94._
-15. **#108 — per-mode perf budget + throttle world work in town** (gate ocean/wake + DPR by mode).
+12. **#108 — per-mode perf budget + throttle world work in town** (gate ocean/wake + DPR by mode).
     P2 tech. _Promote **#36 fixed-timestep** above #84 (DL #3)._
 
-## [OWNER-DECISION] — ask, don't build
+## Depth / DL reservoir (between-mode fillers; prefer depth over breadth)
 
-- **#100 — arcade battle-modes** (combat/loadouts/boarding). **HELD for the 08:00 2026-06-28
-  Game-Designer owner brief**; scenario blocked pending the owner's steer. Its mode-switch infra
-  (#95) + seam hardening (#106 ph1) are already built. — surface the brief over the owner channel; do
-  NOT promote above where the owner wants it.
-
-## Depth / DL #2 reservoir (between-mode fillers; prefer depth over breadth)
-
-16. **#72 — cannon-combat depth follow-ups** (hull-damage visuals, tougher foes/gunnery spread, more
-    aims, fleeing chase, cannon audio, foe initiative). Advanced Loop 47; much of it **feeds #100
-    battle** — revisit after the owner brief.
-17. **#80 — combat/harbour game-feel "juice" pass** (hit-stop, screenshake, camera punch; toggle-able).
-    Pairs with #102's landfall punch.
-18. **#90 — Ballad richer composition** (more deed types · share-as-image) — deepens the #78 lever. P3.
-19. **#92 — richer privateering** (faction/bounty + persisted Letter-of-Marque commission + more false
-    ensigns). DL reservoir: **#82 crew chorus**, **#81 hull creak**, **#83 watercolour chart**,
-    **#40/#35 Klezmer 'freygish' + procedural cannon SFX** (pairs with the #94 battle cue).
+13. **#72 — cannon-combat depth follow-ups** (hull-damage visuals, tougher foes/gunnery spread, more
+    aims, fleeing chase, cannon audio, foe initiative). Much of it **feeds #100 battle** — revisit
+    after the owner brief.
+14. **#80 — combat/harbour game-feel "juice" pass** (hit-stop, screenshake, camera punch; toggle-able).
+    Pairs with #102's landfall punch + any #100 battle.
+15. **#90 — Ballad richer composition** (more deed types · share-as-image) — deepens the #78 lever. P3.
+16. **#92 — richer privateering** (faction/bounty + persisted Letter-of-Marque commission + more false
+    ensigns) — **its bounty side feeds #112 rumour-payoff**. DL reservoir: **#82 crew chorus**,
+    **#81 hull creak**, **#83 watercolour chart**, **#40/#35 Klezmer 'freygish' + procedural cannon
+    SFX** (pairs with the #94 battle cue).
 
 ## Polish (cheap, charming, compounds shareability — natural fillers)
 
-20. **#15 — comedic loading-tip line pool.** — _humour surface, near-zero cost._
-21. **#21 — HUD coins placeholder + cleaner layout.** — _legibility; sets up future HUD work._
-22. **#88 — full weather (rain/storm/clouds), optional behind the #73 toggle.** — _extends day-night._
+17. **#15 — comedic loading-tip line pool.** — _humour surface, near-zero cost._
+18. **#21 — HUD coins placeholder + cleaner layout.** — _legibility; sets up future HUD work._
+19. **#88 — full weather (rain/storm/clouds), optional behind the #73 toggle.** — _extends day-night._
 
 ## Enablers / tech debt (schedule, don't let them perpetually lose)
 
-23. **#36 — fixed-timestep accumulator loop.** — _**DL #3 promotes this above #84**: "the world lives
+20. **#36 — fixed-timestep accumulator loop.** — _**DL #3 promotes this above #84**: "the world lives
     under a paused helm" wants a sim that steps independently of input/render; `playerPaused` is its
-    natural seam. Unlocks #108 + record/replay golden traces (#107)._
-24. **#38 — lightweight PR-validation CI gate** (tests + headless playtest, no deploy). — _Retro 8's
+    natural seam. Unlocks #108 + record/replay golden traces (extends #107)._
+21. **#38 — lightweight PR-validation CI gate** (tests + headless playtest, no deploy). — _Retro 8's
     allow-list means script/test-only pushes no longer run unit tests at all; this is the proper home._
-25. **#37 — tolerance-based deterministic visual diff.** Open since cycle 10. — _automates the last
+22. **#37 — tolerance-based deterministic visual diff.** Open since cycle 10. — _automates the last
     manual visual-QA step._
-26. **#74 — PWA service worker (offline caching).** · **#75 — mobile safe-area/landscape/low-end
+23. **#74 — PWA service worker (offline caching).** · **#75 — mobile safe-area/landscape/low-end
     polish.** · **#84/#85 — WebGPU / OffscreenCanvas spikes** (DL #2 tech reservoir; #84 below #36).
 
 ## Blocked / held
 - **#99 — sail zones** (invisible regions driving music; later hostility/weather) — P3, naturally
-  rides #94 + the #95 mode/zone seam; revisit after the town-depth verbs land.
+  rides #94 + the #95 mode/zone seam; revisit after the rumour loop + battle land.
 
-## ⏳ iOS — batch the next owner re-test (Retro 10)
+## ⏳ iOS — batch the next owner re-test (Retro 10, still open)
 - Three device-dependent slices are shipped **best-effort, UNCONFIRMED** pending one owner iPhone
   re-test: **#77** audio unlock · **#87** no-text-select · **#93** ship's-wheel touch. Don't stack
   dependent work; ask the owner to confirm all three on the latest build in one pass.
 
 ---
 
-_SHIPPED & CLOSED / advanced this block (Retro 10, loops 48–54): **#95** mode scaffold · **#67/#96/#66**
-auto-harbour town/market · **#94 phase 1** proximity crossfade (#94 OPEN, phases 2–5) · **#106 phase 1**
-seam hardening (#106 OPEN, slices 1+4) · **#97 phase 1** gull flock (#97 OPEN → #110 dolphins) ·
-**#93** ship's-wheel (CLOSED; #98 dup) · **#101 phase 1+2** port dressing (#101 OPEN, phase 3). Plus
-the **DL #3** research loop (filed #102–#109). Earlier (Retro 9): #79/#91/#55/#20/#65/#32 drained;
-#72 advanced. EPICs #1–#9 are umbrellas, not slices._
+_SHIPPED & CLOSED this block (Retro 11, loops 55–61): **#103** tavern "listen for word" (rumours) ·
+**#102** landfall phase 1+2 (crafted multi-sensory transition — CLOSED) · **#107** mode-transition QA
++ a **real perf-counter race fix** (CLOSED) · **#104** the port remembers you (save v9, CLOSED) ·
+**#71** islands TLC (CLOSED). **#70** ocean whitecaps (phase 1; **#70 STAYS OPEN [STANDING-RULE]**).
+Filed follow-ups: **#111/#112** rumour marker+payoff, **#104b** port-memory depth, **#113/#114** sea
+flourishes. Earlier (Retro 10, loops 48–54): #95/#67/#96/#66/#94-ph1/#106-ph1/#97-ph1/#93/#101-ph1+2
++ the DL #3 research loop. EPICs #1–#9 are umbrellas, not slices._
 </content>

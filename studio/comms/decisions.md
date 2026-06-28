@@ -6,6 +6,52 @@ architecture) are raised as `owner-decision` GitHub issues and recorded here onc
 
 ---
 
+### 2026-06-28 — Retro 11 (loops 55–61): the modes now MATTER — town is a destination; next, close the verb loop
+**Decision.** The seven cycles since Retro 10 gave the mode skeleton a body. Town stopped being a
+better trade panel and became a **destination**: a tavern **listen-for-word** verb spins live state +
+reputation into **rumours that name a real target** (#103), and the harbourmaster **remembers your
+face** across visits (#104, save v8→v9 fail-open). Landfall stopped being a snap and became a
+**crafted multi-sensory moment** — eased camera + golden grade + glassy moored swell + on-beat "made
+port" stinger, skippable, reversed on leave (#102 phase 1+2, CLOSED). The world between ports filled
+out: **per-isle palette/silhouette/dressing** (#71) and **drifting whitecaps** on the sea's crests
+(#70 slice 1). The gate hardened to the exploding mode state-space (N×N matrix + golden trace + BATTLE
+pause invariant) and in doing so **caught and fixed a REAL headless perf-counter race** (#107). 7
+releases, 482→**542 tests**, 0 escaped bugs, perf **29/130 draws**. **The build crossed from "a
+structured multi-mode world" to one where the structure earns its keep — the town is somewhere you
+sail *back* to.** New top-3 (depth-over-breadth, reactive-verbs-first): **(1) #112(+#111) close the
+rumour loop** (a chased rumour gets a map marker + a real payoff) → **(2) #105 "while you were
+ashore…" digest** → **(3) #69 per-town music identities**. Battle-mode **#100 is HELD for the ~08:00
+Game-Designer owner brief (IMMINENT)** — the obvious next big slice but the owner's to steer; not
+auto-promoted.
+**Why.** Retro 10 built the rooms; the honest gap was that town didn't yet hold a reason to return and
+battle was an empty room. DL #3's town-depth loop is now closed (rumours → memory → crafted landfall),
+so the next leverage is to **make the verbs pay off before adding new ones** (a verb with no payoff is
+a town with no destination, one layer up) and to fill the empty battle room at the owner brief — not
+to keep deepening town around the gap.
+
+### 2026-06-28 — Retro 11: a QA-coverage slice earns its keep by catching REAL bugs (keep scheduling them)
+**Decision (process, reinforce — no new code).** #107 was filed as "insurance as the mode state-space
+explodes" and immediately surfaced a **genuine** headless perf-counter race (counters refreshed only
+by the rAF loop → the gate could read `drawCalls=0` before any frame latched; reproduced 1/6 runs),
+fixed deterministically with `tw.qaRender()` + an `isMeasuredFrame()` latch (6/6 green after).
+**Standing call:** schedule a QA-coverage slice each time the mode/state space grows (battle #100 will
+warrant the next one), and treat an intermittent gate result as a **bug to root-cause, never as
+environmental noise**.
+**Why.** Gate-hardening reads as low-value "insurance" until it pays out; #107 paid out the day it
+shipped by flushing a latent race the happy-path gate had silently tolerated. Naming this keeps the
+discipline from being deprioritised as mere test-padding.
+
+### 2026-06-28 — Retro 11: mark umbrellas that host a STANDING RULE distinctly from phase-shipped ones
+**Decision (process, no code).** The PHASE-LABEL rule (Retro 10) distinguishes "OPEN, phase shipped"
+from "OPEN, untouched". Retro 11 adds a third case: an umbrella that **hosts an ongoing standing rule**
+stays OPEN *deliberately* and must be marked **[STANDING-RULE]** so it is never mistaken for closeable.
+First instance: **#70** is the home of the "1–2 sea-delight beats per loop" rule (and its literal
+first slice — sail-over curios — is still unbuilt), even though it shipped whitecaps this block. Added
+the marker to `queue.md`'s PHASE-LABEL rule + the #70 line.
+**Why.** A future retro reading "#70 OPEN, whitecaps shipped" could try to close it and silently drop
+the recurring delight-beat cadence. Labelling the standing-rule umbrellas keeps the cadence alive and
+the queue honest about *why* an issue stays open.
+
 ### 2026-06-28 — Retro 10 (loops 48–54): the mode-system pivot is BUILT — next, make the modes matter
 **Decision.** The seven cycles since Retro 9 delivered the owner's whole mode spine: **#95** explicit
 sailing/town/battle state machine (world lives under a paused helm) → **#67/#96/#66** auto-harbour into
