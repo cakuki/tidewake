@@ -66,3 +66,8 @@ Durable art-direction decisions and asset notes. Grows over time; keep entries s
   with `CREDITS.md`; no NC/ND), keep **original silhouettes**, **perf-budget** tris/draw-calls (#52),
   match the **sunny Caribbean** look (#61), integrate via `GLTFLoader` to the ship contract. Always
   `CREDITS.md`. Under Art & Audio epic #6.
+- 2026-06-28 — **First concrete #143 task = NPC ship parity (#144).** Owner: NPCs look lower-q than the
+  hero ship since #32 (they're still the old procedural mesh). Curate a **CC0 ship SET** (sloop/
+  merchantman/frigate/cruise) → map roles in `npc.js`, reuse #32's loader, keep the hero distinct.
+  These are the **most-instanced meshes** → instancing/LOD/draw-call budget (#52) is the gating concern.
+  Coordinates with nations #137 (national/pirate/merchant looks) + shipyards #141 (ship classes).
