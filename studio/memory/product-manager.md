@@ -52,3 +52,13 @@ Durable lessons, vision notes, and roadmap rationale. Grows over time; keep entr
 - 2026-06-28 (DL#3) 🧭 **Wildcard — "Your Harbour"**: claim ONE home port, invest across sessions; it
   physically grows with governor renown (dock, lit lighthouse, your flag), persisted. The governor-pole
   monument (mirror of the pirate notoriety track) + an irresistible "my port, then vs now" share image.
+- 2026-06-28 — **Owner set the delivery doctrine + chose the battle lane.** Battle epic **#135** =
+  Option 2 (Maneuvering Battle) → then Option 4 (Three-Act Raid), shipped as **small gamer-testable
+  slices**; I coordinate **deliver → test → evaluate** per slice. Three standing rules now in
+  `docs/ROADMAP.md`: (1) **self-eval bar** — every slice has a testable outcome or a **human in the
+  loop** (only the owner for now) + a duty to **improve the process itself**; (2) **BAU** — always keep
+  shipping bug/UI fixes; (3) **focused-lane + lane-switch GATE** — *I own calling it*: don't leave a lane
+  (e.g. battle → music) until it ships something **impressive AND gamer-testable**. Design source #100.
+- 2026-06-28 — **Held (record-only, owner): Community Manager role** — post community updates + gather
+  player feedback as a **4th test layer** beyond unit/UI/QA (scales "human in the loop" past just the
+  owner). Pick up **after the weekly usage reset**; not triaged/filed yet. `inbox/2026-06-28-community-manager-role.md`.

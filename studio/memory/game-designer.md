@@ -60,3 +60,14 @@ Durable design lessons, tuning notes, and fun hypotheses. Grows over time; keep 
   face, standing discount, eventually your name on the dock). Reactive *across visits* (Levine atoms) on the
   new persistent town mode; asset-light text/tint/props. The town you revisit becomes a ledger of who you've
   become — the pirate↔governor branch made visible. → candidate backlog issue.
+- 2026-06-28 — **Owner picked my brief's hybrid: Option 2 → then Option 4 (#135), shipped as small
+  gamer-testable slices.** My job now = design each slice so it's *fun and testable on its own*, not a
+  big drop. Locked beats to honour: **verbal/insult duel = THE captain duel** (the climax, not swords);
+  **boarding → crew brawl → duel**; **workshop loadouts + mid-combat ammo cycle**; the **duel expands
+  14 → 50+ insults across 7 categories** (+ Superstition, + Hygiene, anti-repeat, an original comeback
+  per line — the brief's samples are the seed). Option 4 later couples the phases (hull dmg → boarding
+  odds, casualties → duel confidence). Design source-of-truth = my brief on **#100**.
+- 2026-06-28 — **Lane discipline now governs my creative spark:** battle is the **focused lane** — keep
+  authoring beats *within it* until it delivers something impressive players can test; don't pull the
+  loop toward music/other lanes early (PM owns the gate). Self-eval: pitch each beat with a *testable
+  "is this fun in a real session?"* outcome or a human-in-the-loop check (owner).

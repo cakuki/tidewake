@@ -49,3 +49,13 @@ Durable art-direction decisions and asset notes. Grows over time; keep entries s
   map), match the contract (bow +Z, length ~16, re-attach `userData.flag`), procedural ship stays
   as fallback. Always add a `CREDITS.md` even for CC0 (manners + future CC-BY safety). Full report:
   `docs/art-sourcing.md`. Effort S–M. Caveat: public repo → CC0/self-made only for core art.
+- 2026-06-28 — **Battle system #135 (Option 2 → 4) is the focused lane — it needs a visual grammar.**
+  Each battle slice wants art that reads instantly and stays perf-cheap: a clear **"BATTLE" mode banner**,
+  a distinct **quarter-view battle camera** feel, **smoke / muzzle-flash / impact juice** (event-tied,
+  short, toggle-able — pairs with juice pass #80), and readable **boarding / crew-brawl** staging.
+  Workshop loadouts (cannons/ammo) and the town **workshop** can dress from the greenlit **CC0 Pirate
+  Kit props (#101)** riding #32's loader. Keep the **sunny Caribbean vibe (#61)** intact — combat juice
+  must not darken the palette. CC0/self-made only (public repo); `CREDITS.md` always.
+- 2026-06-28 — **Delivery doctrine applies to art too:** ship art in **small, testable slices** with a
+  human-in-the-loop check (owner) when "does it look right?" can't be auto-verified; stay on the battle
+  lane's visual needs until it lands something impressive + gamer-testable before switching lanes.

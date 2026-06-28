@@ -59,7 +59,8 @@ await loop **PM + TL sign-off**. `from-owner` issues:
 | [#97](https://github.com/cakuki/tidewake/issues/97) | **Living sea fauna** — flying gulls, jumping dolphins, ambient animals (instanced + culled; extends #68) | Art & Audio / 🌊 | P2 |
 | [#93](https://github.com/cakuki/tidewake/issues/93) | **Ship's-wheel touch steering** — replace L/R buttons with a draggable wheel widget; camera-orbit coexistence solved by DOM layering (async desk's canonical ticket; my dup #98 closed, TL note folded in) | M4 / UX | P2 |
 | [#99](https://github.com/cakuki/tidewake/issues/99) | **Sail zones** (future) — invisible regions driving sailing music; later hostility/weather. Producer of #94's `zoneId` context | later / 🌊 | P3 |
-| [#100](https://github.com/cakuki/tidewake/issues/100) | **Game Designer: battle-modes research + owner brief** (arcade combat / loadouts from workshops / boarding→crew fight/captain duel; keep verbal duel, expand jabs). *owner-decision — 08:00 CEST 2026-06-28 Telegram brief; not yet an accepted build* | M6 | — |
+| [#100](https://github.com/cakuki/tidewake/issues/100) | **Game Designer: battle-modes research + owner brief** (arcade combat / loadouts from workshops / boarding→crew fight/captain duel; keep verbal duel, expand jabs). ✅ Brief delivered 2026-06-28; now the **design source-of-truth** for #135 | M6 | — |
+| [#135](https://github.com/cakuki/tidewake/issues/135) | **Battle system — incremental: Option 2 (Maneuvering Battle) → then Option 4 (Three-Act Raid)**. Owner-chosen 2026-06-28; shipped as small gamer-testable slices (battle-mode shell → real-time broadside → workshop loadouts+ammo cycle → boarding→crew brawl→verbal duel → 50+ insults). **Current focused delivery lane.** Rides #95; reuses cannons.js/duel.js | M6 (Opt 2) → M7 (Opt 4 acts 2–3) | P1 |
 | [#32](https://github.com/cakuki/tidewake/issues/32) | **Hero ship glTF swap** — adopt a CC0 Quaternius/Kenney Pirate Kit ship (per #55 research); procedural ship as async fallback. *Owner-greenlit 2026-06-28* | Art & Audio | P2 |
 | [#101](https://github.com/cakuki/tidewake/issues/101) | **CC0 Pirate Kit props** — dress ports/islands/decks (jetties, barrels, crates, palms, lanterns, stalls); rides #32's loader pipeline; a few props per loop | Art & Audio / 🌊 | P2 |
 
@@ -67,6 +68,8 @@ await loop **PM + TL sign-off**. `from-owner` issues:
 > **#32 + #101 (art, 2026-06-28):** owner directed us to start using the **CC0 Pirate Kit** assets (Quaternius/Kenney, "Excellent" style fit per `docs/art-sourcing.md`/#55) — **ships and props**. CC0-only, original silhouettes, `CREDITS.md` (CONSTITUTION).
 > **Carve-outs from the 2026-06-28 GO:** iOS/native renderer stays parked (#56/#62/#63 unchanged); battle **scenario** waits for the #100 brief — only the battle **switch** infra (#95) proceeds now.
 > **Sequencing the owner set:** fix the open owner bugs first (#66 mobile overlap; #65 ✅ done), then build #95 → #94 → #93 → #97 → #96, with the art track (#32→#101) riding alongside. Loop PM+TL confirm priorities.
+> **Battle is now the focused lane (2026-06-28, owner):** **#135** ships Option 2 as small slices, then grows into Option 4. Per the lane-switch gate (Working principles), the loop **stays on the battle lane until it delivers something impressive AND gamer-testable** before switching to another lane (e.g. music #94's deeper slices). BAU bug/UI fixes continue alongside. PM coordinates deliver→test→evaluate per slice.
+> **Held — not yet planned:** a **Community Manager** role (post community updates, gather player feedback as a 4th test layer beyond unit/UI/QA) is recorded `record-only` at the owner's instruction — picked up **after the weekly usage reset**. See `studio/feedback/inbox/2026-06-28-community-manager-role.md`.
 
 \* #76 ✅ delivered. All second-intake priorities are **proposed, pending loop PM + TL sign-off**.
 
@@ -145,6 +148,18 @@ Make the Pirate path real, simply and readably.
 - **Technical:** projectile + collision system; damage/health state on ships; combat-aware
   AI states (engage / flee); audio for cannons and hits.
 
+> **🗡️ Battle system [#135] — the M6 centrepiece (owner-chosen 2026-06-28).** Delivered as small,
+> gamer-testable slices, **Option 2 first → then Option 4**:
+> 1. Battle-mode shell (enter/leave on #95; banner, quarter-view camera, battle music #94, Flee).
+> 2. Real-time broadside (steer for the beam, manual fire; reuses `cannons.js`).
+> 3. Workshop loadouts + mid-combat ammo cycle (round/chain/grape/light/heavy/swivel; ties town mode #96).
+> 4. Boarding → crew brawl → **verbal captain duel** (capture = Standing / sink = Infamy; `duel.js` is the climax).
+> 5. Expanded verbal duel — 14 → 50+ insults, 7 categories (+ Superstition, + Hygiene), anti-repeat.
+>
+> Then **Option 4 (Three-Act Raid)** couples the phases (hull dmg → boarding odds; casualties → duel
+> confidence) across M6 (act 1) + **M7** (acts 2–3). `cannons.js` turn-exchange is kept as the
+> NPC-vs-NPC auto-resolver. Design source: #100.
+
 ## M7 — A Name on the Water (crew & reputation)
 
 Make choices stick to you.
@@ -196,3 +211,17 @@ Tie the experience together and make it sing.
 - Realism and humour advance *continuously*, not in a single dedicated milestone.
 - Owner decisions (branding / strategy / big architecture) go to an `owner-decision` issue
   with options — never auto-adopted.
+
+### Delivery doctrine (owner, 2026-06-28 — standing rules)
+
+- **Self-eval bar:** every slice ships with a **clearly achievable, testable outcome**. If it can't be
+  machine-verified, put a **human in the loop** (for now that human is **only the owner**). Plus a
+  standing **self-improvement** duty — iterate on the *process itself* (raise self-awareness, fix the
+  loop), not just the game. Pairs with #53 (self-tested UI) and the retro/self-eval cadence.
+- **Business as usual:** always keep delivering **bug fixes + UI improvements** alongside the headline
+  lane — the lights stay on.
+- **Focused-lane delivery + lane-switch GATE:** work the single most important improvement lane and
+  **do not switch to another roadmap lane until the current one has shipped something impressive AND
+  gamer-testable** over several loops. *Example: don't switch from the battle-system lane (#135) to the
+  music lane until battle has delivered something impressive players can actually test.* The PM owns
+  calling the gate.

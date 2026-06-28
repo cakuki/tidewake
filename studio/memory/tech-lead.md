@@ -53,3 +53,16 @@ Durable architecture decisions and engineering lessons. Grows over time; keep en
 - 2026-06-27 (DL#2) ⚙️ **Wildcard — a renderer-adapter seam + OffscreenCanvas spike**: a tiny boundary
   so nothing imports a concrete renderer makes both a WebGPU A/B and a worker render-move mechanical;
   free to design now while the engine is small. → filed (WebGPU spike + OffscreenCanvas spike).
+- 2026-06-28 — **Battle system #135 is the focused M6 lane (owner-chosen): Option 2 → then Option 4,
+  small slices.** Engineering shape: it **rides the #95 mode-switch infra** (enter/leave battle, NPCs
+  keep sailing); **reuse `cannons.js` (damage/morale) and `duel.js` (insults)** — don't rebuild. The
+  *new surface* is the **real-time battle camera + in-combat steering arena** (Option 2 slice 2):
+  keep it **behind the mode switch and perf-budgeted (#52)** — it's the riskiest perf addition. Keep
+  `cannons.js`'s turn-exchange as the **NPC-vs-NPC auto-resolver** (no rewrite). Slice order: shell →
+  broadside → workshop loadouts/ammo cycle → boarding→brawl→duel → 50+ insults. Option 4 later =
+  phase-coupling state (hull→boarding odds, casualties→duel confidence) + per-phase UI across M6/M7.
+- 2026-06-28 — **Delivery doctrine (owner) binds engineering:** every slice needs a **machine-testable
+  outcome or a human-in-the-loop** gate (only the owner for now) — extend the play-test gate to assert
+  each battle slice; and a standing duty to **improve the loop/process itself**, not just code. BAU
+  bug/UI fixes continue. **Lane-switch gate:** don't pivot off battle to another lane until it ships
+  something impressive + gamer-testable (PM calls it).
