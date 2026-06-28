@@ -620,6 +620,44 @@ try {
   if (harbour.sailedOut.townOpen) fail('auto-harbour: the town view stayed open after leaving');
   if (harbour.sailedOut.bodyTown) fail('auto-harbour: body.town lingered after leaving (controls stayed hidden)');
 
+  // 2h3) Landfall gesture (#102): making port is a crafted, EASED moment, not a snap. Drive the
+  // mode transition headlessly and assert the gesture (a) starts under sail (blend 0), (b) eases
+  // blend UP over the sim's dt without jumping straight to 1 (deterministic, not wall-clock), (c)
+  // only opens the town view once fully ASHORE, (d) is SKIPPABLE to the end, and (e) the reverse
+  // eases back down and closes the town. Proves the "transition IS the drama" plays out headless.
+  const land = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);
+    const atSea = { ...tw.landfall };
+    tw.enterMode('town');                 // begin the making-port gesture
+    const onStart = { ...tw.landfall };
+    tw.step(0.1);                          // one small slice of time in
+    const midway = { ...tw.landfall };
+    tw.step(0.15);                         // a touch more — blend must keep rising, monotonically
+    const later = { ...tw.landfall };
+    const eased = later.blend > midway.blend && midway.blend > 0 && midway.blend < 1;
+    const townHeldClosed = midway.blend < 1 && !tw.town.open; // town waits until ashore
+    const skipped = tw.skipLandfall();    // jump the rest of the gesture
+    tw.step(0.1);
+    const ashore = { ...tw.landfall, townOpen: tw.town.open };
+    tw.leaveMode();                        // Set Sail: the mirror gesture
+    tw.step(0.1);                          // a frame for the view to close + the reverse to ease
+    const onLeave = { ...tw.landfall, townOpen: tw.town.open };
+    tw.skipLandfall(); tw.step(0.1);
+    const backAtSea = { ...tw.landfall };
+    tw.newVoyage(); tw.step(0.1);
+    return { atSea, onStart, midway, later, eased, townHeldClosed, skipped, ashore, onLeave, backAtSea };
+  });
+  if (land.atSea.phase !== 'idle' || land.atSea.blend !== 0) fail(`landfall: did not boot under sail (phase=${land.atSea.phase} blend=${land.atSea.blend})`);
+  if (land.onStart.phase !== 'landing' || !land.onStart.active) fail(`landfall: entering town did not begin the gesture (phase=${land.onStart.phase})`);
+  if (!land.eased) fail(`landfall: blend did not EASE up deterministically (mid=${land.midway.blend?.toFixed(3)} → later=${land.later.blend?.toFixed(3)}) — it snapped or stalled`);
+  if (!land.townHeldClosed) fail('landfall: the town view opened mid-gesture (should wait until ashore)');
+  if (!land.skipped) fail('landfall: the gesture was not skippable');
+  if (land.ashore.phase !== 'ashore' || land.ashore.blend !== 1 || !land.ashore.townOpen) fail(`landfall: skip did not land fully ashore with the town open (phase=${land.ashore.phase} blend=${land.ashore.blend} town=${land.ashore.townOpen})`);
+  if (land.onLeave.phase !== 'leaving' || land.onLeave.townOpen) fail(`landfall: Set Sail did not begin the reverse + close the town (phase=${land.onLeave.phase} town=${land.onLeave.townOpen})`);
+  if (!(land.onLeave.blend < land.ashore.blend)) fail(`landfall: the reverse did not ease back down (blend=${land.onLeave.blend?.toFixed(3)})`);
+  if (land.backAtSea.phase !== 'idle' || land.backAtSea.blend !== 0) fail(`landfall: did not settle back under sail (phase=${land.backAtSea.phase} blend=${land.backAtSea.blend})`);
+
   // 2i) Ship-vs-ship collision (#76 b): the player BUMPS other vessels, never sailing clean
   // through them. Pursue the nearest NPC at full throttle and assert (1) the hulls actually MET
   // (closest approach reached the combined boundary) and (2) the player was NEVER let deep inside

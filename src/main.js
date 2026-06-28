@@ -25,6 +25,8 @@ import { createCannons } from './cannons.js';
 import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
 import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading } from './systems/harbour.js';
+import { createLandfall } from './systems/landfall.js';
+import { mixHex } from './sea-color.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
@@ -222,13 +224,58 @@ const cannons = createCannons({
 // seam town mode (#67/#96), battle mode (#100) and mode-aware sound (#94) all plug into — the
 // current mode becomes their `context.mode`. A mode change rings the ship's bell beat once.
 const mode = createModeManager({
-  onChange: (to) => {
+  onChange: (to, from) => {
     try {
-      if (to === TOWN) hud.flashBanner('🏘️ Making port…', 'The helm goes quiet — boots on the planks, the town comes alive around you.');
+      // Landfall gesture (#102): a mode change isn't a snap — it's a crafted, eased moment. Entering
+      // TOWN begins the "making port" gesture (camera eases to a moored framing, the light warms,
+      // the town view takes the screen only once we're truly ashore); leaving it runs the mirror.
+      if (to === TOWN) { landfall.land(); hud.flashBanner('🏘️ Making port…', 'The helm goes quiet — the ship glides to her moorings as the light turns gold.'); }
+      else if (from === TOWN) landfall.leave(); // Set Sail: the town falls astern, the open light returns
       // BATTLE keeps its own "Battle stations!" beat below; SAILING's return is signalled by control resuming.
     } catch { /* a flourish must never break the loop */ }
   },
 });
+// The crafted SAILING↔TOWN transition (#102). Pure controller in src/systems/landfall.js; the
+// camera ease + warm "golden harbour" grade are applied off its `blend` in update(), and the town
+// view opens only once `townReady`. Deterministic + headless-safe (advanced on the sim's dt).
+const landfall = createLandfall();
+
+// Warm "golden harbour" grade (#102): as the gesture eases in, the sea-haze warms and the sun lifts
+// toward a low golden glow — the light of arriving in port. The pre-gesture look is captured on the
+// first warmed frame and restored EXACTLY the instant we're fully back under sail, so it never
+// fights the day-night cycle (#58) and leaves no residue. Colour/uniform writes only — no new draws.
+let gradeBase = null;
+const WARM_HAZE = 0xf2d6a8, WARM_SUN = 0xffd89a;
+function applyLandfallGrade() {
+  const b = landfall.blend;
+  const oceanHaze = ocean?.uniforms?.uHaze?.value;       // sea-haze toward the horizon (#58 mutates it too)
+  const oceanGraded = oceanHaze && !ocean.fellBack;       // flat-fallback sea has no uniforms
+  const skyBottom = world?.sky?.bottom?.value;            // the sky dome's horizon band
+  if (b > 0) {
+    if (!gradeBase) gradeBase = {
+      haze: scene.background.getHex(),
+      fog: scene.fog ? scene.fog.color.getHex() : null,
+      sunColor: sun.color.getHex(),
+      sunIntensity: sun.intensity,
+      oceanHaze: oceanGraded ? oceanHaze.getHex() : null,
+      skyBottom: skyBottom ? skyBottom.getHex() : null,
+    };
+    scene.background.setHex(mixHex(gradeBase.haze, WARM_HAZE, b));
+    if (scene.fog && gradeBase.fog != null) scene.fog.color.setHex(mixHex(gradeBase.fog, WARM_HAZE, b));
+    sun.color.setHex(mixHex(gradeBase.sunColor, WARM_SUN, b));
+    sun.intensity = gradeBase.sunIntensity * (1 + 0.18 * b); // a gentle exposure lift toward the gold
+    if (oceanGraded && gradeBase.oceanHaze != null) oceanHaze.setHex(mixHex(gradeBase.oceanHaze, WARM_HAZE, b * 0.85));
+    if (skyBottom && gradeBase.skyBottom != null) skyBottom.setHex(mixHex(gradeBase.skyBottom, WARM_HAZE, b * 0.8));
+  } else if (gradeBase) {
+    scene.background.setHex(gradeBase.haze);
+    if (scene.fog && gradeBase.fog != null) scene.fog.color.setHex(gradeBase.fog);
+    sun.color.setHex(gradeBase.sunColor);
+    sun.intensity = gradeBase.sunIntensity;
+    if (oceanGraded && gradeBase.oceanHaze != null) oceanHaze.setHex(gradeBase.oceanHaze);
+    if (skyBottom && gradeBase.skyBottom != null) skyBottom.setHex(gradeBase.skyBottom);
+    gradeBase = null; // forget it: fully back under sail
+  }
+}
 
 // Audio: procedural sea ambience + adaptive sailing theme (start on first user gesture).
 // The music shares the audio engine's one context + master bus + mute toggle.
@@ -325,6 +372,7 @@ function newVoyage() {
   duel.cancel();
   cannons.cancel();
   mode.reset(); // a fresh voyage always starts under sail — deterministic (#95/#106)
+  landfall.reset(); // ...and with no landfall gesture mid-flight (#102)
   leftHarbour = false; // a fresh voyage re-arms auto-harbour from a clean slate (#67)
   persistence.clear();
   sailing.reset();
@@ -444,6 +492,14 @@ function leaveHarbour() {
   return true;
 }
 
+// The landfall gesture is SKIPPABLE (#102): an impatient captain can press Enter/Space — or tap —
+// during the ease to jump straight ashore (or straight out). Never steals input when nothing's
+// in flight, so it can't swallow a keystroke at sea. Pointer skip ignores the town panel's own
+// controls (Set Sail etc.) so a tap there still does its job.
+function skipLandfall() { return landfall.active ? landfall.skip() : false; }
+addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && landfall.active) skipLandfall(); });
+addEventListener('pointerdown', (e) => { if (landfall.active && !(e.target && e.target.closest && e.target.closest('#town'))) skipLandfall(); });
+
 function setPerf(on) { settings.setOption('perf', on); } // one source of truth for the overlay
 // Toggle the overlay: 'P' on desktop; tap the read-out to dismiss; ?perf boots it shown. All
 // route through the toggle so the panel switch + persistence track the overlay.
@@ -505,6 +561,7 @@ function update(dt, t) {
   if (fighting) { if (!mode.is(BATTLE)) mode.enter(BATTLE); }
   else if (mode.is(BATTLE)) mode.leave();
   const paused = mode.playerPaused; // true in TOWN/BATTLE: helm pauses, world keeps living
+  landfall.step(dt); // advance the SAILING↔TOWN gesture on the sim's dt (deterministic, headless-safe) (#102)
 
   // Slow-to-stop for harbour & combat (#76 c): the ship is no longer teleport-frozen for a
   // fight or a berth — it EASES to a near-stop. sailing.step always runs; a paused helm (fight
@@ -520,6 +577,18 @@ function update(dt, t) {
     }
   }
   sailing.step(dt, t, { fighting: paused, harbourDistance, harbourRadius: DOCK_RADIUS });
+
+  // Landfall camera ease (#102): sailing.step just set the open-water chase framing; as the gesture
+  // eases in, slide the camera toward a closer, lower, 3/4 "ashore" framing of the moored ship — so
+  // making port FEELS like coasting to your berth, not a teleport. blend 0 = untouched chase cam.
+  const lfBlend = landfall.blend;
+  if (lfBlend > 0) {
+    const hy = ship.position.y;
+    const ax = state.pos.x - Math.sin(state.heading + 0.55) * 40; // pulled in beside the bow, 3/4 on
+    const az = state.pos.z - Math.cos(state.heading + 0.55) * 40;
+    camera.position.lerp(new THREE.Vector3(ax, hy + 16, az), lfBlend); // mix(chase, ashore, blend)
+    camera.lookAt(state.pos.x, hy + 8 - 3 * lfBlend, state.pos.z);      // settle the gaze onto the deck
+  }
 
   // The world keeps living (#95): other vessels sail on EVERY frame — even while the player is
   // paused for a fight or making port — so the world never snap-freezes around you. Only the
@@ -557,14 +626,18 @@ function update(dt, t) {
 
   ocean.update(t, camera.position);
   daynight.update(dt);                          // optional day-night cycle (#58): no-op while OFF
+  applyLandfallGrade();                         // warm "golden harbour" glow over the gesture (#102)
   ports.update(state, onArrive, t);            // arrival detection (fires once → auto-harbour) + buoy bob
   // Auto-harbour bookkeeping (#67/#96): drop the leave-latch once we've cleared the harbour mouth
   // (so a later approach harbours cleanly again), and keep the TOWN view + the at-sea-control
   // hiding (#66) in lock-step with the mode. town.js caches its own renders, so this is cheap.
   leftHarbour = nextLeftHarbour(leftHarbour, { docked: ports.docked, leaving: false });
-  const inTown = mode.is(TOWN);
-  town.setOpen(inTown);
-  if (inTown !== bodyTown) { bodyTown = inTown; if (document.body) document.body.classList.toggle('town', inTown); }
+  // The town view takes the screen only once the landfall gesture is fully ASHORE (#102) — so the
+  // eased camera/grade play out in the open first, then the town opens; on Set Sail it closes at
+  // once (townReady drops the instant we leave) and the reverse gesture eases us back to sea.
+  const showTown = mode.is(TOWN) && landfall.townReady;
+  town.setOpen(showTown);
+  if (showTown !== bodyTown) { bodyTown = showTown; if (document.body) document.body.classList.toggle('town', showTown); }
   islandNamer.update(state.pos, onApproachIsland); // name + flavour the first time you near an isle (#19)
   wake.update(dt, state, t);                   // bow wake + trailing foam
   fauna.update(dt, t, { shipPos: [state.pos.x, state.pos.z], focus: camera.position }); // gull flock (#97): wheels with you, hugs the coast, culled off-stage
@@ -778,6 +851,11 @@ window.__tidewake = {
   // seaward). Auto-harbour itself is driven by sailing into a port's dock radius (onArrive).
   get town() { return { open: town.isOpen, port: town.port, leftHarbour }; },
   leaveHarbour() { return leaveHarbour(); },
+  // Landfall gesture (#102) QA surface: the crafted SAILING↔TOWN transition's live phase + eased
+  // blend (0=at sea, 1=ashore) + whether it's in flight, plus the headless skip driver — so a
+  // playtest can assert the moment EASES (not snaps), is deterministic, and is skippable.
+  get landfall() { return { phase: landfall.phase, blend: landfall.blend, active: landfall.active, townReady: landfall.townReady }; },
+  skipLandfall() { return skipLandfall(); },
   // Tavern "listen for word" (#103) QA surface: whether word is showing + the live rumours,
   // and a deterministic driver so a headless playtest can listen and assert the room speaks.
   get tavern() { return { open: town.isOpen, listening: town.listening, rumours: town.rumours }; },
