@@ -16,33 +16,39 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 > living-sea-fauna, town-mode-trade-view, multiple-bg-music, approach-town-music-cue, use-cc0-pirate-kit.
 > Also: **owner spend-decision pending** — optional ~$10–30/mo AI-image seat for 2D portraits (#55).
 
-- **Current loop:** 47 done → **Retro 9 just ran (covered loops 41–47)** → next reads `queue.md` top
-  (now the owner MODE-SYSTEM P1 batch). Recent: Retro 8 → #79 False Colours (41, CLOSED) → #55
-  art-sourcing research (42) → #91 Letters of Marque (43, CLOSED) → #20 eased steering (44, CLOSED) →
-  #65 interior bilge cap (45, CLOSED) → #32 CC0 glTF hero hull (46, CLOSED) → **#72 "Strike the
-  Colours" crew-morale/merciful-capture combat depth (47, advanced; follow-ups open).**
-- **⚠️ ROADMAP PIVOT (Retro 9):** the owner filed a large PM-desk batch during the loop stop
-  (#66/#67/#93–#101) → next direction is a **MODE SYSTEM** (from-owner **P1**, preempts all): **#95
-  mode scaffold → #67+#96 auto-harbour into a real town/market mode (fold in #66) → #94 unified
-  mode-aware sound**. Battle-mode (#100) HELD for an **08:00 2026-06-28 Game-Designer owner brief**
-  (infra = #95). Charm fillers (#97/#93/#101/#71/#70/#68) + DL reservoir slot in after the mode spine.
-- **Loops since last retro:** **0** (Retro 9 just ran, covered loops 41–47; HARD trigger fired at 7).
-  Cadence: retro every ~7–8 cycles, HARD trigger 7. **Next retro ~loop 54–55** unless a from-owner P1
+- **Current loop:** 54 done → **Retro 10 just ran (covered loops 48–54)** → next reads `queue.md` top
+  (now **#103 tavern "listen for word"** — the town-as-destination verb). Recent: Retro 9 → #95 mode
+  scaffold (48, CLOSED) → #67+#96+#66 auto-harbour town/market (49, CLOSED) → #94 mode-aware sound ph1
+  (50, OPEN) → **DL #3 research loop** (filed #102–#109) → #106 seam-hardening ph1 (51, OPEN) → #97
+  gull flock ph1 (52, OPEN) → #93 ship's-wheel touch (53, CLOSED; #98 dup) → **#101 CC0 port dressing
+  ph1+2 (54, OPEN).**
+- **✅ ROADMAP PIVOT BUILT (Retro 10):** the owner's MODE SYSTEM is shipped end-to-end — state machine
+  (#95) · auto-harbour town/market (#67/#96/#66) · mode-aware sound bed + port proximity cue (#94 ph1)
+  · hardened transition seam (#106 ph1) · plus charm (gulls #97, touch helm #93, dressed ports #101).
+  **Next leverage = make the modes MATTER (DL #3, depth-over-breadth):** the town must be a
+  *destination not a menu* + the *transition is the drama* → **#103 tavern rumours → #102 crafted
+  landfall → #107 mode-transition QA**. Battle-mode (#100) still HELD for the **08:00 2026-06-28
+  Game-Designer owner brief** (infra #95 + #106-ph1 built); do NOT promote it above where the owner
+  wants it.
+- **Loops since last retro:** **0** (Retro 10 just ran, covered loops 48–54; HARD trigger fired at 7).
+  Cadence: retro every ~7–8 cycles, HARD trigger 7. **Next retro ~loop 61** unless a from-owner P1
   preempts.
-- **Cycles since last deep-learning loop:** **0 — DL #3 DONE 2026-06-28** (counter reset; cadence ~10 →
-  **next DL ~10 cycles out**). DL #3 fanned out 9 role subagents; filed #102–#109 (mode-system depth,
-  all below the P1 batch); synthesis in `studio/retros/2026-06-28-deep-learning-3.md`. Top theme: the
-  **town must be a destination, not a menu** + the **mode transition is the drama**; #106 (mode-seam
-  hardening) is the natural first DL #3 build slice. Promotes #36 fixed-timestep above #84.
+- **Cycles since last deep-learning loop:** **0 — DL #3 DONE 2026-06-28** (ran mid-block this period;
+  counter reset; cadence ~10 → **next DL ~10 cycles out, ~loop 64**). DL #3 fanned out 9 role
+  subagents; filed #102–#109 (mode-system depth); synthesis in
+  `studio/retros/2026-06-28-deep-learning-3.md`. Top theme: the **town must be a destination, not a
+  menu** + the **mode transition is the drama**. Promotes #36 fixed-timestep above #84. **⚠️ Note: two
+  DL #3 subagents hit injected derail — one a planted "cut a v0.1 release" prompt-injection (refused);
+  injection guardrail now explicitly covers release/scope/version/gate-bypass (Retro 10).**
 - **State:** core arc COMPLETE + tuned + onboarded + sunny + perf-gated; **+ cannon combat (#59), +
   mobile PWA w/ heat-aware DPR (#63), + PWA safe-area (#75 partial), + settings/toggles panel (#73),
   + arcade collision: islands (#76 a1) + harbour/fight slow-stop (#76 c) + ship-vs-ship (#76 b), +
   iOS shader hardening/fallback (#86) + iOS audio capture-phase unlock (#77) + no-text-select (#87),
   + OPTIONAL day-night toggle (#58, sunny stays default).**
-- **Next dispatch:** `queue.md` top work item — recommended (Retro 9): **#95 mode-system scaffold**
-  (from-owner P1 keystone) → **#67+#96 auto-harbour into town/market mode** (fold in #66) → **#94
-  unified mode-aware sound**. (Retro 8 roadmap #79/#91/#55/#20/#65/#32 all SHIPPED & CLOSED; #72
-  advanced.)
+- **Next dispatch:** `queue.md` top work item — recommended (Retro 10): **#103 tavern "listen for
+  word"** (reactive verb → town as destination) → **#102 crafted landfall transition** → **#107
+  mode-transition QA**. (Retro 9 roadmap #95/#67/#96/#94-ph1 all SHIPPED; #106/#97/#101 advanced;
+  #93 CLOSED. #100 battle HELD for the owner brief.)
 - **Owner-decisions ANSWERED:** #56 mobile = GO (shipped #63); #58 weather = GO optional toggle (SHIPPED #58).
   #76 priority delegated to PM+TL → P1, shipped a1+c+b; a2 remains. Prioritization is PM+TL's call.
 - **⏳ Awaiting owner re-test (iOS, on his iPhone):** **#77 audio** (capture-phase unlock — reopened,
@@ -58,9 +64,9 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
   QA; Game Designer owns balance/tuning; from-owner P1s jump the queue.)
 - **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions
   read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
-- **Latest release:** **v0.0.20260628000955** (#72 "Strike the Colours" — crew morale & merciful
-  capture). ~48 releases, **411 tests**. Perf **30/130 draws · 84k/150k tris** (the #32 glTF swap
-  freed headroom).
+- **Latest release:** **v0.0.20260628022029** (#101 CC0 Pirate Kit port dressing — ph1+2). ~55
+  releases, **482 tests**. Perf **35/130 draws · 85k/150k tris** (instancing + wholesale culling keep
+  the new fauna/props nearly free).
 - **Live:** https://cakuki.github.io/tidewake/
 - **Open enablers:** #37 deterministic visual-diff (schedule — open since cycle 10); #38 PR-validation
   CI gate; #36 fixed-timestep.
@@ -158,3 +164,4 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 | 52 | **#97 — Living sea fauna: an instanced gull flock that wheels with you (Phase 1; #97 stays OPEN).** The first fauna beat — a small flock of GULLS that keeps the ship company, a reactive verb: the world answers *where you are / what you're doing*. They wheel over the ship at sea and **DRIFT to hang over the shore as you raise an island**, gliding between the two via a smooth ease. The whole flock is **ONE `THREE.InstancedMesh`** (one draw call) of a tiny two-triangle gull silhouette with a Y-scale **wing-beat**, and it's **distance-culled wholesale** (`mesh.visible=false` → 0 draws) beyond `CULL_RADIUS` — a living sky for almost nothing. Pure, three-free **`src/fauna-math.js`** (`gullParams`/`gullPosition`/`flapScale`/`roostTarget`/`easeTowards`/`shouldCull`) TDD'd first; thin `createFauna({world})` factory in `src/fauna.js` consumes it; `main.js` ticks it beside `npcs`/`wake` **every frame** so the flock lives on while the helm pauses (town/battle). QA hook `window.__tidewake.fauna` exposes `{count,visible,nearLand,center}`. CREATIVE SPARK (Game Designer + Graphic Designer): gulls trail your wake hunting galley scraps, then peel off to ride the updraughts over a raised island — company at sea, a welcoming committee at the coast (pairs with the existing gull SFX #68). | #97 (Phase 1; **OPEN** for dolphins + other species) | v0.0.20260628014411 | 456 unit tests (+6 TDD in `tests/unit/fauna.test.mjs`: deterministic varied params · wheels on-circle facing travel · bounded wing-beat · ship-or-shore roost · ease convergence/no-overshoot · cull-beyond-radius); playtest ✓ PASSED, zero console errors; perf **32/130 draws · 83.8k/150k tris** (one instanced draw added — well in budget). CI green, live 200. Owner-facing VISUAL → gallery `studio/qa/gallery/v0.0.20260628014411-fauna-gulls.png` (gulls wheeling over the sunny sea + an island). Also corrected the stale owner-STOPPED banner at the top → loop is RUNNING (owner restarted via /loop 2026-06-28). **Follow-ups:** jumping dolphins (#97 phase 2) · other sea/land animals (phase 3) · per-bird flapping shader / coast-only roosts. |
 | 53 | **#93 — Ship's-wheel touch steering: a rotatable on-screen helm for mobile (CLOSES #93; from-owner P2; #98 was its duplicate).** Replaces the two ◀▶ touch steer buttons with a single **rotatable brass-and-wood ship's wheel** in its own fixed control zone (bottom-left thumb reach). **Drag-rotation → analog steer** that feeds the existing eased rudder (#20) — clockwise steers starboard, anti-clockwise to port, a half-turn = a half rudder; the wheel rotates 1:1 under the thumb and is a **self-centring helm** (lift off → springs back amidships, the eased rudder then settles the bow straight). Same eased-rudder path as the keyboard, **no parallel physics**; **desktop A/D stay authoritative and unchanged** — the wheel's analog axis is only sampled when the keyboard is idle. **No camera fight:** the wheel preventDefault/stopPropagation its own pointer events and owns its region, so a drag on it never doubles as the full-screen camera-orbit drag. **No #66 re-overlap:** the wheel lives inside `#touch-controls`, which TOWN mode already hides. New **pure `src/ui/wheel.js`** (`wheelSteer` drag-angle→steer with deadzone/clamp · `shortestAngleDelta` seam-safe accumulation · `clampAngle`/`pointerAngle`) TDD'd first; self-contained `createWheel()` factory (#53 standard) renders an **inline-SVG wheel** (license-clean, crisp at any DPR, ~0 weight). `input.js` exposes `steerAxis`/`wheel`; `sailing.js` samples the axis when keys idle; `main.js` adds `tw.wheel`/`steerWheel`/`centreWheel` QA. CREATIVE SPARK (Game Designer): the helm has heft — a real wheel you must actively hold over; let go and it springs amidships, weighty and forgiving, never a trap. | #93 **CLOSED** (#98 dup) | v0.0.20260628015755 | 476 unit tests (+10 TDD in `tests/unit/wheel.test.mjs`: deadzone→no-drift · full-lock→±1 + clamp-beyond · monotonic ramp · gentle-just-past-deadzone · sign symmetry · ±PI seam wrap · pointerAngle cardinals); playtest ✓ PASSED, zero console errors — new headless section drives the wheel to full lock → asserts the ship turns + the rudder builds while held + eases back on release + centring zeros the axis; touch-control check now asserts `#ship-wheel`. perf **30/130 draws · ~84k/150k tris** (one SVG + DOM, no new WebGL draws). CI green, live 200. Owner-facing VISUAL → gallery `studio/qa/gallery/v0.0.20260628015755-shipwheel.png` (the helm over the sunny sea, throttle ▲▼ + ⚔🔥 cluster, no overlaps). ⚠️ **DEVICE/iOS: best-effort, UNCONFIRMED pending owner iPhone re-test** (verified in headless 390×844 hasTouch emulation) — don't stack dependent work until confirmed. **Follow-ups:** haptic detent tick · wheel skins/themes · tunable sensitivity setting · optional non-self-centring lock mode. |
 | 54 | **#101 — Dress ports with CC0 Pirate Kit props: instanced barrels, crates & palms (#101 advanced; phase 1+2 of 4; from-owner P2).** The world stops being 100% procedural placeholder: each port becomes a **working harbour** — barrels + crates as **cargo on the jetty planks**, a pair of **palms framing the dock foot** — using the **CC0 Kenney Pirate Kit** (same kit family as the #32 hull). Loaded **like the #32 hull** (`GLTFLoader`, graceful fallback — the world simply sails **bare** if a fetch fails, never broken). Repeated props are **InstancedMesh'd (one draw per type per port)** and each port's cluster is **distance-culled wholesale** (≤520u), so a furnished world stays nearly free. New **pure `src/systems/props.js`** (`localToWorld` jetty-bearing transform · `propWorldPlacement` · `placementsForType` · `clusterVisible` cull · `scaleForHeight`) TDD'd first; three.js builder `src/props.js` (`loadProps` → per-port clusters of InstancedMeshes, never rejects); `ports.js` exposes `portPlacements` (incl. seaward angle); `main.js` builds + ticks it and exposes `tw.props`/`tw.qaTeleport`. Assets `assets/props/{barrel,crate,palm-straight}.glb` + shared `Textures/colormap.png`, **CC0** (credited in `CREDITS.md` + `assets/props/LICENSE.txt`). CREATIVE SPARK (Graphic Designer): a port stops being an abstract marker and reads as a **place** — cargo stacked, palms leaning over the berth — so every approach looks like landfall somewhere lived-in. | #101 (advanced; phase 1+2 — port dressing; island/loose-prop phases queued as follow-ups) | v0.0.20260628022029 | 482 unit tests (+8 TDD in `tests/unit/props.test.mjs`: type/target coverage · scaleForHeight + degenerate guard · localToWorld identity + Y-rotation convention · seaward/landward placement · spin folds into bearing · per-type placement counts · cull in/out of radius); playtest ✓ PASSED, zero console errors — new headless section asserts props placed (21 across 3 clusters), **drawn near a port** (7 visible), and **culled to 0** at open sea. perf **35/130 draws · 85k/150k tris** at spawn (instanced + culled — huge headroom kept). CI green, live 200. Owner-facing VISUAL → gallery `studio/qa/gallery/v0.0.20260628022029-pirate-kit-props.png` (Saltpurse Quay: kit palms framing the jetty, cargo on the planks, buoy + flag over the sunny sea). **Follow-ups:** island dressing (palms/rocks/huts instanced) · loose props (lanterns/market stalls/bottles, feeds town-market #96) · a 2nd/3rd port-prop variety pass · embed the prop textures into the GLBs (drop the shared-PNG fetch) like the #32 hull. |
+| — | Retro 10 (subagent) | — | — | Covered loops 48–54 (**the structural-pivot chapter**: #95 mode scaffold → #67/#96/#66 auto-harbour town/market → #94 ph1 mode-aware sound → DL #3 research (#102–#109) → #106 ph1 seam-hardening → #97 ph1 gull flock → #93 ship's-wheel touch → #101 ph1+2 port dressing; 411→**482 tests**, gate green, perf 35/130 draws). **Headline GAME finding:** the owner's mode-system pivot is BUILT — Tidewake crossed from "rich sandbox" to a **structured, multi-mode world** (sailing↔town↔battle, world lives under a paused helm, furnished ports, living sea, touch helm); but the spine is a skeleton — town is still "a better trade panel," battle an empty room → next leverage is **make the modes matter** (DL #3: town = destination-not-menu; transition = the drama). New top-3: **#103 tavern "listen for word"** → **#102 crafted landfall** → **#107 mode-transition QA**. **Headline PROCESS finding:** a planted **"cut a v0.1 release" prompt-injection** hit a DL #3 subagent (refused) → extended the injection guardrail to **release/scope/version/gate-bypass** (edited `LOOP.md` dispatch template); also added a **PHASE-LABEL RULE** to `queue.md` (multi-phase umbrellas state shipped-vs-remaining; #94 ph1 acceptance MET → not top-of-queue) + flagged **3 iOS slices (#77/#87/#93) to batch for one owner re-test**. #100 battle kept HELD for the owner brief. Logged 3 decision blocks. **Retro counter reset to 0** (next ~loop 61); DL #3 done → next DL ~loop 64. Queue-sync rule (Retro 9) held all block. |

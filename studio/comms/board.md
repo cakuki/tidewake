@@ -12,10 +12,14 @@ Keep `Doing` small (limit WIP). Cards: `#issue — short title — owner`.
 - Placeholder → real glTF sloop within budget (Graphic Designer + Tech Lead).
 - Grow the playtest + a manual smoke checklist (QA).
 
-## To do (next — owner MODE-SYSTEM P1 batch, set by Retro 9)
-- **#94 — Unified mode-aware sound & music — Phases 2-5** (rotating sea themes · per-town identities (#69) · real battle cue · real audio files behind `loadTrack`). Phase 1 (proximity crossfade + mode-aware bed) **shipped** v0.0.20260628010142; #94 stays OPEN.
-- **[OWNER-DECISION] #100 — arcade battle-modes** — HELD for the 08:00 2026-06-28 Game-Designer owner brief (infra = #95).
-- **DL #3 research loop — DONE** (ran after the P1 batch; filed #102–#109). Charm fillers now slot in: **#97 fauna phase 1 (gulls) shipped** + **#93 ship's-wheel touch shipped** + **#101 CC0 props phase 1+2 (port dressing) shipped** (stays OPEN — island/loose-prop passes next) — next: fauna phases (dolphins / other species) · **#101** island + loose-prop dressing · **#106 slices 1+4** · **#107** mode-transition QA.
+## To do (next — make the modes MATTER, set by Retro 10; depth-over-breadth, reactive-verbs-first)
+- **#103 — Town tavern "listen for word"** (TOP) — procedural rumours from world-state + reputation → **soft sea objectives**; turns the town from a menu into a **destination** (DL #3's #1 signal). Deps: #67 town (done).
+- **#102 — Landfall as a crafted multi-sensory transition** — eased camera · `townBlend` grade · calmed swell · music swell/stinger · "made port" punch, reversed on Leave. Pairs with #94. (DL #3 theme 2.)
+- **#107 — Mode-transition QA coverage** — N×N matrix · cross-mode pause invariant · mode-aware audio assertion · golden trace. Rides #106 (done).
+- **Fillers:** #106 slice 1 (declarative registry) · **#110** fauna phase-2 dolphins · **#101** loose props (feed town) + island dressing (pairs #71) · #104/#105 town-memory depth · #69 per-town music (#94 phase 3).
+- **#94 — remaining phases 2-5** stay OPEN, but **phase-1 headline acceptance is MET** (proximity cue + mode-aware bed shipped) → NOT top-of-queue; real-audio-files slice PARKED on an asset decision.
+- **[OWNER-DECISION] #100 — arcade battle-modes** — HELD for the 08:00 2026-06-28 Game-Designer owner brief (infra #95 + #106-ph1 already built); do NOT promote above where the owner wants it.
+- **⏳ iOS re-test (batch):** #77 audio · #87 no-select · #93 ship's-wheel — all shipped best-effort, UNCONFIRMED; ask the owner to confirm all three in one pass.
 
 ## Doing
 - _(empty)_

@@ -18,119 +18,131 @@ his reply back (never auto-adopt).
 **QUEUE-SYNC RULE (Retro 9):** after any PM-desk intake batch, **re-sort this queue's top before the
 next build dispatch** — a flat "items to file" list in `loop-state.md` is not a prioritised queue.
 
+**PHASE-LABEL RULE (Retro 10):** several umbrellas (#94/#97/#101/#106) shipped a phase and stay OPEN.
+"OPEN" ≠ "untouched" — each line states **what shipped vs. what remains** so priority tracks
+*delivered* value, not the issue's open/closed flag. A from-owner P1 whose headline acceptance is
+already met (e.g. #94 phase 1) does NOT auto-sit at the top.
+
 ---
 
-_Set by **Retro 9** (2026-06-28). State: the game is a genuinely rich sandbox — complete collision +
-atmosphere + named world + shareable Ballad + deception on both renown poles (#79/#91) + a CC0 glTF
-hero carrack (#32) + eased helm (#20). 411 tests, perf **30/130 draws · 84k/150k tris** (the glTF
-swap freed headroom). Latest `v0.0.20260628000955`._
+_Set by **Retro 10** (2026-06-28). State: the owner **MODE-SYSTEM pivot is built** — a sailing/town/
+battle state machine (#95), a real auto-harbour **town/market mode** (#67/#96/#66), a **mode-aware
+sound bed** with a port proximity cue (#94 ph1), and a **hardened transition seam** (#106 ph1) — plus
+the first charm back on top: a living **gull flock** (#97 ph1), a **ship's-wheel touch helm** (#93),
+and **dressed CC0 harbours** (#101 ph1+2). **482 tests**, perf **35/130 draws · 85k/150k tris**.
+Latest `v0.0.20260628022029`._
 
-_**Major pivot (owner, via the live PM desk during the loop stop):** the next direction is STRUCTURE,
-not more sandbox charm — a **mode system** (sailing / town / battle, world continues underneath), a
-real **town/market mode** entered by **auto-harbouring**, and a **unified mode-aware sound system**.
-These are from-owner **P1s** and preempt everything previously queued. Battle-mode scenario (#100) is
-HELD for an 08:00 2026-06-28 Game-Designer owner brief — its mode-switch infra is #95._
+_**The next leverage is depth, not more rooms (DL #3):** the spine exists but the **town must become a
+destination, not a menu**, and the **mode transition is the drama**. Lead with a reactive **verb
+ashore** (#103), then **sell the transition** (#102), then **harden the gate** (#107). Battle-mode
+#100 is HELD for the 08:00 2026-06-28 Game-Designer owner brief — do NOT promote it above where the
+owner wants it._
 
-## Top of queue (do in order) — owner-directed MODE SYSTEM (from-owner P1)
+## Top of queue (do in order) — make the modes MATTER (DL #3 depth; reactive-verbs-first)
 
-1. **#95 — Mode system scaffold** (sailing / town / battle; sailing **pauses**, world continues).
-   from-owner **P1**, the keystone enabler. Smallest always-working increment: a tiny mode state
-   machine with **sailing as default** + one clean transition seam (enter/leave, pause-vs-continue
-   semantics), exposed on `window.__tidewake` for QA; no new mode content yet. — _why: value very high
-   (the owner's explicit new spine); complexity medium; deps none — **unblocks #96 town, #67 approach,
-   #100 battle**. Do this first so the modes plug in without reworking the spine. CREATIVE SPARK: the
-   cannon-smoke / sail-furl transition feel._
+1. **#103 — Town tavern "listen for word"** (design). Procedural rumours from world-state + reputation
+   → **soft sea objectives** you sail back to town for. — _why: value **very high** (DL #3's single
+   strongest signal — turns the town from a menu into a **destination**, fixes ashore aimlessness);
+   complexity **medium**; deps #67 town (done). CREATIVE SPARK: a hunched regular in the corner who
+   "heard a thing" — a rumour that points the bow somewhere worth going._
 
-2. **#67 + #96 — auto-harbour into a real town/market mode** (from-owner **P1**). With the #95 seam:
-   approach a harbour → **announce + slow** (reuse the #76c slow-to-stop easing) → switch to a **town
-   /market MODE** (the existing trade panel becomes the mode's view) → **"Leave Harbour"** button
-   returns to sailing. **Fold in #66** (iPhone touch buttons overlap the town/trade panel — #96 scopes
-   this fix; hide sailing controls while in town). — _why: makes the first new mode real and closes
-   two P1s + a P1 bug at once; complexity medium-high; deps #95. CREATIVE SPARK: a harbour bell + a
-   market barker's first line._
+2. **#102 — Landfall: the mode transition as a crafted multi-sensory gesture** (design + art + audio).
+   Eased camera to a moored framing · `townBlend` warm grade · calmed glassy swell · music swell +
+   on-beat stinger · a "made port" punch — reversed on Leave. — _why: value **high** (DL #3 theme 2 —
+   the transition *is* the drama; makes the snap a moment); complexity **medium**; deps #95/#67 (done),
+   pairs with #94. CREATIVE SPARK: the world exhales as the wheel goes still and the harbour resolves._
 
-3. **#94 — Unified mode-aware sound & music system** (from-owner **P1**). Multiple tracks
-   (sailing / town / battle) selected by the #95 mode + a **proximity "port nearby" crossfade cue**;
-   **absorbs #69** (per-town music, transposition-first). First slice can be the proximity crossfade
-   cue alone (ships independently of full mode wiring). — _why: each mode should *sound* distinct;
-   complexity medium; deps lighter with #95 (mode→track map). CREATIVE SPARK: the swell of a town
-   theme as the harbour resolves out of the haze._
+3. **#107 — Mode-transition QA coverage** (tech + qa). N×N transition matrix · cross-mode pause
+   invariant · mode-aware audio assertion · golden mode-trace. — _why: value **medium** (enabler —
+   keeps the gate trustworthy as town depth + battle multiply the states); complexity **low–medium**;
+   deps #106 (done). Rides the #106 contract directly._
 
-## Owner backlog — charm/atmosphere fillers (from-owner; slot in once the mode spine exists)
+## Charm / atmosphere fillers (from-owner; slot in around the depth slices)
 
-4. **#97 — living sea fauna** (gulls / dolphins / ambient animals, instanced + culled). P2 from-owner.
-5. **#93 — ship's-wheel touch steering** (rotatable HUD widget for mobile). P2 from-owner.
-6. **#101 — CC0 Pirate Kit props** (dress ports/islands/decks, Quaternius/Kenney). P2 from-owner.
-7. **#71 — islands TLC** (palette/variety/props, coordinate with the #61 Caribbean sea). P2 from-owner.
+4. **#106 — Mode-seam hardening, slice 1** (declarative `{[mode]:{onEnter,onLeave}}` registry — sugar
+   over the bus). Cheap; rides alongside #107. _(slice 4 per-mode disposal PARKED — blocked on #100
+   battle meshes.)_
+5. **#110 — Living fauna phase 2: jumping dolphins** (#97 continues; gulls shipped). P2 from-owner.
+6. **#101 — props phase 3: loose props + island dressing** (lanterns/market stalls **feed the town
+   mode**; palms/rocks/huts on islands — pairs with #71). P2 from-owner. _(texture-embed + extra
+   variety PARKED.)_
+7. **#71 — islands TLC** (palette/variety/props, coordinate with the #61 Caribbean sea + #101 island
+   dressing). P2 from-owner.
 8. **#70 — ocean micro-details & sail-over delight** (+ the standing "1–2 delight beats per loop"
    rule). P2 from-owner.
-9. **#68 — seagulls: louder calls near the coast** (SFX exists) + visual flock. P2 from-owner.
+9. **#68 — seagulls: louder calls near the coast** (SFX exists) + tie to the #97 visual flock. P2 from-owner.
+
+## Town-depth follow-ons (DL #3 — slot in after #103/#102 prove the town is a place)
+
+10. **#104 — The port remembers you** (persistent per-town reputation; "Your Harbour" home-port
+    stretch). P2 design. _The pirate↔governor branch made spatial across visits._
+11. **#105 — "While you were ashore…" digest** (one-line living-world consequence on Leave Harbour).
+    P2 design. _Cheap legibility of the world-continues-underneath promise._
+12. **#69 — per-town music identities** (modal recolour/timbre over raw transposition) — the **#94
+    phase-3** slice; ships once town depth gives each port a character to score. P2 audio from-owner.
+
+## #94 remaining phases (P1 OPEN — but phase-1 headline acceptance is MET; not top-of-queue)
+
+13. **#94 — rotating sea themes** (phase 2) + **real battle cue** (phase 4, rides #100) + **real audio
+    files behind `loadTrack`** (phase 5 — **PARKED on an asset/owner decision**). #69 above is phase 3.
+    _Proximity crossfade + mode-aware bed already shipped (Loop 50)._
+14. **#109 — mode-aware audio craft** (constant-power crossfade · bar-clock transitions · procedural
+    per-mode reverb · modal recolour). P3 audio. _Rides #94._
+15. **#108 — per-mode perf budget + throttle world work in town** (gate ocean/wake + DPR by mode).
+    P2 tech. _Promote **#36 fixed-timestep** above #84 (DL #3)._
 
 ## [OWNER-DECISION] — ask, don't build
 
 - **#100 — arcade battle-modes** (combat/loadouts/boarding). **HELD for the 08:00 2026-06-28
-  Game-Designer owner brief**; scenario blocked pending the owner's steer. Its mode-switch infra is
-  #95 (build that regardless). — surface the brief over the owner channel.
-
-## DL #3 candidates — mode-system depth (filed 2026-06-28; see `studio/retros/2026-06-28-deep-learning-3.md`)
-
-_Headline themes: (1) the town must be a **destination, not a menu**; (2) the **mode transition is the
-drama** — sell it across all disciplines; (3) **harden the mode seam** before three half-built modes leak;
-(4) mode-aware audio is acoustic **space**, not just volume; (5) **promote #36 fixed-timestep** + #84/#85
-adapter. Slot these after the P1 mode batch drains — **#106 (seam hardening) is the natural first DL #3
-slice**, with #107 alongside; #102–#105 turn the town into a place._
-
-10. **#106 — Mode lifecycle hardening** (enter/leave hooks · multi-subscriber seam · legal-transition
-    guard · per-mode disposal). P2 tech. _The seam everything else plugs into — do first of the DL #3 set._
-11. **#107 — Mode-transition QA coverage** (N×N matrix · cross-mode pause invariant · mode-aware audio
-    assertion · golden mode-trace). P2 tech+qa. _Rides #106; keeps the gate trustworthy as states multiply._
-12. **#102 — Landfall: the mode transition as a crafted multi-sensory gesture** (eased camera · townBlend
-    grade · calmed swell · music swell/stinger · "made port" punch; reverse on leave). P2 design+art+audio.
-13. **#103 — Town tavern "listen for word"** (procedural rumours from world-state + reputation → soft sea
-    objectives). P2 design. _Makes town a destination; fixes ashore aimlessness._
-14. **#104 — The port remembers you** (persistent per-town reputation state; "Your Harbour" home-port
-    stretch). P2 design. _The pirate↔governor branch made spatial across visits._
-15. **#105 — "While you were ashore…" digest** (one-line living-world consequence on Leave Harbour). P2
-    design. _Cheap legibility of the world-continues-underneath promise._
-16. **#108 — Per-mode perf budget + throttle world work in town** (gate ocean/wake + DPR by mode; per-mode
-    BUDGET). P2 tech. _Perf win the seam unlocks; promote **#36 fixed-timestep** above #84._
-17. **#109 — Mode-aware audio craft** (constant-power crossfade · bar-clock transitions · procedural
-    per-mode reverb · modal recolour). P3 audio. _Rides #94._
+  Game-Designer owner brief**; scenario blocked pending the owner's steer. Its mode-switch infra
+  (#95) + seam hardening (#106 ph1) are already built. — surface the brief over the owner channel; do
+  NOT promote above where the owner wants it.
 
 ## Depth / DL #2 reservoir (between-mode fillers; prefer depth over breadth)
 
-18. **#72 — cannon-combat depth follow-ups** (hull-damage visuals, tougher foes/gunnery spread, more
-    aims, fleeing chase, cannon audio, foe initiative). Advanced in Loop 47; remainder open.
-19. **#80 — combat/harbour game-feel "juice" pass** (hit-stop, screenshake, camera punch; toggle-able).
-20. **#90 — Ballad richer composition** (more deed types · share-as-image) — deepens the #78 lever.
-21. **#40 / #35 — adaptive Klezmer 'freygish' combat tension layer + procedural cannon SFX** (pairs
-    with #94's battle track). DL reservoir: **#82 crew chorus**, **#81 hull creak**, **#83 watercolour
-    chart**.
+16. **#72 — cannon-combat depth follow-ups** (hull-damage visuals, tougher foes/gunnery spread, more
+    aims, fleeing chase, cannon audio, foe initiative). Advanced Loop 47; much of it **feeds #100
+    battle** — revisit after the owner brief.
+17. **#80 — combat/harbour game-feel "juice" pass** (hit-stop, screenshake, camera punch; toggle-able).
+    Pairs with #102's landfall punch.
+18. **#90 — Ballad richer composition** (more deed types · share-as-image) — deepens the #78 lever. P3.
+19. **#92 — richer privateering** (faction/bounty + persisted Letter-of-Marque commission + more false
+    ensigns). DL reservoir: **#82 crew chorus**, **#81 hull creak**, **#83 watercolour chart**,
+    **#40/#35 Klezmer 'freygish' + procedural cannon SFX** (pairs with the #94 battle cue).
 
 ## Polish (cheap, charming, compounds shareability — natural fillers)
 
-22. **#15 — comedic loading-tip line pool.** — _humour surface, near-zero cost._
-23. **#21 — HUD coins placeholder + cleaner layout.** — _legibility; sets up future HUD work._
-24. **#88 — full weather (rain/storm/clouds), optional behind the #73 toggle.** — _extends day-night._
+20. **#15 — comedic loading-tip line pool.** — _humour surface, near-zero cost._
+21. **#21 — HUD coins placeholder + cleaner layout.** — _legibility; sets up future HUD work._
+22. **#88 — full weather (rain/storm/clouds), optional behind the #73 toggle.** — _extends day-night._
 
 ## Enablers / tech debt (schedule, don't let them perpetually lose)
 
-25. **#38 — lightweight PR-validation CI gate** (tests + headless playtest, no deploy). — _Retro 8's
+23. **#36 — fixed-timestep accumulator loop.** — _**DL #3 promotes this above #84**: "the world lives
+    under a paused helm" wants a sim that steps independently of input/render; `playerPaused` is its
+    natural seam. Unlocks #108 + record/replay golden traces (#107)._
+24. **#38 — lightweight PR-validation CI gate** (tests + headless playtest, no deploy). — _Retro 8's
     allow-list means script/test-only pushes no longer run unit tests at all; this is the proper home._
-26. **#37 — tolerance-based deterministic visual diff.** Open since cycle 10. — _automates the last
+25. **#37 — tolerance-based deterministic visual diff.** Open since cycle 10. — _automates the last
     manual visual-QA step._
-27. **#36 — fixed-timestep accumulator loop.** — _determinism unlocks record/replay golden traces; **DL #3
-    promotes this above #84** — `playerPaused` (world-lives-under-a-paused-helm) needs a decoupled sim._
-28. **#74 — PWA service worker (offline caching).** · **#75 — mobile safe-area/landscape/low-end
-    polish.** · **#84/#85 — WebGPU / OffscreenCanvas spikes** (DL #2 tech reservoir).
+26. **#74 — PWA service worker (offline caching).** · **#75 — mobile safe-area/landscape/low-end
+    polish.** · **#84/#85 — WebGPU / OffscreenCanvas spikes** (DL #2 tech reservoir; #84 below #36).
 
 ## Blocked / held
 - **#99 — sail zones** (invisible regions driving music; later hostility/weather) — P3, naturally
-  rides #94 + the #95 mode/zone seam; revisit after the mode spine exists.
+  rides #94 + the #95 mode/zone seam; revisit after the town-depth verbs land.
+
+## ⏳ iOS — batch the next owner re-test (Retro 10)
+- Three device-dependent slices are shipped **best-effort, UNCONFIRMED** pending one owner iPhone
+  re-test: **#77** audio unlock · **#87** no-text-select · **#93** ship's-wheel touch. Don't stack
+  dependent work; ask the owner to confirm all three on the latest build in one pass.
 
 ---
 
-_SHIPPED & CLOSED this block (Retro 8 roadmap, drained): **#79** False Colours · **#91** Letters of
-Marque · **#55** art research · **#20** eased steering · **#65** hull bilge cap · **#32** CC0 glTF
-hull. **#72** advanced (follow-ups open). EPICs #1–#9 are umbrellas, not slices._
+_SHIPPED & CLOSED / advanced this block (Retro 10, loops 48–54): **#95** mode scaffold · **#67/#96/#66**
+auto-harbour town/market · **#94 phase 1** proximity crossfade (#94 OPEN, phases 2–5) · **#106 phase 1**
+seam hardening (#106 OPEN, slices 1+4) · **#97 phase 1** gull flock (#97 OPEN → #110 dolphins) ·
+**#93** ship's-wheel (CLOSED; #98 dup) · **#101 phase 1+2** port dressing (#101 OPEN, phase 3). Plus
+the **DL #3** research loop (filed #102–#109). Earlier (Retro 9): #79/#91/#55/#20/#65/#32 drained;
+#72 advanced. EPICs #1–#9 are umbrellas, not slices._
 </content>
