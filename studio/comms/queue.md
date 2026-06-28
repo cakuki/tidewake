@@ -42,32 +42,21 @@ points the bow but has no reward yet → **close the loop** (#112 payoff + #111 
 the obvious next big slice but it is the owner's to steer/sequence; do **NOT** auto-promote it above
 where the owner wants it._
 
-## Top of queue (do in order) — CLOSE THE REACTIVE LOOP, then fill the empty room
+## Top of queue (do in order) — the reactive loop is CLOSED; fill the empty room next
 
-**PM/TL: the build top is the rumour-payoff loop (#112 + #111).** It's the highest-value depth slice
-that does NOT depend on the battle brief — a good single dispatch to run now, around the ~08:00 brief.
-Re-sort if the owner steers #100 to the top after the brief.
+**PM/TL: the rumour-payoff trio + the ashore digest + per-town music ALL SHIPPED & CLOSED.** The
+next live build top is the **DL #4 reservoir** below (engine de-risk quartet #120–123 ride WITH
+the battle brief; #118 governor-verb is the highest-value standalone). **#100 battle remains the
+owner's to steer** — do NOT auto-promote above where the owner wants it.
 
-1. **#112 — Rumours that pay off** (+ **#111 — chased-heading map marker**) (design; reactive-verb
-   payoff, closes the #103 loop). A rumour you choose to chase gets a **map marker for its heading**
-   (#111, cheap legibility) and **arriving / acting on it pays off** via economy or bounty hooks
-   (#112) — turning "a tip that points the bow" into a full **town → rumour → sail there → reward**
-   loop. — _why: value **high** (a verb with no payoff is a town with no destination, one layer up);
-   complexity **medium**; deps #103 (done). CREATIVE SPARK: the regular's tip cashes out — chase the
-   word, claim the prize. Lead with the cheap #111 marker, then the #112 payoff. **DL #4:** fold
-   **#115** (typed `objectives.js` world-target — one source for marker/arrival/payoff/digest) into
-   this build instead of three string-parsers; make the payoff **pole-aware** (bounty→Infamy,
-   harbour-aid→Standing) so the loop drives the player up whichever pole they chose._
+1. ~~**#112 — Rumours that pay off** (+ **#111** marker, + **#115** typed `objectives.js`)~~ —
+   ✅ **SHIPPED & CLOSED** (Loop 62, `v0.0.20260628…`). Town → rumour → sail → pole-aware payoff loop is live.
 
-2. **#105 — "While you were ashore…" digest** (design; living-world legibility). A one-line
-   consequence shown on Leave Harbour — cheap legibility of the "world keeps living underneath"
-   promise the #95 seam already delivers mechanically but never tells the player; pairs with the #104
-   memory just shipped. — _why: value **medium**; complexity **low**; deps #67 + #104 (done)._
+2. ~~**#105 — "While you were ashore…" digest**~~ — ✅ **SHIPPED & CLOSED** (Loop 63). Leave-Harbour
+   recap of the visit's real deltas.
 
-3. **#69 — Per-town music identities** (#94 phase 3) (audio). Each port now has a *character* (a
-   memory, its own rumours, its own dressing) — give it its own sound via modal recolour/timbre over
-   raw transposition. — _why: value **medium**; complexity **medium**; deps #94 ph1 + #67 (done).
-   The town depth shipped this block finally gives the score something distinct to say per port._
+3. ~~**#69 — Per-town music identities** (#94 phase 3)~~ — ✅ **SHIPPED & CLOSED** (Loop 64). Each
+   port sounds like itself (modal recolour over transposition).
 
 ## [OWNER-DECISION / HELD — IMMINENT] — ask, don't auto-promote
 
@@ -110,14 +99,15 @@ rumour loop closes and the #100 brief is absorbed._
 - **Reactive-world reservoir (after the loop closes / not-more-town depth):**
   - **#124 — crew morale/loyalty meter** fed by your choices (DL #1's never-built earned-mutiny; also the
     battle surrender/boarding currency). _design P3._
-  - **#125 — emergent at-sea encounter: a foundering ship, rescue vs plunder** (traversal as
-    story-generator; a worthy rumour payoff). _design P3; distinct from #70 sail-over curios._
+  - ~~**#125 — emergent at-sea encounter: a foundering ship, rescue vs plunder**~~ — ✅ **SHIPPED &
+    CLOSED** (this loop). ONE seeded founderer at sea → RESCUE (Standing) / PLUNDER (Infamy + coin)
+    choice → pole-aware reward + Ballad verse, despawns cleanly. Follow-ups: more encounter types,
+    richer outcomes (grateful crew that fights alongside), a flying distress flag.
 
 ## Charm / atmosphere fillers (from-owner; slot in around the depth slices)
 
-4. **#104b — Port-memory depth** (per-port **last deed recalled by name**; the "Your Harbour"
-   home-port stretch; familiarity decay). Cheap town-depth follow-on to the just-shipped #104; slot
-   alongside #105. _Park the home-port stretch until the rumour loop (#112) closes._
+4. ~~**#104b — Port-memory depth** (per-port **last deed recalled by name** + "Your Harbour" home
+   seed)~~ — ✅ **SHIPPED & CLOSED** (Loop 65). Familiarity-decay remains a parked follow-on.
 5. **#106 — Mode-seam hardening, slice 1** (declarative `{[mode]:{onEnter,onLeave}}` registry — sugar
    over the bus). Cheap; rides alongside any new mode work. _(slice 4 per-mode disposal PARKED —
    blocked on #100 battle meshes.)_
