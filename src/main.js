@@ -560,7 +560,16 @@ function update(dt, t) {
   hud.renderDuel(duel.snapshot());             // insult-duel panel + "hail/fire" prompt (#33)
   hud.renderCannons(cannons.snapshot());       // cannon-broadside panel (#59)
   audio.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
-  music.update({ speed: state.speed, maxSpeed: sailing.MAX_SPEED });
+  // Mode-aware sound (#94): hand the music director WHERE the player is — the mode (#95) plus the
+  // nearest-port distance from the harbour loop above — so the bed crossfades into a port's tavern
+  // layer on approach (the #67 audible cue), settles for BATTLE, and is the open-sea bed at sail.
+  music.update({
+    speed: state.speed,
+    maxSpeed: sailing.MAX_SPEED,
+    mode: mode.current,
+    portDistance: harbourDistance,
+    dockRadius: DOCK_RADIUS,
+  });
 }
 
 // Endgame legends (#46): each frame, see if the ledger has just crossed the top of a

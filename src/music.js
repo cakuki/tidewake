@@ -19,6 +19,14 @@
 // Every PURE helper below (tempo math, scale-degree → frequency, the pattern generators,
 // speed → intensity) is browser-free and exported for `node --test`. All AudioContext use
 // lives inside createMusic()'s start()/scheduler.
+//
+// MODE-AWARE (#94): the sailing theme now lives under a named SEA layer-gain, with a parallel
+// PORT layer-gain hosting a warm tavern drone. The pure resolver in music-director.js maps the
+// player's context (mode + port distance) → target gains for those two layers; setMix() ramps
+// them so the bed crossfades into a port on approach, settles for a fight, and returns at sea —
+// all under the one shared { ctx, master } bus, so the existing mute still covers everything.
+
+import { resolveMix } from './music-director.js';
 
 // ---- Pure, browser-free helpers (unit-tested) ----
 
@@ -137,9 +145,11 @@ const TEMPO = 108; // BPM — a comfortable, jaunty sailing pace
  */
 export function createMusic() {
   let ctx = null;
-  let master = null;      // shared master gain from audio.js
-  let musicGain = null;   // our single sub-gain under the master (mute covers it)
-  let leadBus = null;     // soft lowpass colouring the lead
+  let master = null;        // shared master gain from audio.js
+  let musicGain = null;     // master music sub-gain under the bus (mute covers it)
+  let seaLayerGain = null;  // the sailing theme lives here (mode-aware mix, #94)
+  let portLayerGain = null; // the tavern/port drone lives here (swells on approach, #94)
+  let leadBus = null;       // soft lowpass colouring the lead
   let started = false;
   let muted = false;
   let intensity = 0;      // 0..1, set by update() from ship speed
@@ -200,7 +210,7 @@ export function createMusic() {
     env.gain.setValueAtTime(0.0001, time);
     env.gain.exponentialRampToValueAtTime(peak, time + 0.012);   // pluck attack
     env.gain.exponentialRampToValueAtTime(0.0001, end);          // decay/release
-    osc.connect(env).connect(leadBus);
+    osc.connect(env).connect(leadBus); // leadBus → seaLayerGain → musicGain
     osc.start(time);
     osc.stop(end + 0.02);
   }
@@ -215,7 +225,7 @@ export function createMusic() {
     env.gain.setValueAtTime(0.0001, time);
     env.gain.exponentialRampToValueAtTime(peak, time + 0.02);
     env.gain.exponentialRampToValueAtTime(0.0001, end);
-    osc.connect(env).connect(musicGain);
+    osc.connect(env).connect(seaLayerGain);
     osc.start(time);
     osc.stop(end + 0.02);
   }
@@ -235,10 +245,55 @@ export function createMusic() {
       env.gain.exponentialRampToValueAtTime(peak, time + 0.08); // soft pad swell
       env.gain.setValueAtTime(peak, end - 0.12);
       env.gain.exponentialRampToValueAtTime(0.0001, end);
-      osc.connect(env).connect(musicGain);
+      osc.connect(env).connect(seaLayerGain);
       osc.start(time);
       osc.stop(end + 0.02);
     }
+  }
+
+  // --- Port/tavern layer (#94): a warm, lowpassed D-major chord drone with a gentle
+  // accordion-bellows tremolo — the "auditory image" of a harbour. Built once on start() and
+  // left running; it stays silent (portLayerGain ≈ 0) until you near a port, when setMix()
+  // swells it up. Cheap (a handful of sustained oscillators), shares the master + mute.
+  function buildPortLayer() {
+    portLayerGain = ctx.createGain();
+    portLayerGain.gain.value = 0;        // silent until you approach a port
+    portLayerGain.connect(musicGain);
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1400;           // warm, woody, "indoors" timbre
+    lp.connect(portLayerGain);
+
+    // Accordion-bellows tremolo over the whole pad.
+    const trem = ctx.createGain();
+    trem.gain.value = 0.7;
+    trem.connect(lp);
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 2.6;           // a cosy wheeze
+    const lfoDepth = ctx.createGain();
+    lfoDepth.gain.value = 0.18;
+    lfo.connect(lfoDepth).connect(trem.gain);
+    lfo.start();
+
+    // A warm D-major chord drone (tonic / third / fifth / octave), softly detuned for body —
+    // the same key centre as the sailing theme, so the score feels like one voice.
+    const chord = [
+      noteNameToMidi('D3'), noteNameToMidi('F#3'),
+      noteNameToMidi('A3'), noteNameToMidi('D4'),
+    ];
+    const detunes = [-4, 3, -2, 5];
+    chord.forEach((midi, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = i % 2 === 0 ? 'triangle' : 'sine';
+      osc.frequency.value = midiToFreq(midi);
+      osc.detune.value = detunes[i];
+      const g = ctx.createGain();
+      g.gain.value = 0.05;               // each voice soft; the layer gain rides the swell
+      osc.connect(g).connect(trem);
+      osc.start();
+    });
   }
 
   function fireStep(s, time) {
@@ -282,12 +337,20 @@ export function createMusic() {
       musicGain.gain.value = muted ? 0.0001 : BASE_LEVEL;
       musicGain.connect(master);
 
+      // The sailing theme lives under its own SEA layer-gain (full at sea); the PORT layer is
+      // built silent and swells in on approach. setMix() crossfades the two (mode-aware, #94).
+      seaLayerGain = ctx.createGain();
+      seaLayerGain.gain.value = 1;
+      seaLayerGain.connect(musicGain);
+
       leadBus = ctx.createGain();
       leadBus.gain.value = 1;
       const leadLP = ctx.createBiquadFilter();
       leadLP.type = 'lowpass';
       leadLP.frequency.value = 3200; // soften the triangle's edge into a sweeter lead
-      leadBus.connect(leadLP).connect(musicGain);
+      leadBus.connect(leadLP).connect(seaLayerGain);
+
+      buildPortLayer();
 
       buildSchedule();
       step = 0;
@@ -302,7 +365,23 @@ export function createMusic() {
       ctx = null;
       master = null;
       musicGain = null;
+      seaLayerGain = null;
+      portLayerGain = null;
       started = false;
+    }
+  }
+
+  // Ramp the two named layer-gains toward the resolver's target mix — the crossfade between the
+  // open-sea bed and a port's tavern layer (and the settle for a fight). setTargetAtTime keeps
+  // every change a smooth glide, never a click; a no-op until the engine is up.
+  function setMix({ sea = 1, port = 0 } = {}) {
+    if (!ctx || !seaLayerGain || !portLayerGain) return;
+    try {
+      const now = ctx.currentTime;
+      seaLayerGain.gain.setTargetAtTime(clamp01(sea), now, 0.6);
+      portLayerGain.gain.setTargetAtTime(clamp01(port), now, 0.6);
+    } catch {
+      /* a bad frame must never throw */
     }
   }
 
@@ -326,6 +405,16 @@ export function createMusic() {
       const speed = Number(state?.speed) || 0;
       const maxSpeed = Number(state?.maxSpeed) || 55;
       intensity = speedToIntensity(speed, maxSpeed);
+
+      // Mode-aware mix (#94): the pure resolver maps WHERE the player is (mode + port distance)
+      // → per-layer target gains; setMix ramps the sea/port crossfade. Safe with partial state
+      // (defaults to the open-sea bed), so legacy callers keep the sailing theme unchanged.
+      setMix(resolveMix({
+        mode: state?.mode,
+        portDistance: state?.portDistance,
+        dockRadius: state?.dockRadius,
+      }));
+
       if (!ctx || !musicGain || muted) return;
       // Gentle overall swell with intensity, on top of the per-note adaptivity.
       musicGain.gain.setTargetAtTime(BASE_LEVEL * (0.85 + 0.15 * intensity), ctx.currentTime, 0.5);
@@ -334,5 +423,5 @@ export function createMusic() {
     }
   }
 
-  return { start, setMute, update };
+  return { start, setMute, update, setMix };
 }
