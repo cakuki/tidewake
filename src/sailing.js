@@ -91,6 +91,9 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     // Voyage log (persisted since save v7): a returning captain keeps the deeds already sung,
     // so reloading mid-voyage never loses the Ballad of Your Voyage (#78).
     if (Array.isArray(saved.voyageLog)) state.voyageLog = saved.voyageLog.slice();
+    // Per-port memory (persisted since save v9): a returning captain keeps what each town remembers
+    // of their prior dealings, so the harbourmaster greets them by reputation on landfall (#104).
+    if (saved.portMemory && typeof saved.portMemory === 'object') state.portMemory = { ...saved.portMemory };
   }
 
   // Respawn at the origin, dead in the water. Clear economy so initEconomy re-seeds defaults.
@@ -102,6 +105,7 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     delete state.legends; // a new voyage starts legend-less; the crowns are yet to earn
     delete state.onboarding; // a fresh voyage re-teaches: the goal + first-win beats arm again (#60)
     delete state.voyageLog; // a new voyage is a blank page — the Ballad starts unwritten (#78)
+    delete state.portMemory; // a new voyage = a clean slate; no port remembers you yet (#104)
     if (input && typeof input.resetView === 'function') input.resetView(); // reopen astern (#49)
   }
 

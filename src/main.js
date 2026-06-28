@@ -30,7 +30,8 @@ import { mixHex } from './sea-color.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
-import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat } from './renown.js';
+import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat, renownTier } from './renown.js';
+import { recallLine, rememberArrival, sanitizePortMemory } from './systems/port-memory.js';
 import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES } from './colours.js';
 import { BUDGET, formatPerf, pixelRatioCap, isMeasuredFrame } from './perf.js';
 import { isTouchDevice } from './input.js';
@@ -303,6 +304,9 @@ if (saved) sailing.restore(saved);
 state.onboarding = normalizeFlags(state.onboarding);
 // Voyage log (#78): a restored voyage keeps its deeds; a fresh one starts with a blank page.
 if (!Array.isArray(state.voyageLog)) state.voyageLog = [];
+// Per-port memory (#104): a restored voyage keeps what each town remembers of it; a fresh one
+// starts with a clean slate (no port knows your face yet). Sanitised so a junk save fails open.
+state.portMemory = sanitizePortMemory(state.portMemory);
 
 // ---- False Colours (#79) -------------------------------------------------------------
 // The displayed flag: true black (honest pirate) vs false merchant (a disguise). A restored
@@ -379,6 +383,8 @@ function newVoyage() {
   islandNamer.reset(); // a fresh voyage re-arms the island landfall greetings (#19)
   state.onboarding = normalizeFlags(state.onboarding); // reset() cleared it → fresh set
   state.voyageLog = []; // a new voyage = a blank page; the Ballad starts unwritten (#78)
+  state.portMemory = {}; // a clean slate — no port remembers your face yet (#104)
+  state.portRecall = null; // ...and no remembered-return greeting in flight
   state.colours = DEFAULT_COLOURS; // a fresh voyage flies honest black again (#79)
   applyColoursToShip();
   hud.renderColours(state.colours);
@@ -708,7 +714,19 @@ function checkLegends() {
 // On a captain's very first port the celebratory beat lands last (overwrites the greeting),
 // turning "you arrived" into a taught first-win; every later arrival is the normal greeting.
 function onArrive(portName, line) {
-  hud.showArrival(portName, line);
+  // The port remembers you (#104): RECALL the port's prior memory of you FIRST (so it reflects who
+  // you were last time, not this arrival), then BANK this visit into the persistent store. A return
+  // leads with the remembered-return greeting — warmer for a regular, cooler if you've turned pirate
+  // since — over the generic tier greeting; a true first visit keeps the stranger's welcome.
+  let recall = null;
+  try {
+    const current = { tier: renownTier(state.renown ?? 0).tier, pole: dominantPole(state.infamy, state.standing) };
+    recall = recallLine(state.portMemory?.[portName], current, portName); // null on a first visit
+    state.portMemory = rememberArrival(state.portMemory, portName, current);
+    state.portRecall = recall ? { port: portName, line: recall } : null; // surfaced in the town greeting
+    persistence.write(); // lock the visit the instant it's made (like a legend/onboarding beat)
+  } catch { /* the port's memory is a flourish, never a dependency — never break landfall */ }
+  hud.showArrival(portName, recall || line);
   fireOnboarding('dock');
   // Auto-harbour (#67/#96): the fresh arrival edge makes landfall into TOWN mode — once per
   // visit, only while under sail (the pure guard lives in src/systems/harbour.js). The mode's
@@ -862,6 +880,11 @@ window.__tidewake = {
   // seaward). Auto-harbour itself is driven by sailing into a port's dock radius (onArrive).
   get town() { return { open: town.isOpen, port: town.port, leftHarbour }; },
   leaveHarbour() { return leaveHarbour(); },
+  // The port remembers you (#104) QA surface: the persistent per-port memory store (visit count +
+  // your standing snapshot as seen locally) and the live remembered-return greeting (null on a
+  // first visit) — so a headless playtest can land, sail off, return, and assert the town reacts.
+  get portMemory() { return sanitizePortMemory(state.portMemory); },
+  get portRecall() { return state.portRecall || null; },
   // Landfall gesture (#102) QA surface: the crafted SAILING↔TOWN transition's live phase + eased
   // blend (0=at sea, 1=ashore) + whether it's in flight, plus the headless skip driver — so a
   // playtest can assert the moment EASES (not snaps), is deterministic, and is skippable.

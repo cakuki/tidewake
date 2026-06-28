@@ -17,6 +17,7 @@ import { GOODS, HOLD_CAP, START_COINS } from './economy.js';
 import { normalizeFlags, freshFlags, completedFlags } from './onboarding.js';
 import { sanitizeLog } from './voyage-log.js';
 import { COLOURS, DEFAULT_COLOURS } from './colours.js';
+import { sanitizePortMemory } from './systems/port-memory.js';
 
 // The set of colours ids we'll accept back from storage (#79). Anything else loads as the
 // honest default rather than rejecting the whole save (flag choice is flavour, not physics).
@@ -28,9 +29,10 @@ export const SAVE_KEY = 'tidewake.save.v1';
 // the earned endgame legends ({pirate, governor} crowns, #46); v6 added the invisible-
 // onboarding progress flags (seeded goal + first-win beats, fired once per captain, #60);
 // v7 added the voyage log — the deeds the Ballad of Your Voyage is composed from (#78);
-// v8 added the displayed colours — true black vs false merchant flag (#79 False Colours).
+// v8 added the displayed colours — true black vs false merchant flag (#79 False Colours);
+// v9 added per-port memory — what each town remembers of your prior dealings (#104).
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -91,6 +93,9 @@ export function serialize(state) {
   const voyageLog = sanitizeLog(state.voyageLog);
   // Displayed colours (#79): the chosen flag, validated to a known id; junk → honest black.
   const colours = KNOWN_COLOUR_IDS.has(state.colours) ? state.colours : DEFAULT_COLOURS;
+  // Per-port memory (#104): what each town remembers of you. Sanitised on the way out so only
+  // clean records persist; a pre-memory caller simply records an empty store (no port knows you).
+  const portMemory = sanitizePortMemory(state.portMemory);
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -105,6 +110,7 @@ export function serialize(state) {
     onboarding,
     voyageLog,
     colours,
+    portMemory,
   });
 }
 
@@ -198,6 +204,11 @@ export function deserialize(raw) {
   // unknown value loads as the honest black default rather than rejecting the save.
   const colours = KNOWN_COLOUR_IDS.has(obj.colours) ? obj.colours : DEFAULT_COLOURS;
 
+  // Per-port memory (save v9, #104): like legends/onboarding/ballad it's flavour, not load-bearing
+  // physics — sanitizePortMemory drops any junk/zero-visit record rather than rejecting an
+  // otherwise-valid save (fail open). Absent → an empty store (a town that doesn't know you yet).
+  const portMemory = sanitizePortMemory(obj.portMemory);
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -211,6 +222,7 @@ export function deserialize(raw) {
     onboarding,
     voyageLog,
     colours,
+    portMemory,
     renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }

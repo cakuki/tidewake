@@ -635,6 +635,64 @@ try {
   if (harbour.sailedOut.townOpen) fail('auto-harbour: the town view stayed open after leaving');
   if (harbour.sailedOut.bodyTown) fail('auto-harbour: body.town lingered after leaving (controls stayed hidden)');
 
+  // 2h2b) The port remembers you (#104): a port keeps a persistent per-town memory of your prior
+  // dealings and reflects it back on return. Drive two landfalls at the SAME port (teleport-driven
+  // arrival edges, deterministic), growing the captain's standing in between, and assert: the first
+  // visit banks the memory (visits=1) with NO remembered-return greeting (a stranger's welcome); the
+  // SECOND visit recalls it (visits=2, a non-empty greeting naming the port) and the town panel's
+  // harbourmaster line shows that remembered-return greeting (the owner-facing reactive verb).
+  const memory = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);
+    const port = tw.ports[0];
+    const [px, pz] = port.pos;
+    // A point well clear of every dock radius, to "sail out" between visits (re-arms the arrival edge).
+    let far = [0, 0];
+    { let bx = 0, bz = 0, bd = -1; for (let r = 0; r < 8; r++) { const ax = Math.cos(r) * 4000, az = Math.sin(r) * 4000; let d = Infinity; for (const p of tw.ports) d = Math.min(d, Math.hypot(p.pos[0] - ax, p.pos[1] - az)); if (d > bd) { bd = d; bx = ax; bz = az; } } far = [bx, bz]; }
+    async function arriveAt(x, z) {
+      tw.qaTeleport(x, z); tw.step(0.1);
+      for (let i = 0; i < 80 && !(tw.mode === 'town' && tw.town.open); i++) tw.step(0.1); // let the landfall gesture finish
+    }
+    function leave() {
+      tw.leaveHarbour();
+      tw.qaTeleport(far[0], far[1]);
+      for (let i = 0; i < 40 && tw.docked; i++) tw.step(0.1); // clear the dock radius → re-arm arrival
+    }
+    // First landfall — a stranger.
+    await arriveAt(px, pz);
+    const firstVisits = (tw.portMemory[port.name] || {}).visits || 0;
+    const firstRecall = tw.portRecall ? tw.portRecall.line : null;
+    const $masterEl = document.querySelector('#town .town-master');
+    const firstMaster = $masterEl ? $masterEl.textContent : '';
+    // Sail out, grow a respectable name, and return — the port should now KNOW you.
+    leave();
+    tw.setStanding(1200); // climb several rungs so the return is visibly reactive
+    await arriveAt(px, pz);
+    const secondVisits = (tw.portMemory[port.name] || {}).visits || 0;
+    const recall = tw.portRecall;
+    const $master2 = document.querySelector('#town .town-master');
+    const secondMaster = $master2 ? $master2.textContent : '';
+    const masterIsRecall = !!$master2 && $master2.classList.contains('town-master-recall');
+    // Persistence: the memory survives a save round-trip (drive save.js through the live hook).
+    tw.save();
+    const persistedVisits = (tw.portMemory[port.name] || {}).visits || 0;
+    tw.newVoyage(); tw.step(0.1);
+    return {
+      portName: port.name, firstVisits, firstRecall, firstMaster,
+      secondVisits, recallPort: recall && recall.port, recallLine: recall && recall.line,
+      secondMaster, masterIsRecall, persistedVisits,
+    };
+  });
+  if (memory.firstVisits !== 1) fail(`port-memory: first landfall did not bank a visit (visits=${memory.firstVisits}) (#104)`);
+  if (memory.firstRecall) fail(`port-memory: a first visit must NOT recall a memory (got "${memory.firstRecall}") (#104)`);
+  if (memory.secondVisits !== 2) fail(`port-memory: a return visit did not increment the visit count (visits=${memory.secondVisits}) (#104)`);
+  if (!memory.recallLine || memory.recallPort !== memory.portName) fail(`port-memory: a return visit did not produce a remembered-return greeting for the port (#104)`);
+  if (!memory.recallLine.includes(memory.portName)) fail(`port-memory: the remembered-return greeting did not name the port (#104)`);
+  if (memory.secondMaster !== memory.recallLine) fail('port-memory: the town harbourmaster line did not show the remembered-return greeting on return (#104)');
+  if (memory.secondMaster === memory.firstMaster) fail('port-memory: the town greeting did not visibly change between the first and return visit (#104)');
+  if (!memory.masterIsRecall) fail('port-memory: the town greeting was not flagged as a remembered-return (visual cue missing) (#104)');
+  if (memory.persistedVisits !== 2) fail('port-memory: the per-port memory did not survive a save round-trip (#104)');
+
   // 2h3) Landfall gesture (#102): making port is a crafted, EASED moment, not a snap. Drive the
   // mode transition headlessly and assert the gesture (a) starts under sail (blend 0), (b) eases
   // blend UP over the sim's dt without jumping straight to 1 (deterministic, not wall-clock), (c)

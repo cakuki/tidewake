@@ -134,8 +134,13 @@ export function createTown(opts = {}) {
     const pole = dominantPole(state.infamy, state.standing);
     const info = PORTS[port] || {};
     const cry = barker(info);
+    // The port remembers you (#104): on a RETURN visit, the harbourmaster's line is the
+    // remembered-return greeting main.js banked for THIS port (warmer for a regular, cooler if
+    // you've turned pirate since). A first visit / at-sea leaves the static harbourmaster blurb.
+    const recall = (state.portRecall && state.portRecall.port === port) ? state.portRecall.line : null;
+    const master = recall || info.harbourmaster || 'The harbourmaster nods you ashore.';
     // Cheap cache: only touch the DOM when something the player can see changes.
-    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce;
+    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master;
     if (sig === lastSig) return;
     lastSig = sig;
 
@@ -154,7 +159,7 @@ export function createTown(opts = {}) {
     $panel.innerHTML =
       `<div class="town-h">🏘 ${esc(port)}</div>`
       + `<div class="town-sub">${esc(info.blurb || 'A port town, alive with trade.')}</div>`
-      + `<div class="town-master">${esc(info.harbourmaster || 'The harbourmaster nods you ashore.')}</div>`
+      + `<div class="town-master${recall ? ' town-master-recall' : ''}">${esc(master)}</div>`
       + `<div class="town-barker">${esc(cry)}</div>`
       + tavernHTML()
       + `<div class="town-purse">⛃ <b>${state.coins ?? 0}</b> coins · Hold <b>${used}/${HOLD_CAP}</b>${standingNote}</div>`

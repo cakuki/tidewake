@@ -360,3 +360,26 @@ test('deserialize tolerates a malformed voyage log (never rejects the save)', ()
   assert.ok(r, 'a junk voyageLog must not reject the whole save');
   assert.deepEqual(r.voyageLog, []);
 });
+
+test('serialize → deserialize round-trips per-port memory (the town remembers you) (#104)', () => {
+  const portMemory = {
+    'Saltpurse Quay': { visits: 3, lastTier: 2, lastPole: 'governor' },
+    'Barnacle Bottom': { visits: 1, lastTier: 0, lastPole: 'pirate' },
+  };
+  const restored = deserialize(serialize({ ...economyState(), portMemory }));
+  assert.deepEqual(restored.portMemory, portMemory);
+});
+
+test('serialize sanitises junk out of port memory; a pre-memory caller gets an empty store (#104)', () => {
+  const obj = JSON.parse(serialize({ ...economyState(), portMemory: { 'Saltpurse Quay': { visits: 2, lastTier: 1, lastPole: 'kraken' }, Junk: { visits: 0 } } }));
+  assert.deepEqual(obj.portMemory, { 'Saltpurse Quay': { visits: 2, lastTier: 1, lastPole: 'neutral' } });
+  const fresh = JSON.parse(serialize(economyState())); // no portMemory field
+  assert.deepEqual(fresh.portMemory, {});
+});
+
+test('deserialize tolerates malformed port memory (never rejects the save) (#104)', () => {
+  const good = JSON.parse(serialize(economyState()));
+  const r = deserialize(JSON.stringify({ ...good, portMemory: 'not an object' }));
+  assert.ok(r, 'a junk portMemory must not reject the whole save');
+  assert.deepEqual(r.portMemory, {});
+});
