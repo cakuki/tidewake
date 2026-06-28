@@ -6,6 +6,49 @@ architecture) are raised as `owner-decision` GitHub issues and recorded here onc
 
 ---
 
+### 2026-06-28 — Retro 9 (loops 41–47): the owner pivoted to a MODE SYSTEM — build the structure
+**Decision.** Loops 41–47 drained the Retro 8 roadmap cleanly: deception-as-a-verb on both poles
+(#79 False Colours → #91 Letters of Marque), the hero-ship art leap (#55 research → #32 CC0 Kenney
+glTF carrack, which also *cut* draws 77→30), plus #20 eased steering, #65 hull bilge cap, and #72
+crew-morale/merciful-capture combat depth. 6 releases, 348→411 tests, gate green. **Then the owner
+stopped the loop and filed a large PM-desk batch (#66/#67/#93–#101) that redraws the roadmap to
+STRUCTURE, not more sandbox charm:** a **mode system** (sailing/town/battle, the world continuing
+underneath), a real **town/market mode** entered by **auto-harbouring**, and a **unified mode-aware
+sound system**. These are from-owner **P1s** and preempt everything previously queued. New top-3:
+**(1) #95 mode scaffold** (the keystone enabler — a tiny state machine, sailing default + one clean
+transition seam; unblocks #96/#67/#100) → **(2) #67 + #96 auto-harbour into a real town/market mode**
+(reuse the #76c slow-stop; fold in the #66 mobile-overlap bug) → **(3) #94 unified mode-aware sound**
+(sailing/town/battle tracks + proximity crossfade; absorbs #69). Battle-mode scenario (#100) is HELD
+for an 08:00 2026-06-28 Game-Designer owner brief; its mode-switch infra is #95 (build regardless).
+Charm fillers (#97 fauna, #93 ship's-wheel, #101 props, #71/#70/#68 atmosphere) and the DL reservoir
+slot in once the mode spine exists.
+**Why.** The owner stopped the loop *specifically* to describe a game with places and states — rooms,
+not just an open sea. With the sandbox now genuinely rich, the highest leverage is the structure he
+asked for: turning "an ocean you sail" into "a world with modes." Per the from-owner-P1 rule it
+preempts the prior #79-era queue (all of which had, in fact, already shipped).
+
+### 2026-06-28 — Retro 9: re-sort the queue after every PM-desk intake batch (queue-sync rule)
+**Decision.** After any PM-desk intake batch, the queue top must be **re-sorted before the next build
+dispatch** — a flat "items to file / queue once committed" list in `loop-state.md` is **not** a
+prioritised queue. This block exposed the gap: a live PM-desk session (during the owner-ordered loop
+stop) filed the P1 mode-system batch, but `queue.md` still recommended **#79/#55/#32 — all by then
+shipped** — and carried none of the new P1s; a cold resume would have read a stale top line. Added a
+**QUEUE-SYNC RULE** to `queue.md` and a one-line rule to `docs/runbook/LOOP.md` (Fan-out /
+owner-planning bullet).
+**Why.** The lean orchestrator reads only the queue's top line on resume; if the PM desk files P1s but
+nothing re-sorts the queue, the loop silently works the wrong thing. The to-file list and the
+prioritised queue must be kept in lockstep, with the queue the source of truth for "what's next."
+
+### 2026-06-28 — Retro 9: clean-tree rule clarification — adopt-and-finish *same-slice* WIP only
+**Decision (clarification, no code change).** The Retro 6 clean-tree rule ("foreign uncommitted work
+→ STOP & flag") is scoped to *unrelated/off-slice* WIP. WIP that is plainly the **same in-flight
+slice** the cycle-runner is assigned (e.g. Loop 46 adopted + finished a prior runner's in-progress
+glTF swap *for #32*, then fixed two real gaps) may be **adopted-and-finished**, and the runner must
+say so in its report. The STOP-and-flag still bites for anything off-slice.
+**Why.** Loop 46 produced a good outcome by adopting same-slice WIP, but it blurred the rule; naming
+the boundary keeps the guardrail meaningful (don't sweep *unrelated* foreign work) without forcing a
+runner to discard legitimate in-progress work on its own assigned issue.
+
 ### 2026-06-27 — Retro 8 (loops 37–40): relax the retro cadence + fix the release trigger (#89)
 **Decision.** Two process mandates with the normal game+process review. **(1) Relaxed the retro
 cadence 3–4 → ~7–8 cycles** and lifted the HARD-trigger threshold **4 → 7**. Retros 6, 7, and 8 fired

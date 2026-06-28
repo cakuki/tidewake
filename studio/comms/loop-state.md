@@ -16,23 +16,31 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 > living-sea-fauna, town-mode-trade-view, multiple-bg-music, approach-town-music-cue, use-cc0-pirate-kit.
 > Also: **owner spend-decision pending** — optional ~$10–30/mo AI-image seat for 2D portraits (#55).
 
-- **Current loop:** 45 done → next reads `queue.md` top. Recent: Retro 8 → #79 False Colours (41,
-  CLOSED) → #55 art-sourcing research (42) → #91 Letters of Marque (43, CLOSED) → #20 smooth steering /
-  eased rudder (44, CLOSED) → **#65 interior bilge cap — sea no longer shows inside the hull (45,
-  CLOSED #65, owner P1 visual bug; visual DoD screenshot-verified).**
-- **Loops since last retro:** **0** (Retro 8 just ran, covered loops 37–40). **Cadence RELAXED in
-  Retro 8: retro every ~7–8 cycles, HARD trigger at 7 (was 3–4 / 4). Next retro ~loop 47–48** unless
-  a from-owner P1 preempts.
-- **Cycles since last deep-learning loop:** ~6 — DL #2 DONE 2026-06-27 (filed #78–#85). Next DL ~cycle 47–50.
+- **Current loop:** 47 done → **Retro 9 just ran (covered loops 41–47)** → next reads `queue.md` top
+  (now the owner MODE-SYSTEM P1 batch). Recent: Retro 8 → #79 False Colours (41, CLOSED) → #55
+  art-sourcing research (42) → #91 Letters of Marque (43, CLOSED) → #20 eased steering (44, CLOSED) →
+  #65 interior bilge cap (45, CLOSED) → #32 CC0 glTF hero hull (46, CLOSED) → **#72 "Strike the
+  Colours" crew-morale/merciful-capture combat depth (47, advanced; follow-ups open).**
+- **⚠️ ROADMAP PIVOT (Retro 9):** the owner filed a large PM-desk batch during the loop stop
+  (#66/#67/#93–#101) → next direction is a **MODE SYSTEM** (from-owner **P1**, preempts all): **#95
+  mode scaffold → #67+#96 auto-harbour into a real town/market mode (fold in #66) → #94 unified
+  mode-aware sound**. Battle-mode (#100) HELD for an **08:00 2026-06-28 Game-Designer owner brief**
+  (infra = #95). Charm fillers (#97/#93/#101/#71/#70/#68) + DL reservoir slot in after the mode spine.
+- **Loops since last retro:** **0** (Retro 9 just ran, covered loops 41–47; HARD trigger fired at 7).
+  Cadence: retro every ~7–8 cycles, HARD trigger 7. **Next retro ~loop 54–55** unless a from-owner P1
+  preempts.
+- **Cycles since last deep-learning loop:** **~11 — DL #3 is DUE** (DL #2 ran after loop 33; cadence
+  ~10). Run DL #3 as the next **non-from-owner-P1** dispatch — i.e. once the P1 mode batch drains or
+  as the first free non-P1 slot (the owner P1 batch preempts it for now).
 - **State:** core arc COMPLETE + tuned + onboarded + sunny + perf-gated; **+ cannon combat (#59), +
   mobile PWA w/ heat-aware DPR (#63), + PWA safe-area (#75 partial), + settings/toggles panel (#73),
   + arcade collision: islands (#76 a1) + harbour/fight slow-stop (#76 c) + ship-vs-ship (#76 b), +
   iOS shader hardening/fallback (#86) + iOS audio capture-phase unlock (#77) + no-text-select (#87),
   + OPTIONAL day-night toggle (#58, sunny stays default).**
-- **Next dispatch:** `queue.md` top work item — recommended (Retro 8): **#79 False Colours & Letters
-  of Marque** (deception-as-a-verb, asset-free, feeds both renown poles + enriches the #78 Ballad) →
-  then the hero-asset visual leap **#55 art research → #32 glTF hull** → fillers #72 cannon depth /
-  #66 docked-touch-overlap / #15 loading tips. #89 release-trigger debt CLOSED (allow-list).
+- **Next dispatch:** `queue.md` top work item — recommended (Retro 9): **#95 mode-system scaffold**
+  (from-owner P1 keystone) → **#67+#96 auto-harbour into town/market mode** (fold in #66) → **#94
+  unified mode-aware sound**. (Retro 8 roadmap #79/#91/#55/#20/#65/#32 all SHIPPED & CLOSED; #72
+  advanced.)
 - **Owner-decisions ANSWERED:** #56 mobile = GO (shipped #63); #58 weather = GO optional toggle (SHIPPED #58).
   #76 priority delegated to PM+TL → P1, shipped a1+c+b; a2 remains. Prioritization is PM+TL's call.
 - **⏳ Awaiting owner re-test (iOS, on his iPhone):** **#77 audio** (capture-phase unlock — reopened,
@@ -48,7 +56,9 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
   QA; Game Designer owns balance/tuning; from-owner P1s jump the queue.)
 - **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions
   read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
-- **Latest release:** **v0.0.20260627210918** (#78 Ballad of Your Voyage — shareable Captain's Log). ~42 releases, **348 tests**.
+- **Latest release:** **v0.0.20260628000955** (#72 "Strike the Colours" — crew morale & merciful
+  capture). ~48 releases, **411 tests**. Perf **30/130 draws · 84k/150k tris** (the #32 glTF swap
+  freed headroom).
 - **Live:** https://cakuki.github.io/tidewake/
 - **Open enablers:** #37 deterministic visual-diff (schedule — open since cycle 10); #38 PR-validation
   CI gate; #36 fixed-timestep.

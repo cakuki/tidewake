@@ -62,6 +62,9 @@ sub-subagents** for heavy sub-work (a TL feasibility pass, a QA visual pass).
 - **Parallel batch** (default on disjoint files) → fan out one cycle-runner per disjoint slice; a batch
   crossing a shared state/save/event seam needs a one-line contract both sides assert (`comms/PARALLEL.md`).
 - **Owner planning input** → a **PM-desk-triage subagent** (reads `studio/feedback/PM-DESK.md`).
+  **After any PM-desk intake batch, re-sort `queue.md`'s top before the next build dispatch** (Retro 9)
+  — a flat "items to file" list in `loop-state.md` is not a prioritised queue; from-owner P1s must
+  land at the top, ahead of anything already shipped/queued, or a cold resume reads a stale top line.
 
 ## Cycle-runner contract (the SUBAGENT reads this; the orchestrator never inlines it)
 1. **Clean-tree check** (`git status`) — foreign uncommitted work you didn't create → STOP & report.

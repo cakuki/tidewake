@@ -12,8 +12,12 @@ Keep `Doing` small (limit WIP). Cards: `#issue — short title — owner`.
 - Placeholder → real glTF sloop within budget (Graphic Designer + Tech Lead).
 - Grow the playtest + a manual smoke checklist (QA).
 
-## To do (this loop)
-- _(Loop 1 not yet planned — populate from prioritised issues.)_
+## To do (next — owner MODE-SYSTEM P1 batch, set by Retro 9)
+- **#95 — Mode system scaffold** (sailing/town/battle; sailing pauses, world continues). from-owner P1, keystone enabler; unblocks #96/#67/#100.
+- **#67 + #96 — auto-harbour into a real town/market mode** (reuse #76c slow-stop; "Leave Harbour" button; fold in #66 mobile-overlap bug). from-owner P1.
+- **#94 — Unified mode-aware sound & music** (sailing/town/battle tracks + proximity crossfade; absorbs #69). from-owner P1.
+- **[OWNER-DECISION] #100 — arcade battle-modes** — HELD for the 08:00 2026-06-28 Game-Designer owner brief (infra = #95).
+- **DL #3 research loop is DUE** (~11 cycles) — run as the next non-from-owner-P1 dispatch.
 
 ## Doing
 - _(empty)_
