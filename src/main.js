@@ -33,7 +33,7 @@ import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat, renownTier } from './renown.js';
-import { recallLine, rememberArrival, sanitizePortMemory } from './systems/port-memory.js';
+import { recallLine, rememberArrival, sanitizePortMemory, recordDeed, deedPhrase, homePort } from './systems/port-memory.js';
 import { makeObjective, resolvesAt, payoffFor, sanitizeObjective } from './objectives.js';
 import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES } from './colours.js';
 import { BUDGET, formatPerf, pixelRatioCap, isMeasuredFrame } from './perf.js';
@@ -139,6 +139,22 @@ function logDeed(event) {
   } catch { /* the ballad is a garnish, never a dependency */ }
 }
 
+// The port remembers your DEEDS (#104b): a notable thing done at/near a port is banked into that
+// port's memory as a SPECIFIC phrase, recalled BY NAME next time you make landfall there ("they've
+// not forgotten the day you sent the Black Gull to the seabed in these waters"). Combat happens at
+// sea, so the deed is attributed to the NEAREST port — its waters, its memory. Fully guarded: a
+// flourish must never break the loop.
+function rememberPortDeed(event) {
+  try {
+    const phrase = deedPhrase(event);
+    if (!phrase) return;
+    const port = ports.nearestPortName(state.pos);
+    if (!port) return;
+    state.portMemory = recordDeed(state.portMemory, port, phrase);
+    persistence.write(); // lock the memory the instant the deed is done (like a legend beat)
+  } catch { /* the port's memory is a flourish, never a dependency */ }
+}
+
 // Insult Broadside (#33): hail a nearby NPC and duel it with wit. Coins + INFAMY on
 // a win (#45 — combat is the pirate pole); a small coin setback on a loss. Reward/penalty
 // land on the shared state, and renown (the spine) is kept in step.
@@ -171,7 +187,9 @@ const duel = createDuel({
         hud.flashBanner('⚔ They strike their colours!',
           `${enemyName} sails off jeering — but you pocket ${reward.coins}c and ${reward.renown} infamy for the sharper tongue.`);
       }
-      logDeed({ type: 'duel', foe: enemyName, infamy: reward.renown, coins: reward.coins, treachery: !!reward.treachery, lawful: !!reward.lawful }); // #78/#79/#91
+      const duelDeed = { type: 'duel', foe: enemyName, infamy: reward.renown, coins: reward.coins, treachery: !!reward.treachery, lawful: !!reward.lawful };
+      logDeed(duelDeed);            // #78/#79/#91
+      rememberPortDeed(duelDeed);   // #104b — the nearest port recalls it by name on your return
     } else {
       hud.flashBanner('🏴 Out-jeered!',
         `${enemyName}'s crew howls with laughter. You fumble ${penalty.coins} coins overboard and slink away.`);
@@ -209,12 +227,16 @@ const cannons = createCannons({
         hud.flashBanner('🔥 You sink her!',
           `${foeName} slips beneath the waves — you haul ${reward.coins}c from the wreckage and your legend gains ${reward.infamy} infamy.`);
       }
-      logDeed({ type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins, treachery: !!reward.treachery, lawful: !!reward.lawful }); // #78/#79/#91
+      const cannonDeed = { type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins, treachery: !!reward.treachery, lawful: !!reward.lawful };
+      logDeed(cannonDeed);            // #78/#79/#91
+      rememberPortDeed(cannonDeed);   // #104b — the nearest port's waters remember the sinking
     } else if (result === 'capture') {
       // She struck her colours (#72): the merciful road — a ransom + lawful Standing, less Infamy.
       hud.flashBanner('🏳️ She strikes her colours!',
         `${foeName} has had enough — you spare the crew and take a ${reward.coins}c ransom: +${reward.standing} standing for the mercy, and ${reward.infamy} infamy for the swagger.`);
-      logDeed({ type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins, captured: true }); // #72
+      const captureDeed = { type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins, captured: true };
+      logDeed(captureDeed); // #72
+      rememberPortDeed(captureDeed); // #104b — the nearest port remembers the mercy you showed
     } else {
       hud.flashBanner('💥 Hull breached!',
         `${foeName} rakes you stem to stern — you break off and limp away, ${penalty.coins} coins lighter for the repairs.`);
@@ -782,8 +804,11 @@ function onArrive(portName, line) {
   let recall = null;
   try {
     const current = { tier: renownTier(state.renown ?? 0).tier, pole: dominantPole(state.infamy, state.standing) };
-    recall = recallLine(state.portMemory?.[portName], current, portName); // null on a first visit
-    state.portMemory = rememberArrival(state.portMemory, portName, current);
+    const prior = state.portMemory?.[portName]; // who this port knew you as LAST time (deed + tone)
+    state.portMemory = rememberArrival(state.portMemory, portName, current); // bank this visit first…
+    // …then read the home flag off the up-to-date store (this visit may have just made it home).
+    const home = homePort(state.portMemory) === portName; // #104b "Your Harbour" seed
+    recall = recallLine(prior, current, portName, { home }); // null on a true first visit
     state.portRecall = recall ? { port: portName, line: recall } : null; // surfaced in the town greeting
     persistence.write(); // lock the visit the instant it's made (like a legend/onboarding beat)
   } catch { /* the port's memory is a flourish, never a dependency — never break landfall */ }
@@ -796,7 +821,9 @@ function onArrive(portName, line) {
       const { coins } = payoffFor(state.objective);
       initEconomy(state);
       state.coins += coins;
-      logDeed({ type: 'rumour', name: portName, coins }); // sing it into the Ballad (#78)
+      const rumourDeed = { type: 'rumour', name: portName, coins };
+      logDeed(rumourDeed);                                 // sing it into the Ballad (#78)
+      state.portMemory = recordDeed(state.portMemory, portName, deedPhrase(rumourDeed)); // #104b — this port remembers the tip paying off
       state.objective = null;                              // the chase is done — clear the pin
       persistence.write();
       hud.flashBanner('⚑ The rumour paid off!',
@@ -961,6 +988,9 @@ window.__tidewake = {
   // first visit) — so a headless playtest can land, sail off, return, and assert the town reacts.
   get portMemory() { return sanitizePortMemory(state.portMemory); },
   get portRecall() { return state.portRecall || null; },
+  // #104b "Your Harbour" seed: the captain's most-visited port, once it's recognisably theirs (null
+  // until one clears the home threshold) — so a playtest can assert a frequented port becomes home.
+  get homePort() { return homePort(state.portMemory); },
   // Landfall gesture (#102) QA surface: the crafted SAILING↔TOWN transition's live phase + eased
   // blend (0=at sea, 1=ashore) + whether it's in flight, plus the headless skip driver — so a
   // playtest can assert the moment EASES (not snaps), is deterministic, and is skippable.

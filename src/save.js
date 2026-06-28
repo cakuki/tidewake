@@ -34,8 +34,11 @@ export const SAVE_KEY = 'tidewake.save.v1';
 // v9 added per-port memory — what each town remembers of your prior dealings (#104);
 // v10 added the active chased-rumour objective — the typed sea-target you're steering toward
 // (marker + arrival payoff), so a reload keeps the pin on your chart (#111/#112/#115).
+// v11 deepened per-port memory — each port now also remembers your LAST notable DEED there, recalled
+// by name on return, and a most-visited "home port" emerges (#104b, the "Your Harbour" seed); the
+// deed rides the existing portMemory store as an additive, fail-open per-record field.
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 10;
+export const SAVE_VERSION = 11;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.

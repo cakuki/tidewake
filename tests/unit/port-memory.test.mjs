@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   freshPortMemory, portRecord, recallLine, rememberArrival, sanitizePortMemory,
+  recordDeed, deedPhrase, homePort, HOME_MIN_VISITS,
 } from '../../src/systems/port-memory.js';
 
 // ---- portRecord / freshPortMemory ----------------------------------------------------------
@@ -101,10 +102,93 @@ test('sanitizePortMemory fails open: junk becomes an empty store, never throws',
 test('sanitizePortMemory drops malformed / zero-visit records and coerces fields', () => {
   const dirty = {
     'Saltpurse Quay': { visits: 3, lastTier: 9, lastPole: 'kraken' }, // tier over-clamped, junk pole → neutral
-    'Barnacle Bottom': { visits: 0 },                                  // never really visited → dropped
+    'Barnacle Bottom': { visits: 0 },                                  // never really visited, no deed → dropped
     "Gullet's Rest": 'not-an-object',                                  // junk → dropped
     'Phantom': { visits: -5 },                                         // junk visits → dropped
   };
   const out = sanitizePortMemory(dirty);
   assert.deepEqual(out, { 'Saltpurse Quay': { visits: 3, lastTier: 2, lastPole: 'neutral' } });
+});
+
+// ---- #104b: deedPhrase — turning a systemic deed into a short remembered phrase ----------------
+test('deedPhrase names the foe for combat wins, framed from the port', () => {
+  assert.match(deedPhrase({ type: 'cannon', foe: 'the Black Gull' }), /Black Gull/);
+  assert.match(deedPhrase({ type: 'cannon', foe: 'the Black Gull' }), /these waters|seabed/);
+  assert.match(deedPhrase({ type: 'duel', foe: 'Mad Tom' }), /Mad Tom/);
+  assert.match(deedPhrase({ type: 'cannon', foe: 'the Sprat', captured: true }), /spared/);
+  assert.match(deedPhrase({ type: 'cannon', foe: 'the Sprat', lawful: true }), /lawful|outlaw/);
+});
+test('deedPhrase has a phrase for a chased-rumour payoff, and none for junk', () => {
+  assert.match(deedPhrase({ type: 'rumour', name: 'Saltpurse Quay' }), /tip|paid off/);
+  assert.equal(deedPhrase({ type: 'cannon' }), '');        // no foe → nothing to recall
+  assert.equal(deedPhrase({ type: 'landfall', name: 'X' }), ''); // not a port-tied deed
+  assert.equal(deedPhrase(null), '');
+});
+
+// ---- #104b: recordDeed — a port remembers your LAST deed BY NAME ------------------------------
+test('recordDeed stamps lastDeed without bumping visits, newest wins', () => {
+  let store = rememberArrival(freshPortMemory(), 'Saltpurse Quay', { tier: 1, pole: 'pirate' });
+  store = recordDeed(store, 'Saltpurse Quay', deedPhrase({ type: 'cannon', foe: 'the Black Gull' }));
+  assert.equal(store['Saltpurse Quay'].visits, 1, 'a deed does not count as a visit');
+  assert.match(store['Saltpurse Quay'].lastDeed, /Black Gull/);
+  store = recordDeed(store, 'Saltpurse Quay', deedPhrase({ type: 'duel', foe: 'Mad Tom' }));
+  assert.match(store['Saltpurse Quay'].lastDeed, /Mad Tom/, 'the latest deed replaces the last');
+});
+test('recordDeed is a no-op for junk port / empty deed and never mutates input', () => {
+  const before = rememberArrival(freshPortMemory(), 'Saltpurse Quay', { tier: 0, pole: 'neutral' });
+  assert.equal(recordDeed(before, '', 'x')['Saltpurse Quay'].lastDeed, undefined);
+  assert.equal(recordDeed(before, 'Saltpurse Quay', '')['Saltpurse Quay'].lastDeed, undefined);
+  assert.equal(before['Saltpurse Quay'].lastDeed, undefined, 'input store untouched');
+});
+test('a recorded deed survives a later arrival (and persists through sanitize)', () => {
+  let store = recordDeed(freshPortMemory(), 'Saltpurse Quay', 'the day you sank the Black Gull');
+  store = rememberArrival(store, 'Saltpurse Quay', { tier: 1, pole: 'pirate' });
+  assert.match(store['Saltpurse Quay'].lastDeed, /Black Gull/, 'deed carried through arrival');
+  const round = sanitizePortMemory(JSON.parse(JSON.stringify(store)));
+  assert.match(round['Saltpurse Quay'].lastDeed, /Black Gull/, 'deed survives a save round-trip');
+});
+test('a deed-only record (never docked) is kept, not dropped', () => {
+  const store = recordDeed(freshPortMemory(), 'Saltpurse Quay', 'the day you sank the Black Gull');
+  assert.equal(store['Saltpurse Quay'].visits, 0);
+  assert.match(sanitizePortMemory(store)['Saltpurse Quay'].lastDeed, /Black Gull/);
+});
+
+// ---- #104b: recallLine names the deed, and reputation precedes you ----------------------------
+test('recallLine leads with the remembered deed BY NAME on a return', () => {
+  const rec = { visits: 2, lastTier: 1, lastPole: 'pirate', lastDeed: 'the day you sank the Black Gull' };
+  const line = recallLine(rec, { tier: 1, pole: 'pirate' }, 'Saltpurse Quay');
+  assert.match(line, /Black Gull/, 'the specific memory is surfaced');
+  assert.match(line, /Saltpurse Quay/);
+  assert.ok(!/\{deed\}|\{port\}/.test(line), 'no leftover tokens');
+});
+test('a deed makes your reputation precede you at a never-visited port', () => {
+  const rec = { visits: 0, lastTier: 0, lastPole: 'neutral', lastDeed: 'the day you sank the Black Gull' };
+  const line = recallLine(rec, { tier: 0, pole: 'neutral' }, 'Saltpurse Quay');
+  assert.match(line, /Black Gull/);
+  assert.match(line, /reputation|word reached|no stranger|never/i);
+});
+test('recallLine stays null for a true stranger (no visits, no deed)', () => {
+  assert.equal(recallLine({ visits: 0 }, {}, 'Nowhere'), null);
+});
+
+// ---- #104b: homePort — the seed of "Your Harbour" --------------------------------------------
+test('homePort returns null until a port clears HOME_MIN_VISITS', () => {
+  let store = freshPortMemory();
+  for (let i = 0; i < HOME_MIN_VISITS - 1; i++) store = rememberArrival(store, 'Saltpurse Quay', {});
+  assert.equal(homePort(store), null);
+  store = rememberArrival(store, 'Saltpurse Quay', {});
+  assert.equal(homePort(store), 'Saltpurse Quay');
+});
+test('homePort picks the most-visited port, ties broken deterministically by name', () => {
+  let store = freshPortMemory();
+  for (let i = 0; i < 4; i++) store = rememberArrival(store, 'Barnacle Bottom', {});
+  for (let i = 0; i < 4; i++) store = rememberArrival(store, 'Anchor Drop', {}); // equal visits → name tie-break
+  for (let i = 0; i < 3; i++) store = rememberArrival(store, 'Saltpurse Quay', {});
+  assert.equal(homePort(store), 'Anchor Drop', 'ties break by name ascending');
+});
+test('recallLine greets your home port as your own, with the deed when present', () => {
+  const home = recallLine({ visits: 5, lastTier: 1, lastPole: 'governor' }, { tier: 1, pole: 'governor' }, 'Saltpurse Quay', { home: true });
+  assert.match(home, /harbour|home|own|berth/i);
+  const homeDeed = recallLine({ visits: 5, lastTier: 1, lastPole: 'governor', lastDeed: 'the day you sank the Black Gull' }, { tier: 1, pole: 'governor' }, 'Saltpurse Quay', { home: true });
+  assert.match(homeDeed, /Black Gull/);
 });
