@@ -21,6 +21,8 @@ import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
 import { createCannons } from './cannons.js';
 import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
+import { createTown } from './ui/town.js';
+import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading } from './systems/harbour.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
@@ -308,6 +310,7 @@ function newVoyage() {
   duel.cancel();
   cannons.cancel();
   mode.leave(); // a fresh voyage always starts under sail (#95)
+  leftHarbour = false; // a fresh voyage re-arms auto-harbour from a clean slate (#67)
   persistence.clear();
   sailing.reset();
   islandNamer.reset(); // a fresh voyage re-arms the island landfall greetings (#19)
@@ -397,6 +400,35 @@ settings.init(); // builds the panel, wires the O / Esc keys, applies the saved/
 const ballad = createBallad({ getEvents: () => state.voyageLog || [] });
 ballad.init();
 
+// Town / market mode (#96): the new TOWN view you auto-harbour into (#67). A self-contained
+// src/ui component (the #53 standard) that paints the docked port's market and the single
+// "⚓ Set Sail" plank. It reads the live ship state for the market board and the purse; its
+// Leave control routes back through leaveHarbour() below — the one obvious, reversible way out.
+const town = createTown({ getState: () => state, onLeave: () => leaveHarbour() });
+town.init();
+
+// ---- Auto-harbour / Leave Harbour (#67 + #96) ----------------------------------------------
+// Making landfall is EDGE-triggered off arrival (onArrive, below): sail into a port's dock
+// radius under sail and the world settles into TOWN mode — the helm pauses, the town takes the
+// screen, other vessels sail on (the #95 seam). Leaving is the deliberate mirror, and it must
+// never strand you: the owner-flagged trap is that docking re-arms on proximity, so we raise the
+// `leftHarbour` latch on the way out — it suspends the harbour slow-to-stop assist (so the
+// seaward nudge can actually carry the hull out) and drops once we've cleared the harbour mouth.
+let leftHarbour = false;
+let bodyTown = false; // cached so we only touch the <body> class on a real change
+function leaveHarbour() {
+  if (!mode.is(TOWN)) return false;
+  const docked = ports.docked;
+  mode.leave();                       // back under sail — the helm is yours again
+  leftHarbour = true;                 // suspend the harbour assist until we clear the mouth
+  state.throttle = Math.max(state.throttle, 0.7); // re-enable way: a firm push off the berth
+  const info = ports.portInfo(docked);
+  state.heading = seawardHeading(info && info.angle, state.heading); // point the bow at open water
+  try { hud.flashBanner('⛵ Making sail…', 'You cast off — the town falls astern and the open sea opens up ahead.'); }
+  catch { /* a flourish must never break the loop */ }
+  return true;
+}
+
 function setPerf(on) { settings.setOption('perf', on); } // one source of truth for the overlay
 // Toggle the overlay: 'P' on desktop; tap the read-out to dismiss; ?perf boots it shown. All
 // route through the toggle so the panel switch + persistence track the overlay.
@@ -464,9 +496,13 @@ function update(dt, t) {
   // or town) eases the target speed smoothly toward ~0, or it coasts down as the hull nears a
   // port (harbouring), all via approach(). Helm input is ignored while paused (crew's elsewhere).
   let harbourDistance = Infinity;              // distance to the nearest port point (for the coast-in)
-  for (const p of ports.ports) {
-    const d = Math.hypot(state.pos.x - p.pos[0], state.pos.z - p.pos[1]);
-    if (d < harbourDistance) harbourDistance = d;
+  // The slow-to-stop assist coasts you IN — but stands down while leaving (the leftHarbour
+  // latch), so the seaward nudge can carry the hull out instead of being braked at the berth (#67).
+  if (harbourAssistActive(leftHarbour)) {
+    for (const p of ports.ports) {
+      const d = Math.hypot(state.pos.x - p.pos[0], state.pos.z - p.pos[1]);
+      if (d < harbourDistance) harbourDistance = d;
+    }
   }
   sailing.step(dt, t, { fighting: paused, harbourDistance, harbourRadius: DOCK_RADIUS });
 
@@ -506,7 +542,14 @@ function update(dt, t) {
 
   ocean.update(t, camera.position);
   daynight.update(dt);                          // optional day-night cycle (#58): no-op while OFF
-  ports.update(state, onArrive, t);            // arrival detection (fires once) + buoy bob
+  ports.update(state, onArrive, t);            // arrival detection (fires once → auto-harbour) + buoy bob
+  // Auto-harbour bookkeeping (#67/#96): drop the leave-latch once we've cleared the harbour mouth
+  // (so a later approach harbours cleanly again), and keep the TOWN view + the at-sea-control
+  // hiding (#66) in lock-step with the mode. town.js caches its own renders, so this is cheap.
+  leftHarbour = nextLeftHarbour(leftHarbour, { docked: ports.docked, leaving: false });
+  const inTown = mode.is(TOWN);
+  town.setOpen(inTown);
+  if (inTown !== bodyTown) { bodyTown = inTown; if (document.body) document.body.classList.toggle('town', inTown); }
   islandNamer.update(state.pos, onApproachIsland); // name + flavour the first time you near an isle (#19)
   wake.update(dt, state, t);                   // bow wake + trailing foam
   hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
@@ -557,6 +600,10 @@ function checkLegends() {
 function onArrive(portName, line) {
   hud.showArrival(portName, line);
   fireOnboarding('dock');
+  // Auto-harbour (#67/#96): the fresh arrival edge makes landfall into TOWN mode — once per
+  // visit, only while under sail (the pure guard lives in src/systems/harbour.js). The mode's
+  // onChange rings the "Making port…" beat; town.js takes the screen on the next render.
+  if (shouldEnterTown({ mode: mode.current, arrived: true })) mode.enter(TOWN);
 }
 
 // Island landfall (#19): the first time you sail close to a named isle this session, the
@@ -700,6 +747,11 @@ window.__tidewake = {
   get mode() { return mode.current; },
   enterMode(m) { return mode.enter(m); },
   leaveMode() { return mode.leave(); },
+  // Town / market mode (#67/#96) QA surface: whether the town view is open + which port it's
+  // showing, and the deliberate Leave Harbour seam (re-enables the helm + nudges the bow
+  // seaward). Auto-harbour itself is driven by sailing into a port's dock radius (onArrive).
+  get town() { return { open: town.isOpen, port: town.port, leftHarbour }; },
+  leaveHarbour() { return leaveHarbour(); },
   get npcs() { return npcs.snapshot(); },
   // Ship-vs-ship collision (#76 b) QA surface: the forgiving hull radii so a headless playtest
   // can drive the player into an NPC and assert the hulls don't interpenetrate (bound = sum).

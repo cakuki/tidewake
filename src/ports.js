@@ -95,7 +95,9 @@ export function createPorts(world) {
     marker.position.set(px, 0, pz);
     group.add(marker);
 
-    ports.push({ name: PORT_NAMES[n], x: px, z: pz, marker });
+    // `angle` is the jetty's seaward bearing — reused by Leave Harbour to nudge the bow out to
+    // open water so making sail from a berth never traps the player inside the dock radius (#67).
+    ports.push({ name: PORT_NAMES[n], x: px, z: pz, angle, marker });
   });
 
   let prevDocked = null;
@@ -126,6 +128,12 @@ export function createPorts(world) {
     // Public, serialisable list for QA/tests.
     get ports() { return ports.map((p) => ({ name: p.name, pos: [p.x, p.z] })); },
     get docked() { return prevDocked; },
+    // Look up a port's geometry by name — `{ x, z, angle }` — for the Leave Harbour seaward
+    // nudge (#67). Null for an unknown/at-sea name.
+    portInfo(name) {
+      const p = ports.find((q) => q.name === name);
+      return p ? { x: p.x, z: p.z, angle: p.angle } : null;
+    },
     // The docked port's price board (or null at sea) — fed to the HUD trade panel.
     market() { return prevDocked ? market(prevDocked) : null; },
     /**

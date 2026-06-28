@@ -436,6 +436,67 @@
       #minimap { width: 112px; height: 112px; }
     }
 
+    /* ---- Town / market mode (#96) -------------------------------------------
+       The new TOWN mode's view: a deliberate PLACE you make landfall into (auto-harbour #67),
+       not a corner panel. Centred like a proclamation, warm quayside parchment-glass, with the
+       market board and a single "⚓ Set Sail" plank as the only way back to the helm. */
+    #town {
+      position: fixed; left: 50%; top: 50%; z-index: 22; transform: translate(-50%, -50%) scale(.98);
+      width: min(94vw, 480px); max-height: min(88vh, 720px); display: flex; flex-direction: column;
+      color: #eaf3fb; pointer-events: none;
+      background: linear-gradient(170deg, rgba(16,38,58,.94), rgba(9,22,36,.95) 65%, rgba(30,22,10,.95));
+      border: 1px solid rgba(255,217,138,.5); border-radius: 16px; padding: 18px 22px;
+      box-shadow: 0 20px 64px rgba(0,0,0,.62), 0 0 0 1px rgba(255,217,138,.12) inset;
+      backdrop-filter: blur(7px);
+      opacity: 0; transition: opacity .28s ease, transform .28s ease;
+    }
+    #town.show { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+    #town .town-h { color: #ffd98a; font-weight: 800; font-size: clamp(18px, 3vw, 24px); letter-spacing: .04em; text-align: center; }
+    #town .town-sub { color: #bcd5ea; font-size: 12px; text-align: center; margin-top: 3px; }
+    #town .town-master { color: #e7d6a8; font-size: 12px; font-style: italic; text-align: center; margin-top: 8px; line-height: 1.4; }
+    #town .town-barker { color: #9fd0a8; font-size: 12.5px; font-style: italic; text-align: center; margin: 6px 4px 4px; min-height: 16px; line-height: 1.4; }
+    #town .town-purse { color: #eaf3fb; font-size: 12.5px; text-align: center; margin: 8px 0 4px; }
+    #town .town-purse b { color: #ffd98a; }
+    #town .town-standing { color: #87e0a4; font-weight: 600; font-size: 11px; letter-spacing: 0; }
+    #town .town-market-h { color: #ffd98a; font-weight: 700; font-size: 13px; letter-spacing: .06em; text-align: center; margin: 10px 0 4px; border-top: 1px solid rgba(255,217,138,.22); padding-top: 8px; }
+    #town .town-t { width: 100%; border-collapse: collapse; font-size: 13px; }
+    #town .town-t th { color: #7fa6c6; font-weight: 600; text-align: right; font-size: 10.5px; padding: 2px 6px; }
+    #town .town-t th:nth-child(2) { text-align: left; }
+    #town .town-t td { padding: 3px 6px; text-align: right; }
+    #town .town-t td.tk { color: #ffd98a; font-weight: 700; text-align: center; }
+    #town .town-t td.tg { text-align: left; }
+    #town .town-t td.tb { color: #ff9a8a; }
+    #town .town-t td.ts { color: #87e0a4; cursor: pointer; }
+    #town .town-t td.th { color: #cfe8ff; }
+    #town .town-t .trow { cursor: pointer; border-radius: 6px; transition: background .1s ease; }
+    #town .town-t .trow:hover { background: rgba(255,255,255,.06); }
+    #town .town-t .trow.spec td.tg::after { content: ' ·local'; color: #87e0a4; font-size: 9px; }
+    #town .town-t .trow.crave td.tg::after { content: ' ·wanted'; color: #ffd98a; font-size: 9px; }
+    #town .town-msg { margin-top: 7px; min-height: 15px; color: #f3e6c4; font-size: 12px; text-align: center; }
+    #town .town-trade-help { color: #8fb4d6; font-size: 11px; text-align: center; margin-bottom: 10px; }
+    #town .town-trade-help b { color: #ffd98a; }
+    #town .town-leave {
+      pointer-events: auto; cursor: pointer; font-family: inherit; display: block; width: 100%;
+      font-size: 15px; font-weight: 800; letter-spacing: .04em; color: #2a1d06;
+      background: linear-gradient(180deg, #ffe08a, #ffc24d); border: 1px solid rgba(255,233,160,.85);
+      border-radius: 10px; padding: 11px 14px; box-shadow: 0 4px 14px rgba(0,0,0,.4);
+      transition: filter .12s ease, transform .1s ease;
+    }
+    #town .town-leave:hover { filter: brightness(1.06); }
+    #town .town-leave:active { transform: translateY(1px); }
+    #town .town-leave-key { font-weight: 600; opacity: .7; }
+    #town .town-help { color: #7f97b0; font-size: 10.5px; text-align: center; margin-top: 9px; line-height: 1.4; }
+    body.touch #town { width: min(94vw, 440px); }
+
+    /* In TOWN mode the helm is paused, so the at-sea controls get OUT of the way — which also
+       fixes the iPhone overlap where the steer/throttle/duel buttons sat over the trade panel
+       (#66): in town the touch clusters and the corner trade panel are hidden entirely, and the
+       hail/fire prompt is suppressed. Navigation is disabled while ashore (#67). */
+    body.town #touch-controls,
+    body.town #trade,
+    body.town #challenge-prompt,
+    body.town #goal { display: none !important; }
+
     a { color: #ffd98a; }
   </style>
 </head>
@@ -465,6 +526,10 @@
     </div>
   </div>
   <div id="trade" aria-live="polite"></div>
+  <!-- Town / market mode (#96): the deliberate TOWN view you auto-harbour into (#67). Built +
+       shown by src/ui/town.js when the mode manager (src/mode.js) is in TOWN; the only way back
+       to sailing is its "⚓ Set Sail" plank (or the L key). -->
+  <div id="town" role="dialog" aria-label="Town and market" aria-hidden="true"></div>
   <div id="challenge-prompt" role="status">⚔ <b>F</b> to out-jeer &nbsp;·&nbsp; 🔥 <b>G</b> to open fire</div>
   <div id="duel" role="dialog" aria-live="polite"></div>
   <div id="cannons" role="dialog" aria-live="polite"></div>

@@ -360,9 +360,12 @@ try {
     const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
     tw.newVoyage();          // respawn dead in the water at the origin
     tw.step(0.1);
-    // Nearest island to the origin.
+    // Nearest PORTLESS island to the origin — ramming a port-island now makes landfall into
+    // TOWN mode (#67) and stops the hull at the harbour, so it can't reach a port-island's coast.
+    const nearAPort = (c) => tw.ports.some((p) => Math.hypot(p.pos[0] - c.x, p.pos[1] - c.z) < c.r + 120);
     let isle = null, bd = Infinity;
     for (const c of tw.islands) {
+      if (nearAPort(c)) continue;
       const d = Math.hypot(c.x, c.z);
       if (d < bd) { bd = d; isle = c; }
     }
@@ -520,6 +523,73 @@ try {
   if (!(mode.speedInTown < mode.speedBeforeTown)) fail(`mode: ship did not slow on entering town (before=${mode.speedBeforeTown?.toFixed(1)} → in-town=${mode.speedInTown?.toFixed(1)})`);
   if (!mode.worldMoved) fail('mode: the world snap-froze — no vessel moved while the player was paused in town (#95)');
   if (!mode.left || mode.afterLeave !== 'sailing') fail(`mode: leaveMode() did not return to SAILING (got ${mode.afterLeave})`);
+
+  // 2h2) Auto-harbour into TOWN mode (#67 + #96): sailing into a port's dock radius makes
+  // LANDFALL — the world settles into TOWN mode, the town view opens on the docked port, a real
+  // market trade lands on the purse, and the explicit Leave Harbour control returns to SAILING
+  // and carries the hull back OUT (helm re-armed + bow nudged seaward — never trapped at the
+  // berth, the owner-flagged risk). Also asserts body.town hides the at-sea controls (#66).
+  const harbour = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    const $town = document.getElementById('town');
+    tw.newVoyage(); tw.step(0.1);
+    function nearestPort() {
+      const s = tw.state.pos; let best = null, bd = Infinity;
+      for (const p of tw.ports) { const d = Math.hypot(p.pos[0] - s[0], p.pos[1] - s[2]); if (d < bd) { bd = d; best = p; } }
+      return { best, bd };
+    }
+    // Sail at the nearest port until landfall flips the mode to TOWN.
+    tw.press('w');
+    let entered = false;
+    for (let i = 0; i < 6000 && !entered; i++) {
+      const { best } = nearestPort(); if (!best) break;
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+      entered = tw.mode === 'town';
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    for (let i = 0; i < 20; i++) tw.step(0.1); // let the helm settle + the town view paint
+    const onLanding = {
+      mode: tw.mode, townOpen: tw.town.open, port: tw.town.port, docked: tw.docked,
+      townShown: !!$town && $town.classList.contains('show'),
+      bodyTown: document.body.classList.contains('town'),
+    };
+    // The one meaningful market interaction, wired to the economy: buy 1 (purse moves), sell back.
+    let traded = false, coinsMoved = false;
+    if (tw.economy && tw.economy.market) {
+      const coins0 = tw.economy.coins;
+      const good = tw.economy.market[0].id;
+      const b = tw.economy.buy(good, 1);
+      coinsMoved = tw.economy.coins !== coins0;
+      const s = tw.economy.sell(good, 1);
+      traded = !!(b && b.ok && s && s.ok);
+    }
+    // Leave Harbour: the single explicit, reversible exit — back to SAILING, bow nudged seaward.
+    const left = tw.leaveHarbour();
+    const afterLeave = { mode: tw.mode, left };
+    // Make sail: the harbour assist stands down so the nudge carries us clear of the dock radius.
+    let clearedHarbour = false;
+    for (let i = 0; i < 600; i++) { tw.step(0.1); if (!tw.docked) { clearedHarbour = true; break; } }
+    const sailedOut = { clearedHarbour, mode: tw.mode, townOpen: tw.town.open, bodyTown: document.body.classList.contains('town') };
+    tw.newVoyage(); tw.step(0.1);
+    return { entered, onLanding, traded, coinsMoved, afterLeave, sailedOut };
+  });
+  if (!harbour.entered || harbour.onLanding.mode !== 'town') fail(`auto-harbour: sailing into a port did not make landfall into TOWN (mode=${harbour.onLanding.mode})`);
+  if (!harbour.onLanding.townOpen) fail('auto-harbour: the town view did not open on landfall');
+  if (!harbour.onLanding.townShown) fail('auto-harbour: #town panel did not become visible on landfall');
+  if (!harbour.onLanding.bodyTown) fail('auto-harbour: body.town not set — at-sea controls not hidden in town (#66)');
+  if (!harbour.onLanding.port) fail('auto-harbour: the town view has no docked port');
+  if (!harbour.traded) fail('auto-harbour: a market trade did not complete in the town');
+  if (!harbour.coinsMoved) fail('auto-harbour: buying in the town market did not move the purse');
+  if (!harbour.afterLeave.left || harbour.afterLeave.mode !== 'sailing') fail(`auto-harbour: Leave Harbour did not return to SAILING (mode=${harbour.afterLeave.mode})`);
+  if (!harbour.sailedOut.clearedHarbour) fail('auto-harbour: the seaward nudge never carried the ship clear of the dock radius (trap risk #67)');
+  if (harbour.sailedOut.townOpen) fail('auto-harbour: the town view stayed open after leaving');
+  if (harbour.sailedOut.bodyTown) fail('auto-harbour: body.town lingered after leaving (controls stayed hidden)');
 
   // 2i) Ship-vs-ship collision (#76 b): the player BUMPS other vessels, never sailing clean
   // through them. Pursue the nearest NPC at full throttle and assert (1) the hulls actually MET
@@ -896,7 +966,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, bump, daynight, landfall, ballad, falseColours, marque, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, landfall, ballad, falseColours, marque, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));
