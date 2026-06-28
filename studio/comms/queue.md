@@ -38,27 +38,36 @@ ashore** (#103), then **sell the transition** (#102), then **harden the gate** (
 #100 is HELD for the 08:00 2026-06-28 Game-Designer owner brief — do NOT promote it above where the
 owner wants it._
 
-## Top of queue (do in order) — make the modes MATTER (DL #3 depth; reactive-verbs-first)
+## Top of queue (do in order) — PIVOT TO BREADTH (the mode spine + landfall craft are "done for now")
 
 _(Loop 55 shipped **#103** tavern rumours · Loop 56 shipped **#102 phase 1** landfall · Loop 57
-shipped & CLOSED **#107** mode-transition QA + the perf-counter flake fix. Top re-sorted below.)_
+shipped & CLOSED **#107** mode-transition QA + the perf-counter flake fix · Loop 58 shipped &
+**CLOSED #102 phase 2** (glassy moored swell settle + downbeat "made port" stinger) — **landfall
+craft is now done for now**. Top re-sorted below: the loop **pivots from depth to breadth.**)_
 
-1. **#102 — Landfall phase 2 (the rest of the multi-sensory gesture)** (design + art + audio).
-   **Phase 1 SHIPPED** (eased camera to a moored 3/4 framing · golden-harbour grade · town-opens-only-
-   ashore · skippable; `src/systems/landfall.js`). **Remaining (#102 OPEN):** music swell + transition
-   **stinger on the next downbeat** (bar-clock, constant-power sea→town — the music director already
-   crossfades the bed by mode) · **glassy "moored" swell-amplitude lerp** (needs a swell uniform in
-   ocean.js shader + a CPU sampler) · deepen the gold / a small camera dolly settle. — _why: value
-   **high** (DL #3 theme 2 — the transition *is* the drama); complexity **medium**; deps #95/#67 (done),
-   pairs with #94. CREATIVE SPARK: the world exhales as the wheel goes still and the harbour resolves._
+**PM/TL: sequence the breadth trio (#104 / #71 / #70) before the next build dispatch** — value ·
+complexity · dependencies. Provisional order below; re-sort if PM disagrees.
 
-2. **#94 — gate-level mode-aware mix assertion + transition bell** (tech + audio; follow-up surfaced by
-   #107). Expose the resolved mix on `__tidewake` (`tw.mix`) so the playtest can assert SAILING≠TOWN≠
-   BATTLE *live* (the pure decision is already unit-tested), and add a once-per-real-transition audio
-   beat. — _why: value **medium** (makes #94 land non-blind); complexity **low**; deps #95/#106 (done).
-   Rides the mode seam directly._
+1. **#104 — The port remembers you** (design; reactive verb ashore, DL #3 theme 1). Persistent
+   per-town reputation / a "Your Harbour" home-port beat — the town reacts to who you've become and
+   what you've done *there*. Rides the #67/#96 town mode + #78 voyage log. — _why: value **high**
+   (turns the town from a place into a relationship); complexity **medium** (needs a small persisted
+   per-port store); deps done. CREATIVE SPARK: the harbourmaster greets you by reputation._
+
+2. **#71 — islands TLC** (art/world; breadth). More/varied isles + dressing (palms/rocks/huts),
+   coordinate with the #61 Caribbean sea + #101 island dressing. — _why: value **medium-high** (the
+   sea between ports is the canvas); complexity **medium**; pairs with #101 props._
+
+3. **#70 — ocean micro-details & sail-over delight** (world/feel; breadth). Sea variety / the
+   standing "1–2 delight beats per loop". — _why: value **medium**; complexity **low-medium**._
+
+_Then (lower, tech follow-up — not breadth):_ **#94 — gate-level mode-aware mix assertion +
+transition bell** (surfaced by #107). Expose the resolved mix on `__tidewake` (`tw.mix`) so the
+playtest can assert SAILING≠TOWN≠BATTLE *live* (the pure decision is already unit-tested), and add a
+once-per-real-transition audio beat. — _value **medium**; complexity **low**; deps #95/#106 (done)._
 
 ## Charm / atmosphere fillers (from-owner; slot in around the depth slices)
+_(#71 islands + #70 ocean are **promoted to the breadth top** above; left here for context.)_
 
 4. **#106 — Mode-seam hardening, slice 1** (declarative `{[mode]:{onEnter,onLeave}}` registry — sugar
    over the bus). Cheap; rides alongside #107. _(slice 4 per-mode disposal PARKED — blocked on #100
