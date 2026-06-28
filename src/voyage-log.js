@@ -17,7 +17,7 @@ export const MAX_EVENTS = 60;
 
 // The deeds the balladeer knows how to sing. A future slice can add more (best trade,
 // rank climbed, ports visited) by extending NARRATORS + sanitizeEvent below.
-export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend'];
+export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour'];
 
 export const BALLAD_TITLE = 'The Ballad of Your Voyage';
 
@@ -65,6 +65,11 @@ export function sanitizeEvent(ev) {
     case 'legend':
       return (ev.pole === 'pirate' || ev.pole === 'governor') && isStr(ev.title)
         ? { type: 'legend', pole: ev.pole, title: String(ev.title).trim() }
+        : null;
+    case 'rumour':
+      // A chased rumour that paid off (#112): the named port reached + the coin the tip earned.
+      return isStr(ev.name)
+        ? { type: 'rumour', name: String(ev.name).trim(), coins: nonNegInt(ev.coins) }
         : null;
     default:
       return null;
@@ -138,6 +143,11 @@ const NARRATORS = {
     (e) => (e.pole === 'pirate'
       ? `And the isles learned to whisper it across the water: ${e.title} — feared from one horizon clean to the other.`
       : `And the isles, with a single voice, proclaimed you ${e.title} — and meant it kindly, mostly.`),
+  ],
+  rumour: [
+    (e) => `You chased a tavern whisper clean to ${e.name}, and for once the rumour ran true — ${e.coins} coins the richer for trusting a hunched regular with a thirst.`,
+    (e) => `A corner-table tip swore ${e.name} was worth the crossing; you went, and it was — ${e.coins} coins, and a nod to the old soak who'd called it.`,
+    (e) => `Word said make for ${e.name}, so you did — and the sea, astonishingly, kept its promise: ${e.coins} coins for following a rumour to its end.`,
   ],
 };
 
@@ -217,7 +227,7 @@ export function composeBallad(events, opts = {}) {
     lines = [EMPTY_LINE];
   } else {
     lines = [OPENING];
-    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0 };
+    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0 };
     for (const e of log) {
       // A treacherous fight sings a false-colours verse; a lawful pirate-hunt sings the
       // privateer verse; everything else, the honest pool.

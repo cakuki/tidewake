@@ -71,14 +71,16 @@ function repPool(pole, tier) {
 }
 
 // Trade rumours: every other port becomes a soft heading — what it craves (sell dear) and what it
-// makes cheap (buy low). Each line names the port, so it reads as a destination to sail for.
+// makes cheap (buy low). Each line names the port AND carries a TYPED target (#115), so chasing it
+// becomes a real objective (a map marker + an arrival payoff) rather than a re-parse of the prose.
 function tradePool(port) {
   const out = [];
   for (const p of PORT_NAMES) {
     if (p === port || !PORTS[p]) continue;
     const info = PORTS[p];
-    if (info.craving) out.push(`A skipper in from ${p} swears the place would trade its boots for ${goodName(info.craving)} — run a hold over and name your price.`);
-    if (info.speciality) out.push(`They say ${p} is fair drowning in ${goodName(info.speciality)}, cheap as bilgewater. Buy low there and sell it dear on a thirstier shore.`);
+    const target = { kind: 'port', name: p };
+    if (info.craving) out.push({ text: `A skipper in from ${p} swears the place would trade its boots for ${goodName(info.craving)} — run a hold over and name your price.`, target });
+    if (info.speciality) out.push({ text: `They say ${p} is fair drowning in ${goodName(info.speciality)}, cheap as bilgewater. Buy low there and sell it dear on a thirstier shore.`, target });
   }
   return out;
 }
@@ -118,11 +120,17 @@ function deedPool(deeds) {
   return out;
 }
 
+// Wrap a bare prose line as a typed rumour entry with no chase-able target (rep/sea/deed kinds);
+// trade entries already arrive as { text, target } from tradePool (#115).
+function textOnly(text) { return { text, target: null }; }
+
 /**
  * PURE — compose a handful of in-character rumours from live world-state + reputation. Returns an
- * array of rumour strings (length up to `count`, at least 1 while a real port is docked; [] at
- * sea). Deterministic in (world, opts): the same inputs always yield the same word. `nonce` turns
- * the conversation over for a "listen again" without breaking determinism.
+ * array of TYPED rumour entries `{ text, target }` (length up to `count`, at least 1 while a real
+ * port is docked; [] at sea). `target` is `{ kind:'port', name }` for a chase-able trade tip
+ * (#111/#112/#115) or `null` for flavour-only word. Deterministic in (world, opts): the same
+ * inputs always yield the same word. `nonce` turns the conversation over for a "listen again"
+ * without breaking determinism.
  *
  * @param {object} world
  * @param {string} world.port      the docked port name (must be a real port, else [])
@@ -133,7 +141,7 @@ function deedPool(deeds) {
  * @param {object} [opts]
  * @param {number} [opts.count=2]  how many rumours to surface (clamped 1..4)
  * @param {number} [opts.nonce=0]  re-listen counter — rotates the selection for fresh word
- * @returns {string[]}
+ * @returns {Array<{text:string, target:({kind:string,name:string}|null)}>}
  */
 export function composeRumours(world = {}, opts = {}) {
   const w = world || {};
@@ -149,10 +157,10 @@ export function composeRumours(world = {}, opts = {}) {
   const tier = renownTier(renown);
 
   const pools = {
-    rep: repPool(pole, tier),
-    trade: tradePool(port),
-    sea: seaPool(pole, port),
-    deed: deedPool(w.deeds),
+    rep: repPool(pole, tier).map(textOnly),
+    trade: tradePool(port),                 // already { text, target } entries (#115)
+    sea: seaPool(pole, port).map(textOnly),
+    deed: deedPool(w.deeds).map(textOnly),
   };
   // Kind priority — rep + trade lead so a 2-rumour listen always pairs "who you are" with a
   // "where to sail". The rotation (by nonce) keeps re-listening fresh.
@@ -170,8 +178,8 @@ export function composeRumours(world = {}, opts = {}) {
     const used = usedPerKind[k] || 0;
     if (used >= pool.length) continue;
     usedPerKind[k] = used + 1;
-    const line = pool[(nonce + used) % pool.length];
-    if (line && !seen.has(line)) { seen.add(line); out.push(line); }
+    const entry = pool[(nonce + used) % pool.length];
+    if (entry && entry.text && !seen.has(entry.text)) { seen.add(entry.text); out.push(entry); }
   }
   return out;
 }

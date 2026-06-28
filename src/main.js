@@ -32,6 +32,7 @@ import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat, renownTier } from './renown.js';
 import { recallLine, rememberArrival, sanitizePortMemory } from './systems/port-memory.js';
+import { makeObjective, resolvesAt, payoffFor, sanitizeObjective } from './objectives.js';
 import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES } from './colours.js';
 import { BUDGET, formatPerf, pixelRatioCap, isMeasuredFrame } from './perf.js';
 import { isTouchDevice } from './input.js';
@@ -307,6 +308,9 @@ if (!Array.isArray(state.voyageLog)) state.voyageLog = [];
 // Per-port memory (#104): a restored voyage keeps what each town remembers of it; a fresh one
 // starts with a clean slate (no port knows your face yet). Sanitised so a junk save fails open.
 state.portMemory = sanitizePortMemory(state.portMemory);
+// Chased-rumour objective (#111/#112/#115): a restored voyage keeps the pin it was steering
+// toward; a fresh one starts unpinned. Sanitised so a junk/stale objective fails open to null.
+state.objective = sanitizeObjective(state.objective);
 
 // ---- False Colours (#79) -------------------------------------------------------------
 // The displayed flag: true black (honest pirate) vs false merchant (a disguise). A restored
@@ -385,6 +389,7 @@ function newVoyage() {
   state.voyageLog = []; // a new voyage = a blank page; the Ballad starts unwritten (#78)
   state.portMemory = {}; // a clean slate — no port remembers your face yet (#104)
   state.portRecall = null; // ...and no remembered-return greeting in flight
+  state.objective = null; // a fresh voyage chases nothing yet — the chart starts unpinned (#111/#112)
   state.colours = DEFAULT_COLOURS; // a fresh voyage flies honest black again (#79)
   applyColoursToShip();
   hud.renderColours(state.colours);
@@ -473,8 +478,33 @@ ballad.init();
 // src/ui component (the #53 standard) that paints the docked port's market and the single
 // "⚓ Set Sail" plank. It reads the live ship state for the market board and the purse; its
 // Leave control routes back through leaveHarbour() below — the one obvious, reversible way out.
-const town = createTown({ getState: () => state, onLeave: () => leaveHarbour() });
+const town = createTown({ getState: () => state, onLeave: () => leaveHarbour(), onChase: (target) => chaseObjective(target) });
 town.init();
+
+// ---- Chased-rumour objectives (#111/#112/#115) --------------------------------------------
+// A tavern rumour you choose to chase becomes a tracked sea-objective: a marker on the chart
+// (minimap/bigmap read state.objective) you steer toward, and an arrival PAYOFF when you make
+// the named port. The typed model + lifecycle is pure (src/objectives.js); here we just enrich
+// the target with the port's live coords (for the marker heading), bank it on the shared state,
+// and persist so a reload keeps the pin. logic + payoff stay deterministic + QA-exposed.
+const RUMOUR_CHASE_LINES = [
+  'You note the heading and steer for it — the chart now carries a pin to chase.',
+  'Word taken to heart: the bow swings toward the tip, and a marker marks the spot.',
+  'A wink to the old soak in the corner — you set a course for the rumour and pin the chart.',
+];
+function chaseObjective(target) {
+  try {
+    if (!target || target.kind !== 'port') return null;
+    const info = ports.portInfo(target.name);            // resolve the named port's live coords
+    const enriched = info ? { ...target, x: info.x, z: info.z } : { ...target };
+    const obj = makeObjective(enriched);
+    if (!obj) return null;
+    state.objective = obj;
+    persistence.write();                                 // lock the chase the instant it's taken
+    hud.flashBanner(`⚑ Chasing word to ${target.name}`, pickLine(RUMOUR_CHASE_LINES));
+    return obj;
+  } catch { return null; } // a flourish must never break the loop
+}
 
 // ---- Auto-harbour / Leave Harbour (#67 + #96) ----------------------------------------------
 // Making landfall is EDGE-triggered off arrival (onArrive, below): sail into a port's dock
@@ -727,6 +757,21 @@ function onArrive(portName, line) {
     persistence.write(); // lock the visit the instant it's made (like a legend/onboarding beat)
   } catch { /* the port's memory is a flourish, never a dependency — never break landfall */ }
   hud.showArrival(portName, recall || line);
+  // Chased-rumour payoff (#112): if this is the port you were chasing, the tip pays off — a
+  // modest deterministic coin bounty, a warm acknowledgement, and a Ballad verse — then the pin
+  // clears. Guarded so a flourish never breaks landfall; resolvesAt prevents a double-pay.
+  try {
+    if (resolvesAt(state.objective, portName)) {
+      const { coins } = payoffFor(state.objective);
+      initEconomy(state);
+      state.coins += coins;
+      logDeed({ type: 'rumour', name: portName, coins }); // sing it into the Ballad (#78)
+      state.objective = null;                              // the chase is done — clear the pin
+      persistence.write();
+      hud.flashBanner('⚑ The rumour paid off!',
+        `Word ran true at ${portName} — a grateful contact slips you ${coins} coins for chasing the tip.`);
+    }
+  } catch { /* the payoff is a garnish, never a dependency */ }
   fireOnboarding('dock');
   // Auto-harbour (#67/#96): the fresh arrival edge makes landfall into TOWN mode — once per
   // visit, only while under sail (the pure guard lives in src/systems/harbour.js). The mode's
@@ -903,8 +948,20 @@ window.__tidewake = {
   skipLandfall() { return skipLandfall(); },
   // Tavern "listen for word" (#103) QA surface: whether word is showing + the live rumours,
   // and a deterministic driver so a headless playtest can listen and assert the room speaks.
-  get tavern() { return { open: town.isOpen, listening: town.listening, rumours: town.rumours }; },
+  get tavern() { return { open: town.isOpen, listening: town.listening, rumours: town.rumours, targets: town.rumourTargets }; },
   tavernListen() { return town.listen(); },
+  // Chased-rumour objective (#111/#112/#115) QA surface: the live active objective (typed target +
+  // payoff, or null), plus drivers so a headless playtest can take a rumour to chase and assert
+  // the marker pins, the save round-trips, and arriving pays off. chaseRumour(i) chases the i-th
+  // listed rumour (the first chase-able one if i is omitted); chaseTarget sets one directly.
+  get objective() { return state.objective || null; },
+  chaseRumour(i) {
+    if (Number.isFinite(i)) return town.chase(i);
+    const targets = town.rumourTargets;
+    const idx = targets.findIndex((t) => t && t.kind === 'port');
+    return idx >= 0 ? town.chase(idx) : null;
+  },
+  chaseTarget(target) { return chaseObjective(target); },
   get npcs() { return npcs.snapshot(); },
   // Living sea fauna (#97) QA surface: the gull flock's count, whether it's drawn (distance
   // cull), whether it's roosting over a coast, and the live flock centre — so a headless

@@ -18,6 +18,9 @@ import { composeRumours } from '../rumours.js';
 export function createTown(opts = {}) {
   const getState = typeof opts.getState === 'function' ? opts.getState : () => null;
   const onLeave = typeof opts.onLeave === 'function' ? opts.onLeave : () => {};
+  // Chase a rumour (#111/#112/#115): hand the chosen rumour's TYPED target up to main.js, which
+  // sets the active objective (a map marker + an arrival payoff). No-op if not wired.
+  const onChase = typeof opts.onChase === 'function' ? opts.onChase : () => {};
   const root = opts.root ?? (typeof document !== 'undefined' ? document : null);
   // Touch parity (#17/#66): taps drive trades + the Leave plank when there's no keyboard.
   const TOUCH = !!(root && root.body && root.body.classList && root.body.classList.contains('touch'));
@@ -45,6 +48,18 @@ export function createTown(opts = {}) {
     lastSig = ''; // force a repaint
     render();
     return rumours.slice();
+  }
+
+  // Chase the rumour at `idx` (#111/#112/#115): a chase-able rumour (one with a typed target)
+  // becomes the active sea-objective — a map marker to steer toward + an arrival payoff. Returns
+  // the chased target (or null if that rumour has none). Re-renders so the affordance updates.
+  function chase(idx) {
+    const r = rumours[idx];
+    if (!r || !r.target) return null;
+    onChase(r.target);
+    lastSig = ''; // force a repaint so the "now chasing" state shows
+    render();
+    return r.target;
   }
 
   const REFUSALS = {
@@ -82,6 +97,8 @@ export function createTown(opts = {}) {
       $panel.addEventListener('click', (e) => {
         if (e.target.closest?.('#town-leave')) { e.preventDefault(); onLeave(); return; }
         if (e.target.closest?.('#town-listen')) { e.preventDefault(); listen(); return; }
+        const chaseBtn = e.target.closest?.('.town-chase');
+        if (chaseBtn) { e.preventDefault(); chase(Number(chaseBtn.dataset.idx)); return; }
         const tr = e.target.closest?.('.trow');
         if (tr && tr.dataset.good) doTrade(tr.dataset.good, !!e.target.closest('.ts'));
       });
@@ -109,8 +126,22 @@ export function createTown(opts = {}) {
         + `<button id="town-listen" class="town-listen" type="button">🍺 Listen for word${TKEY}</button>`
         + `</div>`;
     }
+    // A rumour with a typed target (a trade tip naming a port, #115) gets a "⚑ Chase this" pull:
+    // accepting it sets the active sea-objective (marker + arrival payoff). The one already being
+    // chased reads back "⚑ Chasing…" so the choice is legible. Flavour-only word has no pin.
+    const activeName = (() => { const s = getState(); return (s && s.objective && s.objective.target && s.objective.target.name) || null; })();
     const lines = rumours.length
-      ? rumours.map((r) => `<p class="town-rumour">“${esc(r)}”</p>`).join('')
+      ? rumours.map((r, i) => {
+          const text = typeof r === 'string' ? r : r.text; // tolerate a legacy string entry
+          const target = (r && typeof r === 'object') ? r.target : null;
+          let chaseEl = '';
+          if (target && target.name) {
+            chaseEl = target.name === activeName
+              ? `<span class="town-chasing">⚑ Chasing ${esc(target.name)}…</span>`
+              : `<button class="town-chase" type="button" data-idx="${i}">⚑ Chase this</button>`;
+          }
+          return `<p class="town-rumour">“${esc(text)}”${chaseEl}</p>`;
+        }).join('')
       : `<p class="town-rumour town-rumour-quiet">The room's gone quiet — no word worth the telling tonight.</p>`;
     return `<div class="town-tavern">`
       + `<div class="town-tavern-h">🍺 What you hear</div>`
@@ -140,7 +171,8 @@ export function createTown(opts = {}) {
     const recall = (state.portRecall && state.portRecall.port === port) ? state.portRecall.line : null;
     const master = recall || info.harbourmaster || 'The harbourmaster nods you ashore.';
     // Cheap cache: only touch the DOM when something the player can see changes.
-    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master;
+    const chasing = (state.objective && state.objective.target && state.objective.target.name) || '';
+    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing;
     if (sig === lastSig) return;
     lastSig = sig;
 
@@ -197,12 +229,15 @@ export function createTown(opts = {}) {
   }
 
   const api = {
-    init, render, setOpen, listen,
+    init, render, setOpen, listen, chase,
     get isOpen() { return open; },
     get port() { const s = getState(); return (s && s.port) || null; },
-    // Tavern "listen for word" (#103) QA surface: whether word is showing + the live rumours.
+    // Tavern "listen for word" (#103) QA surface: whether word is showing + the live rumours
+    // (text only, the #103 contract). Typed entries (#115) are exposed via `rumourTargets`.
     get listening() { return listening; },
-    get rumours() { return rumours.slice(); },
+    get rumours() { return rumours.map((r) => (typeof r === 'string' ? r : r.text)); },
+    // Chase-able targets (#111/#112/#115): the typed target per rumour (null for flavour-only).
+    get rumourTargets() { return rumours.map((r) => ((r && typeof r === 'object') ? r.target : null)); },
   };
   return api;
 }

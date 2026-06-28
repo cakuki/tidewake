@@ -18,6 +18,7 @@ import { normalizeFlags, freshFlags, completedFlags } from './onboarding.js';
 import { sanitizeLog } from './voyage-log.js';
 import { COLOURS, DEFAULT_COLOURS } from './colours.js';
 import { sanitizePortMemory } from './systems/port-memory.js';
+import { sanitizeObjective } from './objectives.js';
 
 // The set of colours ids we'll accept back from storage (#79). Anything else loads as the
 // honest default rather than rejecting the whole save (flag choice is flavour, not physics).
@@ -30,9 +31,11 @@ export const SAVE_KEY = 'tidewake.save.v1';
 // onboarding progress flags (seeded goal + first-win beats, fired once per captain, #60);
 // v7 added the voyage log — the deeds the Ballad of Your Voyage is composed from (#78);
 // v8 added the displayed colours — true black vs false merchant flag (#79 False Colours);
-// v9 added per-port memory — what each town remembers of your prior dealings (#104).
+// v9 added per-port memory — what each town remembers of your prior dealings (#104);
+// v10 added the active chased-rumour objective — the typed sea-target you're steering toward
+// (marker + arrival payoff), so a reload keeps the pin on your chart (#111/#112/#115).
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 9;
+export const SAVE_VERSION = 10;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -96,6 +99,10 @@ export function serialize(state) {
   // Per-port memory (#104): what each town remembers of you. Sanitised on the way out so only
   // clean records persist; a pre-memory caller simply records an empty store (no port knows you).
   const portMemory = sanitizePortMemory(state.portMemory);
+  // Chased-rumour objective (#111/#112/#115): the active typed sea-target the captain is
+  // steering toward. Sanitised on the way out so only a clean ACTIVE objective persists; a
+  // resolved/absent one stores as null (no pin in flight).
+  const objective = sanitizeObjective(state.objective);
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -111,6 +118,7 @@ export function serialize(state) {
     voyageLog,
     colours,
     portMemory,
+    objective,
   });
 }
 
@@ -209,6 +217,11 @@ export function deserialize(raw) {
   // otherwise-valid save (fail open). Absent → an empty store (a town that doesn't know you yet).
   const portMemory = sanitizePortMemory(obj.portMemory);
 
+  // Chased-rumour objective (save v10, #111/#112/#115): like the other flavour fields it's not
+  // load-bearing physics — sanitizeObjective drops a junk/resolved/absent objective to null
+  // (no pin) rather than rejecting an otherwise-valid save (fail open).
+  const objective = sanitizeObjective(obj.objective);
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -223,6 +236,7 @@ export function deserialize(raw) {
     voyageLog,
     colours,
     portMemory,
+    objective,
     renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }

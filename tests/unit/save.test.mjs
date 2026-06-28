@@ -383,3 +383,25 @@ test('deserialize tolerates malformed port memory (never rejects the save) (#104
   assert.ok(r, 'a junk portMemory must not reject the whole save');
   assert.deepEqual(r.portMemory, {});
 });
+
+// ---- chased-rumour objective (save v10, #111/#112/#115) -------------------------------
+
+test('serialize → deserialize round-trips an active chased-rumour objective', () => {
+  const objective = { kind: 'rumour', target: { kind: 'port', name: 'Barnacle Bottom', x: 120, z: -40 }, payoff: { coins: 60 }, status: 'active' };
+  const restored = deserialize(serialize({ ...economyState(), objective }));
+  assert.deepEqual(restored.objective, objective);
+});
+
+test('serialize drops a resolved / junk objective to null (no pin in flight) (#115)', () => {
+  const done = JSON.parse(serialize({ ...economyState(), objective: { kind: 'rumour', target: { kind: 'port', name: 'X' }, payoff: { coins: 60 }, status: 'done' } }));
+  assert.equal(done.objective, null);
+  const fresh = JSON.parse(serialize(economyState())); // no objective field
+  assert.equal(fresh.objective, null);
+});
+
+test('deserialize tolerates a malformed objective (never rejects the save) (#115)', () => {
+  const good = JSON.parse(serialize(economyState()));
+  const r = deserialize(JSON.stringify({ ...good, objective: 'not an object' }));
+  assert.ok(r, 'a junk objective must not reject the whole save');
+  assert.equal(r.objective, null);
+});

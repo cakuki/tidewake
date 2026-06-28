@@ -705,6 +705,70 @@ try {
   if (!memory.masterIsRecall) fail('port-memory: the town greeting was not flagged as a remembered-return (visual cue missing) (#104)');
   if (memory.persistedVisits !== 2) fail('port-memory: the per-port memory did not survive a save round-trip (#104)');
 
+  // 2h2c) Rumours that pay off (#111/#112/#115): the reactive town→rumour→sail→reward loop. Make
+  // landfall, LISTEN in the tavern, CHASE a trade tip (it becomes a typed objective with the named
+  // port's coords — a marker heading), then sail to that port and assert ARRIVING pays off (coins
+  // bounty + the pin clears + a Ballad verse sings the chased rumour). Proves the loop is real
+  // state end-to-end, not silent + invisible.
+  const chase = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    tw.newVoyage(); tw.step(0.1);
+    function nearestPort() {
+      const s = tw.state.pos; let best = null, bd = Infinity;
+      for (const p of tw.ports) { const d = Math.hypot(p.pos[0] - s[0], p.pos[1] - s[2]); if (d < bd) { bd = d; best = p; } }
+      return { best, bd };
+    }
+    // Sail into the nearest port until landfall opens the tavern.
+    tw.press('w');
+    let entered = false;
+    for (let i = 0; i < 6000 && !entered; i++) {
+      const { best } = nearestPort(); if (!best) break;
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+      entered = tw.mode === 'town';
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    for (let i = 0; i < 20; i++) tw.step(0.1);
+    const fromPort = tw.town.port;
+    // Listen + chase a trade tip (re-listen if the first word carried no chase-able target).
+    let heard = 0, target = null;
+    for (let n = 0; n < 6 && !target; n++) { heard = tw.tavernListen().length; target = tw.chaseRumour(); }
+    const obj = tw.objective;
+    const pinned = !!(obj && obj.target && Number.isFinite(obj.target.x) && Number.isFinite(obj.target.z));
+    const chasingDifferentPort = !!(target && target.name && target.name !== fromPort);
+    // Leave harbour, then make for the chased port (teleport just onto its dock point so arrival
+    // fires deterministically) and step so onArrive resolves the objective + pays off.
+    tw.leaveHarbour();
+    const tgt = target && tw.ports.find((p) => p.name === target.name);
+    const coins0 = tw.state.coins;
+    let coinsGain = 0, cleared = false, hasVerse = false, payoffPort = null;
+    if (tgt) {
+      tw.qaTeleport(tgt.pos[0], tgt.pos[1]);
+      for (let i = 0; i < 60; i++) { tw.step(0.1); if (!tw.objective) { cleared = true; break; } }
+      coinsGain = tw.state.coins - coins0;
+      payoffPort = tw.docked;
+      hasVerse = tw.voyageLog.some((e) => e.type === 'rumour' && e.name === target.name);
+    }
+    tw.newVoyage(); tw.step(0.1);
+    const afterNewVoyage = tw.objective;
+    return { entered, heard, target, pinned, chasingDifferentPort, coinsGain, cleared, hasVerse, payoffPort, afterNewVoyage };
+  });
+  if (!chase.entered) fail('rumour-chase: never made landfall to reach the tavern');
+  if (!(chase.heard >= 1)) fail('rumour-chase: the tavern surfaced no word to chase (#103)');
+  if (!chase.target || chase.target.kind !== 'port') fail('rumour-chase: no chase-able trade tip with a typed port target (#115)');
+  if (!chase.chasingDifferentPort) fail('rumour-chase: the chased tip did not name a real OTHER port to sail to (#111)');
+  if (!chase.pinned) fail('rumour-chase: the active objective carries no target coords — nothing for the marker to pin (#111)');
+  if (!(chase.coinsGain > 0)) fail(`rumour-chase: arriving at the chased port did not pay off (coinsGain=${chase.coinsGain}) (#112)`);
+  if (!chase.cleared) fail('rumour-chase: the objective did not clear on arrival — the pin would linger (#112)');
+  if (chase.payoffPort !== chase.target.name) fail(`rumour-chase: payoff did not fire at the chased port (docked=${chase.payoffPort}) (#112)`);
+  if (!chase.hasVerse) fail('rumour-chase: the chased rumour did not sing into the Ballad/voyage log (#78/#112)');
+  if (chase.afterNewVoyage) fail('rumour-chase: a fresh voyage did not clear the chased objective (#111/#112)');
+
   // 2h3) Landfall gesture (#102): making port is a crafted, EASED moment, not a snap. Drive the
   // mode transition headlessly and assert the gesture (a) starts under sail (blend 0), (b) eases
   // blend UP over the sim's dt without jumping straight to 1 (deterministic, not wall-clock), (c)

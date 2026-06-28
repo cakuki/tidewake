@@ -73,6 +73,7 @@ export function createMinimap({ world, ports, npcs, canvas, radius = 1200 } = {}
   const SHIP = '#ff9a8a';
   const PLAYER = '#9fd2ff';
   const NLABEL = 'rgba(207, 232, 255, .9)';
+  const OBJECTIVE = '#7CFC9A';           // the chased-rumour pin: a bright sea-green ring (#111)
 
   function update(state) {
     if (!state || !state.pos) return;
@@ -122,6 +123,24 @@ export function createMinimap({ world, ports, npcs, canvas, radius = 1200 } = {}
       ctx.fill();
     }
     ctx.globalAlpha = 1;
+
+    // Chased-rumour marker (#111): the active objective's target gets a bright ringed pin so the
+    // heading you chose reads at a glance. Clamped to the rim when out of range (still points the
+    // way); clears the instant the objective resolves/abandons (state.objective → null).
+    const obj = state.objective;
+    const ot = obj && obj.target;
+    if (ot && Number.isFinite(ot.x) && Number.isFinite(ot.z)) {
+      const p = worldToMinimap(ot.x, ot.z, px, pz, scale, size);
+      ctx.strokeStyle = OBJECTIVE;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = OBJECTIVE;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // NPC sails — small dots (culled when off-radar).
     const fleet = (npcs && npcs.snapshot) ? npcs.snapshot() : [];

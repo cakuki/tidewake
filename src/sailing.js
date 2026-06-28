@@ -94,6 +94,9 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     // Per-port memory (persisted since save v9): a returning captain keeps what each town remembers
     // of their prior dealings, so the harbourmaster greets them by reputation on landfall (#104).
     if (saved.portMemory && typeof saved.portMemory === 'object') state.portMemory = { ...saved.portMemory };
+    // Chased-rumour objective (persisted since save v10): a returning captain keeps the pin they
+    // were steering toward, so a reload never drops the active chase (#111/#112/#115).
+    state.objective = saved.objective || null;
   }
 
   // Respawn at the origin, dead in the water. Clear economy so initEconomy re-seeds defaults.
@@ -106,6 +109,7 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     delete state.onboarding; // a fresh voyage re-teaches: the goal + first-win beats arm again (#60)
     delete state.voyageLog; // a new voyage is a blank page — the Ballad starts unwritten (#78)
     delete state.portMemory; // a new voyage = a clean slate; no port remembers you yet (#104)
+    delete state.objective; // a new voyage chases nothing yet — the chart starts unpinned (#111/#112)
     if (input && typeof input.resetView === 'function') input.resetView(); // reopen astern (#49)
   }
 

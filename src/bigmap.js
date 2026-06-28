@@ -73,6 +73,7 @@ export function createBigMap({ world, ports, npcs, canvas, overlay, radius = 400
   const LABEL = '#ffe9b8';
   const SHIP = '#ff9a8a';
   const PLAYER = '#9fd2ff';
+  const OBJECTIVE = '#7CFC9A';                      // the chased-rumour pin: a bright sea-green ring (#111)
   const NLABEL = 'rgba(207, 232, 255, .9)';
   const SCALE = 'rgba(207, 232, 255, .75)';
 
@@ -148,6 +149,28 @@ export function createBigMap({ world, ports, npcs, canvas, overlay, radius = 400
       ctx.fillStyle = LABEL;
       ctx.textAlign = rightOk ? 'left' : 'right';
       ctx.fillText(port.name, p.x + (rightOk ? 9 : -9), p.y);
+    }
+
+    // Chased-rumour marker (#111): the active objective's target gets a bright ringed pin + a
+    // "⚑ chasing" label, so the route-planning chart shows exactly the heading you chose. Reads
+    // the live objective off state; clears the instant it resolves/abandons.
+    const obj = state.objective;
+    const ot = obj && obj.target;
+    if (ot && Number.isFinite(ot.x) && Number.isFinite(ot.z)) {
+      const p = worldToMinimap(ot.x, ot.z, px, pz, scale, size);
+      ctx.strokeStyle = OBJECTIVE;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 11, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = OBJECTIVE;
+      ctx.fill();
+      ctx.font = '12px ui-monospace, Menlo, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('⚑ chasing', p.x, p.y - 14);
     }
 
     // NPC sails — small dots.

@@ -203,3 +203,32 @@ test('composeBallad sings a distinct LAWFUL privateer verse for an honest pirate
   assert.ok(/pirate|outlaw|lawful|honest colours|true (flag|colours)/i.test(lawful.text));
   assert.ok(!/merchant colours|treachery/i.test(lawful.text));
 });
+
+// ---- chased-rumour payoff verse (#112) ------------------------------------------------
+
+test('sanitizeEvent accepts a chased-rumour payoff (name + coins), rejects a nameless one', () => {
+  assert.deepEqual(
+    sanitizeEvent({ type: 'rumour', name: 'Barnacle Bottom', coins: 60 }),
+    { type: 'rumour', name: 'Barnacle Bottom', coins: 60 },
+  );
+  assert.equal(sanitizeEvent({ type: 'rumour', coins: 60 }), null);
+  // coins coerced to a safe non-negative integer
+  assert.deepEqual(
+    sanitizeEvent({ type: 'rumour', name: 'Gullet\'s Rest', coins: -3 }),
+    { type: 'rumour', name: "Gullet's Rest", coins: 0 },
+  );
+});
+
+test('composeBallad sings the chased-rumour verse, naming the port + coin', () => {
+  const b = composeBallad([{ type: 'rumour', name: 'Barnacle Bottom', coins: 60 }]);
+  assert.match(b.text, /Barnacle Bottom/);
+  assert.match(b.text, /60/);
+  assert.match(b.text, /rumour|tip|whisper|word/i);
+});
+
+test('a chased rumour is NOT deduped — each chase is its own anecdote', () => {
+  let log = [];
+  log = recordEvent(log, { type: 'rumour', name: 'Barnacle Bottom', coins: 60 });
+  log = recordEvent(log, { type: 'rumour', name: 'Barnacle Bottom', coins: 60 });
+  assert.equal(log.length, 2);
+});
