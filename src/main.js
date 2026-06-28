@@ -309,7 +309,7 @@ addEventListener('pagehide', persistence.write);
 function newVoyage() {
   duel.cancel();
   cannons.cancel();
-  mode.leave(); // a fresh voyage always starts under sail (#95)
+  mode.reset(); // a fresh voyage always starts under sail — deterministic (#95/#106)
   leftHarbour = false; // a fresh voyage re-arms auto-harbour from a clean slate (#67)
   persistence.clear();
   sailing.reset();
