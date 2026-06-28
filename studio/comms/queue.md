@@ -57,11 +57,28 @@ build top is the replay-gate hardening that must precede battle (#131), then the
 charm that battle inherits (#124, #116). **#100 battle remains the owner's to steer** — HELD, not
 auto-promoted; gentle nudge warranted (Retro 12's still-open ☐). See `studio/retros/2026-06-28-deep-learning-5.md`.
 
-1. **#131 — [DL#5] Harden the golden-replay gate** — determinism-parity (variable-dt live loop vs
-   fixed-dt replay — a real divergence the TL found) + a save-round-trip-per-tick invariant (catches a
-   new field the codec forgets to persist). Two cheap invariants on the #123 fixture; de-risks #36;
-   pairs with #121. _value **med** · complexity **low** · tech+qa._ **Now top.**
+_**Top re-promoted (Loop 82, queue hygiene):** the prior top (#131 replay-gate, #124 crew morale) both
+SHIPPED & CLOSED (Loops 80–81); the engine de-risk quartet is done. Per DL #5's "next reactive meter /
+charm that battle inherits" + the pole-tension frontier, the strongest UNBLOCKED reservoir items are
+promoted below. **#100 battle still owner-held — NOT promoted; gentle nudge still due.**_
 
+1. **#116 — Diegetic feedback for the reactive loop** — listen/reach/payoff stingers + interaction SFX
+   + a warmer remembered-port arrival cue. Pure wiring onto the existing bar-clock; battle inherits the
+   feedback vocabulary. _value **med** · complexity **low** · audio. **Now top.**_
+
+2. **#134 — [DL#5] Your Harbour, threatened** — the pole-straddling STAKE (Infamy → blockade, Standing →
+   raid) that gives the home port (#118) a reason to matter and hands battle #100 its reason to exist.
+   Ship the **lightweight non-battle resolution first** (a choice/dice beat, not combat). _value **high**
+   · complexity **med** · feature+design._
+
+3. **#132 — [DL#5] The reputation needle, made personal & audible** — hull/sail material lerp + harmonic
+   modal recolour on the *same* needle; procedural, zero new assets. Makes the symmetric poles FELT on
+   the player. _value **med** · complexity **med** · art+audio+design._
+
+- ~~**#131 — [DL#5] Harden the golden-replay gate**~~ — ✅ **SHIPPED & CLOSED** (Loops 79–80) — both
+  invariants (determinism-parity + save-round-trip-per-tick) now gate the #123 fixture.
+- ~~**#124 — Crew morale/loyalty meter**~~ — ✅ **SHIPPED & CLOSED** (Loop 81, save v15). Its Ballad
+  verses + a dominant-pole closing couplet shipped Loop 82 (**#90 partial, kept OPEN**).
 - ~~**#130 — Migrate the remaining hand-wired systems onto the registry**~~ — ✅ **SHIPPED & CLOSED**
   (Loop 72). The whole `update()` is the registry now; `when(ctx)` predicate folded in.
 - ~~**#121 — Gate resource-conservation invariant + transition-frame perf sample**~~ — ✅ **SHIPPED &
@@ -171,7 +188,10 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
     after the owner brief.
 14. **#80 — combat/harbour game-feel "juice" pass** (hit-stop, screenshake, camera punch; toggle-able).
     Pairs with #102's landfall punch + any #100 battle.
-15. **#90 — Ballad richer composition** (more deed types · share-as-image) — deepens the #78 lever. P3.
+15. **#90 — Ballad richer composition** — _PARTIAL, OPEN (Loop 82): crew-morale verses + a dominant-pole
+    closing couplet + 3-variant pools shipped. **Remains:** share-as-image PNG (needs canvas/visual
+    verify) · economy/ladder-hook deed types (best trade, coin milestones, rank, ports) · seeded "daily
+    voyage" ballad._ deepens the #78 lever. P3.
 16. **#92 — richer privateering** (faction/bounty + persisted Letter-of-Marque commission + more false
     ensigns) — **its bounty side feeds #112 rumour-payoff**. DL reservoir: **#82 crew chorus**,
     **#81 hull creak**, **#83 watercolour chart**, **#40/#35 Klezmer 'freygish' + procedural cannon
