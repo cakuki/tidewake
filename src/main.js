@@ -41,7 +41,7 @@ import {
   sanitizeHarbour, claim as claimHome, invest as investHome, canClaim, canInvest, harbourLevelName,
   earnedGovernorship, governorTitle,
 } from './systems/home-port.js';
-import { makeObjective, resolvesAt, payoffFor, sanitizeObjective } from './objectives.js';
+import { makeObjective, resolvesAt, payoffFor, sanitizeObjective, makeContestedObjective, tickContest, isContested, isClaimed, rivalName, shouldContest } from './objectives.js';
 import { createEncounter, HAIL_LINES, RESCUE_LINES, PLUNDER_LINES } from './systems/encounter.js';
 import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES } from './colours.js';
 import { BUDGET, formatPerf, pixelRatioCap, isMeasuredFrame } from './perf.js';
@@ -714,16 +714,37 @@ const RUMOUR_CHASE_LINES = [
   'Word taken to heart: the bow swings toward the tip, and a marker marks the spot.',
   'A wink to the old soak in the corner — you set a course for the rumour and pin the chart.',
 ];
-function chaseObjective(target) {
+// Contested rumours (#133): SOME chased tips draw a rival captain racing you for the same prize on
+// a seeded soft clock — arrive in time to win it as normal (+ a "you beat them to it" beat), dawdle
+// and the rival CLAIMS it first (you arrive to find it gone). `opts.contested` forces it on/off (the
+// QA spawn hook); left unset, it's a deterministic ~1-in-3 draw seeded off the target + origin port.
+const RUMOUR_RACE_LINES = [
+  'is racing you for the same word — beat them to it or arrive to a rival\'s wake.',
+  'wants that prize as badly as you do. Carry the wind, captain, or carry the grudge.',
+  'heard the same whisper. It\'s a race now — chase hard, and don\'t dawdle ashore.',
+];
+function chaseObjective(target, opts = {}) {
   try {
     if (!target || target.kind !== 'port') return null;
     const info = ports.portInfo(target.name);            // resolve the named port's live coords
     const enriched = info ? { ...target, x: info.x, z: info.z } : { ...target };
-    const obj = makeObjective(enriched);
+    const seed = `${target.name}|${ports.docked || ''}`;
+    const contested = opts.contested === true
+      || (opts.contested !== false && shouldContest(seed));
+    let obj;
+    if (contested) {
+      obj = makeContestedObjective(enriched, { rival: opts.rival, fromX: state.pos?.x, fromZ: state.pos?.z });
+    } else {
+      obj = makeObjective(enriched);
+    }
     if (!obj) return null;
     state.objective = obj;
     persistence.write();                                 // lock the chase the instant it's taken
-    hud.flashBanner(`⚑ Chasing word to ${target.name}`, pickLine(RUMOUR_CHASE_LINES));
+    if (isContested(obj)) {
+      hud.flashBanner(`⚑ A race for ${target.name}!`, `${rivalName(obj)} ${pickLine(RUMOUR_RACE_LINES)}`);
+    } else {
+      hud.flashBanner(`⚑ Chasing word to ${target.name}`, pickLine(RUMOUR_CHASE_LINES));
+    }
     return obj;
   } catch { return null; } // a flourish must never break the loop
 }
@@ -870,6 +891,21 @@ systems.register({ name: 'harbour-distance', order: 30, update: (f) => {
 // — the ship physics step (#76 c): always runs; a paused helm eases to a near-stop, a harbour
 //   approach coasts in. Helm input is ignored while paused.
 systems.register({ name: 'sailing', order: 40, update: (f) => sailing.step(f.dt, f.t, { fighting: f.paused, harbourDistance: f.harbourDistance, harbourRadius: DOCK_RADIUS }) });
+// — contested-rumour soft clock (#133): advance the rival's race every frame (even ASHORE — that's
+//   the whole point: dawdle in town and they close the gap), regardless of mode. When the clock
+//   runs out the rival CLAIMS the prize; ring a wry beat once + lock it in. Runs BEFORE `ports`
+//   (order 140) so a same-frame expiry is settled before arrival decides win vs lose.
+systems.register({ name: 'contest', order: 45, when: (f) => isContested(f.state.objective) && !isClaimed(f.state.objective), update: (f) => {
+  const after = tickContest(f.state.objective, f.dt);
+  f.state.objective = after;
+  if (isClaimed(after)) {
+    persistence.write();                                  // lock the claim so a reload can't reset the clock
+    try {
+      hud.flashBanner('⚑ Beaten to it…',
+        `Word reaches you too late — ${rivalName(after)} has claimed the prize at ${after.target.name} first.`);
+    } catch { /* a flourish must never break the loop */ }
+  }
+} });
 // — landfall camera ease (#102): only while the gesture is in flight (when blend>0), slide the
 //   chase cam toward a closer "ashore" framing of the moored ship.
 systems.register({ name: 'landfall-camera', order: 50, when: () => landfall.blend > 0, update: (f) => {
@@ -1074,16 +1110,32 @@ function onArrive(portName, line) {
   // clears. Guarded so a flourish never breaks landfall; resolvesAt prevents a double-pay.
   try {
     if (resolvesAt(state.objective, portName)) {
-      const { coins } = payoffFor(state.objective);
+      const obj = state.objective;
+      const contested = isContested(obj);
+      const claimed = isClaimed(obj);                      // the rival beat you to it (#133)
+      const rival = rivalName(obj);
+      const { coins } = payoffFor(obj);                    // 0 when the rival has already claimed it
       initEconomy(state);
       state.coins += coins;
-      const rumourDeed = { type: 'rumour', name: portName, coins };
+      // Both the win-race and lose-race paths sing into the Ballad (#133 DoD): a contested deed
+      // carries the rival + whether you `won` (arrived in time); an ordinary tip just the payoff.
+      const rumourDeed = contested
+        ? { type: 'rumour', name: portName, coins, rival, won: !claimed }
+        : { type: 'rumour', name: portName, coins };
       logDeed(rumourDeed);                                 // sing it into the Ballad (#78)
-      state.portMemory = recordDeed(state.portMemory, portName, deedPhrase(rumourDeed)); // #104b — this port remembers the tip paying off
+      state.portMemory = recordDeed(state.portMemory, portName, deedPhrase(rumourDeed)); // #104b — this port remembers the chase
       state.objective = null;                              // the chase is done — clear the pin
       persistence.write();
-      hud.flashBanner('⚑ The rumour paid off!',
-        `Word ran true at ${portName} — a grateful contact slips you ${coins} coins for chasing the tip.`);
+      if (contested && claimed) {
+        hud.flashBanner('⚑ Beaten to it…',
+          `${rival} reached ${portName} ahead of you and made off with the prize — nothing left but the tale and a grudge.`);
+      } else if (contested) {
+        hud.flashBanner('⚑ You beat them to it!',
+          `You outran ${rival} to ${portName} — the prize is yours: ${coins} coins, and a rival arriving to your wake.`);
+      } else {
+        hud.flashBanner('⚑ The rumour paid off!',
+          `Word ran true at ${portName} — a grateful contact slips you ${coins} coins for chasing the tip.`);
+      }
     }
   } catch { /* the payoff is a garnish, never a dependency */ }
   fireOnboarding('dock');
@@ -1324,6 +1376,18 @@ window.__tidewake = {
     return idx >= 0 ? town.chase(idx) : null;
   },
   chaseTarget(target) { return chaseObjective(target); },
+  // Contested rumour (#133) QA surface: a deterministic SPAWN hook (force a contested chase of a
+  // typed target → a named rival + soft clock on state.objective.contest) and a RESOLVE hook (run
+  // the rival's clock out so they CLAIM the prize) — so a headless playtest can assert BOTH the
+  // win-race (arrive in time → full reward + "beat them" verse) and lose-race (claimed → no reward
+  // + "beaten to it" verse) paths, deterministically and headless-safe.
+  chaseContested(target, opts) { return chaseObjective(target, { ...(opts || {}), contested: true }); },
+  rivalClaim() {
+    if (!isContested(state.objective) || isClaimed(state.objective)) return false;
+    state.objective = tickContest(state.objective, (state.objective.contest.budget || 0) + 1);
+    if (isClaimed(state.objective)) persistence.write();
+    return isClaimed(state.objective);
+  },
   get npcs() { return npcs.snapshot(); },
   // Living sea fauna (#97) QA surface: the gull flock's count, whether it's drawn (distance
   // cull), whether it's roosting over a coast, and the live flock centre — so a headless

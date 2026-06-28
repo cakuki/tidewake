@@ -783,6 +783,70 @@ try {
   if (!chase.hasVerse) fail('rumour-chase: the chased rumour did not sing into the Ballad/voyage log (#78/#112)');
   if (chase.afterNewVoyage) fail('rumour-chase: a fresh voyage did not clear the chased objective (#111/#112)');
 
+  // 2h2c2) Contested rumour (#133, DL #5): a rumour you chase is ALSO chased by a rival captain on a
+  // seeded soft clock. Arrive in time → win it as normal + a "you beat them to it" beat; dawdle and
+  // the rival CLAIMS it first → you arrive to find it gone (a wry line, NO reward). Drive BOTH paths
+  // deterministically via the QA spawn/resolve hooks, and prove the claim PERSISTS across a reload
+  // (no resetting the race clock by reloading). Both outcomes must sing distinct verses into the Ballad.
+  const contestedWin = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const other = tw.ports[1] || tw.ports[0];
+    const target = { kind: 'port', name: other.name };
+    // --- WIN the race: chase contested, arrive before the rival's clock runs out ---
+    tw.newVoyage(); tw.step(0.1);
+    const wonObj = tw.chaseContested(target);
+    const contestedSpawn = !!(wonObj && wonObj.contest && wonObj.contest.rival && wonObj.contest.budget > 0);
+    const rival = wonObj && wonObj.contest && wonObj.contest.rival;
+    const coins0 = tw.state.coins;
+    tw.qaTeleport(other.pos[0], other.pos[1]);
+    let wonCleared = false;
+    for (let i = 0; i < 60; i++) { tw.step(0.1); if (!tw.objective) { wonCleared = true; break; } }
+    const wonGain = tw.state.coins - coins0;
+    const wonVerse = tw.voyageLog.some((e) => e.type === 'rumour' && e.name === other.name && e.rival && e.won === true);
+    // Recurring antagonist: the SAME contested rumour always names the SAME rival.
+    tw.newVoyage(); tw.step(0.1);
+    const again = tw.chaseContested(target);
+    const sameRival = !!(again && again.contest && again.contest.rival === rival);
+    // --- LOSE setup: chase contested, run the rival's clock out (resolve hook), and SAVE ---
+    tw.newVoyage(); tw.step(0.1);
+    tw.chaseContested(target);
+    const claimedHook = tw.rivalClaim();
+    const claimedState = !!(tw.objective && tw.objective.contest && tw.objective.contest.claimed);
+    tw.save();
+    return { targetName: other.name, contestedSpawn, rival, wonCleared, wonGain, wonVerse, sameRival, claimedHook, claimedState };
+  });
+  if (!contestedWin.contestedSpawn) fail('contested-rumour: chaseContested did not spawn a contested objective with a named rival + soft clock (#133)');
+  if (!contestedWin.wonCleared) fail('contested-rumour: the won objective did not clear on arrival (#133)');
+  if (!(contestedWin.wonGain > 0)) fail(`contested-rumour: winning the race paid no reward (gain=${contestedWin.wonGain}) (#133)`);
+  if (!contestedWin.wonVerse) fail('contested-rumour: a won race did not sing a "beat them to it" verse into the Ballad (#78/#133)');
+  if (!contestedWin.sameRival) fail('contested-rumour: the same contested rumour named a different rival — not a recurring antagonist (#133)');
+  if (!contestedWin.claimedHook || !contestedWin.claimedState) fail('contested-rumour: the rival-claim resolve hook did not claim the prize (#133)');
+
+  // Reload: the rival's CLAIM must persist — you can't reset the race clock by reloading. Then sail
+  // in too late and confirm the lose-race path (no reward, the pin clears, a distinct "beaten" verse).
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForFunction('window.__tidewake && window.__tidewake.ready === true', { timeout: 30000 });
+  const contestedLose = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const persistedClaim = !!(tw.objective && tw.objective.contest && tw.objective.contest.claimed);
+    const targetName = tw.objective && tw.objective.target && tw.objective.target.name;
+    const tgt = tw.ports.find((p) => p.name === targetName);
+    const coins0 = tw.state.coins;
+    let lostCleared = false;
+    if (tgt) {
+      tw.qaTeleport(tgt.pos[0], tgt.pos[1]);
+      for (let i = 0; i < 60; i++) { tw.step(0.1); if (!tw.objective) { lostCleared = true; break; } }
+    }
+    const lostGain = tw.state.coins - coins0;
+    const lostVerse = tw.voyageLog.some((e) => e.type === 'rumour' && e.name === targetName && e.rival && e.won === false);
+    tw.newVoyage(); tw.step(0.1);
+    return { persistedClaim, targetName, lostCleared, lostGain, lostVerse };
+  });
+  if (!contestedLose.persistedClaim) fail('contested-rumour: the rival claim did not survive a reload — the clock could be reset by reloading (#133)');
+  if (!contestedLose.lostCleared) fail('contested-rumour: the lost objective did not clear on arrival (#133)');
+  if (!(contestedLose.lostGain === 0)) fail(`contested-rumour: arriving after the rival claimed it still paid out (gain=${contestedLose.lostGain}) — the prize should be gone (#133)`);
+  if (!contestedLose.lostVerse) fail('contested-rumour: a lost race did not sing a distinct "beaten to it" verse into the Ballad (#78/#133)');
+
   // 2h2d) Your Harbour (#118, DL #4) — the GOVERNOR pole's first reactive verb: CLAIM a home port,
   // then INVEST coin to GROW it. Make landfall, assert the claim is GATED on Standing (locked when
   // poor, open when respected), claim the docked port (earns Standing + a homecoming greeting in the

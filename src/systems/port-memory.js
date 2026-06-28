@@ -237,6 +237,12 @@ export function deedPhrase(event) {
       if (event.lawful) return `how you shamed the outlaw ${foe} off the sea within sight of the quay`;
       return `how you out-jeered ${foe} to silence within sight of the wharf`;
     case 'rumour':
+      // A contested rumour (#133): the port remembers the RACE — won or lost to a named rival.
+      if (isStr(event.rival)) {
+        return event.won
+          ? `the day you outran ${event.rival.trim()} to a prize the whole coast wanted`
+          : `the day ${event.rival.trim()} beat you to the prize by a single tide`;
+      }
       return 'the tavern tip that paid off the very moment you made port';
     default:
       return '';

@@ -233,6 +233,35 @@ test('a chased rumour is NOT deduped — each chase is its own anecdote', () => 
   assert.equal(log.length, 2);
 });
 
+// ---- contested-rumour verses (#133: a rival raced you for the prize) -------------------
+
+test('sanitizeEvent carries a contested rumour\'s rival + win/lose, coercing won to a boolean', () => {
+  assert.deepEqual(
+    sanitizeEvent({ type: 'rumour', name: 'Barnacle Bottom', coins: 60, rival: 'Silas Thorne', won: true }),
+    { type: 'rumour', name: 'Barnacle Bottom', coins: 60, rival: 'Silas Thorne', won: true },
+  );
+  assert.deepEqual(
+    sanitizeEvent({ type: 'rumour', name: 'Barnacle Bottom', coins: 0, rival: 'Silas Thorne' }),
+    { type: 'rumour', name: 'Barnacle Bottom', coins: 0, rival: 'Silas Thorne', won: false },
+  );
+  // a blank/missing rival degrades to a plain rumour (no rival/won fields)
+  assert.deepEqual(
+    sanitizeEvent({ type: 'rumour', name: 'Barnacle Bottom', coins: 60, rival: '   ' }),
+    { type: 'rumour', name: 'Barnacle Bottom', coins: 60 },
+  );
+});
+
+test('composeBallad sings a WON-race verse (beat them to it) vs a LOST-race verse (beaten to it)', () => {
+  const won = composeBallad([{ type: 'rumour', name: 'Barnacle Bottom', coins: 60, rival: 'Silas Thorne', won: true }]);
+  assert.match(won.text, /Silas Thorne/);
+  assert.match(won.text, /first|ahead|faster|raced/i);
+  assert.match(won.text, /60/);
+  const lost = composeBallad([{ type: 'rumour', name: 'Barnacle Bottom', coins: 0, rival: 'Silas Thorne', won: false }]);
+  assert.match(lost.text, /Silas Thorne/);
+  assert.match(lost.text, /gone|beat|claimed|grudge|too late|sailed/i);
+  assert.notEqual(won.text, lost.text, 'the win and lose paths sing different verses');
+});
+
 // ---- at-sea encounter verse (#125: rescue vs plunder) ---------------------------------
 
 test('sanitizeEvent accepts an encounter (ship + a valid choice), rejects a bad one', () => {

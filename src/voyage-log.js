@@ -66,11 +66,15 @@ export function sanitizeEvent(ev) {
       return (ev.pole === 'pirate' || ev.pole === 'governor') && isStr(ev.title)
         ? { type: 'legend', pole: ev.pole, title: String(ev.title).trim() }
         : null;
-    case 'rumour':
+    case 'rumour': {
       // A chased rumour that paid off (#112): the named port reached + the coin the tip earned.
-      return isStr(ev.name)
-        ? { type: 'rumour', name: String(ev.name).trim(), coins: nonNegInt(ev.coins) }
-        : null;
+      // A CONTESTED rumour (#133) also carries the named `rival` you raced + whether you `won`
+      // (arrived in time) or were beaten to it — which decides the verse.
+      if (!isStr(ev.name)) return null;
+      const out = { type: 'rumour', name: String(ev.name).trim(), coins: nonNegInt(ev.coins) };
+      if (isStr(ev.rival)) { out.rival = String(ev.rival).trim(); out.won = !!ev.won; }
+      return out;
+    }
     case 'encounter':
       // An at-sea founderer met and answered (#125): the stricken ship's name + which way you
       // leaned (rescue → Standing / plunder → Infamy + coin). `choice` decides the verse.
@@ -243,6 +247,21 @@ const ENCOUNTER_NARRATORS = {
   ],
 };
 
+// Contested rumours (#133): a chased tip a rival raced you for sings one of two verses — the race
+// WON (you got there first) or the race LOST (the rival beat you to it). Chosen by `e.won` in
+// composeBallad whenever a rumour deed carries a `rival`, ahead of the plain rumour pool. The same
+// named rival recurs across deeds, so the ballad reads as a running grudge. Original to Tidewake.
+const RUMOUR_RACE_WON = [
+  (e) => `You raced ${e.rival} clean across the water for the same whispered prize at ${e.name} — and got there first. ${e.coins} coins, and the rare joy of a rival arriving to your wake.`,
+  (e) => `Word said ${e.name}, and so did ${e.rival} — but you carried the wind and made port ahead of them. ${e.coins} coins, and a wave at the latecomer.`,
+  (e) => `${e.rival} wanted that ${e.name} tip as badly as you did. A pity for them: you were faster, ${e.coins} coins faster, and grinning about it.`,
+];
+const RUMOUR_RACE_LOST = [
+  (e) => `You chased a tip to ${e.name}, but ${e.rival} had the same notion and a fairer wind — you made port to find the prize gone and only a wry shrug for the crossing.`,
+  (e) => `${e.rival} beat you to ${e.name} by a single tide. The bounty was claimed, the quay was laughing, and you'd a long memory to show for it.`,
+  (e) => `You dawdled, and ${e.rival} did not — by the time you raised ${e.name} the prize had sailed, and a grudge took its place in the hold.`,
+];
+
 const OPENING = 'Gather round and hear it sung — the ballad of a captain, a small boat, and a sea with opinions.';
 
 function tally(events) {
@@ -289,6 +308,7 @@ export function composeBallad(events, opts = {}) {
       // An at-sea encounter sings a rescue/plunder verse by the choice made; a treacherous fight
       // sings a false-colours verse; a lawful pirate-hunt the privateer verse; else the honest pool.
       const pool = (e.type === 'encounter' && ENCOUNTER_NARRATORS[e.choice])
+        || (e.type === 'rumour' && e.rival && (e.won ? RUMOUR_RACE_WON : RUMOUR_RACE_LOST))
         || (e.captured && CAPTURE_NARRATORS[e.type])
         || (e.treachery && TREACHERY_NARRATORS[e.type])
         || (e.lawful && LAWFUL_NARRATORS[e.type])

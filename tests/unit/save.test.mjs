@@ -426,6 +426,28 @@ test('deserialize tolerates a malformed objective (never rejects the save) (#115
   assert.equal(r.objective, null);
 });
 
+// ---- contested-rumour objective (save v14, #133) --------------------------------------
+
+test('serialize → deserialize round-trips a CONTESTED chased-rumour objective (rival + clock) (#133)', () => {
+  const objective = {
+    kind: 'rumour', target: { kind: 'port', name: 'Barnacle Bottom', x: 120, z: -40 },
+    payoff: { coins: 60 }, status: 'active',
+    contest: { rival: 'Silas Thorne', budget: 90, elapsed: 30, claimed: false },
+  };
+  const restored = deserialize(serialize({ ...economyState(), objective }));
+  assert.deepEqual(restored.objective, objective, 'the rival + soft clock survive the save round-trip');
+});
+
+test('a claimed contest survives reload as claimed — no reload-reset exploit (#133)', () => {
+  const objective = {
+    kind: 'rumour', target: { kind: 'port', name: 'Barnacle Bottom', x: 1, z: 2 },
+    payoff: { coins: 60 }, status: 'active',
+    contest: { rival: 'Silas Thorne', budget: 50, elapsed: 60, claimed: true },
+  };
+  const restored = deserialize(serialize({ ...economyState(), objective }));
+  assert.equal(restored.objective.contest.claimed, true, 'a run-out race stays claimed across a reload');
+});
+
 // ---- claimed home harbour (save v12, #118 "Your Harbour") ----------------------------
 
 test('serialize → deserialize round-trips a claimed home harbour (#118)', () => {

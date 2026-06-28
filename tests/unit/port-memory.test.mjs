@@ -118,6 +118,12 @@ test('deedPhrase names the foe for combat wins, framed from the port', () => {
   assert.match(deedPhrase({ type: 'cannon', foe: 'the Sprat', captured: true }), /spared/);
   assert.match(deedPhrase({ type: 'cannon', foe: 'the Sprat', lawful: true }), /lawful|outlaw/);
 });
+test('deedPhrase remembers a contested rumour as a race won or lost to the named rival (#133)', () => {
+  assert.match(deedPhrase({ type: 'rumour', name: 'X', rival: 'Silas Thorne', won: true }), /Silas Thorne/);
+  assert.match(deedPhrase({ type: 'rumour', name: 'X', rival: 'Silas Thorne', won: true }), /outran|prize/);
+  assert.match(deedPhrase({ type: 'rumour', name: 'X', rival: 'Silas Thorne', won: false }), /beat you|tide/);
+});
+
 test('deedPhrase has a phrase for a chased-rumour payoff, and none for junk', () => {
   assert.match(deedPhrase({ type: 'rumour', name: 'Saltpurse Quay' }), /tip|paid off/);
   assert.equal(deedPhrase({ type: 'cannon' }), '');        // no foe → nothing to recall

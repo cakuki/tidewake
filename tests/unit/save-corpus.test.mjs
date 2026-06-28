@@ -76,6 +76,12 @@ const CORPUS = [
     blob: '{"v":12,"heading":1.2,"speed":8,"throttle":0.5,"pos":[120.5,0,-340.25],"coins":250,"cargo":{"rum":3},"infamy":300,"standing":200,"legends":{"pirate":true,"governor":false},"onboarding":{"goal":true,"firstDock":true,"firstTrade":true,"firstRank":false},"voyageLog":[],"colours":"merchant","portMemory":{},"objective":null,"harbour":{"name":"Gullet\'s Rest","level":2,"invested":150}}',
     expect: { coins: 250, harbour: { name: "Gullet's Rest", level: 2, invested: 150 }, governorship: false },
   },
+  {
+    v: 13, // home-isle governorship crown (#119) — carries a PRE-CONTEST chased-rumour objective, which
+    // must migrate forward to v14 (#133) intact, simply with no contest (a plain, uncontested chase).
+    blob: '{"v":13,"heading":1.2,"speed":8,"throttle":0.5,"pos":[120.5,0,-340.25],"coins":250,"cargo":{"rum":3},"infamy":300,"standing":200,"legends":{"pirate":true,"governor":false},"onboarding":{"goal":true,"firstDock":true,"firstTrade":true,"firstRank":false},"voyageLog":[],"colours":"merchant","portMemory":{},"objective":{"kind":"rumour","target":{"kind":"port","name":"Barnacle Bottom","x":120,"z":-40},"payoff":{"coins":60},"status":"active"},"harbour":{"name":"Gullet\'s Rest","level":4,"invested":900},"governorship":true}',
+    expect: { coins: 250, governorship: true, objective: { kind: 'rumour', target: { kind: 'port', name: 'Barnacle Bottom', x: 120, z: -40 }, payoff: { coins: 60 }, status: 'active' } },
+  },
 ];
 
 // A subset-deep-equality assert: every key in `expect` matches in `actual` (deep), but `actual` may

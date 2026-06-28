@@ -52,27 +52,23 @@ the WHOLE session with the owner absent. Keep it HELD; do **NOT** auto-promote �
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
 **DL #5 (2026-06-28, 9-role fan-out) re-sorted this top. #126 / #120-mechanism / #123 / #125 / #118 /
-#122 ALL SHIPPED & CLOSED.** The unanimous next build top is to **finish the registry migration** (#130 —
-half-migrated `main.js` @ 1399 lines is the worst state; it's the seam battle forks), then the gate +
-replay hardening that must precede battle (#121 + #131), then the next reactive meter / charm that
-battle inherits (#124, #116). **#100 battle remains the owner's to steer** — HELD, not auto-promoted;
-gentle nudge warranted (Retro 12's still-open ☐). See `studio/retros/2026-06-28-deep-learning-5.md`.
+#122 / #130 / #121 / #117 / #110 ALL SHIPPED & CLOSED; #133 contested rumour now SHIPPED.** The next
+build top is the replay-gate hardening that must precede battle (#131), then the next reactive meter /
+charm that battle inherits (#124, #116). **#100 battle remains the owner's to steer** — HELD, not
+auto-promoted; gentle nudge warranted (Retro 12's still-open ☐). See `studio/retros/2026-06-28-deep-learning-5.md`.
 
-1. **#130 — Migrate the remaining hand-wired systems onto the registry** (#120 follow-up) — incremental,
-   behaviour-preserving each step; `main.js` is back to 1399 lines with only ~4/12 systems registered.
-   **Fold in Dev's `when(ctx)` predicate** (mode-eligibility as a declaration, not a scattered branch).
-   _value **med** · complexity **medium** · tech. Natural home for #36 fixed-timestep + the seam battle
-   #100 plugs into._ **Now top.**
-
-2. **#121 — Gate resource-conservation invariant** (mesh leak across an N×N cycle) **+ transition-frame
-   perf sample**. The gate's real hole before battle (settled-frame perf sees neither a leak nor the
-   build/teardown spike). **Rides WITH battle #100.** _value **med** · complexity **low-med** · tech+qa._
-
-3. **#131 — [DL#5] Harden the golden-replay gate** — determinism-parity (variable-dt live loop vs
+1. **#131 — [DL#5] Harden the golden-replay gate** — determinism-parity (variable-dt live loop vs
    fixed-dt replay — a real divergence the TL found) + a save-round-trip-per-tick invariant (catches a
    new field the codec forgets to persist). Two cheap invariants on the #123 fixture; de-risks #36;
-   pairs with #121. _value **med** · complexity **low** · tech+qa._
+   pairs with #121. _value **med** · complexity **low** · tech+qa._ **Now top.**
 
+- ~~**#130 — Migrate the remaining hand-wired systems onto the registry**~~ — ✅ **SHIPPED & CLOSED**
+  (Loop 72). The whole `update()` is the registry now; `when(ctx)` predicate folded in.
+- ~~**#121 — Gate resource-conservation invariant + transition-frame perf sample**~~ — ✅ **SHIPPED &
+  CLOSED** (Loop 76). Mesh-leak + build/teardown perf sample now gate every release.
+- ~~**#133 — [DL#5] Contested rumour: a rival chases the same prize**~~ — ✅ **SHIPPED & CLOSED** (this
+  loop) — a seeded soft clock + recurring named rival; arrive in time to win it, dawdle and the rival
+  CLAIMS it first (no reward); both paths sing into the Ballad. Save **v14**. Follow-ups below.
 - ~~**#126 — Reputation-reactive world grade**~~ — ✅ **SHIPPED & CLOSED** (Loop 69, v0.0.20260628073440).
   Diegetic rhumb-line heading wisp for #111 remains a separate art/design follow-up.
 - ~~**#120 — Self-registering systems registry → thin `main.js`**~~ — ✅ **MECHANISM SHIPPED, #120 STAYS
@@ -116,15 +112,17 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
 - **Pole TENSION + chase energy (DL #5 — the next depth frontier):**
   - **#134 — [DL#5] Your Harbour, threatened** (Infamy → blockade, Standing → raid; the pole-straddling
     stake; battle's reason to exist). _feature/design P2; lightweight non-battle resolution ships first._
-  - **#133 — [DL#5] contested rumour: a rival chases the same prize** (soft clock + recurring named
-    rival; arrive-first/late). _feature/design P3; reuses `objectives.js` + #105 digest._
+  - ~~**#133 — [DL#5] contested rumour: a rival chases the same prize**~~ — ✅ **SHIPPED & CLOSED** (this
+    loop, save v14) — seeded soft clock + recurring named rival; arrive-first wins, dawdle and the rival
+    claims it (no reward); both paths sing into the Ballad. _Follow-ups filed: a visible rival sail +
+    interception (#128-adjacent), and the recurring rival feeding battle #100's antagonist (note-only)._
 - **Make the needle FELT on the player (DL #5 convergence):**
   - **#132 — [DL#5] the reputation needle, made personal & audible** (hull/sail material lerp + harmonic
     modal recolour on the *same* needle). _art+audio+design P3; procedural, zero new assets._
 - **Loop feedback / charm:**
   - **#116 — diegetic feedback for the reactive loop** (listen/reach/payoff stingers + interaction SFX +
     warmer remembered-port arrival cue). _audio P3; pure wiring onto the bar-clock._
-  - **#117 — seeded per-pass melody variation** (kill sail-loop fatigue). _audio P3._
+  - ~~**#117 — seeded per-pass melody variation**~~ — ✅ **SHIPPED & CLOSED** (Loop 77).
 - **Reactive-world reservoir:**
   - **#124 — crew morale/loyalty meter** fed by your choices (DL #1's earned-mutiny; battle
     surrender/boarding currency — build *before* battle). _design P3; the next reactive meter._
