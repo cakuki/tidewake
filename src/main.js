@@ -27,6 +27,7 @@ import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
 import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading } from './systems/harbour.js';
 import { createLandfall, mooredSwellScale } from './systems/landfall.js';
+import { createSystemsRegistry } from './systems/registry.js';
 import { reputationLean, leanPole, gradeHaze, gradeSun, gradeSunKey } from './systems/reputation-grade.js';
 import { snapshotAshore, composeAshoreDigest } from './systems/ashore-digest.js';
 import { mixHex } from './sea-color.js';
@@ -816,6 +817,21 @@ const BERTH_LINES = [
 ];
 let wasFighting = false, wasHarbourSettling = false, fightBeat = 0, berthBeat = 0;
 
+// ---- Per-frame systems registry (#120, DL #4) ------------------------------------------------
+// The self-registering update backbone (src/systems/registry.js). Each system registers its per-
+// frame tick with an explicit `order`; the registry dispatches them in that deterministic order
+// from update() — keeping main.js thin and letting a FUTURE slice (battle #100, fixed-timestep
+// #36) plug a system in with one register() call instead of hand-editing the loop. THIS SLICE
+// migrates a representative contiguous block (wake → fauna → props → hud) onto it as the proven
+// pattern, BYTE-FOR-BYTE preserving the old call order + arguments; the remaining hand-wired
+// systems migrate in a follow-up. Orders are spaced by 10 so a new system slots between two
+// existing ones without renumbering.
+const systems = createSystemsRegistry();
+systems.register({ name: 'wake', order: 10, update: (f) => wake.update(f.dt, f.state, f.t) });                                              // bow wake + trailing foam
+systems.register({ name: 'fauna', order: 20, update: (f) => fauna.update(f.dt, f.t, { shipPos: [f.state.pos.x, f.state.pos.z], focus: camera.position }) }); // gull flock (#97)
+systems.register({ name: 'props', order: 30, update: (f) => props.update([f.state.pos.x, f.state.pos.z]) });                                // port dressing (#101)
+systems.register({ name: 'hud', order: 40, update: (f) => hud.update(f.state, sailing.MAX_SPEED) });                                        // heading/speed/wind compass/point-of-sail
+
 function update(dt, t) {
   // Mode system (#95): drive the explicit world-state machine from combat — a live duel or
   // cannonade IS the BATTLE mode; ending it returns the helm to SAILING. (TOWN is entered
@@ -926,10 +942,11 @@ function update(dt, t) {
   town.setOpen(showTown);
   if (showTown !== bodyTown) { bodyTown = showTown; if (document.body) document.body.classList.toggle('town', showTown); }
   islandNamer.update(state.pos, onApproachIsland); // name + flavour the first time you near an isle (#19)
-  wake.update(dt, state, t);                   // bow wake + trailing foam
-  fauna.update(dt, t, { shipPos: [state.pos.x, state.pos.z], focus: camera.position }); // gull flock (#97): wheels with you, hugs the coast, culled off-stage
-  props.update([state.pos.x, state.pos.z]);    // port dressing (#101): show the nearest dressed harbour, cull the rest
-  hud.update(state, sailing.MAX_SPEED);        // heading/speed/wind compass/point-of-sail
+  // Per-frame systems registry (#120): tick the migrated systems in their registered order — this is
+  // byte-for-byte the old wake → fauna → props → hud sequence (#97 gulls wheel with you & hug the
+  // coast; #101 port dressing shows the nearest harbour & culls the rest; the HUD compass refreshes),
+  // now dispatched by the registry so future systems plug in here without editing the loop.
+  systems.run({ dt, t, state });
   checkLegends();                              // endgame payoff: crown a new legend once (#46)
   checkOnboarding();                           // invisible onboarding: goal nudge + first-win beats (#60)
   minimap.update(state);                       // north-up radar: isles/ports/ships (#16)
@@ -1137,6 +1154,9 @@ window.__tidewake = {
   get perf() { return { ...perf }; },
   get perfBudget() { return { ...BUDGET }; },
   get ports() { return ports.ports; },
+  // Systems registry (#120, DL #4) QA surface: the migrated per-frame systems in their deterministic
+  // dispatch order — so a headless playtest can assert the registry is wired and ordered as expected.
+  get systems() { return systems.names; },
   // Settings/options panel (#73) QA surface: read every toggle's effective value, flip one by
   // id (drives the wired behaviour + persists stored toggles), and open/close the panel.
   get options() { return settings.options; },
