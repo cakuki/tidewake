@@ -402,6 +402,10 @@ try {
       if (d < bd) { bd = d; isle = c; }
     }
     if (!isle) return { hasIsland: false };
+    // Islands TLC (#71) made footprints VARIED squashed ellipses, so the solid shoreline along the
+    // approach bearing isn't simply `r` — grab this isle's squash (sx,sz) so the assertion can
+    // expect the true ellipse coast, not a circle. (semi-axes match physics.js: r*HITBOX*scale + shipR.)
+    const style = (tw.islandStyles || []).find((s) => s.index === isle.index) || { sx: 1, sz: 1 };
     tw.press('w');
     let minDist = Infinity;
     for (let i = 0; i < 2500; i++) {
@@ -418,15 +422,23 @@ try {
     const finalDist = Math.hypot(tw.state.pos[0] - isle.x, tw.state.pos[2] - isle.z);
     tw.newVoyage();          // leave a clean slate for the screenshot
     tw.step(0.1);
-    return { hasIsland: true, r: isle.r, minDist, finalDist };
+    return { hasIsland: true, r: isle.r, sx: style.sx, sz: style.sz, isleX: isle.x, isleZ: isle.z, minDist, finalDist };
   });
   if (!collision.hasIsland) fail('collision: no islands exposed via tw.islands');
   else {
+    // The solid coast along the approach bearing for the (possibly squashed) ellipse footprint —
+    // semi-axes r*HITBOX*scale + SHIP_RADIUS (physics.js: HITBOX=1.18, shipR=7).
+    const HITBOX = 1.18, shipR = 7;
+    const d0 = Math.hypot(collision.isleX, collision.isleZ) || 1;
+    const ux = collision.isleX / d0, uz = collision.isleZ / d0;     // approach bearing (origin→centre)
+    const ax = collision.r * HITBOX * collision.sx + shipR;
+    const az = collision.r * HITBOX * collision.sz + shipR;
+    const shore = 1 / Math.sqrt((ux * ux) / (ax * ax) + (uz * uz) / (az * az));
     // (1) it sailed right up to the coast — otherwise the test proves nothing.
-    if (!(collision.minDist <= collision.r + 25)) fail(`collision: ship never reached the coast (minDist=${collision.minDist.toFixed(1)}, r=${collision.r})`);
+    if (!(collision.minDist <= shore + 25)) fail(`collision: ship never reached the coast (minDist=${collision.minDist.toFixed(1)}, shore≈${shore.toFixed(1)})`);
     // (2) it was NEVER allowed deep inside the island — no tunnelling/phasing through land.
-    if (!(collision.minDist >= collision.r * 0.85)) fail(`collision: ship punched into the island (minDist=${collision.minDist.toFixed(1)} < ${(collision.r * 0.85).toFixed(1)})`);
-    if (!(collision.finalDist >= collision.r * 0.85)) fail(`collision: ship ended up inside the island (finalDist=${collision.finalDist.toFixed(1)})`);
+    if (!(collision.minDist >= shore * 0.85)) fail(`collision: ship punched into the island (minDist=${collision.minDist.toFixed(1)} < ${(shore * 0.85).toFixed(1)})`);
+    if (!(collision.finalDist >= shore * 0.85)) fail(`collision: ship ended up inside the island (finalDist=${collision.finalDist.toFixed(1)})`);
   }
 
   // 2h) Arcade slow-to-stop for harbour & combat (#76 c): the ship must EASE to a near-stop
@@ -1141,6 +1153,35 @@ try {
   if (props.farAway !== 0) fail(`props: far clusters not culled (visible=${props.farAway} at open sea)`);
   if (!(props.nearPort > 0)) fail(`props: dressing not drawn near a port (visible=${props.nearPort})`);
 
+  // 2q) Islands TLC (#71): every isle now has a deterministic FACE — a hue-jittered sand tone, a
+  // varied silhouette (squash + tall/peak) and an instanced dressing scatter (rocks/palms/etc).
+  // Assert the archipelago is varied + dressed, then RELOAD and confirm the look is byte-stable
+  // (an isle is the same place every voyage — it must pair with the named-island lore #19).
+  const islandStyle = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const styles = tw.islandStyles;
+    const sig = (s) => `${s.index}|${s.sand.h.toFixed(4)}:${s.sand.l.toFixed(4)}|${s.sx}:${s.sz}:${s.tall}:${s.peak}|r${s.props.rock || 0}p${s.props.palm || 0}d${s.props.driftwood || 0}t${s.props.tuft || 0}`;
+    return {
+      count: styles.length,
+      allDressed: styles.length > 0 && styles.every((s) => (s.props.rock || 0) > 0 && (s.props.palm || 0) > 0),
+      distinctTones: new Set(styles.map((s) => `${s.sand.h.toFixed(3)}:${s.sand.l.toFixed(3)}`)).size,
+      distinctShapes: new Set(styles.map((s) => `${s.sx}:${s.sz}:${s.tall}`)).size,
+      signature: styles.map(sig).join(';'),
+    };
+  });
+  if (!(islandStyle.count > 0)) fail('islands TLC: no per-isle styles exposed via tw.islandStyles (#71)');
+  if (!islandStyle.allDressed) fail('islands TLC: not every isle carries dressing (rocks + palms) (#71)');
+  if (!(islandStyle.distinctTones >= Math.min(5, islandStyle.count))) fail(`islands TLC: sand tones not varied enough (${islandStyle.distinctTones} distinct of ${islandStyle.count}) (#71)`);
+  if (!(islandStyle.distinctShapes >= Math.min(5, islandStyle.count))) fail(`islands TLC: silhouettes not varied enough (${islandStyle.distinctShapes} distinct of ${islandStyle.count}) (#71)`);
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForFunction('window.__tidewake && window.__tidewake.ready === true', { timeout: 30000 });
+  const islandStylePersist = await page.evaluate(() => {
+    const tw = window.__tidewake;
+    const sig = (s) => `${s.index}|${s.sand.h.toFixed(4)}:${s.sand.l.toFixed(4)}|${s.sx}:${s.sz}:${s.tall}:${s.peak}|r${s.props.rock || 0}p${s.props.palm || 0}d${s.props.driftwood || 0}t${s.props.tuft || 0}`;
+    return tw.islandStyles.map(sig).join(';');
+  });
+  if (islandStylePersist !== islandStyle.signature) fail('islands TLC: an isle\'s look changed across a reload — it must be deterministic/stable (#71)');
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });
@@ -1163,7 +1204,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, landfall, ballad, falseColours, marque, fauna, props, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, landfall, ballad, falseColours, marque, fauna, props, islandStyle, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

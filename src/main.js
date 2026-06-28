@@ -913,6 +913,10 @@ window.__tidewake = {
   // so a headless playtest can drive the ship at the coast and assert it doesn't pass through.
   // Now also carries each isle's characterful name + flavour (#19).
   get islands() { return islandNamer.list; },
+  // Islands TLC (#71) QA surface: the per-isle deterministic LOOK — squash, tall/peak, sand-tone
+  // offset and the instanced dressing counts (rocks/palms/driftwood/tufts) — so a headless
+  // playtest can assert each isle is varied + dressed and that the look is stable across reloads.
+  get islandStyles() { return Array.isArray(world.styles) ? world.styles : []; },
   // Island naming (#19) QA surface: which isles have already greeted you this session, and the
   // nearest isle (with its name + distance) — so a playtest can sail in and assert the beat fired.
   get islandsIntroduced() { return islandNamer.introduced; },
