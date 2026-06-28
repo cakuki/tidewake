@@ -991,6 +991,29 @@ try {
   if (!(grade.restored.haze === grade.neutral.haze)) fail(`rep-grade: neutral did not restore the sunny default exactly (${grade.restored.haze} != ${grade.neutral.haze})`);
   if (!(grade.restored.sunIntensity === grade.neutral.sunIntensity)) fail('rep-grade: neutral did not restore the sunny sun key exactly');
 
+  // 2j-3) Reputation needle (#132, DL #5): the pole made PERSONAL & audible. A fresh captain's needle
+  // rests dead-centre; a kill-sized infamy gain swings it toward the pirate pole AND registers a felt
+  // shift (a cue key + a personal in-character line); a big standing gain swings it back toward the
+  // governor pole. Driven deterministically via the QA ledger hooks; audio is guarded (silent here).
+  const needle = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(3);              // clean slate — let the pointer settle dead-centre
+    const fresh = { pos: tw.needle.pos, target: tw.needle.target, pole: tw.needle.pole };
+    tw.setInfamy(2000); tw.setStanding(0);  // a kill-sized infamy gain → swing toward the pirate pole
+    tw.step(2);                             // let the pointer swing
+    const pirate = { ...tw.needle };
+    tw.setStanding(6000);                    // a big standing gain → swing back toward the governor pole
+    tw.step(2);
+    const gov = { ...tw.needle };
+    return { fresh, pirate, gov };
+  });
+  if (needle.fresh.target !== 0 || Math.abs(needle.fresh.pos) > 0.001) fail(`rep-needle: a fresh captain's needle is not centred (${JSON.stringify(needle.fresh)})`);
+  if (!(needle.pirate.target > 0.5) || !(needle.pirate.pos > 0.3) || needle.pirate.pole !== 'pirate') fail(`rep-needle: an infamy gain did not swing the needle toward the pirate pole (${JSON.stringify(needle.pirate)})`);
+  if (!needle.pirate.last || needle.pirate.last.pole !== 'pirate' || !(needle.pirate.last.delta > 0)) fail(`rep-needle: an infamy gain registered no felt shift (${JSON.stringify(needle.pirate.last)})`);
+  if (needle.pirate.last.cue !== 'rep-pirate' || !needle.pirate.last.line) fail(`rep-needle: the shift carried no audio cue / personal line (${JSON.stringify(needle.pirate.last)})`);
+  if (!(needle.gov.target < 0) || needle.gov.pole !== 'governor') fail(`rep-needle: a standing gain did not swing the needle back toward the governor pole (${JSON.stringify(needle.gov)})`);
+  if (!needle.gov.last || needle.gov.last.pole !== 'governor' || needle.gov.last.cue !== 'rep-governor') fail(`rep-needle: the governor shift did not register a cue (${JSON.stringify(needle.gov.last)})`);
+
   // 2k) Island names + landfall flavour (#19): every island carries a characterful name, and
   // the FIRST time you sail close to one, a one-time toast hails it by name with a comedic line.
   // Sail straight at the nearest isle and assert (1) it has a name, (2) the approach beat fired
@@ -1443,7 +1466,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, landfall, ballad, falseColours, marque, fauna, props, islandStyle, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, props, islandStyle, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

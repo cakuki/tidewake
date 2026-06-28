@@ -53,6 +53,38 @@
       font-weight: 700; box-shadow: 0 1px 6px rgba(0,0,0,.35); width: fit-content;
     }
     #legend-badge.show { display: block; }
+    /* Reputation needle (#132): a small brass gauge that swings between the two poles and strikes
+       on every felt shift. ⚖ Standing sits left, ⚔ Infamy right; the pointer tints toward the pole
+       it leans into. Non-blocking, lives inside the HUD glass panel. */
+    #repneedle { display: flex; align-items: center; gap: 5px; margin-top: 6px; }
+    #repneedle svg { display: block; overflow: visible; filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+    #repneedle .rn-pole { font-size: 12px; line-height: 1; opacity: .8; transition: opacity .3s ease, text-shadow .3s ease; }
+    #repneedle .rn-gov { color: #87e0a4; }
+    #repneedle .rn-pir { color: #ff9a8a; }
+    #repneedle .rn-arc { stroke: rgba(160,200,235,.45); stroke-width: 2; stroke-linecap: round; }
+    #repneedle .rn-tick { stroke: rgba(160,200,235,.35); stroke-width: 1.4; stroke-dasharray: 2 2; }
+    #repneedle .rn-pointer { stroke: #ffd98a; stroke-width: 2.4; stroke-linecap: round; transition: stroke .4s ease; }
+    #repneedle .rn-hub { fill: #ffd98a; transition: fill .4s ease; }
+    /* The pointer pivots about (32,30) via the SVG rotate() set per frame; no CSS transition on the
+       <g> (it would fight the per-frame transform, like the wind arrow #50). */
+    #repneedle.lean-pirate .rn-pointer, #repneedle.lean-pirate .rn-tick { stroke: #ff9a8a; }
+    #repneedle.lean-pirate .rn-hub { fill: #ff9a8a; }
+    #repneedle.lean-pirate .rn-pir { opacity: 1; text-shadow: 0 0 8px rgba(255,120,100,.7); }
+    #repneedle.lean-governor .rn-pointer, #repneedle.lean-governor .rn-tick { stroke: #87e0a4; }
+    #repneedle.lean-governor .rn-hub { fill: #87e0a4; }
+    #repneedle.lean-governor .rn-gov { opacity: 1; text-shadow: 0 0 8px rgba(120,224,160,.7); }
+    @keyframes rn-pulse-pir { 0% { filter: drop-shadow(0 0 0 rgba(255,120,100,0)); } 30% { filter: drop-shadow(0 0 9px rgba(255,120,100,.95)); } 100% { filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); } }
+    @keyframes rn-pulse-gov { 0% { filter: drop-shadow(0 0 0 rgba(120,224,160,0)); } 30% { filter: drop-shadow(0 0 9px rgba(120,224,160,.95)); } 100% { filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); } }
+    #repneedle.pulse-pirate svg { animation: rn-pulse-pir .85s ease-out; }
+    #repneedle.pulse-governor svg { animation: rn-pulse-gov .85s ease-out; }
+    #repneedle-ack {
+      margin-top: 3px; font-size: 11px; font-style: italic; line-height: 1.4; max-width: 300px;
+      opacity: 0; transform: translateY(-2px); transition: opacity .4s ease, transform .4s ease;
+      pointer-events: none;
+    }
+    #repneedle-ack.show { opacity: 1; transform: translateY(0); }
+    #repneedle-ack.rep-pirate { color: #ff9a8a; }
+    #repneedle-ack.rep-governor { color: #87e0a4; }
     #legend {
       position: fixed; inset: 0; z-index: 30; display: grid; place-items: center;
       pointer-events: none; text-align: center; padding: 24px;
@@ -578,6 +610,21 @@
     <div>Wind <b><span id="wind">—</span></b></div>
     <div>Coins <b><span id="coins">100</span></b> · Hold <b><span id="cargo">0/12</span></b></div>
     <div id="ledger" title="⚔ Infamy (pirate path) · ⚖ Standing (governor path)">⚔ <b><span id="infamy">0</span></b> · ⚖ <b><span id="standing">0</span></b> · <b><span id="rank">Bilge-rat</span></b><span id="rankprog"></span></div>
+    <!-- Reputation needle (#132): the gauge swings toward your pole — ⚖ Standing (left) ↔ ⚔ Infamy
+         (right) — and strikes on every felt shift. The pointer pivots about (32,30). -->
+    <div id="repneedle" class="lean-neutral" role="img" aria-label="Reputation needle — leaning between Standing and Infamy" title="Your legend's lean — ⚖ respected ↔ ⚔ feared">
+      <span class="rn-pole rn-gov">⚖</span>
+      <svg viewBox="0 0 64 36" width="72" height="40" aria-hidden="true">
+        <path class="rn-arc" d="M 8 30 A 24 24 0 0 1 56 30" fill="none" />
+        <line class="rn-tick" x1="32" y1="30" x2="32" y2="9" />
+        <g id="repneedle-pointer" transform="rotate(0 32 30)">
+          <line class="rn-pointer" x1="32" y1="30" x2="32" y2="8" />
+          <circle class="rn-hub" cx="32" cy="30" r="3" />
+        </g>
+      </svg>
+      <span class="rn-pole rn-pir">⚔</span>
+    </div>
+    <div id="repneedle-ack" role="status" aria-live="polite"></div>
     <div id="legend-badge" role="status"></div>
     <div id="windrose">
       <svg width="48" height="48" viewBox="0 0 48 48" aria-label="Wind relative to ship">

@@ -431,6 +431,64 @@ export function createAudio(opts = {}) {
     }
   }
 
+  // ---- Reputation needle sting (#132) --------------------------------------
+  //
+  // A short, modal one-shot that BITES the moment your reputation shifts — the audible half of the
+  // needle. It recolours the SAME flourish by your pole, echoing the #94 mode-aware bed's intent
+  // (RTPC-style) without any track assets: a drift toward INFAMY leans dark — a low root with a
+  // freygish/minor-sixth bite that sinks; a drift toward STANDING brightens to a warm Ionian/Lydian
+  // chime that rises. The commitment `tier` (0..2) just lifts the peak + adds a sparkle so a deeper
+  // legend rings a touch fuller. All voices hang off sfxGain (under the master) so mute covers it,
+  // and every voice is guarded — a sting must never break the frame.
+
+  // INFAMY: a low root, a freygish b2 bite and a minor sixth above, all sinking — ominous.
+  function stingPirate(t0, dest, tier) {
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1300;
+    lp.Q.value = 0.7;
+    lp.connect(dest);
+    const peak = 0.13 + 0.03 * tier;
+    // Root D3, its freygish b2 (Eb), and a minor sixth (Bb) — a dark, tense colour that falls.
+    const root = semitoneToFreq(-19);           // D3
+    tone(t0, 0.42, peak, 'sawtooth', root, root * 0.945, lp, 0.01);          // root, bending down
+    tone(t0 + 0.05, 0.34, peak * 0.7, 'sawtooth', semitoneToFreq(-18), semitoneToFreq(-19), lp, 0.012); // b2 bite → root
+    tone(t0 + 0.02, 0.5, peak * 0.55, 'triangle', semitoneToFreq(-11), semitoneToFreq(-12), lp, 0.02);  // minor 6th, sinking
+    if (tier >= 2) noiseTick(t0, 0.06, 0.05, 320, 0.8, dest); // a low thud at full infamy
+  }
+
+  // STANDING: a warm, rising major (Ionian → a Lydian #4 sparkle at the top) — bright + glad.
+  function stingGovernor(t0, dest, tier) {
+    const peak = 0.12 + 0.03 * tier;
+    const notes = [0, 4, 7].map((s) => semitoneToFreq(s)); // A major triad: A4 C#5 E5
+    notes.forEach((f, i) => {
+      const t = t0 + i * 0.07;
+      tone(t, 0.30, peak, 'triangle', f, f, dest, 0.01);
+      tone(t, 0.26, peak * 0.4, 'sine', f * 2, f * 2, dest, 0.01); // an octave shimmer
+    });
+    // A Lydian #4 sparkle (D#6) crowns a committed standing — the "glad" lift.
+    if (tier >= 1) tone(t0 + notes.length * 0.07, 0.34, 0.05 + 0.03 * tier, 'sine', semitoneToFreq(18), semitoneToFreq(20), dest, 0.02);
+  }
+
+  /**
+   * Play the reputation-needle sting for a felt shift. No-op until a real gesture has the engine
+   * running, so a headless run (no context) is silent and never throws.
+   * @param {'pirate'|'governor'} pole  which pole grew
+   * @param {0|1|2} [tier]              commitment tier — lifts the peak + adds a sparkle
+   */
+  function playRepSting(pole, tier = 0) {
+    if (!ctx || ctx.state !== 'running' || !master) return;
+    try {
+      const dest = sfxGain || master;
+      const t0 = ctx.currentTime + 0.005;
+      const tr = tier < 0 ? 0 : tier > 2 ? 2 : tier;
+      if (pole === 'pirate') stingPirate(t0, dest, tr);
+      else if (pole === 'governor') stingGovernor(t0, dest, tr);
+    } catch {
+      /* a sting must never break the game */
+    }
+  }
+
   /**
    * Play a duel stinger. No-op until a real gesture has the engine running, so a
    * headless run (no context) is silent and never throws.
@@ -672,5 +730,5 @@ export function createAudio(opts = {}) {
     onGesture();
   }
 
-  return { init, setMute, isMuted, update, attachMusic, playDuelHit, unlock };
+  return { init, setMute, isMuted, update, attachMusic, playDuelHit, playRepSting, unlock };
 }

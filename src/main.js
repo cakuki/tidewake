@@ -12,6 +12,7 @@ import { createMusic } from './music.js';
 import { townMusicIdentity } from './town-theme.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';
+import { createReputationNeedle } from './ui/reputation-needle.js';
 import { createSettings } from './ui/settings.js';
 import { createBallad } from './ui/ballad.js';
 import { recordEvent } from './voyage-log.js';
@@ -441,6 +442,15 @@ const audio = createAudio({
 const music = createMusic();
 audio.attachMusic(music);
 audio.init();
+
+// Reputation needle (#132, DL #5): the HUD gauge that makes the Infamy↔Standing pole PERSONAL &
+// audible. It swings toward your pole as you commit and, the instant a real shift lands (a kill, a
+// rescue, a rumour payoff, an investment — all just move the ledger), strikes a guarded sting and
+// murmurs a line about who you're becoming. The pure decision maths lives in
+// src/systems/reputation-needle.js; this component owns the gauge DOM and drives the sting via audio.
+const repNeedle = createReputationNeedle({
+  onCue: ({ pole, tier }) => { try { audio.playRepSting(pole, tier); } catch { /* a sting must never break the loop */ } },
+});
 
 hud.setWind(state.windName);
 
@@ -943,6 +953,9 @@ systems.register({ name: 'wake', order: 180, update: (f) => wake.update(f.dt, f.
 systems.register({ name: 'fauna', order: 190, update: (f) => fauna.update(f.dt, f.t, { shipPos: [f.state.pos.x, f.state.pos.z], focus: camera.position }) });
 systems.register({ name: 'props', order: 200, update: (f) => props.update([f.state.pos.x, f.state.pos.z]) });
 systems.register({ name: 'hud', order: 210, update: (f) => hud.update(f.state, sailing.MAX_SPEED) });
+// Reputation needle (#132): ease the gauge + fire the felt-shift sting/line. Right after the HUD so
+// it reads the same per-frame ledger; before legends so the swing lands ahead of any crown overlay.
+systems.register({ name: 'reputation-needle', order: 215, update: (f) => repNeedle.update(f.state, f.dt) });
 // — endgame legend crowns (#46) + invisible onboarding nudge/beats (#60).
 systems.register({ name: 'legends', order: 220, update: () => checkLegends() });
 systems.register({ name: 'onboarding', order: 230, update: () => checkOnboarding() });
@@ -1200,6 +1213,11 @@ window.__tidewake = {
       sunIntensity: sun.intensity,
     };
   },
+  // Reputation needle (#132, DL #5) QA surface: the live eased pointer position, its target, the
+  // categorical pole + commitment tier, and the last FELT shift ({pole, delta, tier, cue, line}) —
+  // so a headless playtest can drive the ledger (setInfamy/setStanding) and assert the needle swings
+  // toward the pole and a shift registers a cue + a personal line. Deterministic; audio is guarded.
+  get needle() { return repNeedle.snapshot(); },
   // Route-planning chart (#54) QA surface: read its open-state + drive the toggle headlessly.
   get bigmap() { return { open: bigmap.open }; },
   mapToggle() { bigmap.toggle(); syncMapToggle(); return bigmap.open; },
