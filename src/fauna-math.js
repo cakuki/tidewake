@@ -106,3 +106,105 @@ export function shouldCull(center, focus, radius = CULL_RADIUS) {
   const dx = center.x - focus.x, dz = center.z - focus.z;
   return dx * dx + dz * dz > radius * radius;
 }
+
+// ── Dolphins (#110, phase 2) ─────────────────────────────────────────────────
+// The second fauna beat: a small POD of dolphins that occasionally surfaces alongside the
+// MOVING ship and arcs through a breach (leap → dive) before slipping back under. Same
+// cheapness rules as the gulls — ONE extra InstancedMesh (≤1 draw call), distance-culled,
+// hidden wholesale (0 draws) between appearances. Reactive verb: they only ride along while
+// you're actually under way. All the spawn cadence + arc geometry is PURE + node-testable
+// here; the three.js pod controller in fauna.js consumes it.
+
+export const DOLPHIN_COUNT = 4;        // a small, believable pod — cheap, reads as "alive"
+export const POD_SPAWN_MIN = 14;       // seconds: shortest gap between pod appearances
+export const POD_SPAWN_MAX = 40;       // longest gap — irregular (Poisson-ish), never metronomic
+export const BREACH_DURATION = 2.4;    // seconds the whole pod's leap cascade takes
+export const BREACH_HEIGHT = 5.5;      // metres the arc peaks above the waterline
+export const BREACH_FORWARD = 14;      // metres a dolphin travels forward across its own leap
+export const BREACH_SPAN = 0.7;        // fraction of the pod window one dolphin's leap occupies
+export const POD_AHEAD = 42;           // metres ahead of the bow the pod surfaces (close enough to read)
+export const POD_BEAM = 34;            // metres off to one side (port/starboard) — arcs alongside
+export const POD_SPACING = 7;          // lateral gap between pod members
+export const POD_SWIM_SPEED = 9;       // metres/sec the pod slides forward while breaching
+export const MIN_SAIL_SPEED = 1.5;     // only appear when the ship is genuinely under way
+
+function clampUnit(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+
+/**
+ * Seconds until the next pod surfaces. Maps a 0..1 random into [min,max] so appearances
+ * land irregularly and never feel metronomic (the same idiom as audio.js nextGullDelay). Pure.
+ *   nextPodDelay(rand, min?, max?) -> number
+ */
+export function nextPodDelay(rand, min = POD_SPAWN_MIN, max = POD_SPAWN_MAX) {
+  return min + clampUnit(rand) * (max - min);
+}
+
+/**
+ * Deterministic per-dolphin pod offsets from its index: a lateral lane within the pod, a
+ * small fore/aft stagger, and a leap DELAY so members cascade out of the water rather than
+ * breaching in unison. Pure: same index → same dolphin.
+ *   dolphinParams(i, count) -> { lateral, along, delay }
+ */
+export function dolphinParams(i, count = DOLPHIN_COUNT) {
+  const mid = (count - 1) / 2;
+  return {
+    lateral: (i - mid) * POD_SPACING,
+    along: ((i % 2) ? 1 : -1) * (3 + (i % 3) * 2),  // slight fore/aft scatter, not a rigid line
+    delay: count > 1 ? (i / (count - 1)) * (1 - BREACH_SPAN) : 0, // 0..(1-span): a cascade
+  };
+}
+
+/**
+ * A single dolphin's breach arc at local progress u in [0,1]: it rises from the waterline to
+ * BREACH_HEIGHT at u=0.5 and slips back under at u=1, the body PITCHING nose-up on the way out
+ * and nose-down on the dive (the tangent of the arc). Pure.
+ *   breachArc(u) -> { rise, pitch }
+ */
+export function breachArc(u) {
+  const c = clampUnit(u);
+  const rise = Math.sin(Math.PI * c) * BREACH_HEIGHT;
+  // Vertical velocity ∝ cos(pi*c) (BREACH_HEIGHT·pi); horizontal ∝ BREACH_FORWARD. The body
+  // points along its velocity, so pitch = atan2(vY, vX): >0 climbing out, <0 diving back.
+  const vY = Math.cos(Math.PI * c) * BREACH_HEIGHT * Math.PI;
+  const pitch = Math.atan2(vY, BREACH_FORWARD);
+  return { rise, pitch };
+}
+
+/**
+ * Where a pod dolphin is, given the live pod ORIGIN (a waterline anchor sliding forward with
+ * the ship), the pod HEADING (radians, 0=+Z), and the overall pod PROGRESS in [0,1]. Applies
+ * the dolphin's lane offset + its staggered breach arc. Returns world pos + facing (yaw along
+ * heading, pitch from the arc) + whether it's currently above water. Pure + deterministic.
+ *   dolphinPosition(p, origin, heading, progress) -> { x, y, z, yaw, pitch, surfaced }
+ */
+export function dolphinPosition(p, origin, heading, progress) {
+  const u = clampUnit((progress - p.delay) / BREACH_SPAN);
+  const { rise, pitch } = breachArc(u);
+  const fwd = p.along + u * BREACH_FORWARD;
+  const sinH = Math.sin(heading), cosH = Math.cos(heading);
+  // (sinH, cosH) is forward along the heading; (cosH, -sinH) is the perpendicular (beam).
+  return {
+    x: origin.x + sinH * fwd + cosH * p.lateral,
+    z: origin.z + cosH * fwd - sinH * p.lateral,
+    y: origin.y + rise,
+    yaw: heading,
+    pitch,
+    surfaced: rise > 0.05,
+  };
+}
+
+/**
+ * The waterline anchor where a new pod surfaces: POD_AHEAD ahead of the bow and POD_BEAM off
+ * to one `side` (+1 starboard / -1 port), at sea level `seaY`. Pure; the factory advances this
+ * forward (POD_SWIM_SPEED) as the pod swims while breaching.
+ *   podSpawnOrigin(ship, heading, side, seaY?) -> { x, y, z }
+ */
+export function podSpawnOrigin(ship, heading, side, seaY = 0) {
+  const sinH = Math.sin(heading), cosH = Math.cos(heading);
+  const s = side < 0 ? -1 : 1;
+  return {
+    x: ship.x + sinH * POD_AHEAD + cosH * POD_BEAM * s,
+    z: ship.z + cosH * POD_AHEAD - sinH * POD_BEAM * s,
+    y: seaY,
+  };
+}

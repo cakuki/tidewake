@@ -10,6 +10,9 @@ import assert from 'node:assert/strict';
 import {
   GULL_COUNT, FLOCK_HEIGHT, ROOST_RANGE, CULL_RADIUS, FLAP_DEPTH, WHEEL_MIN_R,
   gullParams, gullPosition, flapScale, roostTarget, easeTowards, shouldCull,
+  DOLPHIN_COUNT, BREACH_HEIGHT, BREACH_FORWARD, BREACH_SPAN, POD_AHEAD, POD_BEAM,
+  POD_SPAWN_MIN, POD_SPAWN_MAX, POD_SPACING,
+  nextPodDelay, dolphinParams, breachArc, dolphinPosition, podSpawnOrigin,
 } from '../../src/fauna-math.js';
 
 test('gullParams: deterministic, and a loose (varied) flock', () => {
@@ -103,4 +106,88 @@ test('shouldCull: hidden only beyond the cull radius', () => {
   assert.equal(shouldCull({ x: 0, z: 0 }, focus), false, 'right on top → visible');
   assert.equal(shouldCull({ x: CULL_RADIUS - 1, z: 0 }, focus), false, 'just inside → visible');
   assert.equal(shouldCull({ x: CULL_RADIUS + 1, z: 0 }, focus), true, 'just outside → culled');
+});
+
+// ── Dolphins (#110, phase 2) ─────────────────────────────────────────────────
+
+test('nextPodDelay: maps 0..1 into [min,max] and clamps out-of-range', () => {
+  assert.equal(nextPodDelay(0), POD_SPAWN_MIN, '0 → shortest gap');
+  assert.equal(nextPodDelay(1), POD_SPAWN_MAX, '1 → longest gap');
+  assert.equal(nextPodDelay(0.5), (POD_SPAWN_MIN + POD_SPAWN_MAX) / 2, 'mid → midpoint');
+  assert.equal(nextPodDelay(-3), POD_SPAWN_MIN, 'clamps below 0');
+  assert.equal(nextPodDelay(9), POD_SPAWN_MAX, 'clamps above 1');
+  // Irregular: a metronome would never feel alive, so the gap genuinely spans a range.
+  assert.ok(POD_SPAWN_MAX > POD_SPAWN_MIN, 'the gap is a real range, not a constant');
+});
+
+test('dolphinParams: deterministic, a spread pod with a staggered cascade', () => {
+  assert.deepEqual(dolphinParams(2), dolphinParams(2), 'same index → identical (deterministic)');
+
+  const lanes = new Set();
+  const delays = [];
+  for (let i = 0; i < DOLPHIN_COUNT; i++) {
+    const p = dolphinParams(i);
+    lanes.add(p.lateral);
+    delays.push(p.delay);
+    assert.ok(p.delay >= 0 && p.delay <= 1 - BREACH_SPAN + 1e-9, 'delay leaves room for the full leap');
+  }
+  assert.equal(lanes.size, DOLPHIN_COUNT, 'every dolphin gets its own lateral lane (no overlap)');
+  // The pod is spread across at least one full spacing (a pod, not a single file).
+  assert.ok(Math.max(...[...lanes]) - Math.min(...[...lanes]) >= POD_SPACING, 'pod spans real width');
+  // Cascade: later dolphins start their leap later (monotonic non-decreasing delays).
+  for (let i = 1; i < delays.length; i++) assert.ok(delays[i] >= delays[i - 1], 'leaps cascade');
+  assert.equal(delays[0], 0, 'the lead dolphin breaches first');
+});
+
+test('breachArc: a bounded leap — surfaces, peaks mid, dives, pitching out then in', () => {
+  assert.equal(breachArc(0).rise, 0, 'starts at the waterline');
+  assert.ok(Math.abs(breachArc(1).rise) < 1e-9, 'back under at the end');
+  assert.ok(Math.abs(breachArc(0.5).rise - BREACH_HEIGHT) < 1e-9, 'peaks at the apex');
+
+  for (let u = 0; u <= 1.0001; u += 0.02) {
+    const r = breachArc(u).rise;
+    assert.ok(r >= -1e-9 && r <= BREACH_HEIGHT + 1e-9, 'rise stays within [0, height]');
+  }
+  assert.ok(breachArc(0.15).pitch > 0, 'nose pitches UP on the way out');
+  assert.ok(breachArc(0.85).pitch < 0, 'nose pitches DOWN on the dive');
+  assert.ok(Math.abs(breachArc(0.5).pitch) < 1e-9, 'level at the apex');
+  // Clamps: progress outside [0,1] never throws or escapes the band.
+  assert.equal(breachArc(-1).rise, 0);
+  assert.ok(Math.abs(breachArc(2).rise) < 1e-9);
+});
+
+test('dolphinPosition: rides the heading lane, surfaces mid-leap, faces forward', () => {
+  const origin = { x: 100, y: 0, z: -40 };
+  const heading = 0; // +Z forward
+  const p = dolphinParams(0); // lead dolphin, delay 0
+
+  // At its apex the lead dolphin is above water on the heading axis.
+  const apex = dolphinPosition(p, origin, heading, 0.35); // u≈0.5 for delay 0, span 0.7
+  assert.ok(apex.surfaced, 'the dolphin is above water mid-leap');
+  assert.ok(apex.y > origin.y, 'it has risen off the waterline');
+  assert.equal(apex.yaw, heading, 'it faces along the pod heading');
+
+  // Before its window opens it sits at the waterline (rise 0).
+  const under = dolphinPosition(dolphinParams(DOLPHIN_COUNT - 1), origin, heading, 0);
+  assert.ok(!under.surfaced, 'a delayed dolphin is still under at progress 0');
+  assert.ok(Math.abs(under.y - origin.y) < 1e-9, 'sits exactly at the waterline');
+
+  // Heading rotates the lane: with heading=PI/2, forward is +X. The lead dolphin (no lateral
+  // for the mid index, but index 0 has a lane) advances mostly along +X as progress climbs.
+  const a = dolphinPosition(p, origin, Math.PI / 2, 0.05);
+  const b = dolphinPosition(p, origin, Math.PI / 2, 0.55);
+  assert.ok(b.x - a.x > 1, 'swims forward along the (rotated) heading');
+});
+
+test('podSpawnOrigin: surfaces ahead of the bow and off the chosen beam', () => {
+  const ship = { x: 0, z: 0 };
+  // Heading 0 (+Z): ahead is +Z, starboard (+1) is +X.
+  const star = podSpawnOrigin(ship, 0, 1, 0);
+  assert.ok(Math.abs(star.z - POD_AHEAD) < 1e-9, 'POD_AHEAD ahead of the bow');
+  assert.ok(Math.abs(star.x - POD_BEAM) < 1e-9, 'POD_BEAM off to starboard');
+  const port = podSpawnOrigin(ship, 0, -1, 0);
+  assert.ok(port.x < 0, 'the other side surfaces to port');
+  assert.equal(star.y, 0, 'sits at the given sea level');
+  // The pod surfaces well off the hull — never inside the ship.
+  assert.ok(Math.hypot(star.x, star.z) > 30, 'never breaches on top of the player');
 });

@@ -952,7 +952,11 @@ systems.register({ name: 'town-view', order: 160, update: () => {
 systems.register({ name: 'islands', order: 170, update: (f) => islandNamer.update(f.state.pos, onApproachIsland) });
 // — the #120-migrated block, unchanged: wake (bow foam) → fauna (#97 gulls) → props (#101 dressing) → hud compass.
 systems.register({ name: 'wake', order: 180, update: (f) => wake.update(f.dt, f.state, f.t) });
-systems.register({ name: 'fauna', order: 190, update: (f) => fauna.update(f.dt, f.t, { shipPos: [f.state.pos.x, f.state.pos.z], focus: camera.position }) });
+systems.register({ name: 'fauna', order: 190, update: (f) => fauna.update(f.dt, f.t, {
+  shipPos: [f.state.pos.x, f.state.pos.z], focus: camera.position,
+  heading: f.state.heading, speed: f.state.speed,                 // #110: pod rides the moving ship
+  sampleHeight: (x, z) => ocean.sampleHeight(x, z, f.t),          // surface at the waterline
+}) });
 systems.register({ name: 'props', order: 200, update: (f) => props.update([f.state.pos.x, f.state.pos.z]) });
 systems.register({ name: 'hud', order: 210, update: (f) => hud.update(f.state, sailing.MAX_SPEED) });
 // Reputation needle (#132): ease the gauge + fire the felt-shift sting/line. Right after the HUD so

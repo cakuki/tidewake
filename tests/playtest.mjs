@@ -1392,6 +1392,38 @@ try {
   if (!(fauna.shipShift > 20)) fail(`fauna: ship did not actually sail (shift=${fauna.shipShift?.toFixed(1)})`);
   if (!(fauna.centerShift > 5)) fail(`fauna: the flock did not track the player as they sailed (centreShift=${fauna.centerShift?.toFixed(1)})`);
 
+  // 2o') Living sea fauna phase 2 — jumping dolphins (#110): a small instanced pod that
+  // occasionally surfaces and ARCS alongside the moving ship, then slips back under. Sail under
+  // way and confirm a breach fires on the seeded schedule, a dolphin actually rises above water
+  // (surfaces mid-arc), and the pod is drawn only while active (0 draws between appearances). It's
+  // one InstancedMesh, so the global perf-budget gate below proves the pod stays nearly free.
+  const dolphins = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.2);
+    tw.press('w'); tw.step(2);                  // get under way (speed ≥ the sail threshold)
+    const podSize = tw.fauna.dolphins;
+    let maxProgress = 0, sawSurfaced = false, sawDrawn = false, sawHiddenAfter = false;
+    let breaches = 0;
+    for (let i = 0; i < 320; i++) {             // up to ~32s of stepped sailing
+      tw.step(0.1);
+      const p = tw.fauna.pod;
+      breaches = p.breaches;
+      if (p.active) { maxProgress = Math.max(maxProgress, p.progress); }
+      if (p.surfaced) sawSurfaced = true;
+      if (p.drawn) sawDrawn = true;
+      if (breaches > 0 && !p.active) sawHiddenAfter = true; // despawned cleanly after a breach
+      if (breaches > 0 && sawSurfaced && sawHiddenAfter) break;
+    }
+    tw.release('w');
+    tw.newVoyage(); tw.step(0.1);
+    return { podSize, breaches, maxProgress, sawSurfaced, sawDrawn, sawHiddenAfter };
+  });
+  if (!(dolphins.podSize > 0)) fail(`dolphins: empty pod (size=${dolphins.podSize})`);
+  if (!(dolphins.breaches > 0)) fail('dolphins: no pod surfaced while sailing (a breach should fire on schedule)');
+  if (!dolphins.sawSurfaced) fail('dolphins: no dolphin ever rose above the waterline (no breach arc)');
+  if (!dolphins.sawDrawn) fail('dolphins: the pod mesh was never drawn during a breach');
+  if (!dolphins.sawHiddenAfter) fail('dolphins: the pod did not despawn cleanly after its breach (0 draws between)');
+
   // 2p) CC0 Pirate Kit port dressing (#101): each port is dressed with instanced barrels,
   // crates & palms, and far clusters are distance-culled. Prove props were placed, that
   // teleporting just off a port draws its cluster, and that the far open sea culls to zero.
@@ -1527,7 +1559,7 @@ try {
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, props, islandStyle, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));
