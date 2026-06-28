@@ -27,6 +27,7 @@
 // all under the one shared { ctx, master } bus, so the existing mute still covers everything.
 
 import { resolveMix } from './music-director.js';
+import { varyMelodyPass, variationPlan, SEA_VARIATION_SEED } from './systems/melody-variation.js';
 
 // ---- Pure, browser-free helpers (unit-tested) ----
 
@@ -187,19 +188,29 @@ export function createMusic() {
   let chordByStep = null;
   let step = 0;
   let nextNoteTime = 0;
+  let pass = 0;                              // 0-based loop counter; drives seeded per-pass variation (#117)
+  const variationSeed = SEA_VARIATION_SEED;  // deterministic: same seed → same variation sequence
+
+  // (Re)lay the lead melody onto the eighth-note grid from a note list. Called once per pass with a
+  // seeded per-pass variation (#117) so each 32-beat loop glints differently while staying in key —
+  // only `deg` changes between passes, never timing, so the grid mapping is identical pass-to-pass.
+  function buildLeadSchedule(notes) {
+    for (let i = 0; i < TOTAL_STEPS; i++) leadByStep[i] = [];
+    let beat = 0;
+    for (const note of notes) {
+      const s = Math.round(beat * 2) % TOTAL_STEPS;
+      leadByStep[s].push({ deg: note.deg, durSec: note.beats * beatSec });
+      beat += note.beats;
+    }
+  }
 
   function buildSchedule() {
     leadByStep = Array.from({ length: TOTAL_STEPS }, () => []);
     bassByStep = Array.from({ length: TOTAL_STEPS }, () => []);
     chordByStep = Array.from({ length: TOTAL_STEPS }, () => []);
 
-    // Lead melody → grid.
-    let beat = 0;
-    for (const note of melodyPattern()) {
-      const s = Math.round(beat * 2) % TOTAL_STEPS;
-      leadByStep[s].push({ deg: note.deg, durSec: note.beats * beatSec });
-      beat += note.beats;
-    }
+    // Lead melody → grid. Pass 0 is the canonical, unvaried composition.
+    buildLeadSchedule(varyMelodyPass(melodyPattern(), pass, { seed: variationSeed }));
 
     // Bass pulse (roots on beats 1 & 3) + chord pad (triad on the downbeat) per bar.
     const roots = bassPattern();
@@ -365,7 +376,14 @@ export function createMusic() {
         if (stingerArmed && isDownbeat(step, STEPS_PER_BAR)) { voiceStinger(nextNoteTime); stingerArmed = false; }
         fireStep(step, nextNoteTime);
         nextNoteTime += stepSec;
-        step = (step + 1) % TOTAL_STEPS;
+        const nextStep = (step + 1) % TOTAL_STEPS;
+        // At the seam of a pass, re-lay the lead with the NEXT pass's seeded variation (#117) before
+        // we schedule its first step — so each 32-beat loop of the sea theme differs subtly in key.
+        if (nextStep === 0) {
+          pass += 1;
+          buildLeadSchedule(varyMelodyPass(melodyPattern(), pass, { seed: variationSeed }));
+        }
+        step = nextStep;
       }
     } catch {
       /* keep the clock alive even if a tick misfires */
@@ -403,6 +421,7 @@ export function createMusic() {
       // already in the nearest port's key the instant the audio bus starts.
       if (currentTownTheme) setTownTheme(currentTownTheme);
 
+      pass = 0;
       buildSchedule();
       step = 0;
       nextNoteTime = ctx.currentTime + 0.12;
@@ -511,5 +530,14 @@ export function createMusic() {
   // is up — it just arms a flag the scheduler reads once the music is running and unmuted.
   function stinger() { stingerArmed = true; }
 
-  return { start, setMute, update, setMix, setTownTheme, stinger };
+  // Seeded per-pass variation QA surface (#117): the live seed + pass counter, plus the ornament
+  // plan for the current (or any) pass. Pure + headless-safe — computable even before the audio
+  // engine is up (pass stays 0), so a playtest can assert: same seed → same sequence (determinism),
+  // pass 0 is canonical (empty plan), and later passes glint in-key. Exposed via window.__tidewake.
+  function variation(forPass) {
+    const p = forPass == null ? pass : Math.trunc(Number(forPass) || 0);
+    return variationPlan(melodyPattern(), p, { seed: variationSeed });
+  }
+
+  return { start, setMute, update, setMix, setTownTheme, stinger, variation };
 }

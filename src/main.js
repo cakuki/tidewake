@@ -1361,6 +1361,11 @@ window.__tidewake = {
     return { port, identity: port ? townMusicIdentity(port) : null };
   },
   townMusicFor(name) { return townMusicIdentity(name); },
+  // Seeded per-pass sea-theme variation (#117) QA surface: the live { seed, pass, displaced } so a
+  // playtest can assert it's deterministic (same seed → same sequence) and that each loop glints in
+  // key. `seaVariationFor(pass)` is a pure lookup for ANY pass (headless-safe; no AudioContext).
+  get seaVariation() { return music.variation(); },
+  seaVariationFor(pass) { return music.variation(pass); },
   // Invisible onboarding (#60) QA surface: the live progress flags, the next step, and
   // whether the seeded goal card is currently on screen.
   get onboarding() {
