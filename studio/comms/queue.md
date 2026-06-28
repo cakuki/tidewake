@@ -40,22 +40,23 @@ owner wants it._
 
 ## Top of queue (do in order) — make the modes MATTER (DL #3 depth; reactive-verbs-first)
 
-1. **#103 — Town tavern "listen for word"** (design). Procedural rumours from world-state + reputation
-   → **soft sea objectives** you sail back to town for. — _why: value **very high** (DL #3's single
-   strongest signal — turns the town from a menu into a **destination**, fixes ashore aimlessness);
-   complexity **medium**; deps #67 town (done). CREATIVE SPARK: a hunched regular in the corner who
-   "heard a thing" — a rumour that points the bow somewhere worth going._
+_(Loop 55 shipped **#103** tavern rumours · Loop 56 shipped **#102 phase 1** landfall · Loop 57
+shipped & CLOSED **#107** mode-transition QA + the perf-counter flake fix. Top re-sorted below.)_
 
-2. **#102 — Landfall: the mode transition as a crafted multi-sensory gesture** (design + art + audio).
-   Eased camera to a moored framing · `townBlend` warm grade · calmed glassy swell · music swell +
-   on-beat stinger · a "made port" punch — reversed on Leave. — _why: value **high** (DL #3 theme 2 —
-   the transition *is* the drama; makes the snap a moment); complexity **medium**; deps #95/#67 (done),
+1. **#102 — Landfall phase 2 (the rest of the multi-sensory gesture)** (design + art + audio).
+   **Phase 1 SHIPPED** (eased camera to a moored 3/4 framing · golden-harbour grade · town-opens-only-
+   ashore · skippable; `src/systems/landfall.js`). **Remaining (#102 OPEN):** music swell + transition
+   **stinger on the next downbeat** (bar-clock, constant-power sea→town — the music director already
+   crossfades the bed by mode) · **glassy "moored" swell-amplitude lerp** (needs a swell uniform in
+   ocean.js shader + a CPU sampler) · deepen the gold / a small camera dolly settle. — _why: value
+   **high** (DL #3 theme 2 — the transition *is* the drama); complexity **medium**; deps #95/#67 (done),
    pairs with #94. CREATIVE SPARK: the world exhales as the wheel goes still and the harbour resolves._
 
-3. **#107 — Mode-transition QA coverage** (tech + qa). N×N transition matrix · cross-mode pause
-   invariant · mode-aware audio assertion · golden mode-trace. — _why: value **medium** (enabler —
-   keeps the gate trustworthy as town depth + battle multiply the states); complexity **low–medium**;
-   deps #106 (done). Rides the #106 contract directly._
+2. **#94 — gate-level mode-aware mix assertion + transition bell** (tech + audio; follow-up surfaced by
+   #107). Expose the resolved mix on `__tidewake` (`tw.mix`) so the playtest can assert SAILING≠TOWN≠
+   BATTLE *live* (the pure decision is already unit-tested), and add a once-per-real-transition audio
+   beat. — _why: value **medium** (makes #94 land non-blind); complexity **low**; deps #95/#106 (done).
+   Rides the mode seam directly._
 
 ## Charm / atmosphere fillers (from-owner; slot in around the depth slices)
 
