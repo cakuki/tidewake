@@ -13,6 +13,7 @@
 
 import { GOODS, PORTS, market, buy, sell, cargoUsed, HOLD_CAP } from '../economy.js';
 import { renownTier, dominantPole } from '../renown.js';
+import { composeRumours } from '../rumours.js';
 
 export function createTown(opts = {}) {
   const getState = typeof opts.getState === 'function' ? opts.getState : () => null;
@@ -25,6 +26,26 @@ export function createTown(opts = {}) {
   let $panel = null;
   let flash = '', flashUntil = 0; // transient "you bought/sold" / refusal banter
   let lastSig = '';
+  // The tavern verb (#103): "listen for word" surfaces a few procedural rumours composed
+  // deterministically from world-state + reputation. `nonce` rises each listen so the room
+  // turns its conversation over (fresh word), while the pure composer stays testable.
+  let listening = false, rumourNonce = 0, rumours = [];
+
+  // Compose fresh word from the live ship state — who you are + where the world is.
+  function listen() {
+    const state = getState() || {};
+    if (!state.port) return [];
+    rumourNonce += 1;
+    rumours = composeRumours({
+      port: state.port,
+      infamy: state.infamy, standing: state.standing, renown: state.renown,
+      deeds: state.voyageLog || [],
+    }, { count: 2, nonce: rumourNonce });
+    listening = true;
+    lastSig = ''; // force a repaint
+    render();
+    return rumours.slice();
+  }
 
   const REFUSALS = {
     'no-coins': 'The trader eyes your purse and laughs. Not enough coin.',
@@ -60,6 +81,7 @@ export function createTown(opts = {}) {
       // Delegated so re-renders never need re-binding: the Leave plank, and tap-to-trade rows.
       $panel.addEventListener('click', (e) => {
         if (e.target.closest?.('#town-leave')) { e.preventDefault(); onLeave(); return; }
+        if (e.target.closest?.('#town-listen')) { e.preventDefault(); listen(); return; }
         const tr = e.target.closest?.('.trow');
         if (tr && tr.dataset.good) doTrade(tr.dataset.good, !!e.target.closest('.ts'));
       });
@@ -73,6 +95,28 @@ export function createTown(opts = {}) {
     const cries = (info && info.cryers) || [];
     if (!cries.length) return '"Step ashore, captain — the market\'s open!"';
     return cries[Math.floor(Date.now() / 6000) % cries.length];
+  }
+
+  // The tavern corner (#103): the reactive verb ashore. Before listening, a single warm prompt;
+  // after, the rumours you heard — each a soft heading you may choose to chase — plus a "listen
+  // again" pull that turns the room's conversation over.
+  function tavernHTML() {
+    const TKEY = TOUCH ? '' : ' <span class="town-leave-key">(R)</span>';
+    if (!listening) {
+      return `<div class="town-tavern">`
+        + `<div class="town-tavern-h">🍺 The Tavern</div>`
+        + `<div class="town-tavern-sub">A hunched regular in the corner looks like he's heard a thing or two.</div>`
+        + `<button id="town-listen" class="town-listen" type="button">🍺 Listen for word${TKEY}</button>`
+        + `</div>`;
+    }
+    const lines = rumours.length
+      ? rumours.map((r) => `<p class="town-rumour">“${esc(r)}”</p>`).join('')
+      : `<p class="town-rumour town-rumour-quiet">The room's gone quiet — no word worth the telling tonight.</p>`;
+    return `<div class="town-tavern">`
+      + `<div class="town-tavern-h">🍺 What you hear</div>`
+      + `<div class="town-rumours">${lines}</div>`
+      + `<button id="town-listen" class="town-listen town-listen-again" type="button">🍺 Listen again${TKEY}</button>`
+      + `</div>`;
   }
 
   function render() {
@@ -91,7 +135,7 @@ export function createTown(opts = {}) {
     const info = PORTS[port] || {};
     const cry = barker(info);
     // Cheap cache: only touch the DOM when something the player can see changes.
-    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry;
+    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce;
     if (sig === lastSig) return;
     lastSig = sig;
 
@@ -112,6 +156,7 @@ export function createTown(opts = {}) {
       + `<div class="town-sub">${esc(info.blurb || 'A port town, alive with trade.')}</div>`
       + `<div class="town-master">${esc(info.harbourmaster || 'The harbourmaster nods you ashore.')}</div>`
       + `<div class="town-barker">${esc(cry)}</div>`
+      + tavernHTML()
       + `<div class="town-purse">⛃ <b>${state.coins ?? 0}</b> coins · Hold <b>${used}/${HOLD_CAP}</b>${standingNote}</div>`
       + `<div class="town-market-h">⚖ The Market</div>`
       + `<table class="town-t"><thead><tr><th></th><th>good</th><th>buy</th><th>sell</th><th>hold</th></tr></thead><tbody>${rows}</tbody></table>`
@@ -120,13 +165,14 @@ export function createTown(opts = {}) {
           ? 'Tap a row to <b>buy</b> · tap its <b>sell</b> price to sell'
           : 'Press <b>1–5</b> to buy · <b>Shift+1–5</b> to sell'}</div>`
       + `<button id="town-leave" class="town-leave" type="button">⚓ Set Sail &nbsp;<span class="town-leave-key">(L)</span></button>`
-      + `<div class="town-help">More to do ashore is coming — for now, trade your hold and set sail when you're ready.</div>`;
+      + `<div class="town-help">Listen for word in the tavern, trade your hold, then set sail when you're ready.</div>`;
   }
 
   function setOpen(v) {
     const next = !!v;
     if (next === open) { if (open) render(); return; } // keep the live barker/market fresh
     open = next;
+    if (!open) { listening = false; rumours = []; } // a fresh visit listens anew
     render();
   }
 
@@ -139,15 +185,19 @@ export function createTown(opts = {}) {
         if (!open) return;
         const k = (e.key || '').toLowerCase();
         if (k === 'l') { e.preventDefault?.(); onLeave(); }
+        else if (k === 'r') { e.preventDefault?.(); listen(); } // listen for word (#103)
       });
     } catch { /* headless without a window — fine */ }
     return api;
   }
 
   const api = {
-    init, render, setOpen,
+    init, render, setOpen, listen,
     get isOpen() { return open; },
     get port() { const s = getState(); return (s && s.port) || null; },
+    // Tavern "listen for word" (#103) QA surface: whether word is showing + the live rumours.
+    get listening() { return listening; },
+    get rumours() { return rumours.slice(); },
   };
   return api;
 }

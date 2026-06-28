@@ -778,6 +778,10 @@ window.__tidewake = {
   // seaward). Auto-harbour itself is driven by sailing into a port's dock radius (onArrive).
   get town() { return { open: town.isOpen, port: town.port, leftHarbour }; },
   leaveHarbour() { return leaveHarbour(); },
+  // Tavern "listen for word" (#103) QA surface: whether word is showing + the live rumours,
+  // and a deterministic driver so a headless playtest can listen and assert the room speaks.
+  get tavern() { return { open: town.isOpen, listening: town.listening, rumours: town.rumours }; },
+  tavernListen() { return town.listen(); },
   get npcs() { return npcs.snapshot(); },
   // Living sea fauna (#97) QA surface: the gull flock's count, whether it's drawn (distance
   // cull), whether it's roosting over a coast, and the live flock centre — so a headless
