@@ -48,6 +48,64 @@ export const SAVE_VERSION = 12;
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
 const KNOWN_GOOD_IDS = new Set(GOODS.map((g) => g.id));
 
+// ---- Declarative forward-migration pipeline (#122, DL #4) --------------------------------------
+// A save schema that grows by editing one ever-bigger sanitise function silently WIPES a player's
+// progress on every version bump (the old `obj.v !== SAVE_VERSION → null` gate). Instead we run an
+// ORDERED chain of tiny per-version steps (v_n → v_{n+1}); an old save is upgraded one rung at a
+// time to the current shape, then handed to the single validated reader below — which stays the one
+// source of truth for field sanity. Each step is PURE + TOTAL (returns a NEW object, never throws),
+// and adding a future field is ONE new registration here (or a no-op when the reader already
+// fail-opens on its absence). The reader's fail-open behaviour is preserved as the final safety net.
+//
+// Most steps are pure version bumps: from v4 on, every field the schema added is FLAVOUR the reader
+// already defaults when absent (legends→none, onboarding→inferred, voyageLog→[], colours→default,
+// portMemory→{}, objective→null, harbour→null), so the migration only needs to advance the version.
+// They're still registered explicitly to keep the chain ordered + auditable and to give any future
+// non-trivial transform an obvious home.
+const migrations = {
+  // v1 → v2: the economy arrived (coins + cargo). A pre-economy save carried no purse/hold, which the
+  // reader hard-rejects — so seed a fresh starting purse + empty hold. (The one step that ADDS data.)
+  1: (s) => ({ ...s, coins: START_COINS, cargo: {} }),
+  // v2 → v3: a single combined `renown` score was added. It's now DERIVED (infamy + standing) and no
+  // longer stored, so there's nothing to add — the reader computes it.
+  2: (s) => ({ ...s }),
+  // v3 → v4: renown was SPLIT into the two poles (infamy/standing, #45). A combined score can't be
+  // decomposed, so the poles start at 0 and the stale `renown` field is dropped. This is the single
+  // irreducible historical loss; the load-bearing voyage state (pos/coins/cargo) is fully preserved.
+  3: ({ renown, ...s }) => ({ ...s }), // eslint-disable-line no-unused-vars
+  // v4 → v5 .. v11 → v12: each later field is reader-fail-open flavour → a pure version bump.
+  4: (s) => ({ ...s }), // legends (#46)
+  5: (s) => ({ ...s }), // onboarding flags (#60)
+  6: (s) => ({ ...s }), // voyage log (#78)
+  7: (s) => ({ ...s }), // displayed colours (#79)
+  8: (s) => ({ ...s }), // per-port memory (#104)
+  9: (s) => ({ ...s }), // chased-rumour objective (#111/#112/#115)
+  10: (s) => ({ ...s }), // deepened port memory: lastDeed + home port (#104b)
+  11: (s) => ({ ...s }), // claimed home harbour (#118)
+};
+
+/**
+ * Forward-migrate a parsed save object to the current SAVE_VERSION through the ordered pipeline.
+ * Returns a NEW object stamped to the current version, or `null` when the version is missing, not a
+ * whole number, from the future, or below range, or a chain step is missing — in every such case the
+ * caller falls open to a fresh voyage. Pure; never mutates the input; never throws.
+ * @param {object} obj  a parsed save object (must carry a numeric `v`)
+ * @returns {object|null}
+ */
+export function migrate(obj) {
+  if (!obj || typeof obj !== 'object') return null;
+  let v = obj.v;
+  if (!Number.isInteger(v) || v < 1 || v > SAVE_VERSION) return null;
+  let cur = obj;
+  while (v < SAVE_VERSION) {
+    const step = migrations[v];
+    if (!step) return null; // a gap in the chain — fail open rather than load a half-migrated save
+    cur = { ...step(cur), v: v + 1 };
+    v += 1;
+  }
+  return cur;
+}
+
 // Defensive world bound: positions beyond this are treated as corrupt rather than
 // teleporting the player into the void. The sea is large but not unbounded.
 const MAX_COORD = 1e7;
@@ -153,8 +211,14 @@ export function deserialize(raw) {
   }
   if (!obj || typeof obj !== 'object') return null;
 
-  // version gate — future fields bump SAVE_VERSION, old saves fall back to fresh
-  if (obj.v !== SAVE_VERSION) return null;
+  // version gate — a current save loads directly; an OLDER save is forward-migrated through the
+  // declarative pipeline (#122) so a schema bump upgrades the player's progress instead of silently
+  // wiping it. A missing / future / unknown version still falls open to a fresh voyage (migrate →
+  // null), and the migrated object is then fully re-validated by the reader below (fail-open intact).
+  if (obj.v !== SAVE_VERSION) {
+    obj = migrate(obj);
+    if (!obj) return null;
+  }
 
   const { heading, speed, throttle, pos } = obj;
   if (!isFiniteNumber(heading) || !isFiniteNumber(speed) || !isFiniteNumber(throttle)) return null;

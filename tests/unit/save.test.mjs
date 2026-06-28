@@ -49,13 +49,19 @@ test('deserialize rejects malformed JSON', () => {
   assert.equal(deserialize('}{'), null);
 });
 
-test('deserialize rejects an old / missing version', () => {
+test('deserialize forward-migrates an old version; still rejects a missing / future version', () => {
   const good = JSON.parse(serialize(sampleState()));
+  // An older version now MIGRATES forward (progress survives the bump, #122) instead of wiping.
   const old = { ...good, v: SAVE_VERSION - 1 };
-  assert.equal(deserialize(JSON.stringify(old)), null);
+  const migrated = deserialize(JSON.stringify(old));
+  assert.ok(migrated, 'an old-version save must migrate forward, not wipe');
+  assert.deepEqual(migrated.pos, sampleState().pos);
+  // A missing version still falls open to a fresh voyage (the unknowable can't be migrated).
   const noV = { ...good };
   delete noV.v;
   assert.equal(deserialize(JSON.stringify(noV)), null);
+  // A FUTURE version (a save written by a newer client) also falls open rather than guessing.
+  assert.equal(deserialize(JSON.stringify({ ...good, v: SAVE_VERSION + 1 })), null);
 });
 
 test('deserialize rejects partial / missing fields', () => {
@@ -177,9 +183,13 @@ test('deserialize rejects a current save missing economy fields', () => {
   assert.equal(deserialize(JSON.stringify(noCargo)), null);
 });
 
-test('deserialize rejects an old pre-economy (v1) save', () => {
+test('deserialize forward-migrates an old pre-economy (v1) save (fresh purse + empty hold)', () => {
   const v1 = { v: 1, heading: 1, speed: 5, throttle: 0.4, pos: [10, 0, -5] };
-  assert.equal(deserialize(JSON.stringify(v1)), null);
+  const r = deserialize(JSON.stringify(v1));
+  assert.ok(r, 'a v1 save must migrate forward, not wipe the voyage');
+  assert.deepEqual(r.pos, [10, 0, -5], 'load-bearing nav state survives the migration');
+  assert.equal(r.coins, START_COINS, 'a pre-economy save seeds the starting purse');
+  assert.deepEqual(r.cargo, {}, 'a pre-economy save seeds an empty hold');
 });
 
 test('deserialize accepts good economy data right up to hold capacity', () => {
@@ -239,11 +249,21 @@ test('deserialize rejects present-but-corrupt poles', () => {
   assert.equal(deserialize(JSON.stringify({ ...good, infamy: null })), null);
 });
 
-test('deserialize rejects old pre-pole saves (v2 economy, v3 renown)', () => {
-  const v2 = { v: 2, heading: 1, speed: 5, throttle: 0.4, pos: [10, 0, -5], coins: 100, cargo: {} };
-  assert.equal(deserialize(JSON.stringify(v2)), null);
+test('deserialize forward-migrates old pre-pole saves (v2 economy, v3 renown)', () => {
+  const v2 = { v: 2, heading: 1, speed: 5, throttle: 0.4, pos: [10, 0, -5], coins: 100, cargo: { rum: 1 } };
+  const r2 = deserialize(JSON.stringify(v2));
+  assert.ok(r2, 'a v2 (economy) save must migrate forward');
+  assert.equal(r2.coins, 100, 'the purse survives the migration');
+  assert.deepEqual(r2.cargo, { rum: 1 }, 'the hold survives the migration');
+  assert.equal(r2.infamy, 0);
+  assert.equal(r2.standing, 0);
   const v3 = { v: 3, heading: 1, speed: 5, throttle: 0.4, pos: [10, 0, -5], coins: 100, cargo: {}, renown: 500 };
-  assert.equal(deserialize(JSON.stringify(v3)), null);
+  const r3 = deserialize(JSON.stringify(v3));
+  assert.ok(r3, 'a v3 (combined-renown) save must migrate forward');
+  assert.equal(r3.coins, 100);
+  // The pre-split combined renown can't be decomposed into the two poles, so they start at 0 and
+  // the stale field is dropped; derived renown follows. The load-bearing voyage state survives.
+  assert.equal(r3.renown, 0, 'derived renown = infamy + standing; the legacy combined score is dropped');
 });
 
 // ---- Endgame legends persistence (save v5, #46) ----
