@@ -27,93 +27,109 @@ when its latest slice shipped.
 
 ---
 
-_Set by **Retro 11** (2026-06-28). State: the **mode spine now MATTERS.** Town is a **destination,
-not a menu** — a tavern *listen-for-word* verb spins live state into **rumours that name a real
-target** (#103), and the harbourmaster **remembers your face** across visits (#104, save v9).
-Landfall is a **crafted multi-sensory moment** — eased camera + golden grade + glassy moored swell +
-on-beat "made port" stinger, skippable, reversed on leave (#102, done for now). The world between
-ports filled out: **every isle wears its own face** (#71) and the **sunny sea drifts with whitecaps**
-(#70 slice 1). The gate hardened to the exploding mode state-space and caught a **real perf race**
-(#107). **542 tests**, perf **29/130 draws · 89k/150k tris**. Latest `v0.0.20260628043637`._
+_Set by **Retro 12** (2026-06-28, loops 62–68). State: the **reactive loop is CLOSED end-to-end** —
+walk into a tavern → listen → chase a rumour with a **map marker** → arrive to a **reward** (coin +
+Ballad verse) → Set Sail and the watch **reads your visit back** (#112/#111/#115 + #105). **Both
+reputation poles now have symmetric verbs:** the pirate half (raid/false-colours/legend) is mirrored
+by the governor half — **claim & grow a home port** for Standing (#118). **The open sea is now
+reactive** — a foundering ship offers a rescue-vs-plunder moral choice (#125). **Each port sounds
+like itself** (#69) and **recalls your last deed by name** (#104b). And the **save system is
+hardened** — a declarative migration codec + frozen old-save corpus (#122) after we caught a REAL
+silent-wipe bug (see below). **669 tests**, perf **32/130 draws · 90k/150k tris**, save **v12**.
+Latest `v0.0.20260628070429`._
 
-_**The next leverage is to make the verbs PAY OFF and fill the one empty room.** The rumour verb
-points the bow but has no reward yet → **close the loop** (#112 payoff + #111 marker). Battle-mode
-**#100 is HELD for the ~08:00 2026-06-28 Game-Designer owner brief (now ~07:00 — IMMINENT)** — it is
-the obvious next big slice but it is the owner's to steer/sequence; do **NOT** auto-promote it above
-where the owner wants it._
+_**⚠️ #122 process headline (now a standing rule):** `deserialize` had hard-rejected any save whose
+version ≠ current → **every schema bump (v8→v12 over ~20 cycles) silently WIPED player progress**,
+undetected because tests only ever round-tripped a *current* save. Fixed structurally. **Standing
+rule:** a save-schema change is not done until it migrates every prior version forward AND a frozen
+blob of the new version is added to the corpus (the coverage guard enforces it)._
 
-## Top of queue (do in order) — the reactive loop is CLOSED; fill the empty room next
+_**Next leverage: make the symmetric poles FELT, finish the engine de-risk that protects battle, and
+lock down the closed loop.** Battle-mode **#100 remains [OWNER-DECISION], owner-held** — it has waited
+the WHOLE session with the owner absent. Keep it HELD; do **NOT** auto-promote — but it is worth a
+**gentle owner nudge** (it is both the biggest content gap and a long-stale decision)._
 
-**PM/TL: the rumour-payoff trio + the ashore digest + per-town music ALL SHIPPED & CLOSED.** The
-next live build top is the **DL #4 reservoir** below (engine de-risk quartet #120–123 ride WITH
-the battle brief; #118 governor-verb is the highest-value standalone). **#100 battle remains the
-owner's to steer** — do NOT auto-promote above where the owner wants it.
+## Top of queue (do in order) — poles are symmetric + loop closed → make it FELT + harden before battle
 
-1. ~~**#112 — Rumours that pay off** (+ **#111** marker, + **#115** typed `objectives.js`)~~ —
-   ✅ **SHIPPED & CLOSED** (Loop 62, `v0.0.20260628…`). Town → rumour → sail → pole-aware payoff loop is live.
+**PM/TL: the rumour-payoff loop, ashore digest, per-town music, port-memory depth, at-sea encounter,
+the governor home-port verb, and the save-migration codec ALL SHIPPED & CLOSED (loops 62–68).** The
+next build top makes the now-symmetric poles *visible* (#126), then finishes the engine de-risk that
+must precede battle (#120), then locks down the closed loop (#123). **#100 battle remains the owner's
+to steer** — HELD, not auto-promoted; nudge gently.
 
-2. ~~**#105 — "While you were ashore…" digest**~~ — ✅ **SHIPPED & CLOSED** (Loop 63). Leave-Harbour
-   recap of the visit's real deltas.
+1. **#126 — Reputation-reactive world grade (+ in-world heading cue for #111)** — the sea/sky look
+   reflects the Infamy↔Standing needle; folds in a diegetic rhumb-line heading wisp for #111 (not a UI
+   pin). _value **high** · complexity **low** (single fog/grade uniform) · art/design. **Top.** Cheapest
+   high-charm payoff on this block's symmetric-pole work._
 
-3. ~~**#69 — Per-town music identities** (#94 phase 3)~~ — ✅ **SHIPPED & CLOSED** (Loop 64). Each
-   port sounds like itself (modal recolour over transposition).
+2. **#120 — Self-registering systems registry → thin `main.js`** (~1019 lines; battle #100 forks its
+   own sub-loop without forking main; natural home for #36 fixed-timestep). No-behaviour-change
+   refactor — **do it before #100 lands**, while it's not a refactor-under-fire. _value **med-high** ·
+   complexity **medium** · tech. Now overlaps #106 slice 1 — sequence them together._
 
-## [OWNER-DECISION / HELD — IMMINENT] — ask, don't auto-promote
+3. **#123 — QA golden-replay fixture for the full reactive loop** (seed→listen→sail→reward) — only
+   became meaningful now that the loop closes end-to-end; protects the crown jewel. Pairs with #121's
+   gate invariants, which ride **with** battle #100. _value **medium** · complexity **low-med** · qa._
 
-- **#100 — arcade battle-modes** (combat/loadouts/boarding). **HELD for the ~08:00 2026-06-28
-  Game-Designer owner brief (now ~07:00 — IMMINENT).** Its mode-switch infra (#95) + seam hardening
-  (#106 ph1) + QA (#107) are already built; battle is the one empty room. The owner steers WHAT and
-  sequences WHEN — surface the brief over the owner channel; do **NOT** promote above where the owner
-  wants it. (When it lands it likely jumps the top; until then the build top is #112/#111.)
+## [OWNER-DECISION / HELD — owner-held all session; gentle nudge due] — ask, don't auto-promote
 
-## DL #4 candidates (research reservoir — 2026-06-28; below the top trio + the #100 hold)
+- **#100 — arcade battle-modes** (combat/loadouts/boarding). **HELD for the Game-Designer owner brief
+  — has now waited the ENTIRE session with the owner absent.** Its mode-switch infra (#95) + seam
+  (#106 ph1) + QA (#107) + the save-migration codec that protects it (#122) are all built; battle is
+  the one empty room. **Keep HELD; do NOT auto-promote** above where the owner wants it — but it is
+  both the biggest content gap and a long-stale decision, so **send a gentle owner nudge** over the
+  channel (with options, never auto-adopt). When it lands it likely jumps the top; the de-risk quartet
+  (#120/#121/#123) should ride WITH it.
+
+## DL #4 candidates (research reservoir — below the top trio + the #100 hold)
 
 _Filed by **Deep-Learning #4** (9-role fan-out). See `studio/retros/2026-06-28-deep-learning-4.md`.
-Asset-light, original-work-only, reactive-verbs-first. Ordered by leverage; pull from these once the
-rumour loop closes and the #100 brief is absorbed._
+Asset-light, original-work-only, reactive-verbs-first. Ordered by leverage._
 
-- **#115 — typed world-target model (`objectives.js`)** — keystone that turns rumours into real state
-  (one source for #111 marker / #112 arrival / #105 digest, instead of 3 string-parsers). _**Fold into
-  the #112/#111 build above** rather than running standalone. value high · complexity low-med · dev._
-- **Engine/gate de-risk quartet — highest-leverage of the new set because battle #100 is imminent;
-  several should ride WITH #100 (Retro 11: a QA-coverage slice on each state-space growth):**
-  - **#120 — self-registering systems registry → thin `main.js`** (~1019 lines/62 KB; battle owns its
-    sub-loop without forking main). No-behaviour-change refactor; also the natural home for #36. _tech P2._
+- **Engine/gate de-risk — ride WITH battle #100 (Retro 11/12: a QA-coverage slice on each state-space
+  growth; #122 generalised it to the player's *data*):**
+  - ~~**#115 — typed world-target model (`objectives.js`)**~~ — ✅ **SHIPPED & CLOSED** (Loop 62, folded
+    into #112/#111). One source of truth for marker/arrival/payoff/digest.
+  - **#120 — self-registering systems registry → thin `main.js`** — _promoted to TOP (#2 above)._
   - **#121 — gate resource-conservation invariant** (mesh leak across an N×N cycle) **+ transition-frame
-    perf sample** (the build/teardown spike, not the settled frame). _tech+qa P2; oracle for #106 slice-4._
-  - **#122 — declarative save-migration codec + frozen old-save corpus** (`deserialize` currently
-    hard-rejects old saves → silent progress wipe on every bump). _tech+qa P2; do before #100 bumps again._
-  - **#123 — QA golden-replay fixture for the full reactive loop** (seed→listen→sail→reward). _qa P2._
+    perf sample**. _tech+qa P2; ride WITH #100; oracle for #106 slice-4._
+  - **#123 — QA golden-replay fixture for the full reactive loop** — _promoted to TOP (#3 above)._
+  - ~~**#122 — declarative save-migration codec + frozen old-save corpus**~~ — ✅ **SHIPPED & CLOSED**
+    (Loop 68). Caught + fixed the silent save-wipe; corpus now gates every future bump.
 - **Governor pole — make the unbuilt half of the north-star reachable (Product):**
-  - **#118 — governor's first reactive verb: claim & grow a home port (Your Harbour)** — spend coins for
-    Standing, watch the port visibly grow. _design P2; promotes the parked #104b stretch into a verb._
+  - ~~**#118 — governor's first reactive verb: claim & grow a home port**~~ — ✅ **SHIPPED & CLOSED**
+    (Loop 67, save v12). Both poles now have symmetric verbs.
   - **#119 — governorship endgame milestone** (title mirroring the pirate legend-crown #46). _design P3;
-    deps #118 + named isles #19._
-- **Loop feedback / charm (pull once the loop closes):**
+    deps #118 (done) + named isles #19. PARK until after #126 + battle._
+- **Loop feedback / charm (pull around the top three):**
   - **#116 — diegetic feedback for the reactive loop** (listen/reach/payoff music stingers + interaction
-    SFX + a warmer remembered-port arrival cue). _audio P3; rides #112/#109; procedural-only._
+    SFX + a warmer remembered-port arrival cue). _audio P3; rides the now-closed loop; procedural-only._
   - **#117 — seeded per-pass melody variation** (kill sail-loop fatigue; per-pass *time* variation,
     orthogonal to #69 per-port). _audio P3._
-  - **#126 — reputation-reactive world grade** (look reflects the Infamy↔Standing pole) **+ in-world
-    heading cue for #111** (rhumb-line wisp/horizon haze, not a UI pin). _art P3; single fog/grade uniform._
-- **Reactive-world reservoir (after the loop closes / not-more-town depth):**
+- **Reactive-world reservoir:**
   - **#124 — crew morale/loyalty meter** fed by your choices (DL #1's never-built earned-mutiny; also the
-    battle surrender/boarding currency). _design P3._
+    battle surrender/boarding currency). _design P3; the next reactive meter after the poles._
   - ~~**#125 — emergent at-sea encounter: a foundering ship, rescue vs plunder**~~ — ✅ **SHIPPED &
-    CLOSED** (this loop). ONE seeded founderer at sea → RESCUE (Standing) / PLUNDER (Infamy + coin)
-    choice → pole-aware reward + Ballad verse, despawns cleanly. Follow-ups: more encounter types,
-    richer outcomes (grateful crew that fights alongside), a flying distress flag.
+    CLOSED** (Loop 66). Follow-ups: more encounter types, richer outcomes (grateful crew that fights
+    alongside), a flying distress flag.
+
+## Rumour-loop depth (#112 umbrella OPEN — close more reward kinds)
+
+- **#127 — Trade rumour live price-spike** at the named port (richer chase payoff vs a flat bounty).
+  _feature/design; deepens the closed loop._
+- **#128 — Disposition/bounty rumour spawns a matching vessel** (chase a prize/patrol — a 2nd rumour
+  type that proves the typed-objective pattern generalises). _feature/design._
 
 ## Charm / atmosphere fillers (from-owner; slot in around the depth slices)
 
-4. ~~**#104b — Port-memory depth** (per-port **last deed recalled by name** + "Your Harbour" home
-   seed)~~ — ✅ **SHIPPED & CLOSED** (Loop 65). Familiarity-decay remains a parked follow-on.
-5. **#106 — Mode-seam hardening, slice 1** (declarative `{[mode]:{onEnter,onLeave}}` registry — sugar
-   over the bus). Cheap; rides alongside any new mode work. _(slice 4 per-mode disposal PARKED —
-   blocked on #100 battle meshes.)_
-6. **#110 — Living fauna phase 2: jumping dolphins** (#97 continues; gulls shipped). P2 from-owner.
-7. **#101 — props phase 3: loose props** (lanterns/market stalls **feed the town mode** #96/#103).
+4. **#106 — Mode-seam hardening, slice 1** (declarative `{[mode]:{onEnter,onLeave}}` registry — sugar
+   over the bus). Cheap; **now overlaps #120's systems registry — sequence them together.** _(slice 4
+   per-mode disposal PARKED — blocked on #100 battle meshes.)_
+5. **#110 — Living fauna phase 2: jumping dolphins** (#97 continues; gulls shipped). P2 from-owner.
+6. **#101 — props phase 3: loose props** (lanterns/market stalls **feed the town mode** #96/#103).
    P2 from-owner. _(island dressing shipped via #71; texture-embed + extra variety PARKED.)_
+7. **#129 — Per-town music, richer** (distinct melodies/instrument sets + a dedicated docked cue +
+   live tempo — the #69 full follow-up). P3 audio.
 8. **#70 [STANDING-RULE] — ocean sail-over curios** (flotsam/turtle/bottle → SFX + witty-line pool —
    the issue's *original* slice 1) + **#113** bow-spray flourish + **#114** sea-colour variation /
    current streaks. **#70 stays OPEN deliberately** as the home of the "1–2 sea-delight beats per
@@ -172,12 +188,14 @@ rumour loop closes and the #100 brief is absorbed._
 
 ---
 
-_SHIPPED & CLOSED this block (Retro 11, loops 55–61): **#103** tavern "listen for word" (rumours) ·
-**#102** landfall phase 1+2 (crafted multi-sensory transition — CLOSED) · **#107** mode-transition QA
-+ a **real perf-counter race fix** (CLOSED) · **#104** the port remembers you (save v9, CLOSED) ·
-**#71** islands TLC (CLOSED). **#70** ocean whitecaps (phase 1; **#70 STAYS OPEN [STANDING-RULE]**).
-Filed follow-ups: **#111/#112** rumour marker+payoff, **#104b** port-memory depth, **#113/#114** sea
-flourishes. **DL #4 (2026-06-28) filed #115–#126** (see the "DL #4 candidates" section above +
-`studio/retros/2026-06-28-deep-learning-4.md`). Earlier (Retro 10, loops 48–54): #95/#67/#96/#66/#94-ph1/#106-ph1/#97-ph1/#93/#101-ph1+2
-+ the DL #3 research loop. EPICs #1–#9 are umbrellas, not slices._
+_SHIPPED & CLOSED this block (Retro 12, loops 62–68): **#112/#111/#115** rumours that pay off
+(town→rumour→marker→reward loop CLOSED; #111+#115 closed, #112 stays OPEN as the umbrella) · **#105**
+"while you were ashore" digest · **#69** per-town music identity · **#104b** port recalls your last
+deed by name (save v11) · **#125** at-sea foundering-ship encounter (rescue vs plunder) · **#118**
+Your Harbour claim & grow — the governor pole's first verb (save v12) · **#122** declarative
+save-migration codec + frozen old-save corpus (caught + fixed a REAL silent save-wipe bug). Filed
+follow-ups: **#127/#128** richer rumour-reward kinds, **#129** richer per-town music. Earlier (Retro
+11, loops 55–61): #103/#102/#107/#104/#71 + #70-ph1 ([STANDING-RULE], stays OPEN). DL #4 (2026-06-28)
+filed #115–#126 — see `studio/retros/2026-06-28-deep-learning-4.md`. EPICs #1–#9 are umbrellas, not
+slices._
 </content>

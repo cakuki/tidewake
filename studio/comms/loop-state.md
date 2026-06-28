@@ -16,23 +16,26 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
 > living-sea-fauna, town-mode-trade-view, multiple-bg-music, approach-town-music-cue, use-cc0-pirate-kit.
 > Also: **owner spend-decision pending** — optional ~$10–30/mo AI-image seat for 2D portraits (#55).
 
-- **Current loop:** 61 done → **Retro 11 just ran (covered loops 55–61)** → next reads `queue.md` top
-  (now **#112(+#111) close the rumour loop** — the chased rumour gets a marker + a real payoff). This
-  block: #103 tavern rumours (55, CLOSED) → #102 crafted landfall ph1 (56) → #107 mode-transition QA +
-  **real perf-race fix** (57, CLOSED) → #102 landfall ph2 (58, CLOSED) → #104 port-remembers-you (59,
-  CLOSED, save v9) → #71 islands TLC (60, CLOSED) → **#70 ocean whitecaps ph1 (61, OPEN [STANDING-RULE]).**
-- **✅ THE MODES NOW MATTER (Retro 11):** the mode skeleton got a body — town is a **destination not a
-  menu** (rumours #103 + the harbourmaster who **remembers your face** #104, save v9), landfall is a
-  **crafted multi-sensory moment** (#102 done for now), the world filled out (#71 per-isle faces, #70
-  whitecaps), and the gate hardened to the state-space + caught a **real perf race** (#107). **Next
-  leverage = make the verbs PAY OFF + fill the empty room:** **#112(+#111) close the rumour loop** →
-  **#105 "while you were ashore" digest** → **#69 per-town music**. Battle-mode **#100 HELD for the
-  ~08:00 2026-06-28 Game-Designer owner brief (now ~07:00 — IMMINENT)**; the obvious next big slice but
-  the owner's to steer — do NOT promote above where he wants it (it likely jumps the top once steered).
-- **Loops since last retro:** **0** (Retro 11 just ran, covered loops 55–61; HARD trigger fired at 7).
-  Cadence: retro every ~7–8 cycles, HARD trigger 7. **Next retro ~loop 68** unless a from-owner P1
-  preempts.
-- **Cycles since last deep-learning loop:** **0 — DL #4 just ran (counter reset to 0).** DL #4
+- **Current loop:** 68 done → **Retro 12 just ran (covered loops 62–68)** → next reads `queue.md` top
+  (now **#126 reputation-reactive world grade** — make the now-symmetric poles VISIBLE). This block:
+  #112/#111/#115 rumours that pay off (62, loop CLOSED) → #105 ashore digest (63, CLOSED) → #69
+  per-town music (64, CLOSED) → #104b last-deed-by-name (65, save v11) → #125 at-sea encounter (66,
+  CLOSED) → #118 Your Harbour claim & grow (67, CLOSED, save v12) → #122 save-migration codec + corpus
+  (68, CLOSED — caught a REAL silent save-wipe bug).
+- **✅ THE REACTIVE LOOP IS CLOSED + POLES SYMMETRIC (Retro 12):** town→rumour→marker→reward→ashore-
+  digest is a full circuit (#112/#111/#115 + #105); BOTH reputation poles now have verbs — the pirate
+  raid/false-colours/legend is mirrored by the governor **claim & grow a home port** (#118); the open
+  sea is reactive (#125 rescue-vs-plunder); each port has a voice (#69) + remembers your deeds (#104b);
+  and the **save system is hardened** (#122 migration codec + frozen corpus). **Next leverage = make it
+  FELT + harden before battle:** **#126 rep-reactive grade** → **#120 thin main.js (systems registry)**
+  → **#123 loop golden-replay**. Battle-mode **#100 remains [OWNER-DECISION], OWNER-HELD all session
+  (owner absent)** — keep HELD, do NOT auto-promote, but **a gentle owner nudge is due** (biggest
+  content gap + long-stale decision); the de-risk quartet #120/#121/#123 rides WITH it when it lands.
+- **Loops since last retro:** **0 — Retro 12 just ran (counter reset to 0; covered loops 62–68; HARD
+  trigger fired at 7).** Cadence: retro every ~7–8 cycles, HARD trigger 7. **Next retro ~loop 75**
+  unless a from-owner P1 preempts. Retro 12 doc: `studio/retros/2026-06-28-retro-12.md`.
+- **Cycles since last deep-learning loop:** **~8 — DL #4 ran ~loop 61; DL #5 ETA ~loop 72** (~2–3
+  cycles out, P1-preemptible). DL #4
   (2026-06-28) fanned out 9 role subagents (own reading list + Constitution + DL #3/Retro 11 docs);
   filed **#115–#126** (all below the Retro 11 top trio + the #100 hold); synthesis
   `studio/retros/2026-06-28-deep-learning-4.md`. Cross-cutting themes: **close the reactive loop across
@@ -50,10 +53,12 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
   + arcade collision: islands (#76 a1) + harbour/fight slow-stop (#76 c) + ship-vs-ship (#76 b), +
   iOS shader hardening/fallback (#86) + iOS audio capture-phase unlock (#77) + no-text-select (#87),
   + OPTIONAL day-night toggle (#58, sunny stays default).**
-- **Next dispatch:** `queue.md` top work item — recommended (Retro 11): **#112(+#111) close the rumour
-  loop** (chased rumour → map marker + real payoff) → **#105 "while you were ashore" digest** → **#69
-  per-town music**. (Retro 10 mode batch + DL #3 town-depth loop all SHIPPED: #103/#102/#104/#107/#71
-  CLOSED, #70 ph1 OPEN. **#100 battle HELD for the ~08:00 owner brief — IMMINENT, do not auto-promote.**)
+- **Next dispatch:** `queue.md` top work item — recommended (Retro 12): **#126 reputation-reactive
+  world grade** (+ in-world heading cue for #111 — make the now-symmetric poles VISIBLE) → **#120 thin
+  `main.js` via a self-registering systems registry** (de-risk before battle) → **#123 golden-replay
+  fixture for the closed reactive loop**. (Retro 11 trio + DL #4 reservoir all SHIPPED:
+  #112/#111/#115·#105·#69·#104b·#125·#118·#122 CLOSED. **#100 battle OWNER-HELD all session — do NOT
+  auto-promote; send a gentle owner nudge.** #121 gate invariants ride WITH #100.)
 - **Owner-decisions ANSWERED:** #56 mobile = GO (shipped #63); #58 weather = GO optional toggle (SHIPPED #58).
   #76 priority delegated to PM+TL → P1, shipped a1+c+b; a2 remains. Prioritization is PM+TL's call.
 - **⏳ Awaiting owner re-test (iOS, on his iPhone — BATCH all three in one pass):** **#77 audio**
@@ -70,9 +75,10 @@ Single source of truth (resume brain) for the never-stopping delivery loop. Surv
   QA; Game Designer owns balance/tuning; from-owner P1s jump the queue.)
 - **QA gotcha (note):** synchronous tw.step() doesn't advance wall-clock → CSS fade-in transitions
   read mid-flight; QA must wait real time (~600ms) before asserting opacity-based visibility.
-- **Latest release:** **v0.0.20260628043637** (#70 ocean whitecaps — drifting crest foam). ~62
-  releases, **542 tests**. Perf **29/130 draws · 89k/150k tris** (shader-only foam + instanced isle
-  dressing held the budget; save schema **v9**).
+- **Latest release:** **v0.0.20260628070429** (#122 declarative save-migration codec + frozen old-save
+  corpus). ~69 releases, **669 tests**. Perf **32/130 draws · 90k/150k tris**. Save schema **v12**,
+  now backed by a migration codec + frozen corpus (a schema bump isn't done until it migrates every
+  prior version forward AND adds a frozen corpus blob — coverage guard enforces it).
 - **Live:** https://cakuki.github.io/tidewake/
 - **Open enablers:** #37 deterministic visual-diff (schedule — open since cycle 10); #38 PR-validation
   CI gate; #36 fixed-timestep.

@@ -6,6 +6,50 @@ architecture) are raised as `owner-decision` GitHub issues and recorded here onc
 
 ---
 
+### 2026-06-28 — Retro 12 (loops 62–68): the reactive loop CLOSED · both poles symmetric · sea reactive · save hardened
+**Decision.** Seven cycles closed the reactive loop end-to-end and made the reputation fantasy
+symmetric. **(1) The town→rumour→sail→reward loop is CLOSED** — listen for word → a typed
+`objectives.js` world-target (#115) → a **map marker** on the heading (#111) → arrive to a coin
+bounty + Ballad verse (#112; umbrella stays OPEN for richer rewards) → and on Set Sail the watch
+**reads your visit back** (#105). **(2) Both reputation poles now have symmetric verbs** — the pirate
+half (raid / false-colours / legend) is mirrored by the governor half: **claim & grow a home port**
+for Standing + a homecoming that warms as it prospers (#118, save v12). **(3) The open sea is now
+reactive** — a seeded foundering ship offers a rescue-vs-plunder moral choice resolving to the right
+pole (#125), turning our most-used/least-reactive mode into a story-generator. **(4) Each port has a
+voice + a memory** — per-town music identity (#69) and a port that recalls your last deed by name
+(#104b, save v11). 542→**669 tests**, perf **32/130 draws · 90k/150k tris**, save **v9→v12**, 0
+escaped bugs.
+
+**Why / process headline (#122 — a standing rule now).** The build's biggest *latent* bug was caught
+this block: the save `deserialize` had always hard-rejected any save whose version ≠ current, so
+**every schema bump (v8→v12 over ~20 cycles) silently WIPED player progress on load** — undetected
+because the test suite only ever round-tripped a *current* save. The fix (#122) was structural: a
+declarative forward-migration pipeline (`migrations[v]=fn`) feeding the single validated reader, a
+pure total `migrate()`, and a **frozen old-save corpus** (one real blob per historical version) with
+a **coverage guard that fails the build if a prior version lacks a frozen blob**. **Standing rule
+adopted:** *a save-schema change is not done until (a) it migrates every prior version forward and (b)
+a frozen blob of the new version is added to the corpus.* Lesson: a "fail-open + sanitise" pattern can
+still hide a silent data-loss bug one layer up (the version gate); only an old-data corpus proves a
+schema change is non-destructive. This generalises Retro 11's "harden the state space as it grows" to
+the player's accumulated *data*.
+
+**Sequencing.** Next build top: **#126** (reputation-reactive world grade — make the now-symmetric
+poles *visible*, cheap single fog/grade uniform, folds in #111's in-world heading cue) → **#120**
+(self-registering systems registry → thin `main.js`, a no-behaviour-change refactor done *before*
+battle #100 forks its own sub-loop; overlaps/sequences with #106 slice 1) → **#123** (golden-replay
+fixture for the now-closed loop). #121's gate invariants ride **with** battle #100.
+
+**Owner-decision #100 (battle) — HELD, owner-held, gentle nudge due.** #100 has waited the ENTIRE
+session with the owner absent. It stays **[OWNER-DECISION] / HELD** and is **not** auto-promoted (the
+owner steers WHAT/WHEN). But "do not auto-promote" ≠ "let it sit silently forever": it is both the
+biggest content gap and a long-stale decision, so a **gentle owner nudge** (options over the channel,
+never auto-adopt) is recommended this retro. The de-risk quartet (#120/#121/#123) should ride with it.
+
+**Cadence.** Retro counter **reset to 0** (next retro ~loop 75). DL #4 ran ~loop 61; **DL #5 ETA
+~loop 72** (~2–3 cycles out, P1-preemptible). Full write-up: `studio/retros/2026-06-28-retro-12.md`.
+
+---
+
 ### 2026-06-28 — Retro 11 (loops 55–61): the modes now MATTER — town is a destination; next, close the verb loop
 **Decision.** The seven cycles since Retro 10 gave the mode skeleton a body. Town stopped being a
 better trade panel and became a **destination**: a tavern **listen-for-word** verb spins live state +
