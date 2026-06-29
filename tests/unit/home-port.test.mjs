@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   freshHarbour, sanitizeHarbour, isHome, harbourLevelName, investCost, investStanding,
   canClaim, claim, canInvest, invest, harbourGreeting,
-  earnedGovernorship, governorTitle, governorshipBeat,
+  earnedGovernorship, governorTitle, governorshipBeat, demoteHarbour,
   CLAIM_STANDING, CLAIM_REWARD, MAX_LEVEL, GOVERNOR_STANDING,
 } from '../../src/systems/home-port.js';
 
@@ -176,4 +176,29 @@ test('governorshipBeat is the named mirror of a legend crown (or null with no cl
   assert.equal(beat.title, 'Governor of Saltpurse Quay');
   assert.ok(beat.icon && beat.kicker && beat.proclaim && beat.flourish, 'carries the fanfare fields the HUD reads');
   assert.ok(beat.proclaim.includes('Saltpurse Quay'), 'the proclamation names the isle');
+});
+
+// ---- demoteHarbour (#134) — a threat that sacks the home port one level ------------------------
+
+test('demoteHarbour drops a grown port one level and writes off that tier\'s invested coin', () => {
+  // a level-3 port: invested 150 (lvl1→2) + 350 (lvl2→3) = 500; a drop to lvl2 loses the 350 tier.
+  const { harbour, coinLost } = demoteHarbour({ name: 'Home', level: 3, invested: 500 });
+  assert.equal(harbour.level, 2);
+  assert.equal(harbour.name, 'Home');
+  assert.equal(coinLost, 350);
+  assert.equal(harbour.invested, 150);
+});
+
+test('demoteHarbour overruns a claimed berth (level 1) outright → null', () => {
+  const { harbour, coinLost } = demoteHarbour({ name: 'Berth', level: 1, invested: 0 });
+  assert.equal(harbour, null);
+  assert.equal(coinLost, 0);
+});
+
+test('demoteHarbour on no/junk harbour → null, never throws, never mutates', () => {
+  assert.deepEqual(demoteHarbour(null), { harbour: null, coinLost: 0 });
+  const h = { name: 'H', level: 2, invested: 150 };
+  const snap = JSON.stringify(h);
+  demoteHarbour(h);
+  assert.equal(JSON.stringify(h), snap, 'input untouched (pure)');
 });

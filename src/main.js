@@ -45,6 +45,10 @@ import { makeObjective, resolvesAt, payoffFor, sanitizeObjective, makeContestedO
 import { payoffCueName, approachCrossed, APPROACH_RADIUS } from './systems/loop-cues.js';
 import { createEncounter, HAIL_LINES, RESCUE_LINES, PLUNDER_LINES } from './systems/encounter.js';
 import { freshMorale, sanitizeMorale, applyMorale, moraleBeat, moraleTier } from './systems/morale.js';
+import {
+  assessThreat, sanitizeThreat, isActiveThreat, threatTitle, threatWarning,
+  payTribute as payThreatTribute, resolveStandFirm, standFirmOdds, canPayTribute,
+} from './systems/harbour-threat.js';
 import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES } from './colours.js';
 import { BUDGET, formatPerf, pixelRatioCap, isMeasuredFrame } from './perf.js';
 import { isTouchDevice } from './input.js';
@@ -345,7 +349,7 @@ const mode = createModeManager({
       // Landfall gesture (#102): a mode change isn't a snap — it's a crafted, eased moment. Entering
       // TOWN begins the "making port" gesture (camera eases to a moored framing, the light warms,
       // the town view takes the screen only once we're truly ashore); leaving it runs the mirror.
-      if (to === TOWN) { ashoreSnapshot = snapshotAshore(state); landfall.land(); music.stinger(); hud.flashBanner('🏘️ Making port…', 'The helm goes quiet — the ship glides to her moorings as the light turns gold.'); } // a "made port" stinger lands on the next downbeat (#102 ph2)
+      if (to === TOWN) { ashoreSnapshot = snapshotAshore(state); landfall.land(); music.stinger(); hud.flashBanner('🏘️ Making port…', 'The helm goes quiet — the ship glides to her moorings as the light turns gold.'); checkHarbourThreat(); } // a "made port" stinger lands on the next downbeat (#102 ph2); coming home under a hard pole lean draws a threat (#134)
       else if (from === TOWN) landfall.leave(); // Set Sail: the town falls astern, the open light returns
       // BATTLE keeps its own "Battle stations!" beat below; SAILING's return is signalled by control resuming.
     } catch { /* a flourish must never break the loop */ }
@@ -502,6 +506,10 @@ state.harbour = sanitizeHarbour(state.harbour);
 // Crew morale (#124): a restored voyage keeps the loyalty it earned; a fresh one (or a junk value)
 // boards with a willing crew at the START baseline. Sanitised so a corrupt meter fails open, never NaN.
 state.morale = sanitizeMorale(state.morale);
+// Your Harbour, threatened (#134): a restored voyage keeps a threat that was gathering off its home
+// port (so a reload can't make it vanish); a fresh one starts unthreatened. Sanitised so a junk save
+// fails open to null (no stake). It's re-assessed on landfall at home anyway.
+state.threat = sanitizeThreat(state.threat);
 
 // ---- False Colours (#79) -------------------------------------------------------------
 // The displayed flag: true black (honest pirate) vs false merchant (a disguise). A restored
@@ -543,6 +551,20 @@ function makeDetectRng() {
 }
 let detectRng = makeDetectRng();
 
+// The home-port threat dice (#134): standing firm against a blockade/raid rolls THIS seeded RNG, so
+// the outcome is DETERMINISTIC + reproducible (same voyage, same rolls) and QA-forceable — exactly
+// like the false-colours detection above. Reset on a new voyage for a clean, repeatable sequence.
+function makeThreatRng() {
+  let a = 0x21 ^ 0x9e3779b9;
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+let threatRng = makeThreatRng();
+
 // Hoist a new set of colours: cycle, tint the ship, applaud the bluff, and persist the choice.
 function cycleColours() {
   state.colours = nextColours(state.colours);
@@ -571,6 +593,7 @@ function newVoyage() {
   duel.cancel();
   cannons.cancel();
   encounterRng = makeEncounterRng();   // a fresh voyage re-rolls the encounter cadence from a clean seed (#125)
+  threatRng = makeThreatRng();         // ...and a clean home-port-threat dice sequence (#134)
   encounter.reset();                   // ...and meets no founderer mid-flight
   founderMesh.visible = false;
   mode.reset(); // a fresh voyage always starts under sail — deterministic (#95/#106)
@@ -585,6 +608,7 @@ function newVoyage() {
   state.portMemory = {}; // a clean slate — no port remembers your face yet (#104)
   state.portRecall = null; // ...and no remembered-return greeting in flight
   state.harbour = null; // ...and no home port claimed yet (#118 "Your Harbour")
+  state.threat = null; // ...and no threat gathering off any home port (#134)
   state.governorship = false; // ...and no governorship crowned yet (#119)
   state.morale = freshMorale(); // ...and a fresh, willing crew at the START baseline (#124)
   state.objective = null; // a fresh voyage chases nothing yet — the chart starts unpinned (#111/#112)
@@ -690,6 +714,8 @@ const town = createTown({
   onListen: () => music.loopCue('listen'), // a soft cup-an-ear cue as the room leaks you word (#116)
   onClaim: () => claimHarbour(),
   onInvest: () => investHarbour(),
+  onTribute: () => payHarbourTribute(),   // resolve a home-port threat by paying it off (#134)
+  onStandFirm: () => standHarbourFirm(),  // ...or stand firm and roll the dice (#134)
 });
 town.init();
 
@@ -730,6 +756,85 @@ function investHarbour() {
     persistence.write();                 // lock the investment the instant it's made
     hud.flashBanner('⚒ Your harbour grows',
       `You sink ${res.spent}c into ${port} — now ${harbourLevelName(res.level)}, and +${res.standingGain} standing for the prospering.`);
+    town.render();
+    return res;
+  } catch { return { ok: false, reason: 'error' }; }
+}
+
+// ---- Your Harbour, threatened (#134, DL #5) — the home port's STAKE -------------------------
+// Coming HOME under a hard pole lean draws a threat: high Infamy musters a navy blockade off your own
+// quay; high Standing draws pirates to the wealth you raised. The pure trigger/threat/resolution logic
+// lives in src/systems/harbour-threat.js; here we ASSESS on landfall at home, and apply the two
+// lightweight NON-BATTLE resolutions (pay tribute / stand firm & roll the dice) to the shared state.
+// The actual defensive engagement sequences around battle #100 (owner-held) — not implied here.
+function atHomePort() {
+  const h = state.harbour;
+  return !!(h && typeof h === 'object' && h.name && h.name === state.port);
+}
+// On making landfall at your claimed home port, assess whether your reputation has drawn a threat. A
+// threat already in flight is left to stand (you must resolve it); a fresh one is banked + persisted +
+// warned by a banner the instant you tie up. Fully guarded — a flourish must never break the loop.
+function checkHarbourThreat() {
+  try {
+    if (!atHomePort()) return null;
+    if (isActiveThreat(state.threat)) return state.threat; // one already gathering — resolve it first
+    const t = assessThreat({ harbour: state.harbour, infamy: state.infamy ?? 0, standing: state.standing ?? 0 });
+    if (!t) return null;
+    state.threat = t;
+    logDeed({ type: 'threat', kind: t.kind, port: t.port }); // the Ballad remembers the day they came (#78)
+    persistence.write();                                     // lock the threat so a reload can't reset it
+    hud.flashBanner(threatTitle(t), threatWarning(t));
+    town.render();
+    return t;
+  } catch { return null; } // a flourish must never break the loop
+}
+// Pay the tribute a threat demands: spend the coin, the threat lifts cleanly. No-op (with the pure
+// reason) if there's no threat or the purse is short.
+function payHarbourTribute() {
+  try {
+    initEconomy(state);
+    const res = payThreatTribute({ threat: state.threat, coins: state.coins ?? 0 });
+    if (!res.ok) return res;
+    state.coins = Math.max(0, (state.coins ?? 0) - res.spent);
+    const port = state.threat.port;
+    state.threat = null;
+    syncRenown(state);
+    logDeed({ type: 'threat', deed: 'tribute', port });
+    persistence.write();
+    hud.flashBanner('⚖ Tribute paid — the threat lifts',
+      `You buy off the danger to ${port} for ${res.spent}c. The sails on the horizon come about and stand down — for now.`);
+    town.render();
+    return res;
+  } catch { return { ok: false, reason: 'error' }; }
+}
+// Stand firm against a threat and roll the seeded dice. Win → repel it for Standing + a boast; lose →
+// it sacks your harbour a level (or overruns a claimed berth outright) and costs Standing.
+function standHarbourFirm() {
+  try {
+    initEconomy(state);
+    const port = state.threat && state.threat.port;
+    const res = resolveStandFirm({ threat: state.threat, harbour: state.harbour, roll: threatRng() });
+    if (!res.ok) return res;
+    state.threat = null;
+    state.harbour = res.harbour;            // intact on a win; demoted/lost on a defeat
+    if (res.won) {
+      state.standing = Math.max(0, (state.standing ?? 0) + (res.standingGain || 0));
+      syncRenown(state);
+      applyMoraleEvent('harbourGrow');      // the crew swells with pride at a home defended
+      logDeed({ type: 'threat', deed: 'repelled', port });
+      hud.flashBanner('⚔ You hold the line!',
+        `The guns of ${port} speak, and the threat breaks off — driven from your home water. +${res.standingGain} standing for the defence.`);
+    } else {
+      state.standing = Math.max(0, (state.standing ?? 0) - (res.standingLoss || 0));
+      syncRenown(state);
+      applyMoraleEvent('aground');          // a home overrun shakes the crew (reuses the sour-deed beat)
+      logDeed({ type: 'threat', deed: 'fell', port });
+      const fallLine = res.lostPort
+        ? `The line breaks. ${port} is overrun and lost to you — your colours hauled down off the quay. A bitter day; -${res.standingLoss} standing.`
+        : `The line bends and breaks — ${port} is sacked back a tier (${res.coinLost}c of works lost) and your name takes the blow: -${res.standingLoss} standing.`;
+      hud.flashBanner('💥 The line breaks!', fallLine);
+    }
+    persistence.write();
     town.render();
     return res;
   } catch { return { ok: false, reason: 'error' }; }
@@ -803,6 +908,14 @@ function leaveHarbour() {
   let digest = null;
   try { if (ashoreSnapshot) digest = composeAshoreDigest(ashoreSnapshot, snapshotAshore(state), { port: docked || 'the port' }); }
   catch { digest = null; } // a flourish must never break the loop
+  // Your Harbour, threatened (#134): if you cast off from your home port leaving a threat unresolved,
+  // the digest warns of it FIRST — leaving town never quietly buries a gathering blockade/raid (#105).
+  try {
+    if (digest && atHomePort() && isActiveThreat(state.threat)) {
+      const warn = threatWarning(state.threat);
+      if (warn) digest = { title: digest.title, lines: [warn, ...digest.lines].slice(0, 3) };
+    }
+  } catch { /* a flourish must never break the loop */ }
   lastAshoreDigest = digest;
   ashoreSnapshot = null;
   mode.leave();                       // back under sail — the helm is yours again
@@ -1364,7 +1477,7 @@ window.__tidewake = {
   // Town / market mode (#67/#96) QA surface: whether the town view is open + which port it's
   // showing, and the deliberate Leave Harbour seam (re-enables the helm + nudges the bow
   // seaward). Auto-harbour itself is driven by sailing into a port's dock radius (onArrive).
-  get town() { return { open: town.isOpen, port: town.port, leftHarbour, atHome: town.atHome }; },
+  get town() { return { open: town.isOpen, port: town.port, leftHarbour, atHome: town.atHome, threatened: town.threatened }; },
   leaveHarbour() { return leaveHarbour(); },
   // The port remembers you (#104) QA surface: the persistent per-port memory store (visit count +
   // your standing snapshot as seen locally) and the live remembered-return greeting (null on a
@@ -1383,6 +1496,23 @@ window.__tidewake = {
   get harbourCanInvest() { return canInvest({ harbour: state.harbour, port: state.port, coins: state.coins ?? 0 }); },
   claimHarbour() { return claimHarbour(); },
   investHarbour() { return investHarbour(); },
+  // Your Harbour, threatened (#134, DL #5) QA surface: the live persisted threat (or null), the
+  // point-in-time eligibility off the live ledger, and the three drivers — so a headless playtest can
+  // claim a home port, lean a pole hard, make landfall there to draw a threat, then resolve it both
+  // ways and assert the coin/Standing/harbour move and survive a save round-trip. `forceThreat` lets a
+  // test inject one without the landfall edge; `standHarbourFirm` rolls the seeded threat dice.
+  get harbourThreat() { return sanitizeThreat(state.threat); },
+  get harbourThreatEarnable() { return assessThreat({ harbour: state.harbour, infamy: state.infamy ?? 0, standing: state.standing ?? 0 }); },
+  get harbourThreatOdds() { return standFirmOdds(state.harbour); },
+  get harbourCanPayTribute() { return canPayTribute({ threat: state.threat, coins: state.coins ?? 0 }); },
+  checkHarbourThreat() { return checkHarbourThreat(); },
+  forceHarbourThreat() {
+    const t = assessThreat({ harbour: state.harbour, infamy: state.infamy ?? 0, standing: state.standing ?? 0 });
+    if (t) { state.threat = t; persistence.write(); town.render(); }
+    return sanitizeThreat(state.threat);
+  },
+  payHarbourTribute() { return payHarbourTribute(); },
+  standHarbourFirm() { return standHarbourFirm(); },
   // Governorship endgame (#119, DL #4) QA surface: the earned named crown ("Governor of [home isle]"
   // or null) + the point-in-time eligibility — so a headless playtest can grow a home port to its top
   // tier, climb Standing past the gate, and assert the isle crowns the captain its governor (and that

@@ -21,6 +21,7 @@ import { sanitizePortMemory } from './systems/port-memory.js';
 import { sanitizeObjective } from './objectives.js';
 import { sanitizeHarbour } from './systems/home-port.js';
 import { sanitizeMorale } from './systems/morale.js';
+import { sanitizeThreat } from './systems/harbour-threat.js';
 
 // The set of colours ids we'll accept back from storage (#79). Anything else loads as the
 // honest default rather than rejecting the whole save (flag choice is flavour, not physics).
@@ -52,8 +53,12 @@ export const SAVE_KEY = 'tidewake.save.v1';
 // v15 added CREW MORALE — a single 0..100 loyalty meter moved by the player's choices (rescue/plunder/
 // a rumour win/a grounding, #124); an additive, fail-open number (junk/absent → the START baseline, so
 // an older save simply boards with a willing crew rather than rejecting).
+// v16 added the HOME-PORT THREAT — the stake your claimed home acquires when you commit to a pole: a
+// navy blockade (high Infamy) or a pirate raid (high Standing) gathering off your home water, persisted
+// so a gathering threat survives a reload ({kind, pole, port, tier, demand}, #134); an additive,
+// fail-open sub-object (sanitizeThreat drops junk/absent to null → no threat).
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 15;
+export const SAVE_VERSION = 16;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -96,6 +101,7 @@ const migrations = {
   12: (s) => ({ ...s }), // home-isle governorship crown (#119)
   13: (s) => ({ ...s }), // contested-rumour rival + soft clock (#133): additive inside `objective`
   14: (s) => ({ ...s }), // crew morale (#124): reader fail-opens an absent meter to the START baseline
+  15: (s) => ({ ...s }), // home-port threat (#134): reader fail-opens an absent threat to null (no threat)
 };
 
 /**
@@ -191,6 +197,9 @@ export function serialize(state) {
   // Crew morale (#124): the single 0..100 loyalty meter. Sanitised on the way out so junk stores as the
   // START baseline (a willing crew) rather than a corrupt number.
   const morale = sanitizeMorale(state.morale);
+  // Home-port threat (#134): the stake your home port acquired by a hard pole lean. Sanitised on the
+  // way out so only a clean threat persists; an unthreatened caller stores null (no stake in flight).
+  const threat = sanitizeThreat(state.threat);
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -210,6 +219,7 @@ export function serialize(state) {
     harbour,
     governorship,
     morale,
+    threat,
   });
 }
 
@@ -334,6 +344,12 @@ export function deserialize(raw) {
   // absent meter (an older save boards with a willing crew) rather than rejecting an otherwise-valid save.
   const morale = sanitizeMorale(obj.morale);
 
+  // Home-port threat (save v16, #134): like the other flavour fields it's not load-bearing physics —
+  // sanitizeThreat drops a junk/absent threat to null (no stake) rather than rejecting an otherwise-
+  // valid save (fail open). The threat is re-assessed on landfall at home anyway; persistence only
+  // keeps a gathering one from vanishing on a reload.
+  const threat = sanitizeThreat(obj.threat);
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -352,6 +368,7 @@ export function deserialize(raw) {
     harbour,
     governorship,
     morale,
+    threat,
     renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }

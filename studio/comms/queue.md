@@ -70,12 +70,15 @@ promoted below. **#135 battle is DECIDED & promoted to TOP (from-owner P1, preem
    (reservoir below):** richer per-rumour-kind interaction SFX · a coin-chime under payoff · a distinct
    rival-sail-sighted sting · a continuous wake/helm water-bed SFX (the #81 cheap cousin).
 
-1. **#134 — [DL#5] Your Harbour, threatened** — the pole-straddling STAKE (Infamy → blockade, Standing →
-   raid) that gives the home port (#118) a reason to matter and hands battle #100 its reason to exist.
-   Ship the **lightweight non-battle resolution first** (a choice/dice beat, not combat). _value **high**
-   · complexity **med** · feature+design._
+- ~~**#134 — [DL#5] Your Harbour, threatened**~~ — ✅ **SHIPPED & CLOSED** (Loop 84, v0.0.20260629214854,
+  **save v16**). The home port (#118) now acquires a STAKE: a hard Infamy lean draws a **navy blockade**,
+  a hard Standing lean a **pirate raid**, off your own home water — pricing pole-commitment. Shipped the
+  **lightweight NON-BATTLE resolution** (pay tribute / stand firm + seeded dice), warned via the #105
+  digest + an alarm-red town panel; pure `src/systems/harbour-threat.js` TDD'd first. Battle #100 NOT
+  implied — this is its ready-made reason to fight (stakes-in → consequence-out). **Follow-up:** the
+  defensive engagement rides WITH battle #100; richer threat escalation across visits.
 
-3. **#132 — [DL#5] The reputation needle, made personal & audible** — hull/sail material lerp + harmonic
+1. **#132 — [DL#5] The reputation needle, made personal & audible** — hull/sail material lerp + harmonic
    modal recolour on the *same* needle; procedural, zero new assets. Makes the symmetric poles FELT on
    the player. _value **med** · complexity **med** · art+audio+design._
 
@@ -133,8 +136,9 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
   - **#119 — governorship endgame milestone** (mirror of legend-crown #46). _design P3; **NOW UNBLOCKED**
     — deps #118 + #19 both CLOSED. Promote once battle #100 is steered (Retro 12 parks it behind battle)._
 - **Pole TENSION + chase energy (DL #5 — the next depth frontier):**
-  - **#134 — [DL#5] Your Harbour, threatened** (Infamy → blockade, Standing → raid; the pole-straddling
-    stake; battle's reason to exist). _feature/design P2; lightweight non-battle resolution ships first._
+  - ~~**#134 — [DL#5] Your Harbour, threatened**~~ — ✅ **SHIPPED & CLOSED** (Loop 84, save v16) — Infamy →
+    navy blockade, Standing → pirate raid off your home water; lightweight non-battle resolution (tribute /
+    stand-firm dice) shipped first. Battle's reason to exist — the defensive engagement rides WITH #100.
   - ~~**#133 — [DL#5] contested rumour: a rival chases the same prize**~~ — ✅ **SHIPPED & CLOSED** (this
     loop, save v14) — seeded soft clock + recurring named rival; arrive-first wins, dawdle and the rival
     claims it (no reward); both paths sing into the Ballad. _Follow-ups filed: a visible rival sail +

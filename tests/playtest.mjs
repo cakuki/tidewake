@@ -989,6 +989,109 @@ try {
   if (gov.verseCount !== 1) fail(`governorship: the crown re-fired (verseCount=${gov.verseCount}) — it must crown ONCE (#119)`);
   if (gov.afterNewVoyage) fail('governorship: a fresh voyage did not clear the earned governorship (#119)');
 
+  // 2h2t) Your Harbour, threatened (#134, DL #5) — the home port's STAKE. Claim a home port, lean the
+  // needle hard toward a pole, make LANDFALL there, and assert a threat is drawn (Infamy→blockade,
+  // Standing→raid), warned via a banner/panel; then resolve it BOTH ways: pay tribute (coin spent,
+  // threat lifts) and stand firm (the seeded dice — a forced win repels for Standing, a forced loss
+  // sacks the harbour a level). Proves the trigger fires off the needle + home state, the panel + the
+  // two non-battle resolutions work, and a gathering threat survives a save. No battle #100 implied.
+  const threat = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    async function landAtHome() {
+      tw.newVoyage(); tw.step(0.1);
+      const port = tw.ports[0];
+      const [px, pz] = port.pos;
+      tw.qaTeleport(px, pz); tw.step(0.1);
+      for (let i = 0; i < 80 && !(tw.mode === 'town' && tw.town.open); i++) tw.step(0.1);
+      tw.setStanding(200); tw.claimHarbour();   // claim the docked port as home
+      tw.setCoins(10000);                       // a full purse so the tribute plank shows when threatened
+      return port.name;
+    }
+    // (a) A balanced captain draws NO threat even at home.
+    const portName = await landAtHome();
+    tw.setInfamy(300); tw.setStanding(300);     // dead-centre needle
+    const balanced = tw.harbourThreatEarnable;
+    // (b) A hard INFAMY lean → a navy BLOCKADE, drawn on a genuine LANDFALL, warned in the town panel.
+    tw.setInfamy(4000); tw.setStanding(0);
+    tw.leaveMode(); tw.skipLandfall(); tw.step(0.1);            // back to sea
+    tw.qaTeleport(60000, 60000);                                // sail well clear of the harbour mouth so
+    for (let i = 0; i < 20; i++) tw.step(0.2);                  // the auto-harbour re-arms (leftHarbour drops)
+    tw.qaTeleport(...tw.ports[0].pos); tw.step(0.1);            // ...then come HOME again
+    for (let i = 0; i < 80 && !(tw.mode === 'town' && tw.town.open); i++) tw.step(0.1);
+    const drawn = tw.harbourThreat;
+    const panelShown = tw.town.threatened;
+    const blurbEl = document.querySelector('#town .town-threat-blurb');
+    const blurbText = blurbEl ? blurbEl.textContent : '';
+    const tributeBtn = !!document.querySelector('#town .town-tribute');
+    const standBtn = !!document.querySelector('#town .town-standfirm');
+    // (c) Pay tribute: coin spent, threat lifts.
+    const coinsBefore = tw.state.coins;
+    const payRes = tw.payHarbourTribute();
+    const coinsSpent = coinsBefore - tw.state.coins;
+    const afterPay = tw.harbourThreat;
+    // (d) A hard STANDING lean → a pirate RAID.
+    tw.setInfamy(0); tw.setStanding(4000);
+    const raid = tw.forceHarbourThreat();
+    // The dice are seeded; the home port must persist across a losing roll mid-search, so re-claim it
+    // if a prior loss overran it (we're still docked at the home port). A strong governor lean draws a
+    // fresh raid each attempt; we capture the level right before the deciding roll.
+    function ensureThreatenedHome() {
+      if (!tw.harbour) { tw.setStanding(300); tw.claimHarbour(); }
+      tw.setInfamy(0); tw.setStanding(4000);
+      return tw.forceHarbourThreat();
+    }
+    // (e) Stand firm + WIN (force it): repel for Standing, harbour intact.
+    let won = null, standAfterWin = null, harbourAfterWin = null, lvlBeforeWin = 0;
+    for (let i = 0; i < 60; i++) {
+      if (!ensureThreatenedHome()) continue;
+      const lvl = tw.harbour.level, sBefore = tw.state.standing;
+      const r = tw.standHarbourFirm();
+      if (r.won) { won = r; standAfterWin = tw.state.standing - sBefore; harbourAfterWin = tw.harbour; lvlBeforeWin = lvl; break; }
+    }
+    // (f) Stand firm + LOSE (force it): the harbour is sacked a level (or a berth is lost outright).
+    let lost = null, harbourAfterLoss = null, lvlBeforeLoss = 0;
+    for (let i = 0; i < 60; i++) {
+      if (!ensureThreatenedHome()) continue;
+      const lvl = tw.harbour.level;
+      const r = tw.standHarbourFirm();
+      if (!r.won) { lost = r; harbourAfterLoss = tw.harbour; lvlBeforeLoss = lvl; break; }
+    }
+    // (g) A gathering threat survives a save (re-establish a home first — the loss test may have
+    // overrun it).
+    if (!tw.harbour) { tw.setStanding(300); tw.claimHarbour(); }
+    tw.setInfamy(0); tw.setStanding(4000); const survived0 = tw.forceHarbourThreat();
+    tw.save(); const persisted = tw.harbourThreat;
+    tw.newVoyage();
+    for (let i = 0; i < 8; i++) tw.step(0.1);   // ease the reputation-reactive world grade (#126) to neutral
+    const afterNewVoyage = tw.harbourThreat;
+    // This section leaned the ledger HARD at sea, so the reputation grade (#126) restored the scene to
+    // ITS captured sunny baseline — a hair off the day-night system's boot baseline (a pre-existing,
+    // imperceptible capture mismatch). Bounce day-night ON→OFF to re-assert that boot baseline byte-for-
+    // byte, handing the next tests a pristine scene (test isolation; the mismatch is filed as a follow-up).
+    tw.setOption('daynight', true); tw.setOption('daynight', false); tw.step(0.1);
+    return {
+      portName, balanced, drawn, panelShown, blurbText, tributeBtn, standBtn,
+      coinsSpent, payRes, afterPay, raid, lvlBeforeWin, won, standAfterWin, harbourAfterWin,
+      lvlBeforeLoss, lost, harbourAfterLoss, survived0, persisted, afterNewVoyage,
+    };
+  });
+  if (threat.balanced) fail(`harbour-threat: a balanced captain drew a threat at home (should be safe at centre) (${JSON.stringify(threat.balanced)}) (#134)`);
+  if (!threat.drawn || threat.drawn.kind !== 'blockade') fail(`harbour-threat: a hard-Infamy captain coming home did not draw a navy blockade (${JSON.stringify(threat.drawn)}) (#134)`);
+  if (threat.drawn.port !== threat.portName) fail(`harbour-threat: the threat is not against the home port (${JSON.stringify(threat.drawn)}) (#134)`);
+  if (!threat.panelShown) fail('harbour-threat: the town did not show the threat panel at the threatened home port (#134)');
+  if (!threat.blurbText || !threat.blurbText.includes(threat.portName)) fail(`harbour-threat: no in-town threat framing naming the home port ("${threat.blurbText}") (#134)`);
+  if (!threat.tributeBtn || !threat.standBtn) fail(`harbour-threat: the two resolution planks did not render (tribute=${threat.tributeBtn}, standFirm=${threat.standBtn}) (#134)`);
+  if (!threat.payRes.ok || !(threat.coinsSpent > 0) || threat.coinsSpent !== threat.payRes.spent) fail(`harbour-threat: paying tribute did not spend the demanded coin (spent=${threat.coinsSpent} vs ${threat.payRes.spent}) (#134)`);
+  if (threat.afterPay) fail(`harbour-threat: paying tribute did not lift the threat (${JSON.stringify(threat.afterPay)}) (#134)`);
+  if (!threat.raid || threat.raid.kind !== 'raid') fail(`harbour-threat: a hard-Standing captain did not draw a pirate raid (${JSON.stringify(threat.raid)}) (#134)`);
+  if (!threat.won || !threat.won.won) fail('harbour-threat: standing firm never produced a win across many seeded rolls (#134)');
+  if (!(threat.standAfterWin > 0)) fail(`harbour-threat: repelling a threat did not earn Standing (gain=${threat.standAfterWin}) (#134)`);
+  if (!threat.harbourAfterWin || threat.harbourAfterWin.level !== threat.lvlBeforeWin) fail(`harbour-threat: a WON defence changed the harbour level (${threat.lvlBeforeWin}→${threat.harbourAfterWin?.level}) (#134)`);
+  if (!threat.lost || threat.lost.won) fail('harbour-threat: standing firm never produced a loss across many seeded rolls (#134)');
+  if (!(threat.harbourAfterLoss == null || threat.harbourAfterLoss.level < threat.lvlBeforeLoss)) fail(`harbour-threat: a LOST defence did not sack the harbour a level (${threat.lvlBeforeLoss}→${threat.harbourAfterLoss?.level}) (#134)`);
+  if (!threat.survived0 || !threat.persisted || threat.persisted.kind !== threat.survived0.kind) fail(`harbour-threat: a gathering threat did not survive a save (${JSON.stringify(threat.persisted)}) (#134)`);
+  if (threat.afterNewVoyage) fail('harbour-threat: a fresh voyage did not clear the gathering threat (#134)');
+
   // 2h3) Landfall gesture (#102): making port is a crafted, EASED moment, not a snap. Drive the
   // mode transition headlessly and assert the gesture (a) starts under sail (blend 0), (b) eases
   // blend UP over the sim's dt without jumping straight to 1 (deterministic, not wall-clock), (c)

@@ -89,6 +89,12 @@ const CORPUS = [
     blob: '{"v":14,"heading":1.2,"speed":8,"throttle":0.5,"pos":[120.5,0,-340.25],"coins":250,"cargo":{"rum":3},"infamy":300,"standing":200,"legends":{"pirate":true,"governor":false},"onboarding":{"goal":true,"firstDock":true,"firstTrade":true,"firstRank":false},"voyageLog":[],"colours":"merchant","portMemory":{},"objective":null,"harbour":{"name":"Gullet\'s Rest","level":4,"invested":900},"governorship":true}',
     expect: { coins: 250, governorship: true, harbour: { name: "Gullet's Rest", level: 4, invested: 900 }, morale: MORALE_START },
   },
+  {
+    v: 15, // crew morale (#124) — a PRE-THREAT save: the v16 home-port threat (#134) must migrate forward
+    // to null (no stake), never rejecting the otherwise-valid save. A non-default morale proves it survives.
+    blob: '{"v":15,"heading":1.2,"speed":8,"throttle":0.5,"pos":[120.5,0,-340.25],"coins":250,"cargo":{"rum":3},"infamy":300,"standing":200,"legends":{"pirate":true,"governor":false},"onboarding":{"goal":true,"firstDock":true,"firstTrade":true,"firstRank":false},"voyageLog":[],"colours":"merchant","portMemory":{},"objective":null,"harbour":{"name":"Gullet\'s Rest","level":4,"invested":900},"governorship":true,"morale":42}',
+    expect: { coins: 250, governorship: true, harbour: { name: "Gullet's Rest", level: 4, invested: 900 }, morale: 42, threat: null },
+  },
 ];
 
 // A subset-deep-equality assert: every key in `expect` matches in `actual` (deep), but `actual` may

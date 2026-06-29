@@ -18,6 +18,9 @@ import {
   isHome, canClaim, canInvest, investCost, investStanding, harbourGreeting, harbourLevelName,
   governorTitle, CLAIM_STANDING, MAX_LEVEL,
 } from '../systems/home-port.js';
+import {
+  isActiveThreat, threatTitle, threatBlurb, canPayTribute, standFirmOdds,
+} from '../systems/harbour-threat.js';
 
 export function createTown(opts = {}) {
   const getState = typeof opts.getState === 'function' ? opts.getState : () => null;
@@ -32,6 +35,10 @@ export function createTown(opts = {}) {
   // main.js owns applying Standing/coin + persisting; here we just route the tap. No-op if unwired.
   const onClaim = typeof opts.onClaim === 'function' ? opts.onClaim : () => {};
   const onInvest = typeof opts.onInvest === 'function' ? opts.onInvest : () => {};
+  // Your Harbour, threatened (#134): resolve a threat to your home port — pay tribute (coin) or stand
+  // firm (a dice beat). main.js owns applying the result (coin/Standing/the harbour) + persisting.
+  const onTribute = typeof opts.onTribute === 'function' ? opts.onTribute : () => {};
+  const onStandFirm = typeof opts.onStandFirm === 'function' ? opts.onStandFirm : () => {};
   const root = opts.root ?? (typeof document !== 'undefined' ? document : null);
   // Touch parity (#17/#66): taps drive trades + the Leave plank when there's no keyboard.
   const TOUCH = !!(root && root.body && root.body.classList && root.body.classList.contains('touch'));
@@ -111,6 +118,8 @@ export function createTown(opts = {}) {
         if (e.target.closest?.('#town-listen')) { e.preventDefault(); listen(); return; }
         if (e.target.closest?.('#town-claim')) { e.preventDefault(); onClaim(); return; }
         if (e.target.closest?.('#town-invest')) { e.preventDefault(); onInvest(); return; }
+        if (e.target.closest?.('#town-tribute')) { e.preventDefault(); onTribute(); return; }
+        if (e.target.closest?.('#town-standfirm')) { e.preventDefault(); onStandFirm(); return; }
         const chaseBtn = e.target.closest?.('.town-chase');
         if (chaseBtn) { e.preventDefault(); chase(Number(chaseBtn.dataset.idx)); return; }
         const tr = e.target.closest?.('.trow');
@@ -168,6 +177,27 @@ export function createTown(opts = {}) {
   // port: its growth tier, a warming homecoming line, and an "invest" plank that grows it a level
   // (spend coin → Standing). At any other port: a "claim this as your home port" plank, gated on
   // Standing (a clear hint when you're not yet respected enough, or already have a home elsewhere).
+  // Your Harbour, threatened (#134) — the home port's STAKE, shown ashore at home when a threat is
+  // gathering. The framing blurb, then the two NON-BATTLE resolution planks: pay tribute (certain,
+  // costs the demanded coin) or stand firm (a dice beat whose odds rise with how grown the port is).
+  // The actual defensive battle sequences around #100 (owner-held) — this is the lightweight beat.
+  function threatHTML(state) {
+    const threat = state.threat;
+    if (!isActiveThreat(threat)) return '';
+    const coins = Number.isFinite(state.coins) ? state.coins : 0;
+    const tribute = canPayTribute({ threat, coins });
+    const odds = Math.round(standFirmOdds(state.harbour) * 100);
+    const tributeEl = tribute.ok
+      ? `<button id="town-tribute" class="town-tribute" type="button">⛃ Pay tribute — ${tribute.cost}c</button>`
+      : `<div class="town-threat-need">Their price is <b>${tribute.cost}c</b> to lift it — you have ${coins}c. Stand firm, or fill your purse and return.</div>`;
+    return `<div class="town-harbour-threat">`
+      + `<div class="town-threat-h">${esc(threatTitle(threat))}</div>`
+      + `<div class="town-threat-blurb">${esc(threatBlurb(threat))}</div>`
+      + tributeEl
+      + `<button id="town-standfirm" class="town-standfirm" type="button">⚔ Stand firm — roll the dice <span class="town-threat-odds">(~${odds}% to hold)</span></button>`
+      + `</div>`;
+  }
+
   function harbourHTML(state) {
     const port = state.port;
     if (!port) return '';
@@ -193,6 +223,7 @@ export function createTown(opts = {}) {
         + `<div class="town-harbour-h">🏠 Your Harbour — ${esc(harbourLevelName(lvl))} <span class="town-harbour-lvl">lvl ${lvl}/${MAX_LEVEL}</span></div>`
         + `<div class="town-harbour-greet">${esc(greet)}</div>`
         + gov
+        + threatHTML(state)
         + action
         + `</div>`;
     }
@@ -234,7 +265,7 @@ export function createTown(opts = {}) {
     const master = recall || info.harbourmaster || 'The harbourmaster nods you ashore.';
     // Cheap cache: only touch the DOM when something the player can see changes.
     const chasing = (state.objective && state.objective.target && state.objective.target.name) || '';
-    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing + '|' + JSON.stringify(state.harbour ?? null) + '|' + (state.standing ?? 0) + '|' + (state.governorship ? 1 : 0);
+    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing + '|' + JSON.stringify(state.harbour ?? null) + '|' + (state.standing ?? 0) + '|' + (state.governorship ? 1 : 0) + '|' + JSON.stringify(state.threat ?? null);
     if (sig === lastSig) return;
     lastSig = sig;
 
@@ -297,6 +328,8 @@ export function createTown(opts = {}) {
     get port() { const s = getState(); return (s && s.port) || null; },
     // Your Harbour (#118): whether the docked port is the captain's claimed home (for QA/parity).
     get atHome() { const s = getState() || {}; return isHome(s.harbour, s.port); },
+    // Your Harbour, threatened (#134): whether the home port currently shows an active threat panel.
+    get threatened() { const s = getState() || {}; return isHome(s.harbour, s.port) && isActiveThreat(s.threat); },
     // Tavern "listen for word" (#103) QA surface: whether word is showing + the live rumours
     // (text only, the #103 contract). Typed entries (#115) are exposed via `rumourTargets`.
     get listening() { return listening; },

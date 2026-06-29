@@ -182,6 +182,23 @@ export function invest({ harbour, port, coins } = {}) {
 }
 
 /**
+ * Demote a home harbour ONE growth level — the cost of a threat that sacks it (#134, "Your Harbour,
+ * threatened"). Drops the level by one and writes off that tier's invested coin as LOST; a claimed
+ * berth (level 1) is overrun outright (harbour → null). Pure; never throws; never mutates the input.
+ * Returns the NEW harbour record (or null) plus the coin destroyed, for the caller to persist + report.
+ * @param {{name:string, level:number, invested:number}|null} harbour
+ * @returns {{harbour:({name:string,level:number,invested:number}|null), coinLost:number}}
+ */
+export function demoteHarbour(harbour) {
+  const h = sanitizeHarbour(harbour);
+  if (!h) return { harbour: null, coinLost: 0 };
+  if (h.level <= 1) return { harbour: null, coinLost: h.invested }; // a claimed berth is lost outright
+  const tier = GROW[h.level - 1]; // the cost that grew it FROM level-1 TO its current level
+  const coinLost = tier ? tier.cost : 0;
+  return { harbour: { name: h.name, level: h.level - 1, invested: Math.max(0, h.invested - coinLost) }, coinLost };
+}
+
+/**
  * The homecoming greeting for the captain's home harbour at `port` — warming a tier at a time — or
  * null if `port` isn't their claimed harbour. Pure; never throws.
  * @param {{name:string, level:number}|null} harbour
