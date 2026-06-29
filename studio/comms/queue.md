@@ -44,23 +44,25 @@ undetected because tests only ever round-tripped a *current* save. Fixed structu
 rule:** a save-schema change is not done until it migrates every prior version forward AND a frozen
 blob of the new version is added to the corpus (the coverage guard enforces it)._
 
-_**Next leverage: make the symmetric poles FELT, finish the engine de-risk that protects battle, and
-lock down the closed loop.** Battle-mode **#100 remains [OWNER-DECISION], owner-held** — it has waited
-the WHOLE session with the owner absent. Keep it HELD; do **NOT** auto-promote — but it is worth a
-**gentle owner nudge** (it is both the biggest content gap and a long-stale decision)._
+_**Next leverage: BUILD BATTLE — the owner decided it, it is the focused lane.** Battle is **DECIDED**
+(owner chose **Option 2 → Option 4**, 2026-06-28). The accepted build is **#135** (`from-owner` · `P1`
+· `epic`); the design brief **#100 is CLOSED** as reference. Per the **PREEMPTION RULE**, #135 jumps
+to the **TOP** of this queue — next build is its **slice 1 (Battle Mode shell)**, riding #95. No owner
+nudge is due; the decision is in. (Stale-state correction 2026-06-29 by the PM desk: the queue had
+never absorbed #135 since it was filed 2026-06-28 09:51, so it kept nudging on a made decision.)_
 
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
 **DL #5 (2026-06-28, 9-role fan-out) re-sorted this top. #126 / #120-mechanism / #123 / #125 / #118 /
 #122 / #130 / #121 / #117 / #110 ALL SHIPPED & CLOSED; #133 contested rumour now SHIPPED.** The next
 build top is the replay-gate hardening that must precede battle (#131), then the next reactive meter /
-charm that battle inherits (#124, #116). **#100 battle remains the owner's to steer** — HELD, not
-auto-promoted; gentle nudge warranted (Retro 12's still-open ☐). See `studio/retros/2026-06-28-deep-learning-5.md`.
+charm that battle inherits (#124, #116). **UPDATE 2026-06-29: battle is now DECIDED → build #135**
+(`from-owner` P1); it preempts to the top, no longer owner-held. See `studio/retros/2026-06-28-deep-learning-5.md`.
 
 _**Top re-promoted (Loop 82, queue hygiene):** the prior top (#131 replay-gate, #124 crew morale) both
 SHIPPED & CLOSED (Loops 80–81); the engine de-risk quartet is done. Per DL #5's "next reactive meter /
 charm that battle inherits" + the pole-tension frontier, the strongest UNBLOCKED reservoir items are
-promoted below. **#100 battle still owner-held — NOT promoted; gentle nudge still due.**_
+promoted below. **#135 battle is DECIDED & promoted to TOP (from-owner P1, preempts) — see below.**_
 
 - ~~**#116 — Diegetic feedback for the reactive loop**~~ — ✅ **SHIPPED & CLOSED** (Loop 83,
    v0.0.20260629210608) — listen/approach/payoff/loss cues sung over the music bus + quantised to the
@@ -96,17 +98,19 @@ promoted below. **#100 battle still owner-held — NOT promoted; gentle nudge st
 - ~~**#123 — QA golden-replay fixture for the full reactive loop**~~ — ✅ **SHIPPED & CLOSED** (rides the
   #122 hardening theme). Its two remaining gate holes → **#131** (above).
 
-## [OWNER-DECISION / HELD — owner-held all session; gentle nudge due] — ask, don't auto-promote
+## ⚔️ TOP OF QUEUE — BATTLE, DECIDED (from-owner P1, preempts) — BUILD, don't nudge
 
-- **#100 — arcade battle-modes** (combat/loadouts/boarding). **HELD for the Game-Designer owner brief
-  — has now waited the ENTIRE session with the owner absent.** Its mode-switch infra (#95) + seam
-  (#106 ph1) + QA (#107) + the save-migration codec that protects it (#122) are all built; battle is
-  the one empty room. **Keep HELD; do NOT auto-promote** above where the owner wants it — but it is
-  both the biggest content gap and a long-stale decision, so **send a gentle owner nudge** over the
-  channel (with options, never auto-adopt). When it lands it likely jumps the top; the de-risk quartet
-  (#120/#121/#123) should ride WITH it.
+- **#135 — Battle system, Option 2 → Option 4** (`from-owner` · `P1` · `epic`). **DECIDED 2026-06-28**
+  — the owner read the Game-Designer brief (#100, now CLOSED as reference) and chose **Option 2
+  (Maneuvering Battle) → then Option 4 (Three-Act Raid)**, shipped as small gamer-testable slices.
+  This is the owner's **focused delivery lane**; per the **PREEMPTION RULE** it sits at the TOP.
+  Its mode-switch infra (#95) + seam (#106 ph1) + QA (#107) + save-migration codec (#122) are all
+  built — battle is the one empty room, and it is now cleared to fill.
+  **Next build = slice 1 (Battle Mode shell):** enter/leave on #95, "BATTLE" banner, quarter-view
+  camera, battle-music hook (#94), NPCs keep sailing, **Flee** always available. Then slices 2–5 per
+  #135. The de-risk quartet (#120/#121/#123) rides WITH it. **No owner nudge — the decision is in.**
 
-## DL #4 + DL #5 candidates (research reservoir — below the top trio + the #100 hold)
+## DL #4 + DL #5 candidates (research reservoir — below the #135 battle lane at top)
 
 _Filed by **Deep-Learning #4** (`2026-06-28-deep-learning-4.md`) + **Deep-Learning #5**
 (`2026-06-28-deep-learning-5.md`, 9-role fan-out, loop ~71). Asset-light, original-work-only,

@@ -39,11 +39,15 @@ poles *visible*, cheap single fog/grade uniform, folds in #111's in-world headin
 battle #100 forks its own sub-loop; overlaps/sequences with #106 slice 1) → **#123** (golden-replay
 fixture for the now-closed loop). #121's gate invariants ride **with** battle #100.
 
-**Owner-decision #100 (battle) — HELD, owner-held, gentle nudge due.** #100 has waited the ENTIRE
-session with the owner absent. It stays **[OWNER-DECISION] / HELD** and is **not** auto-promoted (the
-owner steers WHAT/WHEN). But "do not auto-promote" ≠ "let it sit silently forever": it is both the
-biggest content gap and a long-stale decision, so a **gentle owner nudge** (options over the channel,
-never auto-adopt) is recommended this retro. The de-risk quartet (#120/#121/#123) should ride with it.
+**Owner-decision #100 (battle) — RESOLVED 2026-06-28 → build #135.** ✅ The owner read the
+Game-Designer brief (#100) and **chose Option 2 (Maneuvering Battle) → then Option 4 (Three-Act
+Raid)**, shipped as small gamer-testable slices. The accepted build is **#135** (`from-owner` · `P1`
+· `epic`); **#100 is CLOSED** as the design source-of-truth. Battle is the owner's **focused delivery
+lane** and now **preempts to the TOP of the queue** — next build is #135 slice 1 (Battle Mode shell,
+rides #95). **No owner nudge — decided.** The de-risk quartet (#120/#121/#123) rides with it.
+_(Correction logged 2026-06-29 by the PM desk: this paragraph and queue.md had marked battle
+`[OWNER-DECISION]/HELD` for ~13 loops because the queue never absorbed #135 after it was filed
+2026-06-28 09:51. QUEUE-SYNC RULE now extends to accepted PM-desk build issues, not just raw intake.)_
 
 **Cadence.** Retro counter **reset to 0** (next retro ~loop 75). DL #4 ran ~loop 61; **DL #5 ETA
 ~loop 72** (~2–3 cycles out, P1-preemptible). Full write-up: `studio/retros/2026-06-28-retro-12.md`.
