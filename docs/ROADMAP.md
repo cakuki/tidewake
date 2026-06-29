@@ -225,6 +225,14 @@ Tie the experience together and make it sing.
   habit (≥1 visual win / vetted model swap per loop) — **#143**, under Art & Audio epic #6. Guardrails:
   **CC0/self-made for core art** (public repo; CC-BY only with `CREDITS.md`; no NC/ND), original
   silhouettes, perf-budgeted (#52), matched to the sunny Caribbean look (#61). Pipeline: `docs/art-sourcing.md`, #32, #101.
+- **Release cadence + daily rituals (owner, 2026-06-29):** the loop builds continuously to a **preview**
+  channel, but the **public** game is promoted on a **human cadence** — **daily at 17:00 Berlin** (list
+  notes) and a **marketed weekly release every Friday** (extra-hardened, screenshots/clip; "no weekend
+  frustration"). The studio runs a **daily ritual schedule** — morning owner briefing, Mon weekly
+  planning, sleep/defrag (memory), deep reading, pre-release hardening, release, daily retro — all
+  **time-gated by the local loop** (`studio/comms/rituals.md`; `docs/runbook/LOOP.md` step 0.5). Spec:
+  `docs/superpowers/specs/2026-06-29-loop-rituals-and-release-cadence-design.md`. Release infra (preview→
+  public promote split) = **#145** (ops track, alongside the focused lane, not preempting it).
 - **Focused-lane delivery + lane-switch GATE:** work the single most important improvement lane and
   **do not switch to another roadmap lane until the current one has shipped something impressive AND
   gamer-testable** over several loops. *Example: don't switch from the battle-system lane (#135) to the

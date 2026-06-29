@@ -3,7 +3,8 @@
 The operating spec for the never-stopping delivery loop. **Companion files carry the detail — the
 orchestrator passes them by REFERENCE, never inlines them:** `studio/CONSTITUTION.md` (vision · roles ·
 tone), `studio/comms/OWNER-CHANNEL.md` (two-way Telegram: reporting, intake routing, video recipe),
-`studio/comms/queue.md` (next-slice queue), `studio/comms/loop-state.md` (resume brain),
+`studio/comms/queue.md` (next-slice queue), `studio/comms/rituals.md` (daily ritual schedule),
+`studio/comms/loop-state.md` (resume brain),
 `studio/agents/<role>.md` (role identities + reading lists), `studio/feedback/PM-DESK.md` (owner-feedback
 triage). **History → `docs/runbook/CHANGELOG.md` + `studio/retros/*` + `studio/comms/decisions.md`.**
 
@@ -24,6 +25,11 @@ input, reads the queue's top line, **dispatches a subagent**, reads a **<10-line
 0. **Owner channel** — `scripts/owner-channel.sh peek`; route per `OWNER-CHANNEL.md` §3: pending-answer
    → execute; thread reaction → continue; small ad-hoc ask → do inline; **planning → PM-desk subagent**;
    visual bug → `owner-channel.sh photo --latest`, then dispatch. `from-owner` P1 preempts the queue.
+0.5. **Ritual check** — read local Berlin time + `studio/comms/rituals.md`. If a ritual is **due today**,
+   its day-of-week matches, and its **Last ran ≠ today** → **dispatch that ritual instead of a build
+   slice**, update its **Last ran**, done. (Run-late not skip; one ritual/cycle; a `from-owner` P1 still
+   preempts even a due ritual.) Rituals: morning briefing · weekly planning (Mon) · sleep/defrag ·
+   deep reading · pre-release hardening · daily release (Mon–Thu) / weekly release (Fri) · daily retro.
 1. **Read the TOP item of `studio/comms/queue.md`** — just that line; **do not open the issue** (the
    subagent will).
 2. **Dispatch ONE subagent** with the template below (re-dispatch once if it returns 0-tool-use/empty).
@@ -56,11 +62,14 @@ process/sequencing→`project-manager`. The runner *acts as* those roles and may
 sub-subagents** for heavy sub-work (a TL feasibility pass, a QA visual pass).
 
 ## Fan-out — when the loop is several role subagents, not one runner
-- **Retro** (~every 7–8 cycles) and **Deep-learning research** (~every 10) → each its own subagent;
-  the research loop **fans out one subagent per role (9 in parallel)**, each reading its own
-  `studio/agents/<role>.md` reading list. Orchestrator keeps only the summaries.
-- **HARD trigger:** at the threshold (retro **7** / DL **10**) the *next* non-`from-owner`-P1 dispatch
-  **IS** the ritual — don't perpetually defer it; don't over-run it.
+- **Daily rituals are TIME-gated now, not counter-gated** — see `studio/comms/rituals.md` (the old
+  "retro ~every 7–8 / DL ~every 10" cadence is **superseded**, as are the "next retro ~loop N" notes in
+  `queue.md`/`decisions.md`). **Retro** (R5, 18:30 daily) and **Deep reading** (R2, 13:00 daily) each run
+  as their own subagent; the deep-reading + sleep/defrag rituals **fan out one subagent per role (9 in
+  parallel)**, each reading its own `studio/agents/<role>.md` reading list. Orchestrator keeps only the
+  summaries.
+- **HARD trigger:** when the ritual check (per-cycle step 0.5) finds a ritual due, the *next*
+  non-`from-owner`-P1 dispatch **IS** that ritual — don't perpetually defer it; one per cycle.
 - **Parallel batch** (default on disjoint files) → fan out one cycle-runner per disjoint slice; a batch
   crossing a shared state/save/event seam needs a one-line contract both sides assert (`comms/PARALLEL.md`).
 - **Owner planning input** → a **PM-desk-triage subagent** (reads `studio/feedback/PM-DESK.md`).
@@ -103,6 +112,11 @@ while the owner is actively writing in the shared tree.
   · dependencies). Strategy/branding/architecture/spend → surface as options; never auto-adopt.
 - **Device/iOS fixes** ship best-effort, marked **unconfirmed pending owner re-test**; don't stack
   dependent work on them until confirmed. Keep CI actions current; protect the Actions budget.
+- **Release cadence (owner, 2026-06-29):** per-commit pushes deploy to **PREVIEW** (always-fresh for the
+  studio + owner); the **PUBLIC** game is promoted by the **daily 17:00 / Friday weekly** release ritual
+  (`rituals.md`) — daily = list notes, Friday = marketed notes w/ media, extra-hardened for the weekend.
+  Needs the preview→public promote infra (`from-owner` issue); **until it lands, release behaviour is
+  unchanged** and the release ritual is a no-op stub.
 
 ## Comms (detail in `OWNER-CHANNEL.md`)
 Report OUT on every release + roadmap change; the hourly heartbeat is a **skippable digest**; quiet
