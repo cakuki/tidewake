@@ -24,7 +24,7 @@ Two outcomes:
 
 - The cycle-runner keeps committing/pushing game code to `main` → CI deploys to **preview**. The game
   stays "always playable" for the studio + owner. **No per-commit public release / tag-as-release.**
-- **Daily release (Mon–Thu, 17:00 Berlin):** the release ritual takes the latest green preview build,
+- **Daily release (17:00 Berlin, every day except Friday — incl. weekends):** the release ritual takes the latest green preview build,
   re-runs the full gate, **promotes it to the public site**, tags it, and publishes **list-style notes**
   (bulleted "what changed today", auto-assembled from the day's closed issues + loop-log rows).
 - **Weekly release (Fri, 17:00 — replaces that day's daily):** extra regression + extended playtest,
@@ -51,7 +51,7 @@ The orchestrator, at the **top of each cycle** (before picking the next build sl
 | R1 | 😴 **Sleep / defrag** | 10:00–12:00 | daily | each of the 9 agents (fan-out) | reorganize each agent's in-repo knowledge into a layered **entry → detail → deeper-detail** tree |
 | R2 | 📚 **Deep reading** | 13:00 | daily | each agent (fan-out) | dated inspiration log → `studio/agents/notebooks/<role>.md`; standout ideas → PM-desk inbox |
 | R3 | 🧪 **Pre-release hardening** | 16:00 | daily (heavier Fri) | qa + software-developer | full test+playtest gate; triage/fix reds so the 17:00 promote is clean |
-| R4 | 🚀 **Daily release** | 17:00 | **Mon–Thu** | project-manager + tech-lead | promote latest green preview → public + **list** notes + tag |
+| R4 | 🚀 **Daily release** | 17:00 | **Mon–Thu + Sat–Sun** (every day except Fri) | project-manager + tech-lead | promote latest green preview → public + **list** notes + tag |
 | R4w | 🌟 **Weekly release** | 17:00 | **Fri** (replaces R4) | PM + TL + graphic-designer + sound-engineer | hardened weekend build → public + **marketing** notes w/ screenshots/clip |
 | R5 | 🔁 **Daily retro** | 18:30 | daily | project-manager (digest all roles) | `studio/retros/YYYY-MM-DD-retro.md`: lessons + process fixes + **queue-sync** |
 

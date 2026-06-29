@@ -29,7 +29,8 @@ input, reads the queue's top line, **dispatches a subagent**, reads a **<10-line
    its day-of-week matches, and its **Last ran ≠ today** → **dispatch that ritual instead of a build
    slice**, update its **Last ran**, done. (Run-late not skip; one ritual/cycle; a `from-owner` P1 still
    preempts even a due ritual.) Rituals: morning briefing · weekly planning (Mon) · sleep/defrag ·
-   deep reading · pre-release hardening · daily release (Mon–Thu) / weekly release (Fri) · daily retro.
+   deep reading · pre-release hardening · daily release (every day except Fri, incl. weekends) /
+   weekly release (Fri) · daily retro.
 1. **Read the TOP item of `studio/comms/queue.md`** — just that line; **do not open the issue** (the
    subagent will).
 2. **Dispatch ONE subagent** with the template below (re-dispatch once if it returns 0-tool-use/empty).

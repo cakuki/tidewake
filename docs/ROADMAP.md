@@ -226,9 +226,9 @@ Tie the experience together and make it sing.
   **CC0/self-made for core art** (public repo; CC-BY only with `CREDITS.md`; no NC/ND), original
   silhouettes, perf-budgeted (#52), matched to the sunny Caribbean look (#61). Pipeline: `docs/art-sourcing.md`, #32, #101.
 - **Release cadence + daily rituals (owner, 2026-06-29):** the loop builds continuously to a **preview**
-  channel, but the **public** game is promoted on a **human cadence** — **daily at 17:00 Berlin** (list
-  notes) and a **marketed weekly release every Friday** (extra-hardened, screenshots/clip; "no weekend
-  frustration"). The studio runs a **daily ritual schedule** — morning owner briefing, Mon weekly
+  channel, but the **public** game is promoted on a **human cadence** — **daily at 17:00 Berlin, 7 days a
+  week** (list notes; weekends included) and a **marketed weekly release every Friday** that takes over
+  that day's slot (extra-hardened, screenshots/clip; "no weekend frustration"). The studio runs a **daily ritual schedule** — morning owner briefing, Mon weekly
   planning, sleep/defrag (memory), deep reading, pre-release hardening, release, daily retro — all
   **time-gated by the local loop** (`studio/comms/rituals.md`; `docs/runbook/LOOP.md` step 0.5). Spec:
   `docs/superpowers/specs/2026-06-29-loop-rituals-and-release-cadence-design.md`. Release infra (preview→

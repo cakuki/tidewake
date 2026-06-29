@@ -34,3 +34,4 @@ If I forgot any routine/ritual add it to schedule.
 - 2026-06-29T00:00Z — Owner decided mechanism: **local loop, NO cloud routines**; ±1h DST acceptable.
 - 2026-06-29T00:00Z — PM added 4 rituals (owner kept all): pre-release hardening, queue-sync (in retro), morning owner briefing, Monday weekly planning.
 - 2026-06-29T00:00Z — **Accepted.** Spec `docs/superpowers/specs/2026-06-29-loop-rituals-and-release-cadence-design.md`; runbook wired (`docs/runbook/LOOP.md` step 0.5 + `studio/comms/rituals.md`); infra → **#145**.
+- 2026-06-29T00:00Z — Owner: **weekends also get the daily release** → daily release = every day except Fri (incl. Sat/Sun); Friday stays the weekly. Updated spec/rituals/LOOP/ROADMAP. Changes **pushed to main**.
