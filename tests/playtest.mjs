@@ -752,6 +752,7 @@ try {
     // Listen + chase a trade tip (re-listen if the first word carried no chase-able target).
     let heard = 0, target = null;
     for (let n = 0; n < 6 && !target; n++) { heard = tw.tavernListen().length; target = tw.chaseRumour(); }
+    const cueListen = tw.loopCue; // the room leaked you word → a soft cup-an-ear cue armed (#116)
     const obj = tw.objective;
     const pinned = !!(obj && obj.target && Number.isFinite(obj.target.x) && Number.isFinite(obj.target.z));
     const chasingDifferentPort = !!(target && target.name && target.name !== fromPort);
@@ -761,16 +762,24 @@ try {
     const tgt = target && tw.ports.find((p) => p.name === target.name);
     const coins0 = tw.state.coins;
     let coinsGain = 0, cleared = false, hasVerse = false, payoffPort = null;
+    let cueApproach = null, cuePayoff = null;
     if (tgt) {
+      // Cross INWARD through the approach radius toward the pin: sit well outside (settle prevDist),
+      // then jump inside it — the "drawing near" horizon nod should ring once on the crossing (#116).
+      tw.qaTeleport(tgt.pos[0] + 300, tgt.pos[1]); tw.step(0.1);
+      tw.qaTeleport(tgt.pos[0] + 150, tgt.pos[1]); tw.step(0.1);
+      cueApproach = tw.loopCue;
+      // Then make the port: the tip pays off → the bright PAYOFF flourish lands (#116).
       tw.qaTeleport(tgt.pos[0], tgt.pos[1]);
       for (let i = 0; i < 60; i++) { tw.step(0.1); if (!tw.objective) { cleared = true; break; } }
       coinsGain = tw.state.coins - coins0;
       payoffPort = tw.docked;
+      cuePayoff = tw.loopCue;
       hasVerse = tw.voyageLog.some((e) => e.type === 'rumour' && e.name === target.name);
     }
     tw.newVoyage(); tw.step(0.1);
     const afterNewVoyage = tw.objective;
-    return { entered, heard, target, pinned, chasingDifferentPort, coinsGain, cleared, hasVerse, payoffPort, afterNewVoyage };
+    return { entered, heard, target, pinned, chasingDifferentPort, coinsGain, cleared, hasVerse, payoffPort, afterNewVoyage, cueListen, cueApproach, cuePayoff };
   });
   if (!chase.entered) fail('rumour-chase: never made landfall to reach the tavern');
   if (!(chase.heard >= 1)) fail('rumour-chase: the tavern surfaced no word to chase (#103)');
@@ -782,6 +791,10 @@ try {
   if (chase.payoffPort !== chase.target.name) fail(`rumour-chase: payoff did not fire at the chased port (docked=${chase.payoffPort}) (#112)`);
   if (!chase.hasVerse) fail('rumour-chase: the chased rumour did not sing into the Ballad/voyage log (#78/#112)');
   if (chase.afterNewVoyage) fail('rumour-chase: a fresh voyage did not clear the chased objective (#111/#112)');
+  // Diegetic feedback (#116): the reactive loop now SINGS its beats — listen → approach → payoff.
+  if (chase.cueListen !== 'listen') fail(`rumour-chase: listening for word armed no diegetic cue (got ${chase.cueListen}) (#116)`);
+  if (chase.cueApproach !== 'approach') fail(`rumour-chase: crossing the approach radius rang no "drawing near" cue (got ${chase.cueApproach}) (#116)`);
+  if (chase.cuePayoff !== 'payoff') fail(`rumour-chase: the rumour paying off rang no PAYOFF cue (got ${chase.cuePayoff}) (#116)`);
 
   // 2h2c2) Contested rumour (#133, DL #5): a rumour you chase is ALSO chased by a rival captain on a
   // seeded soft clock. Arrive in time → win it as normal + a "you beat them to it" beat; dawdle and
@@ -838,14 +851,16 @@ try {
       for (let i = 0; i < 60; i++) { tw.step(0.1); if (!tw.objective) { lostCleared = true; break; } }
     }
     const lostGain = tw.state.coins - coins0;
+    const cueLoss = tw.loopCue; // arriving to a rival's wake → the sour LOSS stab, not the bright payoff (#116)
     const lostVerse = tw.voyageLog.some((e) => e.type === 'rumour' && e.name === targetName && e.rival && e.won === false);
     tw.newVoyage(); tw.step(0.1);
-    return { persistedClaim, targetName, lostCleared, lostGain, lostVerse };
+    return { persistedClaim, targetName, lostCleared, lostGain, lostVerse, cueLoss };
   });
   if (!contestedLose.persistedClaim) fail('contested-rumour: the rival claim did not survive a reload — the clock could be reset by reloading (#133)');
   if (!contestedLose.lostCleared) fail('contested-rumour: the lost objective did not clear on arrival (#133)');
   if (!(contestedLose.lostGain === 0)) fail(`contested-rumour: arriving after the rival claimed it still paid out (gain=${contestedLose.lostGain}) — the prize should be gone (#133)`);
   if (!contestedLose.lostVerse) fail('contested-rumour: a lost race did not sing a distinct "beaten to it" verse into the Ballad (#78/#133)');
+  if (contestedLose.cueLoss !== 'loss') fail(`contested-rumour: arriving to the rival's wake rang the wrong cue (got ${contestedLose.cueLoss}, want the sour LOSS stab) (#116)`);
 
   // 2h2d) Your Harbour (#118, DL #4) — the GOVERNOR pole's first reactive verb: CLAIM a home port,
   // then INVEST coin to GROW it. Make landfall, assert the claim is GATED on Standing (locked when

@@ -25,6 +25,9 @@ export function createTown(opts = {}) {
   // Chase a rumour (#111/#112/#115): hand the chosen rumour's TYPED target up to main.js, which
   // sets the active objective (a map marker + an arrival payoff). No-op if not wired.
   const onChase = typeof opts.onChase === 'function' ? opts.onChase : () => {};
+  // Listen for word (#116): a soft "cup-an-ear" diegetic cue when the room leaks you a rumour, so the
+  // reactive loop's first beat is felt, not silent. main.js routes it to the music cue. No-op if unwired.
+  const onListen = typeof opts.onListen === 'function' ? opts.onListen : () => {};
   // Your Harbour (#118): claim the docked port as your home harbour, or invest coin to grow it.
   // main.js owns applying Standing/coin + persisting; here we just route the tap. No-op if unwired.
   const onClaim = typeof opts.onClaim === 'function' ? opts.onClaim : () => {};
@@ -53,6 +56,7 @@ export function createTown(opts = {}) {
       deeds: state.voyageLog || [],
     }, { count: 2, nonce: rumourNonce });
     listening = true;
+    try { onListen(); } catch { /* the cue is a flourish, never break the listen verb (#116) */ }
     lastSig = ''; // force a repaint
     render();
     return rumours.slice();

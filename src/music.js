@@ -28,6 +28,7 @@
 
 import { resolveMix } from './music-director.js';
 import { varyMelodyPass, variationPlan, SEA_VARIATION_SEED } from './systems/melody-variation.js';
+import { selectCue } from './systems/loop-cues.js';
 
 // ---- Pure, browser-free helpers (unit-tested) ----
 
@@ -176,6 +177,13 @@ export function createMusic() {
   let intensity = 0;      // 0..1, set by update() from ship speed
   let schedulerId = null;
   let stingerArmed = false; // landfall "we've made port" punch, fired on the next downbeat (#102 ph2)
+  // Reactive-loop diegetic cues (#116): a tiny pure recipe (listen/approach/payoff/loss) armed by
+  // loopCue(name) and fired ON the next bar downbeat so it nods WITH the music, not over it. Only the
+  // latest pending cue is held (loop beats are spaced — no queue needed). `lastLoopCue` records the
+  // last cue NAME armed regardless of mute/engine state, so a headless playtest can assert which
+  // beat sang without ever opening an AudioContext.
+  let pendingCue = null;    // a render recipe from selectCue(), waiting for the next downbeat
+  let lastLoopCue = null;   // QA surface: the name of the most recently armed loop cue
 
   const beatSec = beatDuration(TEMPO);
   const stepSec = beatSec * 0.5;            // eighth-note scheduler grid
@@ -353,6 +361,53 @@ export function createMusic() {
     });
   }
 
+  // Reactive-loop cue renderer (#116): play a pure recipe (from src/systems/loop-cues.js) as a short
+  // note gesture in the bed's own key — so the LISTEN/APPROACH/PAYOFF/LOSS beats sing diegetically
+  // with the music. Routes through musicGain (the mute covers them). `degs` are diatonic D-major scale
+  // degrees (bright, in-key); `semis` are raw chromatic semitone offsets from the root (the sour LOSS
+  // stab steps OUT of the major). A bad recipe must never break the frame.
+  function voiceLoopCue(recipe, time) {
+    if (muted || !recipe) return;
+    try {
+      const oct = (Number(recipe.octave) || 0) * 12;
+      const notes = Array.isArray(recipe.degs)
+        ? recipe.degs.map((d) => degreeToFreq(d, ROOT + oct))
+        : Array.isArray(recipe.semis)
+          ? recipe.semis.map((s) => midiToFreq(ROOT + oct + s))
+          : [];
+      const step = Number(recipe.step) || 0.1;
+      const dur = Number(recipe.dur) || 0.4;
+      const tail = Number(recipe.tail) || 0.5;
+      const peak = Number(recipe.gain) || 0.08;
+      notes.forEach((freq, i) => {
+        if (!Number.isFinite(freq) || freq <= 0) return;
+        const osc = ctx.createOscillator();
+        osc.type = recipe.type || 'sine';
+        osc.frequency.value = freq;
+        if (Number.isFinite(recipe.detune)) osc.detune.value = recipe.detune;
+        const env = ctx.createGain();
+        const at = time + i * step;
+        env.gain.setValueAtTime(0.0001, at);
+        env.gain.exponentialRampToValueAtTime(peak, at + 0.02);
+        env.gain.exponentialRampToValueAtTime(0.0001, at + dur + tail);
+        // Optional darkening lowpass for the sour cue (a wry, muffled blunder colour).
+        let sink = musicGain;
+        if (Number.isFinite(recipe.lowpass)) {
+          const lp = ctx.createBiquadFilter();
+          lp.type = 'lowpass';
+          lp.frequency.value = recipe.lowpass;
+          lp.connect(musicGain);
+          sink = lp;
+        }
+        osc.connect(env).connect(sink);
+        osc.start(at);
+        osc.stop(at + dur + tail + 0.05);
+      });
+    } catch {
+      /* a cue is a flourish — never break the frame */
+    }
+  }
+
   function fireStep(s, time) {
     if (muted) return; // silent + cheap while muted; the grid clock keeps advancing
     try {
@@ -374,6 +429,9 @@ export function createMusic() {
       while (nextNoteTime < ctx.currentTime + lookahead) {
         // Landfall stinger (#102 ph2): when armed, fire ON the next bar downbeat, then disarm.
         if (stingerArmed && isDownbeat(step, STEPS_PER_BAR)) { voiceStinger(nextNoteTime); stingerArmed = false; }
+        // Reactive-loop cue (#116): a pending listen/approach/payoff/loss recipe fires on the next
+        // downbeat too, then disarms — so the diegetic feedback lands on the beat with the bed.
+        if (pendingCue && isDownbeat(step, STEPS_PER_BAR)) { voiceLoopCue(pendingCue, nextNoteTime); pendingCue = null; }
         fireStep(step, nextNoteTime);
         nextNoteTime += stepSec;
         const nextStep = (step + 1) % TOTAL_STEPS;
@@ -530,6 +588,20 @@ export function createMusic() {
   // is up — it just arms a flag the scheduler reads once the music is running and unmuted.
   function stinger() { stingerArmed = true; }
 
+  // Arm a reactive-loop diegetic cue (#116): listen / approach / payoff / loss. Resolves the pure
+  // recipe (src/systems/loop-cues.js) and holds it for the next bar downbeat (the scheduler fires +
+  // disarms it). Records the name regardless of mute/engine state so a headless playtest can assert
+  // which beat sang. An unknown name is a no-op (selectCue fails open to null). Safe before start().
+  function loopCue(name) {
+    const recipe = selectCue(name);
+    if (!recipe) return;
+    lastLoopCue = recipe.name;
+    pendingCue = recipe;
+  }
+
+  // QA surface (#116): the name of the most recently armed loop cue (or null) — headless-assertable.
+  function lastCue() { return lastLoopCue; }
+
   // Seeded per-pass variation QA surface (#117): the live seed + pass counter, plus the ornament
   // plan for the current (or any) pass. Pure + headless-safe — computable even before the audio
   // engine is up (pass stays 0), so a playtest can assert: same seed → same sequence (determinism),
@@ -539,5 +611,5 @@ export function createMusic() {
     return variationPlan(melodyPattern(), p, { seed: variationSeed });
   }
 
-  return { start, setMute, update, setMix, setTownTheme, stinger, variation };
+  return { start, setMute, update, setMix, setTownTheme, stinger, loopCue, lastCue, variation };
 }

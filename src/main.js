@@ -42,6 +42,7 @@ import {
   earnedGovernorship, governorTitle,
 } from './systems/home-port.js';
 import { makeObjective, resolvesAt, payoffFor, sanitizeObjective, makeContestedObjective, tickContest, isContested, isClaimed, rivalName, shouldContest } from './objectives.js';
+import { payoffCueName, approachCrossed, APPROACH_RADIUS } from './systems/loop-cues.js';
 import { createEncounter, HAIL_LINES, RESCUE_LINES, PLUNDER_LINES } from './systems/encounter.js';
 import { freshMorale, sanitizeMorale, applyMorale, moraleBeat, moraleTier } from './systems/morale.js';
 import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES } from './colours.js';
@@ -686,6 +687,7 @@ const town = createTown({
   getState: () => state,
   onLeave: () => leaveHarbour(),
   onChase: (target) => chaseObjective(target),
+  onListen: () => music.loopCue('listen'), // a soft cup-an-ear cue as the room leaks you word (#116)
   onClaim: () => claimHarbour(),
   onInvest: () => investHarbour(),
 });
@@ -936,6 +938,18 @@ systems.register({ name: 'contest', order: 45, when: (f) => isContested(f.state.
     } catch { /* a flourish must never break the loop */ }
   }
 } });
+// — reactive-loop "drawing near" cue (#116): ring a hopeful horizon nod ONCE when the ship crosses
+//   inward through the approach radius toward the chased rumour's target. Edge-triggered (pure
+//   approachCrossed), so it sings as you close on the pin — never every frame, never twice. Resets
+//   when there's no chase/target so the next chase starts cleanly outside the radius.
+let prevTargetDist = Infinity;
+systems.register({ name: 'loop-cue-approach', order: 46, update: (f) => {
+  const t = f.state.objective?.target;
+  if (!t || !Number.isFinite(t.x) || !Number.isFinite(t.z)) { prevTargetDist = Infinity; return; }
+  const dist = Math.hypot(f.state.pos.x - t.x, f.state.pos.z - t.z);
+  if (approachCrossed(prevTargetDist, dist, APPROACH_RADIUS)) music.loopCue('approach');
+  prevTargetDist = dist;
+} });
 // — landfall camera ease (#102): only while the gesture is in flight (when blend>0), slide the
 //   chase cam toward a closer "ashore" framing of the moored ship.
 systems.register({ name: 'landfall-camera', order: 50, when: () => landfall.blend > 0, update: (f) => {
@@ -1152,6 +1166,7 @@ function onArrive(portName, line) {
       const rumourDeed = contested
         ? { type: 'rumour', name: portName, coins, rival, won: !claimed }
         : { type: 'rumour', name: portName, coins };
+      music.loopCue(payoffCueName({ claimed }));           // the tip resolves: bright PAYOFF, or sour LOSS to a rival's wake (#116)
       logDeed(rumourDeed);                                 // sing it into the Ballad (#78)
       if (coins > 0) applyMoraleEvent('rumourWin');        // a tip that paid off, coin shared round — a good day (#124)
       state.portMemory = recordDeed(state.portMemory, portName, deedPhrase(rumourDeed)); // #104b — this port remembers the chase
@@ -1405,6 +1420,10 @@ window.__tidewake = {
   // and a deterministic driver so a headless playtest can listen and assert the room speaks.
   get tavern() { return { open: town.isOpen, listening: town.listening, rumours: town.rumours, targets: town.rumourTargets }; },
   tavernListen() { return town.listen(); },
+  // Reactive-loop diegetic cue (#116) QA surface: the NAME of the most recently armed loop cue
+  // (listen/approach/payoff/loss, or null). Lets a headless playtest listen / approach a chased pin /
+  // arrive and assert the right beat sang — without ever opening an AudioContext.
+  get loopCue() { return music.lastCue(); },
   // Chased-rumour objective (#111/#112/#115) QA surface: the live active objective (typed target +
   // payoff, or null), plus drivers so a headless playtest can take a rumour to chase and assert
   // the marker pins, the save round-trips, and arriving pays off. chaseRumour(i) chases the i-th
