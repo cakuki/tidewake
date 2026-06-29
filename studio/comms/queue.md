@@ -62,11 +62,13 @@ SHIPPED & CLOSED (Loops 80–81); the engine de-risk quartet is done. Per DL #5'
 charm that battle inherits" + the pole-tension frontier, the strongest UNBLOCKED reservoir items are
 promoted below. **#100 battle still owner-held — NOT promoted; gentle nudge still due.**_
 
-1. **#116 — Diegetic feedback for the reactive loop** — listen/reach/payoff stingers + interaction SFX
-   + a warmer remembered-port arrival cue. Pure wiring onto the existing bar-clock; battle inherits the
-   feedback vocabulary. _value **med** · complexity **low** · audio. **Now top.**_
+- ~~**#116 — Diegetic feedback for the reactive loop**~~ — ✅ **SHIPPED & CLOSED** (Loop 83,
+   v0.0.20260629210608) — listen/approach/payoff/loss cues sung over the music bus + quantised to the
+   bar-clock; battle inherits the feedback vocabulary. Pure `src/systems/loop-cues.js`. **Follow-ups
+   (reservoir below):** richer per-rumour-kind interaction SFX · a coin-chime under payoff · a distinct
+   rival-sail-sighted sting · a continuous wake/helm water-bed SFX (the #81 cheap cousin).
 
-2. **#134 — [DL#5] Your Harbour, threatened** — the pole-straddling STAKE (Infamy → blockade, Standing →
+1. **#134 — [DL#5] Your Harbour, threatened** — the pole-straddling STAKE (Infamy → blockade, Standing →
    raid) that gives the home port (#118) a reason to matter and hands battle #100 its reason to exist.
    Ship the **lightweight non-battle resolution first** (a choice/dice beat, not combat). _value **high**
    · complexity **med** · feature+design._
