@@ -52,12 +52,21 @@ the **TOP** of this queue until the lane ships something impressive + gamer-test
 _**UPDATE Loop 85 (2026-06-30, v0.0.20260630054448): slice 1 — Battle Mode shell — SHIPPED.** Deliberate
 **E = give battle** → held BATTLE stance on the #95 infra, quarter-view camera, `⚔ BATTLE` banner, #94
 music settle, NPCs sail underneath, **Flee always available**. Pure `src/systems/battle.js` TDD'd first;
-no save-schema change (stays v16); perf unchanged (48 draws/90k tris). **#135 stays OPEN — next build is
-slice 2 (real-time broadside): steer for a beam angle, manual Fire discharges loaded guns in real time
-(today's stance still uses the turn-based #59 exchange inside it).** Then slice 3 (workshop loadouts +
-mid-combat ammo cycle, ties town #96), slice 4 (boarding → crew brawl → verbal duel climax), slice 5
-(expanded 50+ insult duel). Shell follow-ups: a persistent battle HUD panel; an arena-spawn so the
-engaged foe is a real maneuvering target; the flee-vs-flee nuance mid-cannonade._
+no save-schema change (stays v16); perf unchanged (48 draws/90k tris)._
+
+_**UPDATE Loop 87 (2026-06-30, v0.0.20260630073159): slice 2 — real-time broadside — SHIPPED.** Inside
+the deliberate stance the **helm now stays LIVE** — **steer to bring the foe ABEAM** and press **SPACE**
+to discharge the loaded guns in real time; a clean beam shot bites hard, a wide one flies past, the guns
+**reload on the sim clock** (≈2.2s). Sinking pays Infamy, a crew that breaks pays Standing — reusing
+`cannons.js` damage/morale via new pure `resolveBroadside` + `broadsideAim` (TDD'd first, 848 tests). The
+turn-based #59 exchange is kept untouched as the alternate verb. No save-schema change (stays v16); perf
+unchanged (48 draws/90k tris). Gallery `battle-broadside-135.png`. **#135 stays OPEN — next build is
+slice 3 (workshop loadouts + mid-combat ammo cycle, ties town #96): buy/fit cannons & ammo at a town
+workshop, one key cycles round/chain/grape/light/heavy/swivel mid-fight (no buying in combat).** Then
+slice 4 (boarding → crew brawl → verbal duel climax: capture=Standing/sink=Infamy, early strike-colours →
+ransom), slice 5 (expanded 50+ insult duel, anti-repeat within an engagement), then Option 4 phase-coupling.
+Slice-2 follow-ups: an arena-spawn so the engaged foe is a dedicated maneuvering target (today reuses the
+open-sea NPC); false-colours/letters-of-marque reward nuances on the real-time path; battle-HUD polish._
 
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
