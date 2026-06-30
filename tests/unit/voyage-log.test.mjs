@@ -447,14 +447,51 @@ test('when one name both pays and fights the hardest, the superlative merges int
   assert.equal((peak.match(/the Leviathan/g) || []).length, 1);
 });
 
-test('the superlative line is skipped when no coin or infamy was won (a peaceful voyage)', () => {
+test('a governor-road voyage crows its KINDEST turn (most standing) by name, not a plunder peak', () => {
+  // No coin, no infamy — but a rescue won standing, so the toast still has a peak: the kindest turn.
   const b = composeBallad([
     { type: 'landfall', name: 'Rumlost Reef' },
     { type: 'encounter', choice: 'rescue', ship: 'the Saltwidow', standing: 120 },
     { type: 'morale', tier: 'low' },
   ]);
   assert.ok(!b.lines.some((l) => /richest haul|fiercest|towers over the voyage/i.test(l)),
-    'nothing was plundered or feared, so there is no peak to crow about');
+    'nothing was plundered or feared, so there is no plunder peak');
+  assert.ok(b.lines.some((l) => /kindest turn/i.test(l) && /the Saltwidow/.test(l) && /120 standing/.test(l)),
+    'the rescue that won the most standing is crowned the kindest turn, by name');
+});
+
+test('the superlative is skipped only when NOTHING was won — bare landfalls + a grumble', () => {
+  const b = composeBallad([
+    { type: 'landfall', name: 'Rumlost Reef' },
+    { type: 'morale', tier: 'low' },
+  ]);
+  assert.ok(!b.lines.some((l) => /crew still toast|towers over the voyage/i.test(l)),
+    'no coin, no infamy, no standing — no peak to crow about');
+});
+
+test('all three roads can be toasted together: richest haul, fiercest foe, and kindest turn', () => {
+  const b = composeBallad([
+    { type: 'cannon', foe: 'the Leviathan', infamy: 20, coins: 120 },        // richest haul
+    { type: 'duel', foe: 'Black Sal', infamy: 90, coins: 30 },               // fiercest foe
+    { type: 'encounter', choice: 'rescue', ship: 'the Saltwidow', standing: 75 }, // kindest turn
+  ]);
+  const peak = b.lines.find((l) => /crew still toast/i.test(l));
+  assert.match(peak, /three deeds above the rest/);
+  assert.match(peak, /the richest haul — 120 coins from the Leviathan/);
+  assert.match(peak, /the fiercest foe — Black Sal, 90 infamy/);
+  assert.match(peak, /the kindest turn — the Saltwidow hauled clear for 75 standing/);
+});
+
+test('the kindest turn picks the MAX-standing rescue, ties to the earliest, and is deterministic', () => {
+  const log = [
+    { type: 'encounter', choice: 'rescue', ship: 'First Aid', standing: 50 },
+    { type: 'encounter', choice: 'rescue', ship: 'Big Mercy', standing: 90 },   // the peak
+    { type: 'encounter', choice: 'plunder', ship: 'No Mercy', standing: 0, infamy: 40, coins: 80 },
+    { type: 'encounter', choice: 'rescue', ship: 'Late Mercy', standing: 90 },  // ties — earlier wins
+  ];
+  const peak = composeBallad(log).lines.find((l) => /kindest turn/i.test(l));
+  assert.match(peak, /Big Mercy hauled clear for 90 standing/);
+  assert.equal(composeBallad(log).text, composeBallad(log).text); // byte-identical
 });
 
 test('the superlative picks the MAX coin/infamy deeds and is deterministic', () => {
@@ -467,4 +504,26 @@ test('the superlative picks the MAX coin/infamy deeds and is deterministic', () 
   assert.match(peak, /200 coins from Mid Mary/);
   assert.match(peak, /Grim Gus, 88 infamy/);
   assert.equal(composeBallad(log).text, composeBallad(log).text); // byte-identical
+});
+
+// ---- coin milestone: the voyage's total takings, surfaced in the closing tally (#90) ----------
+
+test('the closing tally sums the WHOLE voyage\'s coins — distinct from the single richest haul', () => {
+  const b = composeBallad([
+    { type: 'cannon', foe: 'the Leviathan', infamy: 20, coins: 120 },
+    { type: 'duel', foe: 'Black Sal', infamy: 90, coins: 30 },
+    { type: 'rumour', name: 'Saltmarket', coins: 50 },
+  ]);
+  const closing = b.lines.at(-3); // ...peak, CLOSING, couplet, footer
+  assert.match(closing, /200 coins won/);     // 120 + 30 + 50, the cumulative milestone
+  assert.match(closing, /2 rivals bested/);   // the count tally still rides alongside
+});
+
+test('the coin tally is omitted when no coin was ever won', () => {
+  const b = composeBallad([
+    { type: 'landfall', name: 'Rumlost Reef' },
+    { type: 'encounter', choice: 'rescue', ship: 'the Saltwidow', standing: 120 },
+  ]);
+  const closing = b.lines.find((l) => /worth the telling/.test(l));
+  assert.ok(!/coins? won/.test(closing), 'a coinless voyage brags no coin figure');
 });

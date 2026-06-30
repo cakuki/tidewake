@@ -309,48 +309,70 @@ function subjectOf(e) {
   return e.foe || e.ship || e.name || e.port || null;
 }
 
-// The "best of voyage" superlative (#90 richer composition): the crew's tavern toast — the single
-// RICHEST haul (most coins off one deed) and the FIERCEST foe (most infamy hard-won in one fight),
-// surfaced by NAME from deeds already in the log. Ties go to the earliest deed (deterministic).
-// Returns null when nothing was won (a voyage of only landfalls, rescues, or grumbles has no peak
-// to crow about) so the line is skipped gracefully. Pure — no save fields, no new event types.
+// Join a handful of "best of" clauses into one toast, Oxford-style: two read "a, and b"; three
+// read "a, b, and c" (so a three-peak voyage doesn't stutter "a, and b, and c").
+function joinClauses(parts) {
+  if (parts.length <= 1) return parts.join('');
+  if (parts.length === 2) return `${parts[0]}, and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(', ')}, and ${parts[parts.length - 1]}`;
+}
+
+// The "best of voyage" superlative (#90 richer composition): the crew's tavern toast — surfaced BY
+// NAME from deeds already in the log, one clause per road the voyage actually ran:
+//   • the RICHEST haul   — most coins off one deed (the trader's peak),
+//   • the FIERCEST foe   — most infamy hard-won in one fight (the pirate's peak),
+//   • the KINDEST turn   — most standing won in one rescue (the governor's peak, #125 encounters).
+// Ties go to the earliest deed (deterministic). Returns null only when NONE of the three was won
+// (a voyage of bare landfalls or grumbles has no peak to crow about) so the line skips gracefully.
+// Pure — reads coins/infamy/standing already in the log; no save fields, no new event types.
 function superlativeLine(events) {
-  let rich = null, fierce = null;
+  let rich = null, fierce = null, kind = null;
   for (const e of events) {
     const coins = nonNegInt(e.coins);
     const infamy = nonNegInt(e.infamy);
+    const standing = nonNegInt(e.standing);
     const who = subjectOf(e);
     if (coins > 0 && (!rich || coins > rich.coins)) rich = { coins, who };
     if (infamy > 0 && (!fierce || infamy > fierce.infamy)) fierce = { infamy, who };
+    // Standing is only ever won by a rescue (#125) — the governor road's brag.
+    if (e.type === 'encounter' && e.choice === 'rescue' && standing > 0 && (!kind || standing > kind.standing)) {
+      kind = { standing, who };
+    }
   }
-  if (!rich && !fierce) return null;
+  if (!rich && !fierce && !kind) return null;
   // One name towers over the voyage — it filled the hold the deepest AND fought you the hardest.
-  if (rich && fierce && rich.who && rich.who === fierce.who) {
+  // Kept for the pure pirate/trader run; a kindness peak alongside falls through to the full toast.
+  if (rich && fierce && !kind && rich.who && rich.who === fierce.who) {
     return `And one name towers over the voyage: ${rich.who} — the fiercest you fought (${fierce.infamy} infamy hard-won) and the deepest the hold ever rode (${rich.coins} coins).`;
   }
   const parts = [];
   if (rich) parts.push(rich.who ? `the richest haul — ${rich.coins} coins from ${rich.who}` : `the richest haul — ${rich.coins} coins`);
   if (fierce) parts.push(fierce.who ? `the fiercest foe — ${fierce.who}, ${fierce.infamy} infamy hard-won` : `the fiercest fight — ${fierce.infamy} infamy hard-won`);
-  return `Of it all, the crew still toast ${parts.length === 2 ? 'two deeds' : 'one deed'} above the rest: ${parts.join(', and ')}.`;
+  if (kind) parts.push(kind.who ? `the kindest turn — ${kind.who} hauled clear for ${kind.standing} standing` : `the kindest turn — ${kind.standing} standing won at sea`);
+  const count = parts.length === 3 ? 'three deeds' : parts.length === 2 ? 'two deeds' : 'one deed';
+  return `Of it all, the crew still toast ${count} above the rest: ${joinClauses(parts)}.`;
 }
 
 function tally(events) {
-  let isles = 0, fights = 0, legends = 0;
+  let isles = 0, fights = 0, legends = 0, coins = 0;
   for (const e of events) {
     if (e.type === 'landfall') isles++;
     else if (e.type === 'duel' || e.type === 'cannon') fights++;
     // The named home-isle governorship (#119) counts as a crown alongside the pole legends (#46).
     else if (e.type === 'legend' || e.type === 'governorship') legends++;
+    coins += nonNegInt(e.coins); // #90 coin milestone: the WHOLE voyage's takings, not one haul
   }
-  return { isles, fights, legends };
+  return { isles, fights, legends, coins };
 }
 
 function closingLine(events) {
-  const { isles, fights, legends } = tally(events);
+  const { isles, fights, legends, coins } = tally(events);
   const parts = [];
   if (isles) parts.push(`${isles} isle${isles === 1 ? '' : 's'} raised`);
   if (fights) parts.push(`${fights} rival${fights === 1 ? '' : 's'} bested`);
   if (legends) parts.push(`${legends} crown${legends === 1 ? '' : 's'} earned`);
+  // The cumulative coin count (#90) — distinct from the single "richest haul" peak above.
+  if (coins) parts.push(`${coins} coin${coins === 1 ? '' : 's'} won`);
   const t = parts.length ? ` (${parts.join(' · ')})` : '';
   return `So sails the voyage thus far${t} — ${events.length} deed${events.length === 1 ? '' : 's'} worth the telling, and the tide still rolling on beneath the keel.`;
 }
