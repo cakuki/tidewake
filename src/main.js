@@ -1355,7 +1355,11 @@ systems.register({ name: 'town-music', order: 300, update: (f) => {
   }
 } });
 // — mode-aware music bed (#94): WHERE the player is (mode + nearest-port distance) drives the crossfade.
-systems.register({ name: 'music', order: 310, update: (f) => music.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED, mode: mode.current, portDistance: f.harbourDistance, dockRadius: DOCK_RADIUS }) });
+// — mode-aware music bed (#94) + the harmonic reputation needle (#132 Slice B): WHERE the player is
+//   drives the sea/port crossfade, and the SAME signed lean (repLean) reputation-grade wrote this frame
+//   recolours the lead's MODE — Infamy → a freygish "bite", Standing → a warm Lydian voicing, neutral →
+//   the honest D-major hornpipe. Order 310 (after reputation-grade@120), so repLean is fresh.
+systems.register({ name: 'music', order: 310, update: (f) => music.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED, mode: mode.current, portDistance: f.harbourDistance, dockRadius: DOCK_RADIUS, lean: repLean }) });
 
 function update(dt, t) {
   // The WHOLE per-frame loop is the systems registry now (#130, DL #5). Every system registered
@@ -1814,6 +1818,12 @@ window.__tidewake = {
   // key. `seaVariationFor(pass)` is a pure lookup for ANY pass (headless-safe; no AudioContext).
   get seaVariation() { return music.variation(); },
   seaVariationFor(pass) { return music.variation(pass); },
+  // The harmonic reputation needle (#132 Slice B, DL #5) QA surface: the live modal recolour the lead
+  // is wearing off the SAME signed lean as Slice A's hull — { pole, blend, scale }. Headless-safe (the
+  // music system sets it from repLean every frame with no AudioContext), so a playtest can swing the
+  // ledger and assert the SCORE recolours: freygish "bite" toward Infamy, warm Lydian toward Standing,
+  // the untouched D-major Ionian at neutral. The crossfade through musicGain means mute still covers it.
+  get harmony() { return music.mood(); },
   // Invisible onboarding (#60) QA surface: the live progress flags, the next step, and
   // whether the seeded goal card is currently on screen.
   get onboarding() {

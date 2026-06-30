@@ -29,6 +29,7 @@
 import { resolveMix } from './music-director.js';
 import { varyMelodyPass, variationPlan, SEA_VARIATION_SEED } from './systems/melody-variation.js';
 import { selectCue } from './systems/loop-cues.js';
+import { harmonicMood, IONIAN } from './systems/harmonic-mood.js';
 
 // ---- Pure, browser-free helpers (unit-tested) ----
 
@@ -166,6 +167,9 @@ export function createMusic() {
   let master = null;        // shared master gain from audio.js
   let musicGain = null;     // master music sub-gain under the bus (mute covers it)
   let seaLayerGain = null;  // the sailing theme lives here (mode-aware mix, #94)
+  let recolourGain = null;  // the harmonic-needle recolour lead lives here (#132 Slice B); crossfades up with |lean|
+  let recolourBus = null;   // the recolour lead's pre-gain bus (its own softening lowpass), parallel to leadBus
+  let recolourState = { pole: 'neutral', blend: 0, scale: IONIAN }; // live modal-recolour cast (QA surface; headless-safe)
   let portLayerGain = null; // the tavern/port drone lives here (swells on approach, #94)
   let portLP = null;        // the port drone's lowpass — per-town timbre tint (#69)
   let portTremLfo = null;   // the bellows wheeze LFO — per-town tremolo rate (#69)
@@ -240,7 +244,10 @@ export function createMusic() {
 
   // --- Voices ---
 
-  function voiceLead(time, freq, durSec) {
+  // The lead voice. `bus` defaults to the neutral leadBus (the canonical D-major hornpipe); the
+  // harmonic needle (#132 Slice B) renders a SECOND, identically-shaped voice of the SAME melody into
+  // recolourBus, tuned to the pole's mode — the recolourGain crossfade (not a second timbre) carries it.
+  function voiceLead(time, freq, durSec, bus = leadBus) {
     const peak = 0.16 * (0.55 + 0.45 * intensity); // present at rest, fuller at speed
     const osc = ctx.createOscillator();
     osc.type = 'triangle';
@@ -250,7 +257,7 @@ export function createMusic() {
     env.gain.setValueAtTime(0.0001, time);
     env.gain.exponentialRampToValueAtTime(peak, time + 0.012);   // pluck attack
     env.gain.exponentialRampToValueAtTime(0.0001, end);          // decay/release
-    osc.connect(env).connect(leadBus); // leadBus → seaLayerGain → musicGain
+    osc.connect(env).connect(bus); // leadBus/recolourBus → seaLayerGain → musicGain (mute + port-duck cover it)
     osc.start(time);
     osc.stop(end + 0.02);
   }
@@ -411,7 +418,15 @@ export function createMusic() {
   function fireStep(s, time) {
     if (muted) return; // silent + cheap while muted; the grid clock keeps advancing
     try {
-      for (const n of leadByStep[s]) voiceLead(time, degreeToFreq(n.deg, ROOT), n.durSec);
+      // The harmonic needle (#132 Slice B): when the recolour crossfade is audible, voice the SAME
+      // lead melody a SECOND time in the pole's mode (read live from recolourState.scale) into the
+      // recolourGain. The bass + chord pad below stay FIXED in D major (the DL#3 trap) — only the lead
+      // recolours. Cheap when neutral (blend 0 → skip the extra oscillators entirely).
+      const recolour = recolourState.blend > 0.001 && recolourState.scale && recolourState.scale !== IONIAN;
+      for (const n of leadByStep[s]) {
+        voiceLead(time, degreeToFreq(n.deg, ROOT), n.durSec);
+        if (recolour) voiceLead(time, degreeToFreq(n.deg, ROOT, recolourState.scale), n.durSec, recolourBus);
+      }
       for (const n of bassByStep[s]) voiceBass(time, degreeToFreq(n.deg, ROOT), n.durSec);
       for (const c of chordByStep[s]) {
         voiceChord(time, c.degs.map((d) => degreeToFreq(d, ROOT)), c.durSec);
@@ -474,6 +489,22 @@ export function createMusic() {
       leadLP.frequency.value = 3200; // soften the triangle's edge into a sweeter lead
       leadBus.connect(leadLP).connect(seaLayerGain);
 
+      // The harmonic-needle recolour lead (#132 Slice B): a parallel lead bus → its own softening
+      // lowpass → recolourGain → seaLayerGain. Built SILENT (gain 0 = the honest D-major bed,
+      // untouched at neutral); setMood() crossfades it up with |lean| while the neutral leadBus ducks
+      // complementarily. Sits UNDER seaLayerGain → musicGain, so the mute AND the port-duck both cover it.
+      recolourGain = ctx.createGain();
+      recolourGain.gain.value = 0;
+      recolourGain.connect(seaLayerGain);
+      recolourBus = ctx.createGain();
+      recolourBus.gain.value = 1;
+      const recolourLP = ctx.createBiquadFilter();
+      recolourLP.type = 'lowpass';
+      recolourLP.frequency.value = 3200; // same softening as the neutral lead so they crossfade cleanly
+      recolourBus.connect(recolourLP).connect(recolourGain);
+      // Apply any lean set before the engine came up so the recolour is already cast on the first note.
+      setMood(recolourState);
+
       buildPortLayer();
       // Apply any per-town identity chosen before the engine came up (#69) — so the drone is
       // already in the nearest port's key the instant the audio bus starts.
@@ -494,6 +525,8 @@ export function createMusic() {
       master = null;
       musicGain = null;
       seaLayerGain = null;
+      recolourGain = null;
+      recolourBus = null;
       portLayerGain = null;
       portLP = null;
       portTremLfo = null;
@@ -511,6 +544,25 @@ export function createMusic() {
       const now = ctx.currentTime;
       seaLayerGain.gain.setTargetAtTime(clamp01(sea), now, 0.6);
       portLayerGain.gain.setTargetAtTime(clamp01(port), now, 0.6);
+    } catch {
+      /* a bad frame must never throw */
+    }
+  }
+
+  // The harmonic reputation needle (#132 Slice B): recolour the lead's MODE off the signed reputation
+  // lean. Stores the live cast (so the QA getter + a pre-engine call work headless), then — once the
+  // engine is up — crossfades the ONE needle knob: ramp recolourGain → blend and duck the neutral
+  // leadBus → 1-blend, complementarily, as a smooth setTargetAtTime glide (never a click). The scale
+  // itself swaps only while that gain is near-silent (blend≈0 at neutral), so a pole flip never clashes.
+  // The bass + chord/percussive bed are untouched (the DL#3 trap). Safe before the engine + on junk.
+  function setMood(mood) {
+    const m = mood && Array.isArray(mood.scale) ? mood : { pole: 'neutral', blend: 0, scale: IONIAN };
+    recolourState = { pole: m.pole || 'neutral', blend: clamp01(Number(m.blend) || 0), scale: m.scale };
+    if (!ctx || !recolourGain || !leadBus) return;
+    try {
+      const now = ctx.currentTime;
+      recolourGain.gain.setTargetAtTime(recolourState.blend, now, 0.6);
+      leadBus.gain.setTargetAtTime(clamp01(1 - recolourState.blend), now, 0.6); // a wisp of the honest theme survives
     } catch {
       /* a bad frame must never throw */
     }
@@ -575,6 +627,11 @@ export function createMusic() {
         dockRadius: state?.dockRadius,
       }));
 
+      // Harmonic reputation needle (#132 Slice B): the SAME signed lean (repLean) that grimes the hull
+      // (Slice A) recolours the lead's mode. Pure map → live crossfade. Runs every frame, even headless
+      // (no ctx → stores the cast for the QA surface, no audio), BEFORE the engine-up early return.
+      setMood(harmonicMood(Number(state?.lean) || 0));
+
       if (!ctx || !musicGain || muted) return;
       // Gentle overall swell with intensity, on top of the per-note adaptivity.
       musicGain.gain.setTargetAtTime(BASE_LEVEL * (0.85 + 0.15 * intensity), ctx.currentTime, 0.5);
@@ -611,5 +668,11 @@ export function createMusic() {
     return variationPlan(melodyPattern(), p, { seed: variationSeed });
   }
 
-  return { start, setMute, update, setMix, setTownTheme, stinger, loopCue, lastCue, variation };
+  // The harmonic reputation needle (#132 Slice B) QA surface: the live modal-recolour cast
+  // { pole, blend, scale } the lead is currently wearing — headless-assertable (set by update() from
+  // the lean every frame, even with no AudioContext), so a playtest can swing the ledger and assert
+  // the score recolours (freygish toward Infamy, lydian toward Standing, Ionian at neutral).
+  function mood() { return { pole: recolourState.pole, blend: recolourState.blend, scale: recolourState.scale }; }
+
+  return { start, setMute, update, setMix, setMood, setTownTheme, stinger, loopCue, lastCue, variation, mood };
 }

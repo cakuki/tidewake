@@ -1541,6 +1541,34 @@ try {
   if (!(aura.lawful.sail.roughness < aura.neutral.sail.roughness)) fail('ship-aura: a lawful canvas did not sheen (smoother/cared-for)');
   if (aura.restored.sail.color !== aura.neutral.sail.color || aura.restored.sail.emissiveIntensity !== aura.neutral.sail.emissiveIntensity) fail(`ship-aura: a neutral ledger did not restore the untouched ship exactly (${JSON.stringify(aura.restored)})`);
 
+  // 2j-5) The harmonic reputation needle (#132 Slice B, DL #5): the SAME signed lean, now AUDIBLE. The
+  // procedural bed's lead recolours its MODE off repLean — a fresh captain hears the honest D-major
+  // Ionian (blend 0); an infamous ledger leans the lead into a freygish "bite" (flat-2 → scale[1]===1);
+  // a lawful ledger brightens it to a warm Lydian voicing (raised-4 → scale[3]===6); a neutral ledger
+  // restores Ionian exactly. AudioContext-free here (no gesture → the music engine never starts): the
+  // recolour CAST is set from the lean every frame regardless, so it asserts headless via tw.harmony.
+  const harmony = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);            // clean slate: neutral, the honest hornpipe
+    const neutral = { ...tw.harmony, scale: [...tw.harmony.scale] };
+    tw.setInfamy(2000); tw.setStanding(0);   // a feared pirate
+    tw.step(0.1);
+    const infamous = { ...tw.harmony, scale: [...tw.harmony.scale] };
+    tw.setInfamy(0); tw.setStanding(2000);   // a respected governor
+    tw.step(0.1);
+    const lawful = { ...tw.harmony, scale: [...tw.harmony.scale] };
+    tw.newVoyage(); tw.step(0.1);            // back to a neutral ledger
+    const restored = { ...tw.harmony, scale: [...tw.harmony.scale] };
+    return { neutral, infamous, lawful, restored };
+  });
+  if (harmony.neutral.pole !== 'neutral' || harmony.neutral.blend !== 0) fail(`harmony: a fresh captain is not the neutral Ionian bed (${JSON.stringify(harmony.neutral)})`);
+  if (harmony.neutral.scale[3] !== 5 || harmony.neutral.scale[1] !== 2) fail(`harmony: the neutral bed is not the honest D-major Ionian (${JSON.stringify(harmony.neutral.scale)})`);
+  if (harmony.infamous.pole !== 'pirate' || !(harmony.infamous.blend > 0)) fail(`harmony: an infamous ledger did not recolour the lead toward the bite (${JSON.stringify(harmony.infamous)})`);
+  if (harmony.infamous.scale[1] !== 1 || harmony.infamous.scale[5] !== 8) fail(`harmony: the infamous voicing is not freygish/phrygian-dominant (flat-2 + flat-6) (${JSON.stringify(harmony.infamous.scale)})`);
+  if (harmony.lawful.pole !== 'governor' || !(harmony.lawful.blend > 0)) fail(`harmony: a lawful ledger did not brighten the lead (${JSON.stringify(harmony.lawful)})`);
+  if (harmony.lawful.scale[3] !== 6) fail(`harmony: the lawful voicing is not the warm raised-4th Lydian (${JSON.stringify(harmony.lawful.scale)})`);
+  if (harmony.restored.pole !== 'neutral' || harmony.restored.blend !== 0 || harmony.restored.scale[3] !== 5) fail(`harmony: a neutral ledger did not restore the honest Ionian bed exactly (${JSON.stringify(harmony.restored)})`);
+
   // 2k) Island names + landfall flavour (#19): every island carries a characterful name, and
   // the FIRST time you sail close to one, a one-time toast hails it by name with a comedic line.
   // Sail straight at the nearest isle and assert (1) it has a name, (2) the approach beat fired
