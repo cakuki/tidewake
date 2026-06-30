@@ -290,12 +290,14 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
     after the owner brief.
 14. **#80 — combat/harbour game-feel "juice" pass** (hit-stop, screenshake, camera punch; toggle-able).
     Pairs with #102's landfall punch + any #100 battle.
-15. **#90 — Ballad richer composition** — _PARTIAL, OPEN (Loop 82 + Loop 94): crew-morale verses + a
-    dominant-pole closing couplet + 3-variant pools (Loop 82), and a **"best of voyage" superlative line
-    — richest haul + fiercest foe, named, deterministic, save-free** (Loop 94, v0.0.20260630230030).
-    **Remains:** share-as-image PNG (needs canvas/visual verify) · economy/ladder-hook deed types (best
-    trade, coin milestones, rank, ports) · seeded "daily voyage" ballad · further mood/length variation._
-    deepens the #78 lever. P3.
+15. **#90 — Ballad richer composition** — _PARTIAL, OPEN (Loop 82 + Loop 94 + Loop 95): crew-morale verses +
+    a dominant-pole closing couplet + 3-variant pools (Loop 82), a **"best of voyage" superlative line
+    — richest haul + fiercest foe, named, deterministic, save-free** (Loop 94, v0.0.20260630230030), and
+    **share-as-image — a downloadable parchment PNG of the ballad** (the #78 viral hook; pure
+    `src/share-card.js` + a guarded DOM raster, gallery `ballad-share-image-149.png`, **SHIPPED & CLOSED as
+    #149**, Loop 95, v0.0.20260630231453). **Remains:** economy/ladder-hook deed types (best trade, coin
+    milestones, rank, ports) · seeded "daily voyage" ballad · PNG share via the Web Share API on mobile ·
+    further mood/length variation._ deepens the #78 lever. P3.
 16. **#92 — richer privateering** (faction/bounty + persisted Letter-of-Marque commission + more false
     ensigns) — **its bounty side feeds #112 rumour-payoff**. DL reservoir: **#82 crew chorus**,
     **#81 hull creak**, **#83 watercolour chart**, **#40/#35 Klezmer 'freygish' + procedural cannon
