@@ -24,6 +24,7 @@ import { createSailing } from './sailing.js';
 import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
 import { createCannons } from './cannons.js';
+import { createBattle, quarterViewPos, engageLine as battleEngageLine, fleeLine as battleFleeLine } from './systems/battle.js';
 import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
 import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading } from './systems/harbour.js';
@@ -282,7 +283,24 @@ const cannons = createCannons({
       hud.flashBanner('💥 Hull breached!',
         `${foeName} rakes you stem to stern — you break off and limp away, ${penalty.coins} coins lighter for the repairs.`);
     }
+    battle.end(); // a cannonade fought inside the deliberate stance resolves it (#135) — back under sail
   },
+});
+
+// Battle Mode shell (#135, slice 1): the DELIBERATE fight stance, on the #95 mode-switch infra.
+// Until now a fight was only ever reactive ('g' runs out the guns instantly). This adds the
+// Sid Meier's Pirates! beat the owner asked for — square up to a sail with E, the camera swings
+// to a quarter-view, the bed settles to battle music (#94), the world keeps sailing underneath,
+// and FLEE (E again) is always on the table. The cannonade (#59) is the teeth INSIDE the stance;
+// later slices (real-time broadside, loadouts, boarding, the expanded duel) layer on this arena.
+// Pure lifecycle + quarter-view geometry live in src/systems/battle.js; here we only drive it.
+const battle = createBattle({
+  npcs,
+  getShipPos: () => [state.pos.x, state.pos.z],
+  sfx: (kind) => audio.playDuelHit(kind),
+  onEnter: ({ foeName }) => hud.flashBanner(`⚔ BATTLE — ${foeName}`,
+    `${battleEngageLine()} (press E to break off)`),
+  onFlee: () => hud.flashBanner('⛵ You break off the fight', battleFleeLine()),
 });
 
 // Emergent at-sea encounter (#125, DL#4): while sailing the open sea you occasionally come upon a
@@ -592,6 +610,7 @@ addEventListener('pagehide', persistence.write);
 function newVoyage() {
   duel.cancel();
   cannons.cancel();
+  battle.end();                        // ...and breaks off any deliberate battle stance (#135)
   encounterRng = makeEncounterRng();   // a fresh voyage re-rolls the encounter cadence from a clean seed (#125)
   threatRng = makeThreatRng();         // ...and a clean home-port-threat dice sequence (#134)
   encounter.reset();                   // ...and meets no founderer mid-flight
@@ -623,7 +642,10 @@ function newVoyage() {
 }
 addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'n') newVoyage(); });
 
-// Combat controls — a fight is a CHOICE (#59):
+// Combat controls — a fight is a CHOICE (#59/#135):
+//   'e' ENGAGES the nearest ship in a deliberate BATTLE — square up to her, the camera swings to a
+//       quarter-view, the music settles. Press 'e' again to FLEE (always available). Inside the
+//       stance you fight with the verbs below.
 //   'f' HAILS the nearest ship for an Insult Broadside (talk them down); 1–4 fling a jab.
 //   'g' OPENS FIRE on the nearest ship with cannons (out-gun them); 1–2 pick where to aim.
 // Only one engagement runs at a time. (At sea the digit keys are free — the trade panel
@@ -635,6 +657,14 @@ addEventListener('keydown', (e) => {
   if (encounter.state.active) {
     if (e.key === '1') encounter.choose('rescue');
     else if (e.key === '2') encounter.choose('plunder');
+    return;
+  }
+  // Battle Mode shell (#135): 'e' is the deliberate stance toggle. FLEE is always available while
+  // engaged (so the commitment is real, never a trap); you can't break off mid-cannonade (the guns
+  // are already speaking — that resolves on its own). Engaging needs the helm free (under sail).
+  if (k === 'e') {
+    if (battle.state.active) { if (!cannons.state.active) battle.flee(); }
+    else if (mode.is(SAILING) && !duel.state.active && !cannons.state.active) battle.engage();
     return;
   }
   if (k === 'f') { if (!cannons.state.active) duel.tryChallenge(); return; }
@@ -1015,7 +1045,11 @@ const systems = createSystemsRegistry();
 //   fighting/paused/mode onto ctx for the systems below + the battle seam (#95/#100). No behaviour change.
 systems.register({ name: 'mode', order: 10, update: (f) => {
   f.fighting = duel.state.active || cannons.state.active;
-  if (f.fighting) { if (!mode.is(BATTLE)) mode.enter(BATTLE); }
+  // BATTLE is HELD by either a live cannonade/duel (reactive) OR the deliberate battle stance
+  // (#135): squaring up to a sail puts you in battle before a shot is fired, and a Flee returns
+  // the helm. A cannonade fought inside the stance ends it (battle.end in cannons.onEnd).
+  f.inBattle = f.fighting || battle.state.active;
+  if (f.inBattle) { if (!mode.is(BATTLE)) mode.enter(BATTLE); }
   else if (mode.is(BATTLE)) mode.leave();
   f.paused = mode.playerPaused; // true in TOWN/BATTLE: helm pauses, world keeps living
   f.mode = mode.current;
@@ -1072,6 +1106,17 @@ systems.register({ name: 'landfall-camera', order: 50, when: () => landfall.blen
   const az = f.state.pos.z - Math.cos(f.state.heading + 0.55) * 40;
   camera.position.lerp(new THREE.Vector3(ax, hy + 16, az), lfBlend); // mix(chase, ashore, blend)
   camera.lookAt(f.state.pos.x, hy + 8 - 3 * lfBlend, f.state.pos.z);  // settle the gaze onto the deck
+} });
+// — battle quarter-view (#135): while the deliberate stance is held (and no town gesture is in
+//   flight), swing the helm astern and to the ship's quarter so the player SEES their ship square
+//   up to the foe — the Sid Meier's Pirates! framing. Pure geometry in systems/battle.js; here we
+//   ease toward it so the swing reads as a crafted "change of stance", not a snap. Runs after the
+//   sailing chase-cam write (order 40), so it overrides the follow only while engaged.
+systems.register({ name: 'battle-camera', order: 52, when: () => battle.state.active && landfall.blend === 0, update: (f) => {
+  const hy = ship.position.y;
+  const [qx, qy, qz] = quarterViewPos([f.state.pos.x, f.state.pos.z], f.state.heading);
+  camera.position.lerp(new THREE.Vector3(qx, hy + qy, qz), Math.min(1, f.dt * 2.2)); // eased swing
+  camera.lookAt(f.state.pos.x, hy + 6, f.state.pos.z); // gaze holds on your own deck, foe off the quarter
 } });
 // — disguise disposition beats (#79/#91): only while the helm is free AND flying false colours
 //   (the `when` gate replaces the old inline `if (!paused && isDeceptive)`). Latches the seen-through
@@ -1636,6 +1681,12 @@ window.__tidewake = {
   get cannons() { return cannons.snapshot(); },
   openFire() { return cannons.openFire(); },
   cannonFire(aim) { return cannons.fire(aim); },
+  // Battle Mode shell (#135) QA surface: read the deliberate stance + drive it headlessly.
+  // engageBattle() squares up to the nearest ship (sets mode=BATTLE before a shot); fleeBattle()
+  // always breaks off. The mode getter below already reports BATTLE while the stance is held.
+  get battle() { return battle.snapshot(); },
+  engageBattle() { return battle.engage(); },
+  fleeBattle() { return battle.flee(); },
   // Foundering-ship encounter (#125) QA surface: read the live encounter (the founderer + the
   // choice/reward, or inactive), force a deterministic spawn (the spawn hook the contract asks
   // for), and make the choice headlessly. encounterChoose('rescue'|'plunder') resolves it.

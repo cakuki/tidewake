@@ -1,0 +1,138 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import {
+  createBattle, quarterViewPos, engageLine, fleeLine,
+} from '../../src/systems/battle.js';
+import { CHALLENGE_RANGE } from '../../src/duel.js';
+
+const half = () => 0.5; // deterministic rng
+
+// A fake npcs handle: one ship at a controllable distance from the origin.
+function fakeNpcs(ships) {
+  return { snapshot: () => ships };
+}
+
+test('quarterViewPos: heading 0 pulls the camera astern, to starboard, and lifts it', () => {
+  const [x, y, z] = quarterViewPos([0, 0], 0, { back: 95, side: 60, height: 52 });
+  // forward = +z at heading 0 → astern is -z; starboard is +x; height lifts y.
+  assert.ok(z < 0, 'camera sits astern (−z)');
+  assert.ok(x > 0, 'camera sits to starboard (+x)');
+  assert.equal(y, 52, 'camera lifted to the height');
+});
+
+test('quarterViewPos: the offset rotates with the heading (always behind-and-to-the-quarter)', () => {
+  // At heading π (facing −z), astern is +z and starboard flips to −x.
+  const [x, , z] = quarterViewPos([0, 0], Math.PI, { back: 95, side: 60, height: 52 });
+  assert.ok(z > 0, 'astern flips to +z when facing −z');
+  assert.ok(x < 0, 'starboard flips to −x when facing −z');
+});
+
+test('quarterViewPos: distance from the ship is stable regardless of heading', () => {
+  const d0 = Math.hypot(...quarterViewPos([0, 0], 0).filter((_, i) => i !== 1));
+  const d1 = Math.hypot(...quarterViewPos([0, 0], 1.3).filter((_, i) => i !== 1));
+  assert.ok(Math.abs(d0 - d1) < 1e-9, 'horizontal stand-off is heading-independent');
+});
+
+test('engage: squares up to a foe in range, becomes active, names the foe', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0], kind: 'merchant' }]),
+    getShipPos: () => [0, 0],
+    rng: half,
+  });
+  assert.equal(battle.state.active, false);
+  assert.equal(battle.inRange(), true);
+  assert.equal(battle.engage(), true);
+  assert.equal(battle.state.active, true);
+  assert.ok(battle.state.foeName.length > 0, 'a characterful foe name is set');
+  assert.equal(battle.snapshot().active, true);
+});
+
+test('engage: no-op when no ship is within range', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [CHALLENGE_RANGE + 50, 0] }]),
+    getShipPos: () => [0, 0],
+    rng: half,
+  });
+  assert.equal(battle.inRange(), false);
+  assert.equal(battle.engage(), false);
+  assert.equal(battle.state.active, false);
+});
+
+test('engage: idempotent no-op while already engaged', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    rng: half,
+  });
+  assert.equal(battle.engage(), true);
+  assert.equal(battle.engage(), false, 'a second engage while active does nothing');
+});
+
+test('flee: always ends an active stance and clears the foe', () => {
+  let fled = null;
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    onFlee: ({ foeName }) => { fled = foeName; },
+    rng: half,
+  });
+  battle.engage();
+  const foe = battle.state.foeName;
+  assert.equal(battle.flee(), true);
+  assert.equal(battle.state.active, false);
+  assert.equal(battle.state.foeName, '');
+  assert.equal(fled, foe, 'onFlee announces which foe you broke off from');
+});
+
+test('flee: no-op when not engaged', () => {
+  const battle = createBattle({ npcs: fakeNpcs([]), getShipPos: () => [0, 0] });
+  assert.equal(battle.flee(), false);
+});
+
+test('end: drops the stance with no flee flourish (cannonade-resolved / new voyage)', () => {
+  let fled = false;
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    onFlee: () => { fled = true; },
+    rng: half,
+  });
+  battle.engage();
+  battle.end();
+  assert.equal(battle.state.active, false);
+  assert.equal(fled, false, 'end() must not fire the flee flourish');
+});
+
+test('onEnter fires with the foe name on a real engagement', () => {
+  let entered = null;
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [5, 5] }]),
+    getShipPos: () => [0, 0],
+    onEnter: (info) => { entered = info; },
+    rng: half,
+  });
+  battle.engage();
+  assert.ok(entered && entered.foeName, 'onEnter receives the foe name');
+  assert.equal(entered.foeIndex, 0);
+});
+
+test('a throwing onEnter/onFlee subscriber never corrupts the stance', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [5, 5] }]),
+    getShipPos: () => [0, 0],
+    onEnter: () => { throw new Error('boom'); },
+    onFlee: () => { throw new Error('boom'); },
+    rng: half,
+  });
+  assert.equal(battle.engage(), true);
+  assert.equal(battle.state.active, true);
+  assert.equal(battle.flee(), true);
+  assert.equal(battle.state.active, false);
+});
+
+test('line pickers return on-tone strings from their pools', () => {
+  assert.equal(typeof engageLine(half), 'string');
+  assert.equal(typeof fleeLine(half), 'string');
+  assert.ok(engageLine(() => 0).length > 0);
+  assert.ok(fleeLine(() => 0.999).length > 0);
+});

@@ -174,6 +174,57 @@ try {
   if (cannon.engaged && cannon.result !== 'win') fail(`cannons engaged but did not resolve to a win (result=${cannon.result}, rounds=${cannon.rounds})`);
   if (cannon.engaged && !(cannon.infamyGain > 0)) fail(`cannon win did not award infamy (gain=${cannon.infamyGain})`);
 
+  // 2b3) Battle Mode shell (#135): the DELIBERATE fight stance. Sail to the nearest NPC, ENGAGE
+  // (squaring up flips the world to BATTLE mode before a shot is fired), confirm the world keeps
+  // living underneath (NPCs still move during the stance), then FLEE and confirm the helm returns
+  // to SAILING. Proves enter→stance→leave on the #95 mode infra with zero console errors.
+  const battle = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    function nearest() {
+      const s = tw.state.pos; // [x, y, z]
+      let best = null, bd = Infinity;
+      for (const n of tw.npcs) {           // n.pos = [x, z]
+        const d = Math.hypot(n.pos[0] - s[0], n.pos[1] - s[2]);
+        if (d < bd) { bd = d; best = n; }
+      }
+      return { best, bd };
+    }
+    tw.press('w');
+    let engaged = false;
+    for (let i = 0; i < 1500 && !engaged; i++) {
+      const { best, bd } = nearest();
+      if (!best) break;
+      if (bd <= 150) { engaged = tw.engageBattle(); if (engaged) break; }
+      const s = tw.state;
+      const desired = Math.atan2(best.pos[0] - s.pos[0], best.pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+    }
+    tw.release('w'); tw.release('a'); tw.release('d');
+    tw.step(0.05);                           // let the mode system fold the stance into mode.current
+    const enteredMode = tw.mode;             // should be 'battle' the instant we square up
+    const activeOnEnter = tw.battle.active;
+    // The world keeps living underneath the stance: an NPC should still move while we're paused.
+    const npc0 = tw.npcs[0] ? [...tw.npcs[0].pos] : null;
+    tw.step(1.0);
+    const npc1 = tw.npcs[0] ? [...tw.npcs[0].pos] : null;
+    const worldLived = npc0 && npc1 ? Math.hypot(npc1[0] - npc0[0], npc1[1] - npc0[1]) > 0 : true;
+    const fled = engaged ? tw.fleeBattle() : false;   // FLEE is always available
+    tw.step(0.2);
+    return { engaged, enteredMode, activeOnEnter, worldLived, fled, leftMode: tw.mode, activeAfter: tw.battle.active };
+  });
+  if (battle.engaged) {
+    if (battle.enteredMode !== 'battle') fail(`engaging battle did not enter BATTLE mode (mode=${battle.enteredMode})`);
+    if (!battle.activeOnEnter) fail('battle.active was false right after engaging');
+    if (!battle.worldLived) fail('the world froze during the battle stance (NPC did not move)');
+    if (!battle.fled) fail('fleeing an active battle returned false');
+    if (battle.leftMode !== 'sailing') fail(`fleeing battle did not return to SAILING (mode=${battle.leftMode})`);
+    if (battle.activeAfter) fail('battle.active stayed true after fleeing');
+  }
+
   // 2c) Route-planning map (#54): open the big chart, confirm the overlay is visible,
   // the chart drew (liveness counter) and the open-state is exposed, then close it.
   const bigmap = await page.evaluate(async () => {
