@@ -2,16 +2,16 @@
 
 The operating spec for the never-stopping delivery loop. **Companion files carry the detail — the
 orchestrator passes them by REFERENCE, never inlines them:** `studio/CONSTITUTION.md` (vision · roles ·
-tone), `studio/comms/OWNER-CHANNEL.md` (two-way Telegram: reporting, intake routing, video recipe),
-`studio/comms/queue.md` (next-slice queue), `studio/comms/rituals.md` (daily ritual schedule),
-`studio/comms/loop-state.md` (resume brain),
-`studio/agents/<role>.md` (role identities + reading lists), `studio/feedback/PM-DESK.md` (owner-feedback
-triage). **History → `docs/runbook/CHANGELOG.md` + `studio/retros/*` + `studio/comms/decisions.md`.**
+tone), `studio/comms/OWNER-CHANNEL.md` (release reporting OUT only; inbound owner/PM input is handled
+in a SEPARATE session, not the loop), `studio/comms/queue.md` (next-slice queue),
+`studio/comms/rituals.md` (daily ritual schedule), `studio/comms/loop-state.md` (resume brain),
+`studio/agents/<role>.md` (role identities + reading lists). **History → `docs/runbook/CHANGELOG.md`
++ `studio/retros/*` + `studio/comms/decisions.md`.**
 
 ## THE ONE RULE — orchestrate, don't execute (this is why the loop stays lean)
 The **orchestrator never does loop work in its own context.** Planning, building, QA, triage, retros,
-research — **all of it runs inside subagents** (the `Agent` tool). The orchestrator only: routes owner
-input, reads the queue's top line, **dispatches a subagent**, reads a **<10-line summary**, repeats.
+research — **all of it runs inside subagents** (the `Agent` tool). The orchestrator only: reads the
+queue's top line, **dispatches a subagent**, reads a **<10-line summary**, repeats.
 
 - **Knowledge goes by REFERENCE, never inlined.** A dispatch brief is ~6–10 lines of *pointers*
   (issue #, files to read, "follow the cycle-runner contract"). The **subagent reads the deep detail
@@ -22,19 +22,17 @@ input, reads the queue's top line, **dispatches a subagent**, reads a **<10-line
 - **Always dispatch via `Agent`.** If "it's a small change," it's still a subagent — main stays clean.
 
 ## Per-cycle protocol (the orchestrator's WHOLE job — keep it tiny)
-0. **Owner channel** — `scripts/owner-channel.sh peek`; route per `OWNER-CHANNEL.md` §3: pending-answer
-   → execute; thread reaction → continue; small ad-hoc ask → do inline; **planning → PM-desk subagent**;
-   visual bug → `owner-channel.sh photo --latest`, then dispatch. `from-owner` P1 preempts the queue.
-0.5. **Ritual check** — read local Berlin time + `studio/comms/rituals.md`. If a ritual is **due today**,
+1. **Ritual check** — read local Berlin time + `studio/comms/rituals.md`. If a ritual is **due today**,
    its day-of-week matches, and its **Last ran ≠ today** → **dispatch that ritual instead of a build
-   slice**, update its **Last ran**, done. (Run-late not skip; one ritual/cycle; a `from-owner` P1 still
-   preempts even a due ritual.) Rituals: morning briefing · weekly planning (Mon) · sleep/defrag ·
-   deep reading · pre-release hardening · daily release (every day except Fri, incl. weekends) /
-   weekly release (Fri) · daily retro.
-1. **Read the TOP item of `studio/comms/queue.md`** — just that line; **do not open the issue** (the
-   subagent will).
-2. **Dispatch ONE subagent** with the template below (re-dispatch once if it returns 0-tool-use/empty).
-3. **Read its <10-line summary and move on** — don't hold the transcript; don't edit `loop-state.md`
+   slice**, update its **Last ran**, done. (Run-late not skip; one ritual/cycle; a `from-owner` P1 at
+   the top of `queue.md` still preempts even a due ritual.) Rituals: morning briefing · weekly planning
+   (Mon) · sleep/defrag · deep reading · pre-release hardening · daily release (every day except Fri,
+   incl. weekends) / weekly release (Fri) · daily retro.
+2. **Read the TOP item of `studio/comms/queue.md`** — just that line; **do not open the issue** (the
+   subagent will). The queue's order is authoritative: a **separate PM session** keeps it sorted
+   (from-owner P1s land on top); the loop simply trusts the top line — it never polls Telegram.
+3. **Dispatch ONE subagent** with the template below (re-dispatch once if it returns 0-tool-use/empty).
+4. **Read its <10-line summary and move on** — don't hold the transcript; don't edit `loop-state.md`
    (the runner appends its own loop-log row).
 
 Stop **only** when the owner says stop. Survives compaction via `loop-state.md` + `queue.md`. Self-paced
@@ -69,14 +67,10 @@ sub-subagents** for heavy sub-work (a TL feasibility pass, a QA visual pass).
   as their own subagent; the deep-reading + sleep/defrag rituals **fan out one subagent per role (9 in
   parallel)**, each reading its own `studio/agents/<role>.md` reading list. Orchestrator keeps only the
   summaries.
-- **HARD trigger:** when the ritual check (per-cycle step 0.5) finds a ritual due, the *next*
+- **HARD trigger:** when the ritual check (per-cycle step 1) finds a ritual due, the *next*
   non-`from-owner`-P1 dispatch **IS** that ritual — don't perpetually defer it; one per cycle.
 - **Parallel batch** (default on disjoint files) → fan out one cycle-runner per disjoint slice; a batch
   crossing a shared state/save/event seam needs a one-line contract both sides assert (`comms/PARALLEL.md`).
-- **Owner planning input** → a **PM-desk-triage subagent** (reads `studio/feedback/PM-DESK.md`).
-  **After any PM-desk intake batch, re-sort `queue.md`'s top before the next build dispatch** (Retro 9)
-  — a flat "items to file" list in `loop-state.md` is not a prioritised queue; from-owner P1s must
-  land at the top, ahead of anything already shipped/queued, or a cold resume reads a stale top line.
 
 ## Cycle-runner contract (the SUBAGENT reads this; the orchestrator never inlines it)
 1. **Clean-tree check** (`git status`) — foreign uncommitted work you didn't create → STOP & report.
@@ -109,8 +103,9 @@ while the owner is actively writing in the shared tree.
 - Always shippable; **original work only** (never a named franchise); keep the public surface clean.
 - Favour **reactive verbs** (a world that responds to who you're becoming) over inert content; **depth
   over breadth**; make the arc *reachable* before deepening it.
-- **from-owner P1s jump the queue.** Owner sets **WHAT**; **PM + TL sequence WHEN** (value · complexity
-  · dependencies). Strategy/branding/architecture/spend → surface as options; never auto-adopt.
+- **from-owner P1s sit at the top of `queue.md`** — the **separate PM session** sequences the queue
+  (owner sets **WHAT**; PM + TL sequence **WHEN** by value · complexity · dependencies); the loop just
+  reads top-down. Strategy/branding/architecture/spend → surface as options; never auto-adopt.
 - **Device/iOS fixes** ship best-effort, marked **unconfirmed pending owner re-test**; don't stack
   dependent work on them until confirmed. Keep CI actions current; protect the Actions budget.
 - **Release cadence (owner, 2026-06-29):** per-commit pushes deploy to **PREVIEW** (always-fresh for the

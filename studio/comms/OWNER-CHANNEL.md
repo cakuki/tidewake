@@ -1,5 +1,12 @@
 # Owner channel — two-way Telegram comms protocol
 
+> **Scope note (owner decision, 2026-06-30).** Inbound message handling is **NO LONGER part of the
+> delivery loop** — it moved to a **separate session** the owner runs himself. For the delivery loop,
+> this file now documents **OUTBOUND release reporting only** (§2). The inbound routing protocol (§3,
+> §4) and `scripts/owner-channel.sh` remain the toolkit that the **separate PM session** uses; that
+> session sets `from-owner` priority by writing into `studio/comms/queue.md`, which the loop simply
+> reads top-down. The loop never polls Telegram for input.
+
 The studio's **live link to the owner (ckk / @cakuki, Telegram id `347889561`)**. It runs in **both
 directions** and is the studio's default way to report to and take direction from the owner while he
 is away from the terminal. This file is the single source of truth for how that channel behaves;
