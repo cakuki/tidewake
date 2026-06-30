@@ -207,6 +207,7 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
     round: 0,
     treachery: false, // was the duel opened under FALSE colours? (#79)
     targetKind: 'merchant', // the hailed vessel's disposition — pirate/merchant (#91)
+    boarded: false, // was this captain's duel reached by BOARDING a beaten ship? (#135 slice 4)
   };
   let enemy = null;
   let engagedColours = DEFAULT_COLOURS; // the colours flown the instant the hail went up
@@ -229,8 +230,14 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
   /** Is there a hailable ship within range right now? (drives the HUD prompt) */
   function inRange() { return !state.active && nearestInRange() !== -1; }
 
-  /** Hail the nearest NPC and open the duel. Returns true if a duel started. */
-  function tryChallenge() {
+  /**
+   * Hail the nearest NPC and open the duel. Returns true if a duel started.
+   * @param {{openingDent?:number, boarded?:boolean}} [opts] — a captain's duel reached by BOARDING
+   *   (#135 slice 4) opens with her crew already shaken by the deck brawl (`openingDent` off her
+   *   morale) and flags `boarded` so main.js frames the win as a CAPTURE (Standing). Defaults keep
+   *   the open-sea hail (the existing #33/#79/#91 callers) byte-identical.
+   */
+  function tryChallenge({ openingDent = 0, boarded = false } = {}) {
     if (state.active) return false;
     const idx = nearestInRange();
     if (idx === -1) return false;
@@ -251,7 +258,11 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
     state.enemyWeakTo = enemy.weakTo;
     state.enemyGuard = enemy.guard;
     state.playerMorale = MAX_MORALE;
-    state.enemyMorale = clampMorale(MAX_MORALE - surpriseDamage(engagedColours), MAX_MORALE);
+    // A boarded captain (#135 slice 4) starts already shaken by the deck brawl, on top of any
+    // false-colours surprise (#79). The dent is clamped so the duel is always still a real fight.
+    state.boarded = !!boarded;
+    state.enemyMorale = clampMorale(
+      MAX_MORALE - surpriseDamage(engagedColours) - Math.max(0, openingDent || 0), MAX_MORALE);
     state.maxMorale = MAX_MORALE;
     state.options = pickOptions(rng, enemy, 4);
     state.enemyLine = opener(rng);
@@ -336,6 +347,7 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
       round: state.round,
       treachery: state.treachery, // dueling under false colours (#79)
       targetKind: state.targetKind, // the foe's disposition — pirate/merchant (#91)
+      boarded: state.boarded, // reached by boarding a beaten ship (#135 slice 4)
       inRange: inRange(),
       options: state.options.map((o) => ({ id: o.id, category: o.category, line: o.line })),
     };

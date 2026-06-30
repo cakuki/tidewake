@@ -128,6 +128,13 @@ export function createHud() {
         dispatchEvent(new KeyboardEvent('keydown', { key: 'x', code: 'KeyX', bubbles: true }));
         return;
       }
+      // Tappable BOARD button (#135 slice 4): once she's beaten (≤30% hull), tap to board — dispatch the
+      // same F keydown the keyboard would, so main.js's boarding handler runs unchanged. Checked BEFORE
+      // FIRE because the touch board button reuses the .battle-fire class for layout.
+      if (e.target.closest('[data-board]')) {
+        dispatchEvent(new KeyboardEvent('keydown', { key: 'f', code: 'KeyF', bubbles: true }));
+        return;
+      }
       // Tappable FIRE button (#135 slice 2, touch only): tap to discharge the loaded broadside.
       if (TOUCH && e.target.closest('.battle-fire')) {
         dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
@@ -366,7 +373,10 @@ export function createHud() {
     // (or, on touch, by tapping the chip). Falls back gracefully if an older snapshot has no ammo.
     const ap = b.ammoProfile || null;
     const shotLabel = ap ? `${ap.icon} ${ap.name} · ${ap.tag}` : '';
-    const sig = `${b.foeName}|${pPct}|${ePct}|${loaded}|${inArc}|${qPct}|${b.lastLine}|${b.round}|${b.ammo || ''}`;
+    // Boarding (#135 slice 4): once she's beaten to ≤30% hull, a "Board!" finisher lights — sending the
+    // crew over the rail for a quick brawl, then her captain's verbal duel decides the prize.
+    const canBoard = !!b.canBoard;
+    const sig = `${b.foeName}|${pPct}|${ePct}|${loaded}|${inArc}|${qPct}|${b.lastLine}|${b.round}|${b.ammo || ''}|${canBoard}`;
     if (sig === lastBattleSig && $battle.classList.contains('show')) return;
     lastBattleSig = sig;
     $battle.innerHTML =
@@ -375,14 +385,20 @@ export function createHud() {
       + `<div class="duel-bar you"><div class="lab"><span>Your hull</span><span>${Math.round(b.playerHull)}</span></div><div class="meter"><div class="fill" style="width:${pPct}%"></div></div></div>`
       + `<div class="duel-bar them"><div class="lab"><span>Their hull</span><span>${Math.round(b.enemyHull)}</span></div><div class="meter"><div class="fill" style="width:${ePct}%"></div></div></div>`
       + '</div>'
-      + `<div class="battle-aim${ready ? ' hot' : ''}">${status}</div>`
+      + (canBoard
+        ? `<button class="battle-board" data-board="1" type="button" title="Board her">⚔ BOARD HER!${TOUCH ? '' : ' <span class="battle-shot-key">(F)</span>'}</button>`
+        : `<div class="battle-aim${ready ? ' hot' : ''}">${status}</div>`)
       + (shotLabel
         ? `<button class="battle-shot" data-shot="1" type="button" title="Cycle loaded shot">🎱 ${shotLabel}${TOUCH ? '' : ' <span class="battle-shot-key">(X)</span>'}</button>`
         : '')
       + `<div class="duel-line">“${b.lastLine || 'Steer for her beam and run out the guns.'}”</div>`
       + (TOUCH
-        ? `<button class="battle-fire" data-fire="1"${ready ? '' : ' disabled'}>🔥 FIRE</button>`
-        : `<div class="duel-help">Steer <b>A/D</b> abeam · <b>Space</b> fires · <b>X</b> cycles shot · <b>E</b> breaks off</div>`);
+        ? (canBoard
+          ? '<button class="battle-fire board" data-board="1">⚔ BOARD</button>'
+          : `<button class="battle-fire" data-fire="1"${ready ? '' : ' disabled'}>🔥 FIRE</button>`)
+        : (canBoard
+          ? '<div class="duel-help">She’s beaten — <b>F</b> to BOARD her, or keep firing to sink her</div>'
+          : '<div class="duel-help">Steer <b>A/D</b> abeam · <b>Space</b> fires · <b>X</b> cycles shot · <b>E</b> breaks off</div>'));
     $battle.classList.add('show');
   }
 

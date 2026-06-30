@@ -25,6 +25,7 @@ import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
 import { createCannons } from './cannons.js';
 import { createBattle, quarterViewPos, engageLine as battleEngageLine, fleeLine as battleFleeLine } from './systems/battle.js';
+import { brawlMoraleDent } from './systems/board.js';
 import { AMMO, AMMO_TYPES, ammoProfile, defaultLoadout, fitAmmo } from './systems/ammo.js';
 import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
@@ -221,6 +222,21 @@ const duel = createDuel({
   sfx: (kind) => audio.playDuelHit(kind),
   onEnd: ({ result, reward, penalty, enemyName }) => {
     if (result === 'win') {
+      if (duel.state.boarded) {
+        // Boarding capture (#135 slice 4): you took her DECK, not her keel — capturing a ship intact
+        // pays the GOVERNOR pole (Standing) on top of the swagger (Infamy). The verbal duel WAS the
+        // climax; winning it is the capture. (Sinking via the broadside stays pure Infamy.)
+        initEconomy(state);
+        const captureStanding = Math.max(8, Math.round(reward.renown * 0.5));
+        state.standing = Math.max(0, (state.standing || 0) + captureStanding);
+        syncRenown(state);
+        hud.flashBanner('⚔ Her deck is yours — CAPTURED!',
+          `You out-duel ${enemyName} across the wreck and take her intact: ${reward.coins}c, ${reward.renown} infamy, and +${captureStanding} standing for the prize.`);
+        const boardDeed = { type: 'duel', foe: enemyName, infamy: reward.renown, coins: reward.coins, captured: true, boarded: true };
+        logDeed(boardDeed);            // #78/#135 — the boarding capture sings into the Ballad
+        rememberPortDeed(boardDeed);   // #104b — the nearest port recalls the prize you took
+        return;
+      }
       if (reward.treachery) {
         // The smug last-second reveal — the foe's betrayed splutter (#79 CREATIVE SPARK).
         hud.flashBanner('🏴 The black flag snaps up!',
@@ -307,7 +323,17 @@ const battle = createBattle({
   getShipPos: () => [state.pos.x, state.pos.z],
   getShipHeading: () => state.heading, // slice 2: the broadside arc needs your heading vs the foe
   getLoadout: () => state.loadout,     // slice 3: the shot you fit at the town workshop
+  getCrewMorale: () => sanitizeMorale(state.morale), // slice 4: your crew's nerve feeds the boarding brawl (#124)
   onCycleAmmo: ({ ammo }) => { const a = ammoProfile(ammo); hud.flashBanner(`${a.icon} Load ${a.name}`, `${a.tag} — ${a.blurb}`); },
+  // Boarding → crew brawl → captain's duel (#135 slice 4): at ≤30% hull the crew swarms the rail for a
+  // quick comic brawl, then we HAND OFF to the verbal captain's duel (#33, the climax) — softened by the
+  // brawl margin. Capture = Standing / sink = Infamy is settled in the duel's onEnd (boarded = a capture).
+  onBoard: ({ foeName, brawl }) => {
+    const head = brawl.won ? '⚔ Boarders away — you carry the deck!' : '⚔ Boarders away — a brutal scrap!';
+    hud.flashBanner(head, `${brawl.lines.join(' ')} Now face ${foeName} across the deck — out-jeer her captain to take her!`);
+    battle.end();                                                                  // the broadside gives way to the boarding…
+    duel.tryChallenge({ openingDent: brawlMoraleDent(brawl.advantage), boarded: true }); // …and the captain's verbal duel is the climax (#33)
+  },
   sfx: (kind) => audio.playDuelHit(kind),
   // Real-time broadside spoils (#135 slice 2): sinking pays Infamy, a capture pays Standing, a
   // loss costs a few coins for repairs — the same ledger the turn-based cannonade writes to.
@@ -711,6 +737,13 @@ addEventListener('keydown', (e) => {
   // combat; you only cycle what's already at the rack. No-op outside the deliberate stance.
   if (k === 'x') {
     if (battle.state.active && !cannons.state.active && !duel.state.active) battle.cycleShot();
+    return;
+  }
+  // Boarding (#135 slice 4): in the deliberate stance F = BOARD once she's beaten to ≤30% hull — the
+  // crew swarms the rail for a quick brawl, then her captain's verbal duel (#33) is the climax. In the
+  // stance F NEVER opens a fresh open-sea hail (you board the foe you're already fighting).
+  if (k === 'f' && battle.state.active) {
+    if (!cannons.state.active && !duel.state.active && battle.canBoard()) battle.board();
     return;
   }
   if (k === 'f') { if (!cannons.state.active) duel.tryChallenge(); return; }
@@ -1755,6 +1788,14 @@ window.__tidewake = {
   // fitted shot mid-fight; the battle snapshot carries `ammo`/`ammoProfile`/`loadout`. The fitted
   // locker (what you fit at the town workshop) is `loadout`; fitAmmoType(id) toggles a shot in it.
   battleCycleShot() { return battle.cycleShot(); },
+  // Boarding (#135 slice 4): boardBattle() sends the crew over the rail once she's beaten to ≤30% hull
+  // (battle.snapshot().canBoard) — it resolves the comic crew brawl, then hands off to the verbal
+  // captain's duel (#33). After it, tw.battle.active is false and tw.duel.active is true (boarded=true).
+  boardBattle() { return battle.board(); },
+  // QA-only (#135 slice 4): beat the engaged foe's hull straight down to the boardable window, so a
+  // headless test can reach the Board! prompt deterministically without grinding live volleys (which
+  // can sink or capture her first). Mirrors encounterSpawn()'s force-a-state hook. No-op un-engaged.
+  battleWeaken() { if (battle.state.active) battle.state.enemyHull = Math.round(battle.state.maxHull * 0.25); return battle.snapshot(); },
   get loadout() { return (state.loadout || []).slice(); },
   get ammoCatalogue() { return AMMO_TYPES.map((id) => ({ id, ...AMMO[id] })); },
   fitAmmoType(id) { state.loadout = fitAmmo(state.loadout, id); town.render(); return state.loadout.slice(); },

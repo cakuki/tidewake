@@ -284,6 +284,15 @@
     #battle .battle-shot:hover { filter: brightness(1.1); }
     #battle .battle-shot:active { transform: translateY(1px); }
     #battle .battle-shot-key { color: #ffce7a; font-weight: 800; }
+    /* BOARD finisher (#135 slice 4) — lights once she's beaten to ≤30% hull; sends the crew over the
+       rail, then her captain's verbal duel decides the prize. A gold call-to-action that pulses. */
+    #battle .battle-board { display: block; width: 100%; margin: 8px 0 2px; pointer-events: auto; cursor: pointer;
+      font-family: inherit; font-size: 14px; font-weight: 800; letter-spacing: .04em; color: #2a1a06;
+      background: linear-gradient(90deg, #ffd23f, #ffae3f); border: none; border-radius: 9px; padding: 11px;
+      box-shadow: 0 0 14px rgba(255,200,70,.5); animation: boardPulse 1.1s ease-in-out infinite; }
+    #battle .battle-fire.board { background: linear-gradient(90deg, #ffd23f, #ffae3f); color: #2a1a06; }
+    #battle .battle-board-key, #battle .battle-board .battle-shot-key { color: #7a4a00; font-weight: 900; }
+    @keyframes boardPulse { 0%,100% { box-shadow: 0 0 10px rgba(255,200,70,.4); } 50% { box-shadow: 0 0 18px rgba(255,200,70,.7); } }
     /* Foundering-ship choice panel (#125) — the rescue-vs-plunder moral beat, in a teal distress
        accent. Reuses the duel panel's inner line/opts classes, scoped here with its own colour. */
     #encounter {

@@ -29,6 +29,7 @@ import {
   defeatLine, strikeLine, fireQuip, MAX_HULL, MORALE_MAX,
 } from '../cannons.js';
 import { ammoProfile, cycleAmmo, AMMO_TYPES } from './ammo.js';
+import { canBoard as canBoardHull, resolveBrawl } from './board.js';
 
 // Slice 2 (#135) tunables — the Game Designer's fun-shaping numbers:
 //   RELOAD_SECONDS — how long the gun deck takes to swab and reload between volleys, so the
@@ -135,7 +136,7 @@ export function broadsideAim([sx, sz], heading, [fx, fz], { arcThreshold = ARC_T
 //   reloadSeconds : how long the guns take to reload between volleys (slice 2)
 
 export function createBattle({
-  npcs, getShipPos, getShipHeading, getLoadout, onEnter, onFlee, onResolve, onCycleAmmo,
+  npcs, getShipPos, getShipHeading, getLoadout, getCrewMorale, onEnter, onFlee, onResolve, onCycleAmmo, onBoard,
   applyReward, applyPenalty, sfx, rng = Math.random, reloadSeconds = RELOAD_SECONDS,
 } = {}) {
   // The fitted shot locker (#135 slice 3) — what you fit at the town workshop. The cycle key walks
@@ -165,6 +166,8 @@ export function createBattle({
     lastLine: '',     // a quip / the bosun's nudge / the foe's parting cry
     lastSide: 'starboard',
     ammo: 'round',    // the LOADED shot (#135 slice 3) — cycled mid-fight from the fitted loadout
+    boarded: false,   // slice 4 — has the crew gone over the rail this engagement?
+    brawl: null,      // slice 4 — the resolved deck-brawl beat ({won, advantage, lines}), for the HUD/QA
   };
   let foe = null;
 
@@ -194,6 +197,8 @@ export function createBattle({
     state.enemyHull = MAX_HULL;
     state.enemyMorale = MORALE_MAX;
     state.reload = 0;
+    state.boarded = false;
+    state.brawl = null;
     foe = null;
   }
 
@@ -216,6 +221,8 @@ export function createBattle({
     state.result = null;
     state.lastLine = '';
     state.lastSide = 'starboard';
+    state.boarded = false;
+    state.brawl = null;
     state.ammo = loadout()[0]; // load the first fitted shot (round, by default) as you square up
     ping('challenge'); // colours up, gunports ready
     if (onEnter) {
@@ -341,6 +348,43 @@ export function createBattle({
     return state.ammo;
   }
 
+  /**
+   * Is the foe beaten down enough to grapple and BOARD her (#135 slice 4)? True once her hull is at
+   * or below BOARD_HULL_FRACTION — the "Board! at ≤30% hull" prompt lights, the broadside becomes a
+   * finisher. PURE-derived from the live engagement; never while un-engaged or already boarded.
+   */
+  function canBoard() {
+    if (!state.active || !foe || state.boarded) return false;
+    return canBoardHull({ enemyHull: state.enemyHull, maxHull: state.maxHull });
+  }
+
+  /**
+   * Send the crew over the rail (#135 slice 4) — a quick auto crew brawl (crew × morale × loadout, with
+   * 2–3 comic lines), then HAND OFF to the verbal captain's duel (#33, the climax). No-op unless she's
+   * boardable. main.js wires `onBoard` to end the stance and open `duel.tryChallenge` with the brawl's
+   * opening dent. Returns the resolved brawl, or null. The duel is THE decider — the brawl is the bridge.
+   */
+  function board() {
+    if (!canBoard()) return null;
+    const brawl = resolveBrawl({
+      crewMorale: (getCrewMorale && getCrewMorale()) ?? MORALE_MAX,
+      maxMorale: MORALE_MAX,
+      loadout: loadout(),
+      foeMorale: state.enemyMorale,
+      foeHull: state.enemyHull,
+      maxHull: state.maxHull,
+    }, rng);
+    state.boarded = true;
+    state.brawl = brawl;
+    state.lastLine = brawl.lines[0] || '';
+    ping('challenge'); // grapples bite, crew over the rail
+    if (onBoard) {
+      try { onBoard({ foeName: state.foeName, foeIndex: state.foeIndex, brawl }); }
+      catch { /* a flourish must never break the boarding hand-off */ }
+    }
+    return brawl;
+  }
+
   // A plain, JSON-safe snapshot for the window.__tidewake QA hook + the HUD.
   function snapshot() {
     const a = aim();
@@ -367,8 +411,12 @@ export function createBattle({
       ammo: state.ammo,
       ammoProfile: ammoProfile(state.ammo),
       loadout: loadout().slice(),
+      // Boarding (#135 slice 4): the Board! prompt lights at ≤30% hull; the resolved brawl beat reads here.
+      canBoard: canBoard(),
+      boarded: state.boarded,
+      brawl: state.brawl ? { won: state.brawl.won, advantage: state.brawl.advantage, lines: state.brawl.lines.slice() } : null,
     };
   }
 
-  return { state, engage, flee, end, fire, tick, aim, cycleShot, inRange, nearestInRange, snapshot };
+  return { state, engage, flee, end, fire, tick, aim, cycleShot, canBoard, board, inRange, nearestInRange, snapshot };
 }

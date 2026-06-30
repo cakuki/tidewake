@@ -323,3 +323,64 @@ test('cycleShot does not reset an in-progress reload (you swap the rack, not re-
   battle.cycleShot();
   assert.equal(battle.snapshot().reload, r, 'the reload timer is untouched by a shot swap');
 });
+
+// ---- Boarding → crew brawl → captain's-duel hand-off (#135 slice 4) -------------------
+
+test('canBoard: false until the foe is beaten to ≤30% hull, then true', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    rng: half,
+  });
+  battle.engage();
+  assert.equal(battle.canBoard(), false, 'a full-hull foe is not boardable');
+  assert.equal(battle.snapshot().canBoard, false);
+  battle.state.enemyHull = battle.state.maxHull * 0.30; // beat her down to the line
+  assert.equal(battle.canBoard(), true, 'at ≤30% hull she is boardable');
+  assert.equal(battle.snapshot().canBoard, true);
+});
+
+test('canBoard: false while un-engaged or already boarded', () => {
+  const battle = createBattle({ npcs: fakeNpcs([{ pos: [10, 0] }]), getShipPos: () => [0, 0], rng: half });
+  assert.equal(battle.canBoard(), false, 'no stance → no boarding');
+  battle.engage();
+  battle.state.enemyHull = 10;
+  battle.board();
+  assert.equal(battle.state.boarded, true);
+  assert.equal(battle.canBoard(), false, 'cannot board twice in one engagement');
+});
+
+test('board: no-op unless she is beaten down (returns null, fires no hand-off)', () => {
+  let handed = 0;
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    onBoard: () => { handed++; },
+    rng: half,
+  });
+  battle.engage();
+  assert.equal(battle.board(), null, 'a full-hull foe cannot be boarded');
+  assert.equal(handed, 0, 'no hand-off fires');
+});
+
+test('board: resolves a comic brawl and hands the foe off for the captain duel', () => {
+  let handed = null;
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    getCrewMorale: () => 100,
+    getLoadout: () => ['round', 'grape'],
+    onBoard: (info) => { handed = info; },
+    rng: half,
+  });
+  battle.engage();
+  battle.state.enemyHull = battle.state.maxHull * 0.2;
+  battle.state.enemyMorale = 18;
+  const brawl = battle.board();
+  assert.ok(brawl, 'board returns the resolved brawl');
+  assert.ok(Array.isArray(brawl.lines) && brawl.lines.length >= 2, 'the brawl narrates 2–3 comic lines');
+  assert.ok(handed && handed.foeName, 'onBoard hands the foe off (for duel.tryChallenge)');
+  assert.equal(handed.brawl, brawl, 'the hand-off carries the brawl result (advantage feeds the duel dent)');
+  assert.equal(battle.state.boarded, true, 'the engagement is marked boarded');
+});

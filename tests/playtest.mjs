@@ -350,6 +350,77 @@ try {
     console.warn('  (#135 slice 3 ammo-cycle: no foe came in range to engage — skipped, like slice 2)');
   }
 
+  // 2b6) Boarding → crew brawl → verbal captain duel (#135 slice 4): once a foe is beaten to ≤30%
+  // hull a "Board!" finisher lights — sending the crew over the rail for a comic brawl, then handing
+  // off to the verbal captain's duel (#33, the climax). Winning the boarded duel is a CAPTURE (Standing).
+  // Driven headlessly: engage, weaken her to the board window, board, then resolve the captain's duel.
+  const boarding = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return { bi, bd };
+    }
+    tw.press('w');
+    let engaged = false;
+    for (let i = 0; i < 1500 && !engaged; i++) {
+      const { bi, bd } = nearest();
+      if (bi === -1) break;
+      if (bd <= 150) { engaged = tw.engageBattle(); if (engaged) break; }
+      const s = tw.state;
+      const desired = Math.atan2(tw.npcs[bi].pos[0] - s.pos[0], tw.npcs[bi].pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+    }
+    tw.release('w');
+    if (!engaged) return { engaged };
+    // Not boardable while she's at full hull.
+    const boardableFresh = tw.battle.canBoard;
+    // Beat her hull into the board window, then the Board! prompt should light.
+    tw.battleWeaken();
+    const boardableWeak = tw.battle.canBoard;
+    const standingBefore = tw.state.standing;
+    // BOARD: resolves the comic crew brawl, then hands off to the verbal captain's duel.
+    const brawl = tw.boardBattle();
+    const battleEndedOnBoard = !tw.battle.active;     // the broadside gives way to the boarding
+    const duelOpened = tw.duel.active;                // the captain's verbal duel is the climax
+    const duelIsBoarded = tw.duel.boarded;            // flagged a capture (Standing)
+    // Win the captain's duel — pick the sharpest jab each round (QA exposes the weakness).
+    let result = null;
+    for (let r = 0; r < 40 && tw.duel.active; r++) {
+      const d = tw.duel;
+      let idx = d.options.findIndex((o) => o.category === d.enemyWeakTo);
+      if (idx < 0) idx = 0;
+      tw.duelChoose(idx);
+      result = tw.duel.result;
+    }
+    const standingAfter = tw.state.standing;
+    return {
+      engaged, boardableFresh, boardableWeak,
+      brawlLines: brawl && brawl.lines ? brawl.lines.length : 0,
+      battleEndedOnBoard, duelOpened, duelIsBoarded, result,
+      standingGained: standingAfter - standingBefore,
+    };
+  });
+  if (boarding.engaged) {
+    if (boarding.boardableFresh) fail('boarding: a full-hull foe should NOT be boardable (#135 slice 4)');
+    if (!boarding.boardableWeak) fail('boarding: a foe beaten to ≤30% hull did not light the Board! prompt (#135 slice 4)');
+    if (!(boarding.brawlLines >= 2)) fail(`boarding: the crew brawl narrated <2 comic lines (got ${boarding.brawlLines}) (#135 slice 4)`);
+    if (!boarding.battleEndedOnBoard) fail('boarding: the broadside stance did not end when the crew boarded (#135 slice 4)');
+    if (!boarding.duelOpened) fail('boarding: boarding did not hand off to the verbal captain duel (#33) (#135 slice 4)');
+    if (!boarding.duelIsBoarded) fail('boarding: the captain duel was not flagged as boarded (capture framing) (#135 slice 4)');
+    if (boarding.result !== 'win') fail(`boarding: the captain duel did not resolve to a win (result=${boarding.result}) (#135 slice 4)`);
+    if (!(boarding.standingGained > 0)) fail(`boarding: a captured prize paid no Standing (gained ${boarding.standingGained}) (#135 slice 4)`);
+  } else {
+    console.warn('  (#135 slice 4 boarding: no foe came in range to engage — skipped, like slice 2/3)');
+  }
+
   // 2c) Route-planning map (#54): open the big chart, confirm the overlay is visible,
   // the chart drew (liveness counter) and the open-state is exposed, then close it.
   const bigmap = await page.evaluate(async () => {
@@ -2044,7 +2115,7 @@ try {
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
   console.log(`leak-invariant (#121): ${leak.N}× mode cycles · geom ${leak.baseline.geometries}→${leak.final.geometries} (+${leak.geomGrowth}) · tex ${leak.baseline.textures}→${leak.final.textures} (+${leak.texGrowth}) · worst transition ${leak.worstTransition.drawCalls} draws/${leak.worstTransition.triangles} tris`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, leak, broadside, ammoCycle, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, leak, broadside, ammoCycle, boarding, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));
