@@ -8,6 +8,8 @@ import {
   scaleDegreeToMidi,
   degreeToFreq,
   speedToIntensity,
+  wakeBedGain,
+  WAKE_FLOOR,
   melodyPattern,
   bassPattern,
   MAJOR_SCALE,
@@ -88,6 +90,36 @@ test('speedToIntensity: in [0,1], monotonic non-decreasing, bounded', () => {
     assert.ok(v >= prev, `not monotonic at ${s}`);
     assert.ok(v >= 0 && v <= 1, `out of range at ${s}: ${v}`);
     prev = v;
+  }
+});
+
+test('wakeBedGain: becalmed floor, concave rise, saturates at speed (#150 wake/helm water-bed)', () => {
+  const MAX = 55;
+  // Becalmed with the helm amidships → just the gentle lapping floor (never silent, never loud).
+  assert.ok(Math.abs(wakeBedGain(0, MAX, 0) - WAKE_FLOOR) < 1e-12, 'becalmed -> floor');
+  assert.ok(WAKE_FLOOR > 0 && WAKE_FLOOR < 0.2, 'floor is a soft lap, audible but quiet');
+  // Full sail with no helm → the layer reaches full (1.0): sailing sounds like fast water.
+  assert.ok(Math.abs(wakeBedGain(MAX, MAX, 0) - 1) < 1e-12, 'full sail -> 1');
+  assert.equal(wakeBedGain(999, MAX, 0), 1, 'clamps above max');
+  // Monotonic non-decreasing in speed, always in [0,1].
+  let prev = -1;
+  for (let s = 0; s <= MAX; s += 5) {
+    const v = wakeBedGain(s, MAX, 0);
+    assert.ok(v >= prev, `not monotonic at ${s}`);
+    assert.ok(v >= 0 && v <= 1, `out of range at ${s}: ${v}`);
+    prev = v;
+  }
+  // Concave (fills early, plateaus): half speed already past the midpoint of the rise.
+  const half = wakeBedGain(MAX / 2, MAX, 0);
+  assert.ok(half > (WAKE_FLOOR + 1) / 2, 'concave: half-speed wash is already past halfway');
+  // The helm CHURNS extra wash — but only while making way (a turn at rest barely laps).
+  assert.ok(wakeBedGain(MAX * 0.6, MAX, 1) > wakeBedGain(MAX * 0.6, MAX, 0), 'hard turn at speed adds wash');
+  assert.ok(Math.abs(wakeBedGain(0, MAX, 1) - wakeBedGain(0, MAX, 0)) < 1e-9, 'turning becalmed adds ~no wash');
+  // Robust: bad/zero maxSpeed, junk helm, negative inputs never NaN/throw, stay in range.
+  assert.equal(wakeBedGain(10, 0, 0), WAKE_FLOOR, 'maxSpeed 0 -> floor, no NaN');
+  for (const [sp, mx, hl] of [[NaN, MAX, 0], [-5, MAX, 0], [20, MAX, NaN], [20, MAX, 9], [20, MAX, -3]]) {
+    const v = wakeBedGain(sp, mx, hl);
+    assert.ok(Number.isFinite(v) && v >= 0 && v <= 1, `junk (${sp},${mx},${hl}) -> finite [0,1], got ${v}`);
   }
 });
 

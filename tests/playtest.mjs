@@ -52,9 +52,11 @@ try {
   const result = await page.evaluate(async () => {
     const tw = window.__tidewake;
     const start = tw.state;
+    const wakeBecalmed = tw.wake;   // #150: the gentle lap before we make way
     tw.press('w');
     tw.step(3);            // deterministic 3s of simulation, frame-rate independent
     const moving = tw.state;
+    const wakeMoving = tw.wake;     // #150: the wash should well up with speed
     tw.release('w');
     // Minimap (#16): canvas exists, has a non-zero size, and is live — it just rendered
     // a stack of frames during the step (swiftshader can't read 2D pixels back, so we
@@ -78,6 +80,8 @@ try {
       startSpeed: start.speed,
       movingSpeed: moving.speed,
       distance: Math.hypot(moving.pos[0] - start.pos[0], moving.pos[2] - start.pos[2]),
+      wakeBecalmed,
+      wakeMoving,
       minimap,
     };
   });
@@ -2171,6 +2175,10 @@ try {
   if (errors.length) fail(`console errors:\n  ${errors.join('\n  ')}`);
   if (!(result.movingSpeed > 1)) fail(`ship did not accelerate (speed=${result.movingSpeed})`);
   if (!(result.distance > 5)) fail(`ship did not move (distance=${result.distance})`);
+  // Continuous WAKE/HELM water-bed (#150): becalmed is a gentle lap (audible, never silent), and the
+  // wash wells UP as the ship makes way — sailing sounds like moving water. Drive read AudioContext-free.
+  if (!(result.wakeBecalmed > 0)) fail(`wake water-bed silent when becalmed (drive=${result.wakeBecalmed}) (#150)`);
+  if (!(result.wakeMoving > result.wakeBecalmed)) fail(`wake water-bed did not swell with speed (becalmed=${result.wakeBecalmed}, moving=${result.wakeMoving}) (#150)`);
   if (!result.minimap.exists) fail('minimap canvas (#minimap) missing');
   if (!(result.minimap.w > 0 && result.minimap.h > 0)) fail(`minimap has zero size (${result.minimap.w}x${result.minimap.h})`);
   if (!(result.minimap.frames > 0)) fail('minimap never rendered a frame');

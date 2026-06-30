@@ -92,6 +92,36 @@ export function speedToIntensity(speed, maxSpeed) {
   return clamp01(maxSpeed > 0 ? speed / maxSpeed : 0);
 }
 
+// --- Continuous WAKE/HELM water-bed (#150, the #81 cheap cousin) ---
+// A soft, always-on procedural water wash whose loudness tracks how hard the ship is moving water:
+// a gentle lap when becalmed, swelling to a full rush at speed, with extra churn thrown when the
+// helm is over. Fun-shaping numbers (Game Designer's call) tuned so the wash is *present the moment
+// you make way* (concave curve) and never silent (a living sea always laps).
+
+/** Becalmed floor — the gentle lapping that's always there, even hove-to. Soft but audible. */
+export const WAKE_FLOOR = 0.08;
+/** How much a hard-over helm adds to the wash AT SPEED (churned wake on a turn). */
+export const WAKE_HELM_CHURN = 0.14;
+
+/**
+ * PURE — ship motion → the wake water-bed's drive gain in [0,1]. Speed-driven (a concave rise that
+ * fills early and saturates at full sail, so making way *immediately* sounds wetter) lifted off a
+ * small becalmed FLOOR, plus a helm-churn term that only bites while moving (a turn at rest barely
+ * laps). Monotonic non-decreasing in speed; clamped; junk/zero/negative inputs fail safe to the
+ * floor — never NaN, never throws.
+ * @param {number} speed     world units/sec
+ * @param {number} maxSpeed  world units/sec at full sail
+ * @param {number} [helm]    eased rudder, |helm| in [0,1] (0 = amidships, 1 = hard over)
+ * @returns {number} drive gain in [WAKE_FLOOR, 1]
+ */
+export function wakeBedGain(speed, maxSpeed, helm = 0) {
+  const sp = clamp01(maxSpeed > 0 ? (Number(speed) || 0) / maxSpeed : 0);
+  const curve = Math.sqrt(sp);                       // concave: audible early, saturates at speed
+  const h = clamp01(Math.abs(Number(helm) || 0));
+  const churn = WAKE_HELM_CHURN * h * curve;         // a hard turn churns wash — but only when moving
+  return clamp01(WAKE_FLOOR + (1 - WAKE_FLOOR) * curve + churn * (1 - curve));
+}
+
 // ---- The composition (D major, hornpipe lilt) ----
 
 export const BEATS_PER_BAR = 4;
@@ -176,6 +206,12 @@ export function createMusic() {
   let portChordOscs = null; // the 4 drone oscillators — re-tuned per town (transposition, #69)
   let currentTownTheme = null; // the last per-town identity set (applied on start once the engine is up)
   let leadBus = null;       // soft lowpass colouring the lead
+  // Continuous WAKE/HELM water-bed (#150): one always-on filtered-noise wash under musicGain whose
+  // gain is driven each frame from ship speed + helm — fuller at speed, a gentle lap when becalmed.
+  // The pure drive (wakeBedGain) is computed every frame even headless (no ctx) and stored on
+  // `wakeDrive` so a playtest can assert the wash tracks the helm WITHOUT opening an AudioContext.
+  let wakeGain = null;      // the water-bed's own gain node under musicGain (mute covers it)
+  let wakeDrive = WAKE_FLOOR; // QA surface: the last pure drive [0,1], headless-assertable
   let started = false;
   let muted = false;
   let intensity = 0;      // 0..1, set by update() from ship speed
@@ -298,6 +334,50 @@ export function createMusic() {
       osc.start(time);
       osc.stop(end + 0.02);
     }
+  }
+
+  // A couple of seconds of white noise, looped — the raw material for the wake water-bed.
+  function makeNoiseBuffer(seconds) {
+    const len = Math.max(1, Math.floor(ctx.sampleRate * seconds));
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+
+  // The continuous WAKE/HELM water-bed (#150, the #81 cheap cousin): one always-on layer of
+  // lowpassed looping noise — the rush of water under the hull — with a slow swell LFO so it breathes
+  // and never tiles audibly. Built once on start() and left running; its gain rides the pure
+  // wakeBedGain() drive (speed + helm) set each frame by update(). Routes through musicGain so the
+  // existing mute AND the per-frame intensity swell already cover it. Cheap: one source + filter + LFO.
+  const WAKE_PEAK = 0.16; // node-gain ceiling — the wash sits UNDER the melody, never masks it
+  function buildWakeBed() {
+    wakeGain = ctx.createGain();
+    wakeGain.gain.value = WAKE_PEAK * wakeDrive; // start at the becalmed lap, not silent
+    wakeGain.connect(musicGain);
+
+    const noise = makeNoiseBuffer(2.0);
+    const src = ctx.createBufferSource();
+    src.buffer = noise;
+    src.loop = true;
+
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 620;  // dark, watery — the wash under the hull, not hiss
+    lp.Q.value = 0.5;
+    src.connect(lp).connect(wakeGain);
+
+    // A slow swell so the wash rises and falls like a living sea (detuned from audio.js's wave LFO
+    // so the two never phase-lock into an audible loop).
+    const swell = ctx.createOscillator();
+    swell.type = 'sine';
+    swell.frequency.value = 0.085;
+    const swellDepth = ctx.createGain();
+    swellDepth.gain.value = 0.02;
+    swell.connect(swellDepth).connect(wakeGain.gain);
+    swell.start();
+
+    src.start();
   }
 
   // --- Port/tavern layer (#94): a warm, lowpassed D-major chord drone with a gentle
@@ -511,6 +591,7 @@ export function createMusic() {
       // Apply any lean set before the engine came up so the recolour is already cast on the first note.
       setMood(recolourState);
 
+      buildWakeBed();
       buildPortLayer();
       // Apply any per-town identity chosen before the engine came up (#69) — so the drone is
       // already in the nearest port's key the instant the audio bus starts.
@@ -533,6 +614,7 @@ export function createMusic() {
       seaLayerGain = null;
       recolourGain = null;
       recolourBus = null;
+      wakeGain = null;
       portLayerGain = null;
       portLP = null;
       portTremLfo = null;
@@ -624,6 +706,11 @@ export function createMusic() {
       const maxSpeed = Number(state?.maxSpeed) || 55;
       intensity = speedToIntensity(speed, maxSpeed);
 
+      // Continuous WAKE/HELM water-bed (#150): the pure drive (speed + |helm|) is computed EVERY
+      // frame, even headless (no ctx) — stored for the QA surface — BEFORE the engine-up early return,
+      // so a playtest can swing the helm and assert the wash tracks it without an AudioContext.
+      wakeDrive = wakeBedGain(speed, maxSpeed, state?.rudder);
+
       // Mode-aware mix (#94): the pure resolver maps WHERE the player is (mode + port distance)
       // → per-layer target gains; setMix ramps the sea/port crossfade. Safe with partial state
       // (defaults to the open-sea bed), so legacy callers keep the sailing theme unchanged.
@@ -640,7 +727,11 @@ export function createMusic() {
 
       if (!ctx || !musicGain || muted) return;
       // Gentle overall swell with intensity, on top of the per-note adaptivity.
-      musicGain.gain.setTargetAtTime(BASE_LEVEL * (0.85 + 0.15 * intensity), ctx.currentTime, 0.5);
+      const now = ctx.currentTime;
+      musicGain.gain.setTargetAtTime(BASE_LEVEL * (0.85 + 0.15 * intensity), now, 0.5);
+      // Ride the wake water-bed to its speed/helm-driven drive — a smooth glide so a gust of speed
+      // or a swung helm wells the wash up without zippering (#150).
+      if (wakeGain) wakeGain.gain.setTargetAtTime(WAKE_PEAK * wakeDrive, now, 0.4);
     } catch {
       /* a bad frame must never throw */
     }
@@ -672,6 +763,11 @@ export function createMusic() {
   // QA surface (#116 f/u): the name of the most recently armed LAYERED cue (the coin chime, or null).
   function lastUnder() { return lastUnderCue; }
 
+  // QA surface (#150): the continuous wake water-bed's current pure drive [0,1] — set every frame by
+  // update() from ship speed + helm, even with NO AudioContext — so a headless playtest can make way /
+  // swing the helm and assert the wash wells up and the becalmed lap settles, AudioContext-free.
+  function wakeLevel() { return wakeDrive; }
+
   // Seeded per-pass variation QA surface (#117): the live seed + pass counter, plus the ornament
   // plan for the current (or any) pass. Pure + headless-safe — computable even before the audio
   // engine is up (pass stays 0), so a playtest can assert: same seed → same sequence (determinism),
@@ -687,5 +783,5 @@ export function createMusic() {
   // the score recolours (freygish toward Infamy, lydian toward Standing, Ionian at neutral).
   function mood() { return { pole: recolourState.pole, blend: recolourState.blend, scale: recolourState.scale }; }
 
-  return { start, setMute, update, setMix, setMood, setTownTheme, stinger, loopCue, lastCue, lastUnder, variation, mood };
+  return { start, setMute, update, setMix, setMood, setTownTheme, stinger, loopCue, lastCue, lastUnder, wakeLevel, variation, mood };
 }

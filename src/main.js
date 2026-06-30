@@ -1359,7 +1359,7 @@ systems.register({ name: 'town-music', order: 300, update: (f) => {
 //   drives the sea/port crossfade, and the SAME signed lean (repLean) reputation-grade wrote this frame
 //   recolours the lead's MODE — Infamy → a freygish "bite", Standing → a warm Lydian voicing, neutral →
 //   the honest D-major hornpipe. Order 310 (after reputation-grade@120), so repLean is fresh.
-systems.register({ name: 'music', order: 310, update: (f) => music.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED, mode: mode.current, portDistance: f.harbourDistance, dockRadius: DOCK_RADIUS, lean: repLean }) });
+systems.register({ name: 'music', order: 310, update: (f) => music.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED, rudder: f.state.rudder, mode: mode.current, portDistance: f.harbourDistance, dockRadius: DOCK_RADIUS, lean: repLean }) });
 
 function update(dt, t) {
   // The WHOLE per-frame loop is the systems registry now (#130, DL #5). Every system registered
@@ -1757,6 +1757,10 @@ window.__tidewake = {
   // The LAYERED cue armed under the last loop cue (the coin chime under a paying payoff, or null) —
   // so a headless playtest can assert the "ka-ching" rang when a tip paid coin, AudioContext-free (#116).
   get loopUnderCue() { return music.lastUnder(); },
+  // Continuous WAKE/HELM water-bed (#150) QA surface: the wash layer's live drive [0,1], set each
+  // frame from ship speed + helm — so a headless playtest can make way / swing the helm and assert
+  // the sea sounds like moving water (fuller at speed, a gentle lap becalmed), AudioContext-free.
+  get wake() { return music.wakeLevel(); },
   // Chased-rumour objective (#111/#112/#115) QA surface: the live active objective (typed target +
   // payoff, or null), plus drivers so a headless playtest can take a rumour to chase and assert
   // the marker pins, the save round-trips, and arriving pays off. chaseRumour(i) chases the i-th
