@@ -151,14 +151,17 @@ promoted below. **#135 battle is DECIDED & promoted to TOP (from-owner P1, preem
   implied — this is its ready-made reason to fight (stakes-in → consequence-out). **Follow-up:** the
   defensive engagement rides WITH battle #100; richer threat escalation across visits.
 
-1. **#132 — [DL#5] The reputation needle, made personal & audible** — _**Slice A (ship hull/sail material
-   lerp) SHIPPED & REOPENED** (Loop 91, v0.0.20260630221704, save v16) — the player's own ship now grimes/
-   darkens toward Infamy and brightens/glows toward Standing off the SAME `repLean` #126 uses; pure
-   `src/systems/reputation-aura.js`, zero new draws. **#132 was prematurely closed earlier by a different
-   (HUD-gauge) slice — reopened to track real scope.** **REMAINS — Slice B (audio):** the harmonic modal
-   recolour of the procedural bed (Infamy→freygish bite / Standing→warm Ionian-Lydian, one cross-faded
-   gain, percussive bed fixed, no `loadTrack`) — rides its own next cycle per the issue DoD._
-   _value **med** · complexity **med** · audio._
+- ~~**#132 — [DL#5] The reputation needle, made personal & audible**~~ — ✅ **SHIPPED & CLOSED** (both
+  slices delivered; the issue's full stated scope is done). **Slice A (ship hull/sail material lerp, art)**
+  — Loop 91, v0.0.20260630221704: the player's own ship grimes/darkens toward Infamy and brightens/glows
+  toward Standing off `repLean`; pure `src/systems/reputation-aura.js`, zero new draws. **Slice B (harmonic
+  modal recolour, audio)** — Loop 92, v0.0.20260630223335: the SAME `repLean` continuously recolours the
+  procedural bed's lead MODE (Infamy→freygish/phrygian-dominant bite · Standing→warm Lydian · balanced→the
+  honest D-major Ionian), ONE cross-faded gain, **percussive bed fixed** (the DL#3 trap), no `loadTrack`;
+  pure `src/systems/harmonic-mood.js`, save v16, AudioContext-free in the gate. _(#132 had been prematurely
+  closed once by a different HUD-gauge slice — reopened, both real slices then shipped, now genuinely
+  closed.)_ **Follow-ups (deferred):** a per-pole lead *timbre* shift; a diegetic flourish on crossing the
+  neutral band; generalise the hull cast into a reusable battle hull-damage state (#135 bonus).
 
 - ~~**#131 — [DL#5] Harden the golden-replay gate**~~ — ✅ **SHIPPED & CLOSED** (Loops 79–80) — both
   invariants (determinism-parity + save-round-trip-per-tick) now gate the #123 fixture.
