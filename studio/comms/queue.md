@@ -92,6 +92,24 @@ follow-ups (deferred to keep this increment smallest): the **early strike-colour
 post-duel explicit **sink-or-spare** choice, the brawl casualties actually gating the duel (Option 4), an
 arena-spawn for a dedicated boarded target. Slice-3's PERSIST-loadout + BUY-economy follow-up still parked._
 
+_**UPDATE Loop 90 (2026-06-30, v0.0.20260630215140): slice 5 (FINAL Option-2 slice) — expanded verbal
+captain's duel — SHIPPED.** #33's duel grew from a 14-line stub into the climax the boarding fork deserves:
+**14 → 56 original jab/riposte pairs** (every line authored for Tidewake, no recycled copy) and **5 → 7
+categories** (added **Superstition** + **Hygiene**, each ≥6 lines), with **ANTI-REPEAT selection** —
+`pickOptions(rng, enemy, n, recent)` prefers lines not shown recently; the duel controller keeps
+session-scoped memory: `engagementSeen` (never re-offer a jab WITHIN a fight while the bench can cover it) +
+a `DUEL_MEMORY`=18 rolling window ACROSS hails (back-to-back duels open fresh). The two hard guarantees — a
+winning/weakness line is always offered, the hand is always n distinct — always beat freshness. Pure logic
+TDD'd first (895 tests); **no save-schema change — static corpus + session-scoped history (stays v16)**; perf
+32/130 draws · 90k/150k tris (zero new draws). Gallery `expanded-duel-135.png`. **ALL 5 Option-2 slices now
+SHIPPED → the battle CORE is complete and the lane-switch gate is CLEARED** (gamer-testable end-to-end:
+maneuver→broadside→board→brawl→expanded captain-duel→capture/sink fork). **#135 stays OPEN** — remaining is
+the later **Option 4 ("Three-Act Raid", M7) phase-coupling** (hull→boarding odds; brawl casualties→duel
+confidence; early strike-colours→ransom + post-duel sink-or-spare + arena-spawn fold in here). **Closing #135
+is the OWNER's call** — commented on the issue with the full shipped/remains read. With the lane-switch gate
+cleared, the loop MAY now consider switching lanes (e.g. #132 reputation-needle, or the next reactive/charm
+reservoir item) — owner/PM steering applies._
+
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
 _**UPDATE Loop 86 (2026-06-30): from-owner P1 #146 — port-view mobile clipping — SHIPPED.** The
