@@ -15,8 +15,11 @@
 // PAYOFF and LOSS are deliberately OPPOSITE in colour (diatonic-bright vs chromatic-sour) so the ear
 // knows instantly whether you won the prize or arrived to a rival's wake.
 //
-// FOLLOW-UPS (filed, not built here): richer per-rumour-kind interaction SFX, a coin-chime layered
-// under the payoff, a distinct "rival sail sighted" sting. This slice ships the four loop-beat cues.
+// SHIPPED LATER (#116 follow-up): per-rumour-kind LISTEN colour (the room leans in differently for a
+// trade tip vs a reputation whisper vs danger on the water vs your own deed echoing back) + a bright
+// coin-chime layered UNDER the payoff when a tip actually pays coin. Same pure-recipe discipline.
+// STILL QUEUED (not built here): a distinct "rival sail sighted" sting + a continuous wake/helm
+// water-bed SFX. This module ships the four loop-beat cues, the listen colours, and the coin chime.
 
 /**
  * How near (world units) the chased target you must come before the "drawing near" cue rings. Sits
@@ -45,19 +48,67 @@ const CUES = {
   loss: { semis: [6, 5], octave: 0, type: 'sawtooth', gain: 0.10, step: 0.13, dur: 0.45, tail: 0.55, lowpass: 1000, detune: -12 },
 };
 
+// Interaction cues (#116 follow-up): not loop BEATS but reactions to a player VERB. The LISTEN cue
+// now takes a colour from the kind of word the room leaks (so cupping an ear feels different for a
+// trade tip vs a reputation whisper vs danger on the water vs your own deed echoing back), and a
+// bright COIN chime rides under the payoff when a tip actually pays coin. Kept under the loop-beat
+// cues in gain so they nod, never shout — same pure-recipe discipline as CUES.
+const INTERACTION_CUES = {
+  // Trade tip — a hopeful rising sixth (A → high F#), the ear pricking up at a heading worth chasing.
+  listenTrade: { degs: [5, 10], octave: 0, type: 'triangle', gain: 0.07, step: 0.10, dur: 0.32, tail: 0.5 },
+  // Danger/prize on the water — a wary, muffled falling step (E → D), darker, leaning into the hush.
+  listenSea: { degs: [2, 1], octave: 0, type: 'sine', gain: 0.06, step: 0.11, dur: 0.36, tail: 0.45, lowpass: 1400 },
+  // Your own deed echoing back — a warm settle home (D → F#), a soft fond nod at your own tale.
+  listenDeed: { degs: [1, 3], octave: 0, type: 'sine', gain: 0.06, step: 0.12, dur: 0.40, tail: 0.6 },
+  // Coin chime — a bright, glassy high tinkle (octave-up → tenth) layered UNDER the payoff flourish
+  // when the tip actually pays coin: the "ka-ching" the ear waits for, soft enough to ride beneath.
+  coin: { degs: [8, 12], octave: 2, type: 'triangle', gain: 0.05, step: 0.05, dur: 0.16, tail: 0.45 },
+};
+
+// Every renderable cue, by name — the four loop beats plus the interaction reactions.
+const ALL_CUES = { ...CUES, ...INTERACTION_CUES };
+
 /** The known reactive-loop cue names, in loop order. */
 export const LOOP_CUE_NAMES = Object.keys(CUES);
+
+/** The LISTEN cue family, in rumour-kind order (rep / trade / sea / deed). */
+export const LISTEN_CUE_NAMES = ['listen', 'listenTrade', 'listenSea', 'listenDeed'];
 
 /**
  * PURE — resolve a reactive-loop cue name to its render recipe, or null for an unknown/junk name.
  * Returns a COPY (with `name` folded in) so a caller can never mutate the shared recipe. Never throws.
- * @param {string} name  one of LOOP_CUE_NAMES
+ * @param {string} name  one of LOOP_CUE_NAMES / LISTEN_CUE_NAMES / 'coin'
  * @returns {object|null}
  */
 export function selectCue(name) {
   if (typeof name !== 'string') return null;
-  const spec = CUES[name];
+  const spec = ALL_CUES[name];
   return spec ? { name, ...spec } : null;
+}
+
+// Which LISTEN colour does each rumour kind wear? rep keeps the intimate base cup-an-ear cue; the
+// other kinds get their own tint. Anything unknown fails open to the base 'listen'.
+const LISTEN_BY_KIND = { rep: 'listen', trade: 'listenTrade', sea: 'listenSea', deed: 'listenDeed' };
+
+/**
+ * PURE — the LISTEN interaction cue for a surfaced rumour's KIND (rep/trade/sea/deed). Unknown or
+ * missing kind fails open to the base 'listen' cue, so a listen always sings something. Never throws.
+ * @param {string} [kind]  one of 'rep' | 'trade' | 'sea' | 'deed'
+ * @returns {'listen'|'listenTrade'|'listenSea'|'listenDeed'}
+ */
+export function listenCueName(kind) {
+  return (typeof kind === 'string' && LISTEN_BY_KIND[kind]) || 'listen';
+}
+
+/**
+ * PURE — does a chased-rumour payoff also ring the coin chime? Only an HONEST win that actually paid
+ * coin gets the bright tinkle: a rival-claimed (zero-coin) loss does not, nor does a zero-coin win.
+ * Deterministic; never throws.
+ * @param {{claimed?:boolean, coins?:number}} [outcome]
+ * @returns {boolean}
+ */
+export function coinChimes(outcome = {}) {
+  return !!(outcome && !outcome.claimed && Number(outcome.coins) > 0);
 }
 
 /**

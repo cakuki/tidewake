@@ -105,6 +105,14 @@ test('every entry is a typed { text, target } record', () => {
   }
 });
 
+test('every entry carries its rumour KIND so LISTEN can colour the cue (#116)', () => {
+  const r = composeRumours({ port: PORT, infamy: 200, standing: 200, renown: 400, deeds: [{ type: 'duel', foe: 'X' }, { type: 'landfall', name: 'Y' }] }, { count: 4 });
+  assert.ok(r.length >= 1);
+  for (const e of r) {
+    assert.ok(['rep', 'trade', 'sea', 'deed'].includes(e.kind), `entry kind is a known pool: ${e.kind}`);
+  }
+});
+
 test('a trade tip carries a typed port target naming a real OTHER port', () => {
   // count 4 at a low-renown captain surfaces the trade pool; find a targeted entry.
   const r = composeRumours({ port: PORT, infamy: 0, standing: 0, renown: 0 }, { count: 4 });

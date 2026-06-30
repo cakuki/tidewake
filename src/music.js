@@ -187,7 +187,9 @@ export function createMusic() {
   // last cue NAME armed regardless of mute/engine state, so a headless playtest can assert which
   // beat sang without ever opening an AudioContext.
   let pendingCue = null;    // a render recipe from selectCue(), waiting for the next downbeat
+  let pendingUnder = null;  // an optional layer (e.g. the coin chime) fired WITH pendingCue (#116 f/u)
   let lastLoopCue = null;   // QA surface: the name of the most recently armed loop cue
+  let lastUnderCue = null;  // QA surface: the name of the most recently armed layered cue (or null)
 
   const beatSec = beatDuration(TEMPO);
   const stepSec = beatSec * 0.5;            // eighth-note scheduler grid
@@ -445,8 +447,12 @@ export function createMusic() {
         // Landfall stinger (#102 ph2): when armed, fire ON the next bar downbeat, then disarm.
         if (stingerArmed && isDownbeat(step, STEPS_PER_BAR)) { voiceStinger(nextNoteTime); stingerArmed = false; }
         // Reactive-loop cue (#116): a pending listen/approach/payoff/loss recipe fires on the next
-        // downbeat too, then disarms — so the diegetic feedback lands on the beat with the bed.
-        if (pendingCue && isDownbeat(step, STEPS_PER_BAR)) { voiceLoopCue(pendingCue, nextNoteTime); pendingCue = null; }
+        // downbeat too, then disarms — so the diegetic feedback lands on the beat with the bed. An
+        // optional layered cue (the coin chime, #116 f/u) rides the SAME downbeat under the primary.
+        if (isDownbeat(step, STEPS_PER_BAR)) {
+          if (pendingCue) { voiceLoopCue(pendingCue, nextNoteTime); pendingCue = null; }
+          if (pendingUnder) { voiceLoopCue(pendingUnder, nextNoteTime); pendingUnder = null; }
+        }
         fireStep(step, nextNoteTime);
         nextNoteTime += stepSec;
         const nextStep = (step + 1) % TOTAL_STEPS;
@@ -645,19 +651,26 @@ export function createMusic() {
   // is up — it just arms a flag the scheduler reads once the music is running and unmuted.
   function stinger() { stingerArmed = true; }
 
-  // Arm a reactive-loop diegetic cue (#116): listen / approach / payoff / loss. Resolves the pure
-  // recipe (src/systems/loop-cues.js) and holds it for the next bar downbeat (the scheduler fires +
-  // disarms it). Records the name regardless of mute/engine state so a headless playtest can assert
-  // which beat sang. An unknown name is a no-op (selectCue fails open to null). Safe before start().
-  function loopCue(name) {
+  // Arm a reactive-loop diegetic cue (#116): listen / approach / payoff / loss (and the listen
+  // colours). Resolves the pure recipe (src/systems/loop-cues.js) and holds it for the next bar
+  // downbeat (the scheduler fires + disarms it). An optional `opts.under` arms a SECOND recipe (the
+  // coin chime) layered on the SAME downbeat under the primary — armed together so it never rides a
+  // later, unrelated cue. Records names regardless of mute/engine state so a headless playtest can
+  // assert which beats sang. An unknown name is a no-op (selectCue fails open to null). Safe before
+  // start().
+  function loopCue(name, opts) {
     const recipe = selectCue(name);
-    if (!recipe) return;
-    lastLoopCue = recipe.name;
-    pendingCue = recipe;
+    const under = opts && opts.under ? selectCue(opts.under) : null;
+    if (recipe) { lastLoopCue = recipe.name; pendingCue = recipe; }
+    // Arm WITH the primary (or clear): the layer is meaningful only riding its own primary cue.
+    pendingUnder = under;
+    lastUnderCue = under ? under.name : null;
   }
 
   // QA surface (#116): the name of the most recently armed loop cue (or null) — headless-assertable.
   function lastCue() { return lastLoopCue; }
+  // QA surface (#116 f/u): the name of the most recently armed LAYERED cue (the coin chime, or null).
+  function lastUnder() { return lastUnderCue; }
 
   // Seeded per-pass variation QA surface (#117): the live seed + pass counter, plus the ornament
   // plan for the current (or any) pass. Pure + headless-safe — computable even before the audio
@@ -674,5 +687,5 @@ export function createMusic() {
   // the score recolours (freygish toward Infamy, lydian toward Standing, Ionian at neutral).
   function mood() { return { pole: recolourState.pole, blend: recolourState.blend, scale: recolourState.scale }; }
 
-  return { start, setMute, update, setMix, setMood, setTownTheme, stinger, loopCue, lastCue, variation, mood };
+  return { start, setMute, update, setMix, setMood, setTownTheme, stinger, loopCue, lastCue, lastUnder, variation, mood };
 }

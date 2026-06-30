@@ -46,7 +46,7 @@ import {
   earnedGovernorship, governorTitle,
 } from './systems/home-port.js';
 import { makeObjective, resolvesAt, payoffFor, sanitizeObjective, makeContestedObjective, tickContest, isContested, isClaimed, rivalName, shouldContest } from './objectives.js';
-import { payoffCueName, approachCrossed, APPROACH_RADIUS } from './systems/loop-cues.js';
+import { payoffCueName, approachCrossed, APPROACH_RADIUS, listenCueName, coinChimes } from './systems/loop-cues.js';
 import { createEncounter, HAIL_LINES, RESCUE_LINES, PLUNDER_LINES } from './systems/encounter.js';
 import { freshMorale, sanitizeMorale, applyMorale, moraleBeat, moraleTier } from './systems/morale.js';
 import {
@@ -857,7 +857,7 @@ const town = createTown({
   getState: () => state,
   onLeave: () => leaveHarbour(),
   onChase: (target) => chaseObjective(target),
-  onListen: () => music.loopCue('listen'), // a soft cup-an-ear cue as the room leaks you word (#116)
+  onListen: (rumours) => music.loopCue(listenCueName(rumours?.[0]?.kind)), // cup-an-ear, coloured by what the room leaked (#116)
   onClaim: () => claimHarbour(),
   onInvest: () => investHarbour(),
   onTribute: () => payHarbourTribute(),   // resolve a home-port threat by paying it off (#134)
@@ -1460,7 +1460,9 @@ function onArrive(portName, line) {
       const rumourDeed = contested
         ? { type: 'rumour', name: portName, coins, rival, won: !claimed }
         : { type: 'rumour', name: portName, coins };
-      music.loopCue(payoffCueName({ claimed }));           // the tip resolves: bright PAYOFF, or sour LOSS to a rival's wake (#116)
+      // The tip resolves: bright PAYOFF (or sour LOSS to a rival's wake), with a coin-chime layered
+      // under the flourish when it actually pays coin — the "ka-ching" the ear waits for (#116).
+      music.loopCue(payoffCueName({ claimed }), coinChimes({ claimed, coins }) ? { under: 'coin' } : undefined);
       logDeed(rumourDeed);                                 // sing it into the Ballad (#78)
       if (coins > 0) applyMoraleEvent('rumourWin');        // a tip that paid off, coin shared round — a good day (#124)
       state.portMemory = recordDeed(state.portMemory, portName, deedPhrase(rumourDeed)); // #104b — this port remembers the chase
@@ -1752,6 +1754,9 @@ window.__tidewake = {
   // (listen/approach/payoff/loss, or null). Lets a headless playtest listen / approach a chased pin /
   // arrive and assert the right beat sang — without ever opening an AudioContext.
   get loopCue() { return music.lastCue(); },
+  // The LAYERED cue armed under the last loop cue (the coin chime under a paying payoff, or null) —
+  // so a headless playtest can assert the "ka-ching" rang when a tip paid coin, AudioContext-free (#116).
+  get loopUnderCue() { return music.lastUnder(); },
   // Chased-rumour objective (#111/#112/#115) QA surface: the live active objective (typed target +
   // payoff, or null), plus drivers so a headless playtest can take a rumour to chase and assert
   // the marker pins, the save round-trips, and arriving pays off. chaseRumour(i) chases the i-th

@@ -126,9 +126,10 @@ function textOnly(text) { return { text, target: null }; }
 
 /**
  * PURE — compose a handful of in-character rumours from live world-state + reputation. Returns an
- * array of TYPED rumour entries `{ text, target }` (length up to `count`, at least 1 while a real
- * port is docked; [] at sea). `target` is `{ kind:'port', name }` for a chase-able trade tip
- * (#111/#112/#115) or `null` for flavour-only word. Deterministic in (world, opts): the same
+ * array of TYPED rumour entries `{ text, target, kind }` (length up to `count`, at least 1 while a
+ * real port is docked; [] at sea). `target` is `{ kind:'port', name }` for a chase-able trade tip
+ * (#111/#112/#115) or `null` for flavour-only word; `kind` is the rumour's pool — `rep` | `trade` |
+ * `sea` | `deed` — driving the LISTEN cue colour (#116). Deterministic in (world, opts): the same
  * inputs always yield the same word. `nonce` turns the conversation over for a "listen again"
  * without breaking determinism.
  *
@@ -179,7 +180,9 @@ export function composeRumours(world = {}, opts = {}) {
     if (used >= pool.length) continue;
     usedPerKind[k] = used + 1;
     const entry = pool[(nonce + used) % pool.length];
-    if (entry && entry.text && !seen.has(entry.text)) { seen.add(entry.text); out.push(entry); }
+    // Tag the surfaced entry with its KIND (rep/trade/sea/deed) so the LISTEN cue can take a colour
+    // from what the room actually leaked you (#116 follow-up). Additive to { text, target }.
+    if (entry && entry.text && !seen.has(entry.text)) { seen.add(entry.text); out.push({ ...entry, kind: k }); }
   }
   return out;
 }
