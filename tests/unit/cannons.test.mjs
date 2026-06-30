@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   MAX_HULL, AIMS, MORALE_MAX,
   clampHull, isSunk, resolveExchange, spoils, repairToll, makeFoe, fireQuip,
-  crewShock, strikesColours, captureSpoils, strikeLine,
+  crewShock, strikesColours, captureSpoils, strikeLine, resolveBroadside,
 } from '../../src/cannons.js';
 
 const half = () => 0.5;   // deterministic rng → jitter multiplier == 1.0
@@ -176,4 +176,38 @@ test('captureSpoils: a ransom + lawful Standing, far less Infamy than a sinking 
 test('strikeLine: returns a non-empty original surrender cry', () => {
   const s = strikeLine(half);
   assert.ok(typeof s === 'string' && s.length > 0);
+});
+
+// ---- Real-time broadside (#135 slice 2) ------------------------------------
+// The deliberate stance's teeth: a manual FIRE discharges the loaded guns, and the bite
+// scales with how well the foe is ABEAM (aim quality 0..1). Reuses the same morale/yield
+// model as the turn-based exchange — only the hull bite is gated on positioning.
+
+test('resolveBroadside: a clean beam shot (quality 1) bites hard; the foe replies if afloat', () => {
+  const r = resolveBroadside({ quality: 1, enemyHull: 100, playerHull: 100 }, half);
+  assert.equal(r.enemyHit, 33);   // BASE(22) * 1.5 * jitter(1)
+  assert.equal(r.enemyHull, 67);
+  assert.equal(r.playerHit, 20);  // BASE(22) * 0.9 * gunnery(1) * jitter(1)
+  assert.equal(r.playerHull, 80);
+  assert.equal(r.sunkEnemy, false);
+});
+
+test('resolveBroadside: a wide shot (quality 0) barely scratches but still draws a reply', () => {
+  const r = resolveBroadside({ quality: 0, enemyHull: 100, playerHull: 100 }, half);
+  assert.equal(r.enemyHit, 0, 'a foe off the bow takes nothing');
+  assert.equal(r.enemyHull, 100);
+  assert.ok(r.playerHit > 0, 'exposing your beam for nothing still earns a reply');
+});
+
+test('resolveBroadside: quality is clamped and a sunk foe never fires back', () => {
+  const r = resolveBroadside({ quality: 5, enemyHull: 20, playerHull: 100 }, half);
+  assert.ok(r.sunkEnemy, 'a clean broadside finishes a wounded hull');
+  assert.equal(r.playerHit, 0, 'a sunk foe never fires back');
+  assert.equal(r.enemyHull, 0);
+});
+
+test('resolveBroadside: quality scales the bite proportionally (half == half the hit)', () => {
+  const full = resolveBroadside({ quality: 1, enemyHull: 100, playerHull: 100 }, half);
+  const half_ = resolveBroadside({ quality: 0.5, enemyHull: 100, playerHull: 100 }, half);
+  assert.equal(half_.enemyHit, Math.round(full.enemyHit * 0.5));
 });

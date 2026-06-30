@@ -225,6 +225,72 @@ try {
     if (battle.activeAfter) fail('battle.active stayed true after fleeing');
   }
 
+  // 2b4) Real-time broadside (#135 slice 2): re-engage, then STEER to bring the foe abeam and
+  // fire the loaded guns in REAL TIME until she sinks. Proves the deliberate stance keeps the helm
+  // LIVE (you can maneuver), the broadside arc + reload work on the sim clock, and a positioned
+  // volley damages/sinks an NPC — the slice's "position + fire damages/sinks a ship" acceptance.
+  const broadside = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    function nearest() {
+      const s = tw.state.pos;
+      let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return { bi, bd };
+    }
+    // Sail up to a foe and square up to her.
+    tw.press('w');
+    let engaged = false;
+    for (let i = 0; i < 1500 && !engaged; i++) {
+      const { bi, bd } = nearest();
+      if (bi === -1) break;
+      if (bd <= 150) { engaged = tw.engageBattle(); if (engaged) break; }
+      const s = tw.state;
+      const desired = Math.atan2(tw.npcs[bi].pos[0] - s.pos[0], tw.npcs[bi].pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+    }
+    tw.release('w');
+    if (!engaged) return { engaged };
+    const helmLive = !tw.state.paused; // the deliberate stance must NOT pause the helm (slice 2)
+    // Maneuver for a beam angle and fire in real time. Steer heading toward (bearing − 90°) so the
+    // foe sits dead abeam to starboard; fire whenever loaded AND in the broadside arc.
+    let shotsFired = 0, sawAbeam = false, hullDamaged = false, result = null;
+    const startHull = tw.battle.enemyHull;
+    for (let i = 0; i < 240 && tw.battle.active; i++) {
+      const idx = tw.battle.foeIndex;
+      const foe = tw.npcs[idx];
+      if (foe) {
+        const s = tw.state;
+        const bearing = Math.atan2(foe.pos[0] - s.pos[0], foe.pos[1] - s.pos[2]);
+        const desired = bearing - Math.PI / 2; // foe abeam to starboard
+        const err = norm(desired - s.heading);
+        tw.release('a'); tw.release('d');
+        if (err > 0.04) tw.press('a'); else if (err < -0.04) tw.press('d');
+      }
+      const a = tw.battleAim();
+      if (a.inArc) sawAbeam = true;
+      if (tw.battle.loaded && a.inArc) { tw.battleFire(); shotsFired++; }
+      tw.step(0.2);
+      if (tw.battle.enemyHull < startHull) hullDamaged = true;
+      result = tw.battle.result;
+    }
+    tw.release('a'); tw.release('d');
+    return { engaged, helmLive, sawAbeam, shotsFired, hullDamaged, result, active: tw.battle.active };
+  });
+  if (broadside.engaged) {
+    if (!broadside.helmLive) fail('real-time broadside: the helm stayed PAUSED in the deliberate battle stance — cannot maneuver (#135 slice 2)');
+    if (!broadside.sawAbeam) fail('real-time broadside: never managed to bring the foe abeam (broadside arc) (#135 slice 2)');
+    if (!(broadside.shotsFired > 0)) fail('real-time broadside: fired no volleys despite an abeam foe (#135 slice 2)');
+    if (!broadside.hullDamaged) fail('real-time broadside: a positioned broadside dealt no hull damage to the foe (#135 slice 2)');
+    if (broadside.active && broadside.result !== 'win') fail(`real-time broadside: engagement neither sank the foe nor resolved (result=${broadside.result}) (#135 slice 2)`);
+  }
+
   // 2c) Route-planning map (#54): open the big chart, confirm the overlay is visible,
   // the chart drew (liveness counter) and the open-state is exposed, then close it.
   const bigmap = await page.evaluate(async () => {
@@ -1919,7 +1985,7 @@ try {
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
   console.log(`leak-invariant (#121): ${leak.N}× mode cycles · geom ${leak.baseline.geometries}→${leak.final.geometries} (+${leak.geomGrowth}) · tex ${leak.baseline.textures}→${leak.final.textures} (+${leak.texGrowth}) · worst transition ${leak.worstTransition.drawCalls} draws/${leak.worstTransition.triangles} tris`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, leak, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, leak, broadside, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

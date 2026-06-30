@@ -247,6 +247,35 @@
     #cannons .duel-opts li b { color: #ff8b6a; margin-right: 6px; }
     #cannons .duel-help { margin-top: 9px; text-align: center; color: #8fb4d6; font-size: 10.5px; }
     #cannons .duel-help b { color: #ff8b6a; }
+    /* Real-time broadside panel (#135 slice 2) — the deliberate-stance fight. Reuses the cannonade
+       panel's bar/line/help classes (scoped under #battle); adds the live ABEAM/reload aim cue. */
+    #battle {
+      position: fixed; left: 50%; top: 50%; z-index: 14; transform: translate(-50%, -50%) scale(.98);
+      width: min(92vw, 460px); pointer-events: none;
+      color: #f0e6d2; background: rgba(7, 18, 31, .9); border: 1px solid rgba(255,120,90,.5);
+      border-radius: 12px; padding: 16px 18px; backdrop-filter: blur(6px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.6); font-size: 13px;
+      opacity: 0; transition: opacity .25s ease, transform .25s ease;
+    }
+    #battle.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #battle .cannon-h { color: #ff8b6a; font-weight: 700; font-size: 15px; letter-spacing: .04em; text-align: center; }
+    #battle .duel-bars { display: flex; gap: 12px; margin: 10px 0 6px; }
+    #battle .duel-bar { flex: 1; }
+    #battle .duel-bar .lab { font-size: 10.5px; color: #9fc4e6; display: flex; justify-content: space-between; margin-bottom: 2px; }
+    #battle .duel-bar .meter { height: 9px; border-radius: 5px; background: rgba(255,255,255,.1); overflow: hidden; }
+    #battle .duel-bar .fill { height: 100%; transition: width .3s ease; }
+    #battle .duel-bar.you .fill { background: linear-gradient(90deg, #6fc4ff, #87e0a4); }
+    #battle .duel-bar.them .fill { background: linear-gradient(90deg, #ff8b6a, #ff5a4a); }
+    #battle .battle-aim { text-align: center; font-weight: 700; font-size: 12.5px; letter-spacing: .02em;
+      margin: 8px 0 2px; color: #9fc4e6; transition: color .2s ease; }
+    #battle .battle-aim.hot { color: #ffd23f; text-shadow: 0 0 10px rgba(255,180,60,.55); }
+    #battle .duel-line { font-style: italic; color: #ffd0b0; text-align: center; min-height: 34px; margin: 6px 4px 10px; line-height: 1.4; }
+    #battle .duel-help { margin-top: 9px; text-align: center; color: #8fb4d6; font-size: 10.5px; }
+    #battle .duel-help b { color: #ff8b6a; }
+    #battle .battle-fire { display: block; width: 100%; margin-top: 10px; pointer-events: auto;
+      background: linear-gradient(90deg, #ff8b6a, #ff5a4a); color: #1a0a06; font-weight: 800;
+      border: none; border-radius: 9px; padding: 11px; font-size: 15px; letter-spacing: .04em; }
+    #battle .battle-fire[disabled] { opacity: .4; filter: grayscale(.5); }
     /* Foundering-ship choice panel (#125) — the rescue-vs-plunder moral beat, in a teal distress
        accent. Reuses the duel panel's inner line/opts classes, scoped here with its own colour. */
     #encounter {
@@ -699,6 +728,7 @@
   <div id="challenge-prompt" role="status">⚔ <b>E</b> give battle &nbsp;·&nbsp; <b>F</b> to out-jeer &nbsp;·&nbsp; 🔥 <b>G</b> to open fire</div>
   <div id="duel" role="dialog" aria-live="polite"></div>
   <div id="cannons" role="dialog" aria-live="polite"></div>
+  <div id="battle" role="dialog" aria-live="polite"></div>
   <div id="encounter" role="dialog" aria-live="polite"></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <!-- Invisible onboarding (#60): a brand-new captain's seeded first goal. Filled + shown

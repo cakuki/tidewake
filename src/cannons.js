@@ -189,6 +189,34 @@ export function resolveExchange({ aim, enemyHull, playerHull, gunnery = 1, moral
 }
 
 /**
+ * Resolve ONE real-time broadside discharge (#135 slice 2 — the deliberate-stance teeth).
+ * Like resolveExchange, but instead of picking an aim each turn, the hull bite scales with how
+ * well the foe is ABEAM (`quality` 0..1, from broadsideAim): a glancing shot off the bow barely
+ * scratches, a clean beam shot bites full. The foe replies if it is still afloat. Reuses the SAME
+ * morale/yield model as the turn-based exchange (crewShock / strikesColours), so a battered crew
+ * can still strike its colours. PURE + injectable rng — deterministic under test.
+ *
+ * @param {{quality:number, enemyHull:number, playerHull:number, gunnery?:number, morale?:number}} args
+ * @param {() => number} [rng]
+ * @returns {{enemyHit:number, playerHit:number, enemyHull:number, playerHull:number, quality:number,
+ *            sunkEnemy:boolean, sunkPlayer:boolean, enemyMorale:number, yielded:boolean}}
+ */
+export function resolveBroadside({ quality, enemyHull, playerHull, gunnery = 1, morale = MORALE_MAX }, rng = Math.random) {
+  const q = Math.max(0, Math.min(1, quality));
+  const jitter = () => 0.8 + rng() * 0.4; // ±20% fairness wobble (==1 when rng()==0.5)
+  const enemyHit = Math.round(BASE * 1.5 * q * jitter()); // a clean beam broadside hits harder than a turn-based volley
+  const newEnemyHull = clampHull(enemyHull - enemyHit, MAX_HULL);
+  // A foe sunk by your volley never gets to fire back; otherwise exposing your beam earns a reply.
+  const playerHit = isSunk(newEnemyHull) ? 0 : Math.round(BASE * 0.9 * gunnery * jitter());
+  const newPlayerHull = clampHull(playerHull - playerHit, MAX_HULL);
+  const sunkEnemy = isSunk(newEnemyHull);
+  const sunkPlayer = isSunk(newPlayerHull);
+  const enemyMorale = clampHull(morale - crewShock({ outcome: 'broadside', enemyHull: newEnemyHull }, rng), MORALE_MAX);
+  const yielded = !sunkEnemy && !sunkPlayer && strikesColours({ enemyHull: newEnemyHull, morale: enemyMorale });
+  return { enemyHit, playerHit, enemyHull: newEnemyHull, playerHull: newPlayerHull, quality: q, sunkEnemy, sunkPlayer, enemyMorale, yielded };
+}
+
+/**
  * Spoils for sinking a foe. The pirate road's reward: a tidy purse and a teeth-y chunk
  * of **Infamy** (more than a duel pays, befitting the risk). Scales with how tough the
  * foe was and how much hull you kept. Modest by design — never free riches.

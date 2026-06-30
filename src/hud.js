@@ -25,6 +25,7 @@ export function createHud() {
   const $trade = document.getElementById('trade');
   const $duel = document.getElementById('duel');
   const $cannons = document.getElementById('cannons');
+  const $battle = document.getElementById('battle'); // real-time broadside panel (#135 slice 2)
   const $encounter = document.getElementById('encounter'); // foundering-ship choice panel (#125)
   const $prompt = document.getElementById('challenge-prompt');
   const $legend = document.getElementById('legend');
@@ -114,6 +115,15 @@ export function createHud() {
       if (!li || li.dataset.aim === undefined) return;
       const n = Number(li.dataset.aim) + 1;
       dispatchEvent(new KeyboardEvent('keydown', { key: String(n), code: 'Digit' + n, bubbles: true }));
+    });
+  }
+
+  // Tappable FIRE button (#135 slice 2, touch only): tap to discharge the loaded broadside — we
+  // dispatch the same Space keydown the keyboard would, so main.js's fire handler runs unchanged.
+  if (TOUCH && $battle) {
+    $battle.addEventListener('click', (e) => {
+      if (!e.target.closest('.battle-fire')) return;
+      dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
     });
   }
 
@@ -323,6 +333,44 @@ export function createHud() {
     $cannons.classList.add('show');
   }
 
+  // ---- Real-time broadside panel (#135 slice 2) -----------------------------
+  // The deliberate-stance fight: two HULL bars, a live AIM cue (bring her ABEAM, then FIRE), a
+  // reload read-out, and the foe's last line / a volley quip. Same cheap-cache discipline as the
+  // cannonade panel; reuses the #cannons inner bar/line classes, scoped under #battle.
+  let lastBattleSig = '';
+  function renderBattle(b) {
+    if (!$battle) return;
+    if (!b || !b.active) {
+      if ($battle.classList.contains('show')) { $battle.classList.remove('show'); lastBattleSig = ''; }
+      return; // at sea: renderDuel/renderCannons own the prompt
+    }
+    if ($prompt) $prompt.classList.remove('show'); // an active fight hides the at-sea prompt
+    const pPct = Math.round((b.playerHull / b.maxHull) * 100);
+    const ePct = Math.round((b.enemyHull / b.maxHull) * 100);
+    const loaded = !!b.loaded;
+    const inArc = !!b.inArc;
+    const ready = loaded && inArc;
+    const qPct = Math.round((b.aimQuality || 0) * 100);
+    const status = !loaded ? '⟳ Reloading the guns…'
+      : inArc ? `🎯 ABEAM to ${b.aimSide} — FIRE!`
+      : '↪ Bring her broadside to bear…';
+    const sig = `${b.foeName}|${pPct}|${ePct}|${loaded}|${inArc}|${qPct}|${b.lastLine}|${b.round}`;
+    if (sig === lastBattleSig && $battle.classList.contains('show')) return;
+    lastBattleSig = sig;
+    $battle.innerHTML =
+      `<div class="cannon-h">⚔ Broadside — ${b.foeName}</div>`
+      + '<div class="duel-bars">'
+      + `<div class="duel-bar you"><div class="lab"><span>Your hull</span><span>${Math.round(b.playerHull)}</span></div><div class="meter"><div class="fill" style="width:${pPct}%"></div></div></div>`
+      + `<div class="duel-bar them"><div class="lab"><span>Their hull</span><span>${Math.round(b.enemyHull)}</span></div><div class="meter"><div class="fill" style="width:${ePct}%"></div></div></div>`
+      + '</div>'
+      + `<div class="battle-aim${ready ? ' hot' : ''}">${status}</div>`
+      + `<div class="duel-line">“${b.lastLine || 'Steer for her beam and run out the guns.'}”</div>`
+      + (TOUCH
+        ? `<button class="battle-fire" data-fire="1"${ready ? '' : ' disabled'}>🔥 FIRE</button>`
+        : `<div class="duel-help">Steer <b>A/D</b> to bring her abeam · <b>Space</b> fires · <b>E</b> breaks off</div>`);
+    $battle.classList.add('show');
+  }
+
   // ---- Foundering-ship encounter panel (#125) -------------------------------
   // Reads a plain encounter snapshot and paints the rescue-vs-plunder choice — the founderer's
   // name + a plea line + the two numbered choices. Reuses the duel panel's inner classes (scoped
@@ -472,5 +520,5 @@ export function createHud() {
     compass.update(state);
   }
 
-  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderEncounter, flashBanner, showLegend, showGovernorship, showGoal, hideGoal };
+  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderBattle, renderEncounter, flashBanner, showLegend, showGovernorship, showGoal, hideGoal };
 }

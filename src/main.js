@@ -297,10 +297,32 @@ const cannons = createCannons({
 const battle = createBattle({
   npcs,
   getShipPos: () => [state.pos.x, state.pos.z],
+  getShipHeading: () => state.heading, // slice 2: the broadside arc needs your heading vs the foe
   sfx: (kind) => audio.playDuelHit(kind),
+  // Real-time broadside spoils (#135 slice 2): sinking pays Infamy, a capture pays Standing, a
+  // loss costs a few coins for repairs — the same ledger the turn-based cannonade writes to.
+  applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.infamy; if (r.standing) state.standing = Math.max(0, (state.standing || 0) + r.standing); syncRenown(state); },
+  applyPenalty: (p) => { initEconomy(state); state.coins = Math.max(0, state.coins - p.coins); },
   onEnter: ({ foeName }) => hud.flashBanner(`⚔ BATTLE — ${foeName}`,
-    `${battleEngageLine()} (press E to break off)`),
+    `${battleEngageLine()} (steer to bring her abeam · SPACE to fire · E to break off)`),
   onFlee: () => hud.flashBanner('⛵ You break off the fight', battleFleeLine()),
+  // A real-time broadside resolved the fight — announce the prize/setback + log the deed (#78/#104b).
+  onResolve: ({ result, reward, penalty, foeName }) => {
+    if (result === 'win') {
+      hud.flashBanner('🔥 Broadside — she goes down!',
+        `${foeName} slips beneath the waves — you haul ${reward.coins}c and your legend gains ${reward.infamy} infamy.`);
+      const deed = { type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins };
+      logDeed(deed); rememberPortDeed(deed);
+    } else if (result === 'capture') {
+      hud.flashBanner('🏳️ She strikes her colours!',
+        `${foeName} has had enough — you spare the crew and take a ${reward.coins}c ransom: +${reward.standing} standing for the mercy.`);
+      const deed = { type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins, captured: true };
+      logDeed(deed); rememberPortDeed(deed);
+    } else {
+      hud.flashBanner('💥 Hull breached!',
+        `${foeName} rakes you stem to stern — you break off and limp away, ${penalty.coins} coins lighter for the repairs.`);
+    }
+  },
 });
 
 // Emergent at-sea encounter (#125, DL#4): while sailing the open sea you occasionally come upon a
@@ -665,6 +687,13 @@ addEventListener('keydown', (e) => {
   if (k === 'e') {
     if (battle.state.active) { if (!cannons.state.active) battle.flee(); }
     else if (mode.is(SAILING) && !duel.state.active && !cannons.state.active) battle.engage();
+    return;
+  }
+  // Real-time broadside (#135 slice 2): SPACE discharges the loaded guns while in the deliberate
+  // stance. A clean beam shot bites hard; firing wide flies past. No-op while reloading (the HUD
+  // shows the reload). Preventing default keeps the spacebar from scrolling the page.
+  if (e.key === ' ' || e.code === 'Space') {
+    if (battle.state.active && !cannons.state.active && !duel.state.active) { e.preventDefault(); battle.fire(); }
     return;
   }
   if (k === 'f') { if (!cannons.state.active) duel.tryChallenge(); return; }
@@ -1041,6 +1070,7 @@ let wasFighting = false, wasHarbourSettling = false, fightBeat = 0, berthBeat = 
 //     old scattered inline `if (!paused)` / `if (blend > 0)` guards into a declaration on the system.
 // Orders are spaced by 10 so a new system slots between two existing ones without renumbering.
 const systems = createSystemsRegistry();
+let lastPaused = false; // last frame's helm-paused verdict (mode system), surfaced for QA
 // — control state: combat drives BATTLE (ending it returns the helm to SAILING); thread the frame's
 //   fighting/paused/mode onto ctx for the systems below + the battle seam (#95/#100). No behaviour change.
 systems.register({ name: 'mode', order: 10, update: (f) => {
@@ -1051,9 +1081,15 @@ systems.register({ name: 'mode', order: 10, update: (f) => {
   f.inBattle = f.fighting || battle.state.active;
   if (f.inBattle) { if (!mode.is(BATTLE)) mode.enter(BATTLE); }
   else if (mode.is(BATTLE)) mode.leave();
-  f.paused = mode.playerPaused; // true in TOWN/BATTLE: helm pauses, world keeps living
+  // The DELIBERATE battle stance (#135 slice 2) keeps the helm LIVE so you can maneuver for a beam
+  // angle and fire a real-time broadside — TOWN and a reactive turn-based exchange still pause it.
+  f.deliberateStance = battle.state.active && !duel.state.active && !cannons.state.active;
+  f.paused = mode.playerPaused && !f.deliberateStance;
+  lastPaused = f.paused; // surfaced on the QA state hook so the playtest can assert a live helm
   f.mode = mode.current;
 } });
+// — reload the broadside guns on the sim clock while the deliberate stance is held (#135 slice 2).
+systems.register({ name: 'battle-reload', order: 12, when: () => battle.state.active, update: (f) => battle.tick(f.dt) });
 // — advance the SAILING↔TOWN gesture on the sim's dt (deterministic, headless-safe) (#102)
 systems.register({ name: 'landfall-step', order: 20, update: (f) => landfall.step(f.dt) });
 // — distance to the nearest port for the harbour coast-in; suspended while leaving (#67). Used by
@@ -1211,6 +1247,8 @@ systems.register({ name: 'bigmap', order: 250, update: (f) => bigmap.update(f.st
 // — combat/encounter HUD panels (#33/#59/#125).
 systems.register({ name: 'hud-duel', order: 260, update: () => hud.renderDuel(duel.snapshot()) });
 systems.register({ name: 'hud-cannons', order: 270, update: () => hud.renderCannons(cannons.snapshot()) });
+// — real-time broadside panel (#135 slice 2): hull bars + the live ABEAM / reload cue + Fire prompt.
+systems.register({ name: 'hud-battle', order: 275, update: () => hud.renderBattle(battle.snapshot()) });
 systems.register({ name: 'hud-encounter', order: 280, update: () => hud.renderEncounter(encounter.snapshot()) });
 // — sea ambience + adaptive sailing theme level (#48).
 systems.register({ name: 'audio', order: 290, update: (f) => audio.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED }) });
@@ -1437,6 +1475,9 @@ window.__tidewake = {
       // Slow-to-stop (#76 c): true while the ship is easing to a near-stop for a fight or a
       // harbour approach — the playtest asserts speed drops near a port / at fight start.
       settling: !!state.settling,
+      // Helm-paused verdict (#95/#135): true in TOWN and a reactive exchange; FALSE in the
+      // deliberate battle stance (slice 2) where you maneuver for a broadside.
+      paused: lastPaused,
       coins: state.coins ?? 0,
       // Two poles (#45) + their derived total, plus the current pole-aware title.
       infamy, standing, renown: state.renown ?? (infamy + standing),
@@ -1681,12 +1722,15 @@ window.__tidewake = {
   get cannons() { return cannons.snapshot(); },
   openFire() { return cannons.openFire(); },
   cannonFire(aim) { return cannons.fire(aim); },
-  // Battle Mode shell (#135) QA surface: read the deliberate stance + drive it headlessly.
+  // Battle Mode (#135) QA surface: read the deliberate stance + drive it headlessly.
   // engageBattle() squares up to the nearest ship (sets mode=BATTLE before a shot); fleeBattle()
-  // always breaks off. The mode getter below already reports BATTLE while the stance is held.
+  // always breaks off. Slice 2 (real-time broadside): battleFire() discharges the loaded guns
+  // (no-op while reloading); the snapshot exposes hull / reload / aim quality for assertions.
   get battle() { return battle.snapshot(); },
   engageBattle() { return battle.engage(); },
   fleeBattle() { return battle.flee(); },
+  battleFire() { return battle.fire(); },
+  battleAim() { return battle.aim(); },
   // Foundering-ship encounter (#125) QA surface: read the live encounter (the founderer + the
   // choice/reward, or inactive), force a deterministic spawn (the spawn hook the contract asks
   // for), and make the choice headlessly. encounterChoose('rescue'|'plunder') resolves it.

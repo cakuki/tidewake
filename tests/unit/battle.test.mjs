@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  createBattle, quarterViewPos, engageLine, fleeLine,
+  createBattle, quarterViewPos, engageLine, fleeLine, broadsideAim,
 } from '../../src/systems/battle.js';
 import { CHALLENGE_RANGE } from '../../src/duel.js';
+import { MAX_HULL } from '../../src/cannons.js';
 
 const half = () => 0.5; // deterministic rng
 
@@ -135,4 +136,114 @@ test('line pickers return on-tone strings from their pools', () => {
   assert.equal(typeof fleeLine(half), 'string');
   assert.ok(engageLine(() => 0).length > 0);
   assert.ok(fleeLine(() => 0.999).length > 0);
+});
+
+// ---- Real-time broadside (#135 slice 2) ------------------------------------
+
+test('broadsideAim: a foe directly abeam to starboard is a clean shot (quality ~1)', () => {
+  // heading 0 → forward +z, starboard +x. A foe at +x sits dead abeam to starboard.
+  const a = broadsideAim([0, 0], 0, [50, 0]);
+  assert.ok(a.quality > 0.99, `quality ${a.quality} should be ~1`);
+  assert.equal(a.side, 'starboard');
+  assert.equal(a.inArc, true);
+});
+
+test('broadsideAim: a foe to port reports the port side, still a clean shot', () => {
+  const a = broadsideAim([0, 0], 0, [-50, 0]);
+  assert.ok(a.quality > 0.99);
+  assert.equal(a.side, 'port');
+  assert.equal(a.inArc, true);
+});
+
+test('broadsideAim: a foe dead ahead is out of the broadside arc (quality ~0)', () => {
+  const a = broadsideAim([0, 0], 0, [0, 50]); // straight off the bow (+z)
+  assert.ok(a.quality < 0.01, `quality ${a.quality} should be ~0`);
+  assert.equal(a.inArc, false);
+});
+
+test('engage: loads the guns and seeds full hulls for the real-time broadside', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    rng: half,
+  });
+  battle.engage();
+  const s = battle.snapshot();
+  assert.equal(s.playerHull, MAX_HULL);
+  assert.equal(s.enemyHull, MAX_HULL);
+  assert.equal(s.loaded, true, 'you square up with the guns loaded and ready');
+  assert.equal(s.reload, 0);
+});
+
+test('fire: a clean beam broadside damages the foe and sets the reload timer', () => {
+  // Foe abeam to starboard (heading 0, foe at +x).
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [60, 0] }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    reloadSeconds: 2,
+    rng: half,
+  });
+  battle.engage();
+  const r = battle.fire();
+  assert.ok(r && r.enemyHit > 0, 'a beam broadside bites');
+  assert.ok(battle.snapshot().enemyHull < MAX_HULL, 'the foe took hull damage');
+  assert.ok(battle.snapshot().reload > 0, 'the guns are now reloading');
+  assert.equal(battle.fire(), null, 'cannot fire again while reloading');
+});
+
+test('tick: advancing time reloads the guns so you can fire again', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [60, 0] }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    reloadSeconds: 2,
+    rng: half,
+  });
+  battle.engage();
+  battle.fire();
+  assert.equal(battle.snapshot().loaded, false);
+  battle.tick(2.5); // wait out the reload
+  assert.equal(battle.snapshot().loaded, true, 'the guns are loaded again');
+  assert.ok(battle.fire(), 'and can fire once more');
+});
+
+test('fire: repeated clean broadsides sink the foe and resolve the engagement to a win', () => {
+  let resolved = null, rewarded = null;
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [60, 0] }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    reloadSeconds: 1,
+    applyReward: (r) => { rewarded = r; },
+    onResolve: (info) => { resolved = info; },
+    rng: half,
+  });
+  battle.engage();
+  for (let i = 0; i < 20 && battle.state.active; i++) { battle.fire(); battle.tick(1); }
+  assert.equal(battle.state.active, false, 'the engagement ended');
+  assert.ok(resolved, 'onResolve fired');
+  assert.equal(resolved.result, 'win');
+  assert.ok(rewarded && rewarded.infamy > 0, 'sinking pays Infamy');
+});
+
+test('fire: a wide shot (foe off the bow) does no hull damage but burns the load', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [0, 60] }]), // dead ahead at heading 0 → out of arc
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    reloadSeconds: 2,
+    rng: half,
+  });
+  battle.engage();
+  const r = battle.fire();
+  assert.equal(r.enemyHit, 0, 'firing wide scratches nothing');
+  assert.equal(battle.snapshot().enemyHull, MAX_HULL);
+  assert.ok(battle.snapshot().reload > 0, 'but the volley is spent — you must reload');
+});
+
+test('fire: no-op when not engaged', () => {
+  const battle = createBattle({ npcs: fakeNpcs([]), getShipPos: () => [0, 0] });
+  assert.equal(battle.fire(), null);
 });
