@@ -139,10 +139,14 @@ promoted below. **#135 battle is DECIDED & promoted to TOP (from-owner P1, preem
   (Maneuvering Battle) → then Option 4 (Three-Act Raid)**, shipped as small gamer-testable slices.
   This is the owner's **focused delivery lane**; per the **PREEMPTION RULE** it sits at the TOP.
   Its mode-switch infra (#95) + seam (#106 ph1) + QA (#107) + save-migration codec (#122) are all
-  built — battle is the one empty room, and it is now cleared to fill.
-  **Next build = slice 1 (Battle Mode shell):** enter/leave on #95, "BATTLE" banner, quarter-view
-  camera, battle-music hook (#94), NPCs keep sailing, **Flee** always available. Then slices 2–5 per
-  #135. The de-risk quartet (#120/#121/#123) rides WITH it. **No owner nudge — the decision is in.**
+  built — battle is the room now being filled, slice by slice.
+  **SHIPPED:** slice 1 — Battle Mode shell (Loop 85, v0.0.20260630054448) · slice 2 — real-time
+  broadside (Loop 87, v0.0.20260630073159). **NEXT BUILD (top buildable item) = slice 3 — workshop
+  loadouts + mid-combat ammo cycle (ties town #96):** buy/fit cannons & ammo at a town workshop, one
+  key cycles round/chain/grape/light/heavy/swivel mid-fight (no buying in combat). Then slice 4
+  (boarding → crew brawl → verbal duel: capture=Standing/sink=Infamy), slice 5 (expanded 50+ insult
+  duel), then Option 4 phase-coupling. The de-risk quartet (#120/#121/#123) rides WITH it. **No owner
+  nudge — the decision is in; #135 stays at the TOP until the lane ships impressive + gamer-testable.**
 
 ## DL #4 + DL #5 candidates (research reservoir — below the #135 battle lane at top)
 
