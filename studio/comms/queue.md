@@ -61,6 +61,20 @@ engaged foe is a real maneuvering target; the flee-vs-flee nuance mid-cannonade.
 
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
+_**UPDATE Loop 86 (2026-06-30): from-owner P1 #146 — port-view mobile clipping — SHIPPED.** The
+town/port view clipped on phone viewports; fixed with a scrollable `.town-scroll` body + a PINNED
+"⚓ Set Sail" footer + responsive sizing, and a **standing mobile-viewport guard** added to
+`tests/playtest.mjs` (390×844 · 360×640 · 844×390 — asserts the panel fits, the body scrolls to its
+end, Set Sail stays on screen). **#146 CLOSED.** The owner's larger "less scroll, MORE navigation"
+ask is now an **[OWNER-DECISION]** below._
+
+- **[OWNER-DECISION] #147 — Port-view redesign: less scroll, MORE navigation.** Follow-up to #146
+  (the quick fix shipped). Ask the owner to pick a navigation model before building: **A** segmented
+  tabs (Market·Tavern·Harbour) · **B** collapsible accordion · **C** quayside hub + drill-in cards
+  (most mobile-native, biggest build). Options + tradeoffs in issue #147. **Do not build until the
+  owner picks** (owner-decision rule); whichever ships inherits the #146 mobile-viewport guard.
+
+
 **DL #5 (2026-06-28, 9-role fan-out) re-sorted this top. #126 / #120-mechanism / #123 / #125 / #118 /
 #122 / #130 / #121 / #117 / #110 ALL SHIPPED & CLOSED; #133 contested rumour now SHIPPED.** The next
 build top is the replay-gate hardening that must precede battle (#131), then the next reactive meter /
