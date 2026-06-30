@@ -236,8 +236,11 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
   - **#132 — [DL#5] the reputation needle, made personal & audible** (hull/sail material lerp + harmonic
     modal recolour on the *same* needle). _art+audio+design P3; procedural, zero new assets._
 - **Loop feedback / charm:**
-  - **#116 — diegetic feedback for the reactive loop** (listen/reach/payoff stingers + interaction SFX +
-    warmer remembered-port arrival cue). _audio P3; pure wiring onto the bar-clock._
+  - ~~**#116 — diegetic feedback for the reactive loop**~~ — ✅ **SHIPPED & CLOSED** (Loop 83) — the four
+    loop-beat cues (listen/approach/payoff/loss). **Reservoir follow-ups:** ~~per-rumour-kind LISTEN colour
+    + coin-chime under the payoff~~ ✅ **SHIPPED & CLOSED as #148** (Loop 93, v0.0.20260630224900, save v16);
+    **STILL QUEUED:** a distinct **rival-sail-sighted sting** + a continuous **wake/helm water-bed SFX**
+    (see the reservoir note below) — fold into a future audio slice / #81. _audio P3; pure wiring._
   - ~~**#117 — seeded per-pass melody variation**~~ — ✅ **SHIPPED & CLOSED** (Loop 77).
 - **Reactive-world reservoir:**
   - **#124 — crew morale/loyalty meter** fed by your choices (DL #1's earned-mutiny; battle
