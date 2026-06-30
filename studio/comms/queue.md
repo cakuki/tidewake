@@ -68,6 +68,21 @@ ransom), slice 5 (expanded 50+ insult duel, anti-repeat within an engagement), t
 Slice-2 follow-ups: an arena-spawn so the engaged foe is a dedicated maneuvering target (today reuses the
 open-sea NPC); false-colours/letters-of-marque reward nuances on the real-time path; battle-HUD polish._
 
+_**UPDATE Loop 88 (2026-06-30, v0.0.20260630210414): slice 3 — workshop loadouts + mid-combat shot cycle —
+SHIPPED.** You now **fit shot at a town ⚒ Gunner's Workshop** (ties #96; the first ashore activity beyond
+the market) and **press X mid-fight to cycle the LOADED shot** — round (balanced) / chain (cripples rigging,
+weak reply) / grape (breaks crew nerve → a faster capture) / light (forgiving arc) / heavy (devastating but
+slow) / swivel (quick-firing), **each a distinct effect on the broadside**. New pure `src/systems/ammo.js`
+(6 profiles + cycle/fit loadout helpers, TDD'd first, 873 tests); `cannons.resolveBroadside` takes an optional
+ammo profile (omitting = byte-identical round, so slice 2 is untouched). **No save-schema change — the loadout
+is session-scoped, NOT persisted (stays v16)**; perf 32/130 draws · 90k/150k tris (zero new draws). Galleries
+`workshop-loadout-135.png` + `ammo-cycle-135.png`. **#135 stays OPEN — next build is slice 4 (boarding → crew
+brawl → verbal captain duel: "Board!" at ≤30% hull, auto brawl, `duel.js` is the climax, capture = Standing /
+sink = Infamy, early strike-colours short-circuits to a ransom).** Then slice 5 (expanded 50+ insult duel,
+anti-repeat within an engagement), then Option 4 phase-coupling. Slice-3 follow-ups (deferred to keep this
+increment smallest): **PERSIST the loadout + a coin-priced BUY economy** at the workshop (bumps save v16→v17 +
+the #122 migrate-all-forward + frozen-corpus rule); a per-shot reload/aim HUD readout; the arena-spawn._
+
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
 _**UPDATE Loop 86 (2026-06-30): from-owner P1 #146 — port-view mobile clipping — SHIPPED.** The
