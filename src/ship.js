@@ -58,6 +58,7 @@ export function createShip() {
   hullGeo.setIndex(idx);
   hullGeo.computeVertexNormals();
   const hull = new THREE.Mesh(hullGeo, woodHull);
+  hull.name = 'hull'; // #132: let the ship-aura cast find the hull on the procedural fallback too
   hull.castShadow = true;
   hull.receiveShadow = true;
   group.add(hull);
@@ -206,6 +207,7 @@ export function createShip() {
   }
   sailGeo.computeVertexNormals();
   const sail = new THREE.Mesh(sailGeo, sailMat);
+  sail.name = 'sail'; // #132: let the ship-aura cast find the mainsail on the procedural fallback too
   sail.position.set(0, 13, -1);
   sail.castShadow = true;
   group.add(sail);

@@ -1504,6 +1504,43 @@ try {
   if (!(needle.gov.target < 0) || needle.gov.pole !== 'governor') fail(`rep-needle: a standing gain did not swing the needle back toward the governor pole (${JSON.stringify(needle.gov)})`);
   if (!needle.gov.last || needle.gov.last.pole !== 'governor' || needle.gov.last.cue !== 'rep-governor') fail(`rep-needle: the governor shift did not register a cue (${JSON.stringify(needle.gov.last)})`);
 
+  // 2j-4) Your ship wears your legend (#132 Slice A, DL #5): the SAME needle, now on the player's OWN
+  // ship. A fresh captain sails the untouched honest sloop (white colour-multiplier, no glow). Drive
+  // the ledger infamous → the canvas + timber grime and darken (lower-luminance colour) and roughen;
+  // drive it lawful → the sails brighten (warmer colour) and a soft trim glow lights up. Return to a
+  // neutral ledger and the untouched ship must restore EXACTLY. Uniform writes only — asserts via the
+  // ACTUAL applied materials, deterministically through the QA ledger hooks.
+  const aura = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);            // clean slate: neutral, the honest sloop
+    const neutral = { ...tw.aura, sail: { ...tw.aura.sail }, hull: { ...tw.aura.hull } };
+    tw.setInfamy(2000); tw.setStanding(0);   // a feared pirate
+    tw.step(0.1);
+    const infamous = { ...tw.aura, sail: { ...tw.aura.sail }, hull: { ...tw.aura.hull } };
+    tw.setInfamy(0); tw.setStanding(2000);   // a respected governor
+    tw.step(0.1);
+    const lawful = { ...tw.aura, sail: { ...tw.aura.sail }, hull: { ...tw.aura.hull } };
+    tw.newVoyage(); tw.step(0.1);            // back to a neutral ledger
+    const restored = { ...tw.aura, sail: { ...tw.aura.sail }, hull: { ...tw.aura.hull } };
+    return { neutral, infamous, lawful, restored };
+  });
+  const aLum = (h) => (((h >> 16) & 0xff) + ((h >> 8) & 0xff) + (h & 0xff)) / 3;
+  const aWarm = (h) => ((h >> 16) & 0xff) - (h & 0xff);
+  if (!aura.neutral.applied) fail('ship-aura: the hero ship exposed no sail/hull material to cast (#132 Slice A)');
+  if (aura.neutral.lean !== 0 || aura.neutral.pole !== 'neutral') fail(`ship-aura: a fresh captain is not the neutral honest sloop (${JSON.stringify(aura.neutral)})`);
+  if (aura.neutral.sail.color !== 0xffffff || aura.neutral.hull.color !== 0xffffff) fail(`ship-aura: neutral ship is not the untouched white-multiplier identity (${JSON.stringify(aura.neutral)})`);
+  if (aura.neutral.sail.emissiveIntensity !== 0) fail('ship-aura: the neutral ship should not glow');
+  if (aura.infamous.pole !== 'pirate' || !(aura.infamous.lean > 0)) fail(`ship-aura: infamy did not cast pirate (${JSON.stringify(aura.infamous)})`);
+  if (!(aLum(aura.infamous.sail.color) < aLum(aura.neutral.sail.color))) fail('ship-aura: an infamous canvas did not grime/darken');
+  if (!(aLum(aura.infamous.hull.color) < aLum(aura.neutral.hull.color))) fail('ship-aura: an infamous hull did not weather/darken');
+  if (!(aura.infamous.sail.roughness >= aura.neutral.sail.roughness)) fail('ship-aura: an infamous canvas un-roughened (grime reads via darkening + matte)');
+  if (aura.infamous.sail.emissiveIntensity !== 0) fail('ship-aura: a feared ship must not glow');
+  if (aura.lawful.pole !== 'governor' || !(aura.lawful.lean < 0)) fail(`ship-aura: standing did not cast governor (${JSON.stringify(aura.lawful)})`);
+  if (!(aWarm(aura.lawful.sail.color) > aWarm(aura.neutral.sail.color))) fail('ship-aura: a lawful canvas did not warm/brighten');
+  if (!(aura.lawful.sail.emissiveIntensity > 0)) fail('ship-aura: a respected ship did not light its trim glow');
+  if (!(aura.lawful.sail.roughness < aura.neutral.sail.roughness)) fail('ship-aura: a lawful canvas did not sheen (smoother/cared-for)');
+  if (aura.restored.sail.color !== aura.neutral.sail.color || aura.restored.sail.emissiveIntensity !== aura.neutral.sail.emissiveIntensity) fail(`ship-aura: a neutral ledger did not restore the untouched ship exactly (${JSON.stringify(aura.restored)})`);
+
   // 2k) Island names + landfall flavour (#19): every island carries a characterful name, and
   // the FIRST time you sail close to one, a one-time toast hails it by name with a comedic line.
   // Sail straight at the nearest isle and assert (1) it has a name, (2) the approach beat fired

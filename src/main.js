@@ -33,6 +33,7 @@ import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading }
 import { createLandfall, mooredSwellScale } from './systems/landfall.js';
 import { createSystemsRegistry } from './systems/registry.js';
 import { reputationLean, leanPole, gradeHaze, gradeSun, gradeSunKey } from './systems/reputation-grade.js';
+import { shipAura } from './systems/reputation-aura.js';
 import { snapshotAshore, composeAshoreDigest } from './systems/ashore-digest.js';
 import { mixHex } from './sea-color.js';
 import { initEconomy, syncRenown } from './economy.js';
@@ -102,6 +103,42 @@ const daynight = createDayNight({
 });
 const ship = await loadShip(); // CC0 glTF sloop (#32); falls back to procedural hull on error
 scene.add(ship);
+// Your ship wears your legend (#132 Slice A, DL #5): clone the hero hull's sail + hull materials ONCE
+// (the GLB shares one colormap material across its meshes — clone so we can tint each independently
+// without touching the founderer or any other instance) and capture each base roughness. The per-frame
+// ship-aura system below writes colour / roughness / emissive off the SAME reputation lean #126 uses —
+// uniform writes only, ZERO new draws. Name-matched so it works for the GLB ('sail-a' / 'ship-pirate-
+// small') and the procedural fallback ('sail' / 'hull'); a vessel with neither stays untinted (no-op).
+const shipAuraParts = [];
+try {
+  const seen = new Set();
+  ship.traverse((obj) => {
+    if (!obj.isMesh || !obj.material || obj.material.isMeshBasicMaterial) return;
+    const n = (obj.name || '').toLowerCase();
+    const role = n.includes('sail') ? 'sail' : (n.includes('hull') || n.includes('ship')) ? 'hull' : null;
+    if (!role || seen.has(obj.uuid)) return;
+    seen.add(obj.uuid);
+    obj.material = obj.material.clone(); // independent instance — tinting must not leak to siblings
+    shipAuraParts.push({ role, mat: obj.material, baseRough: obj.material.roughness ?? 0.8 });
+  });
+} catch { /* the aura is a flourish — never block a boot */ }
+const clampUnit = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+// Apply the cast for a signed lean to the captured materials. lean 0 → the untouched ship, exactly.
+function applyShipAura(lean) {
+  if (!shipAuraParts.length) return;
+  const aura = shipAura(lean);
+  for (const part of shipAuraParts) {
+    const cast = part.role === 'sail' ? aura.sail : aura.hull;
+    try {
+      part.mat.color.setHex(cast.color);
+      part.mat.roughness = clampUnit(part.baseRough + cast.roughnessAdd);
+      part.mat.emissive.setHex(cast.emissive);
+      part.mat.emissiveIntensity = cast.emissiveIntensity;
+    } catch { /* a bad cast must never break the frame */ }
+  }
+  return aura;
+}
+let shipAuraLive = shipAura(0); // the live cast, for the QA surface (starts neutral)
 // Foundering-ship encounter (#125): reuse the hero hull for the stricken vessel — its OWN GLB
 // instance (independent materials, so the player's False-Colours pennant tint never leaks onto it).
 // Hidden until an encounter is live; heeled over + settled low each frame so she reads foundering.
@@ -1263,6 +1300,10 @@ systems.register({ name: 'daynight', order: 110, update: (f) => daynight.update(
 // — scene grade composition (CRITICAL ORDER): reputation cast (#126) over day-night (#58), warm
 //   "golden harbour" glow (#102) over the top — exactly the old applyReputationGrade→applyLandfallGrade order.
 systems.register({ name: 'reputation-grade', order: 120, update: () => applyReputationGrade() });
+// — your ship wears your legend (#132 Slice A, DL #5): cast the hero ship's sail + hull off the SAME
+//   signed lean reputation-grade just wrote to repLean — Infamy grimes/darkens, Standing cleans/glows.
+//   Uniform writes only (colour/roughness/emissive), zero new draws; neutral leaves the ship untouched.
+systems.register({ name: 'ship-aura', order: 122, update: () => { shipAuraLive = applyShipAura(repLean) || shipAuraLive; } });
 systems.register({ name: 'landfall-grade', order: 130, update: () => applyLandfallGrade() });
 // — arrival detection (fires onArrive once → auto-harbour) + buoy bob (#67/#96).
 systems.register({ name: 'ports', order: 140, update: (f) => ports.update(f.state, onArrive, f.t) });
@@ -1599,6 +1640,20 @@ window.__tidewake = {
       sunIntensity: sun.intensity,
     };
   },
+  // Your ship wears your legend (#132 Slice A, DL #5) QA surface: the live cast off the SAME signed
+  // lean — the pole + commitment, and the ACTUAL applied sail/hull material (colour hex, roughness,
+  // emissive glow) read straight off the cloned materials. So a headless playtest can drive the ledger
+  // (setInfamy/setStanding) and assert the ship grimes/darkens toward Infamy, cleans/glows toward
+  // Standing, and restores to the untouched ship at neutral. `applied` is false on a vessel with no
+  // matched sail/hull mesh (the rare procedural-fallback edge) — the mapping is still proven by `lean`.
+  get aura() {
+    const live = shipAuraLive || shipAura(repLean);
+    const read = (role) => {
+      const p = shipAuraParts.find((q) => q.role === role);
+      return p ? { color: p.mat.color.getHex(), roughness: p.mat.roughness, emissiveIntensity: p.mat.emissiveIntensity } : null;
+    };
+    return { lean: repLean, pole: live.pole, mag: live.mag, applied: shipAuraParts.length > 0, sail: read('sail'), hull: read('hull') };
+  },
   // Reputation needle (#132, DL #5) QA surface: the live eased pointer position, its target, the
   // categorical pole + commitment tier, and the last FELT shift ({pole, delta, tier, cue, line}) —
   // so a headless playtest can drive the ledger (setInfamy/setStanding) and assert the needle swings
@@ -1863,6 +1918,15 @@ window.__tidewake = {
   // refreshes the snapshot, so the gate measures a real frame deterministically instead of racing
   // the throttled loop. Same scene/camera as loop(); sim/state untouched.
   qaRender() { renderer.render(scene, camera); updatePerf(0); return { ...perf }; },
+  // QA hero-framing hook: swing the camera to a fixed quarter view of the player ship, for a
+  // deterministic gallery shot (e.g. the #132 ship-aura pole extremes). Render with qaRender() after.
+  // Purely a capture affordance — the live chase cam overwrites it on the next real frame.
+  qaFrameShip({ dist = 20, height = 9, az = 0.85, look = 5 } = {}) {
+    const sx = ship.position.x, sy = ship.position.y, sz = ship.position.z;
+    camera.position.set(sx + Math.sin(az) * dist, sy + height, sz + Math.cos(az) * dist);
+    camera.lookAt(sx, sy + look, sz);
+    return [camera.position.x, camera.position.y, camera.position.z];
+  },
   fps: 0,
 };
 
