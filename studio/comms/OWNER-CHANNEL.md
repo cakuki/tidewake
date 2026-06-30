@@ -53,11 +53,10 @@ Keep captions **< 1024 chars**; prefer one strong shot/clip over many.
 
 ## 3. Taking input IN — routing the owner's messages (read it like a person would)
 
-A **listener/triage subagent** (PM hat) handles the owner inbox **at the start of every cycle** — the
-orchestrator dispatches it and reads only its <8-line summary (§5 is the canonical protocol; the
-listener `inbox`-consumes, never just `peek`s, so nothing is lost). **Don't cold-triage every message
-into PM-desk** — read each one *in the context of the recent thread* and route it the way a thoughtful
-chief-of-staff would. Walk this decision tree top-down and take the **first** branch that fits:
+The orchestrator **polls the owner inbox at the start of every cycle** (`owner-channel.sh peek`).
+**Don't cold-triage every message into PM-desk** — read each one *in the context of the recent
+thread* and route it the way a thoughtful chief-of-staff would. Walk this decision tree top-down and
+take the **first** branch that fits:
 
 ### 3a. It answers a pending question → route to the asker, execute
 If a question is open under **## Pending questions** (asked by the orchestrator or a named agent —
@@ -139,75 +138,21 @@ locally still ship best-effort and are tracked **unconfirmed pending owner re-te
 
 ## 4. The orchestrator's per-cycle comms step (fits the Lean protocol)
 
-Adds **one cheap move** to the front of the lean per-cycle loop (`docs/runbook/LOOP.md` step 0): the
-orchestrator **dispatches the listener/triage subagent** and reads only its summary — it never opens
-the inbox, a screenshot, or an issue body in main.
+Adds **one cheap move** to the front of the lean per-cycle loop (`docs/runbook/LOOP.md` → Lean
+orchestrator protocol):
 
 ```
-0. dispatch listener/triage subagent (§5) → read its <8-line summary; it has already:
-   ├─ none                                → summary says 0 messages, PREEMPT: none
-   ├─ answers a pending question          → routed to the asker, executed, cleared it    (§3a)
-   ├─ reaction/reply to a recent thread   → matched the referent, acted in that context  (§3b)
-   ├─ small ad-hoc request                → did it inline, reported back                 (§3c)
-   ├─ needs planning (feature/idea)       → ran PM funnel, filed/prioritised             (§3d/§5)
-   └─ bug report                          → PM-assessed validity, filed + prioritised    (§5)
-   summary ends `PREEMPT: #N` (a from-owner P1 to run THIS cycle) or `PREEMPT: none`
+0. owner-channel.sh peek                  # any new owner message? route by §3 decision tree:
+   ├─ none                                → proceed to the normal cycle
+   ├─ answers a pending question          → route to the asker, execute, clear it      (§3a)
+   ├─ reaction/reply to a recent thread   → match the referent, act in that context    (§3b)
+   ├─ small ad-hoc request                → orchestrator does it inline, reports back   (§3c)
+   └─ needs planning (feature/idea/bug)   → dispatch a PM-desk-triage subagent          (§3d)
 1. read queue.md top → dispatch ONE cycle-runner → read its <10-line report   (unchanged)
 ```
 
-It never blocks: triage, decisions, and responses run inside the subagent / as async questions; the
-build agenda keeps moving and the owner's steering latency stays about one cycle.
-
----
-
-## 5. Listener / triage subagent — the per-cycle owner-input protocol (canonical)
-
-Every cycle the orchestrator dispatches **one listener/triage subagent (PM hat)** for the owner
-channel (brief lives in `docs/runbook/LOOP.md` → "Owner-channel listener brief"). **It runs in a
-subagent so the main context stays clean** — the orchestrator reads only its <8-line summary, never raw
-message bodies, screenshots, or issue bodies. The listener:
-
-1. **Consumes** new owner messages with `scripts/owner-channel.sh inbox` (it may `peek` first, but it
-   must **record what it handled** — an `inbox` read advances the cursor, so nothing may be silently
-   dropped). It logs each handled message to the **§ Handled log** below so a consumed message has a trail.
-2. **Triages each message** by the §3 decision tree, taking the first branch that fits:
-
-   | Kind | Routing |
-   |------|---------|
-   | reaction / contextual reply | match the referent in the recent thread, act in that context (§3b) |
-   | small ad-hoc request | do it inline, report back — no issue, no funnel (§3c) |
-   | question (roadmap / status) | answer from `ROADMAP.md` + issues + `REGISTER.md` (§3c) |
-   | **bug report** | **PM handling** (below) |
-   | **feature request / idea** | **PM handling** (below) |
-   | planning / strategy / spend | PM funnel; **direction/strategy/branding/spend → `[OWNER-DECISION]` options, never auto-adopt** (§3d) |
-
-3. **PM handling of bugs & features — clarify & check validity → record → prioritise:**
-   - **Bug report:** act as PM. **Reproduce / assess validity** (for a *visual* bug fetch + view the
-     full frame first — see "Visual bug reports" above). If **valid**, `gh issue create` with the
-     `from-owner` label, repro steps + severity, then **prioritise into `studio/comms/queue.md`**
-     (from-owner P1 to the top). If **not reproducible / ambiguous**, **ask the owner a clarifying
-     question** and log it under **## Pending questions** — don't file noise.
-   - **Feature request / idea:** act as PM. **Clarify intent**, **validate against
-     `studio/CONSTITUTION.md` + `docs/VISION.md`** (does it serve the north-star fantasy?), record as a
-     GitHub issue (`from-owner`), and **prioritise into `queue.md`**. If it's a **direction / strategy /
-     branding / spend** choice, file it as **`[OWNER-DECISION]` with options — never auto-adopt**.
-   - Heavier funnel work (verbatim capture, value note, TL-subagent feasibility, accept/park/decline)
-     follows `studio/feedback/PM-DESK.md`; the listener may fan out its own sub-subagents for it.
-4. **Respond properly, every time.** The owner must always know his input landed and how it was
-   handled: confirm via `scripts/owner-channel.sh report`, or `ask "Q?" "A" "B"` for a tappable
-   decision. **Respect quiet hours 01:00–07:00** (auto-quiet; batch for 07:00).
-5. **Return a <8-line summary** to the orchestrator: message count, how each was routed, any queue-top
-   change, ending with an explicit `PREEMPT: #N` (a from-owner P1 to dispatch this cycle) or
-   `PREEMPT: none`.
-
-### Handled log
-
-_A trail of consumed owner messages so an `inbox`-advanced message is never lost. The listener appends
-one row per handled message; Pending questions (above) tracks the ones still awaiting the owner._
-
-| Handled (UTC) | Gist | Kind | Routed to / outcome |
-|---------------|------|------|---------------------|
-| _(none yet.)_ | | | |
+The check is a couple of seconds and keeps the owner's steering latency to about one cycle. It never
+blocks: triage and decisions run as subagents / async questions; the build agenda keeps moving.
 
 ---
 
