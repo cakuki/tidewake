@@ -239,16 +239,18 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
   - ~~**#116 — diegetic feedback for the reactive loop**~~ — ✅ **SHIPPED & CLOSED** (Loop 83) — the four
     loop-beat cues (listen/approach/payoff/loss). **Reservoir follow-ups:** ~~per-rumour-kind LISTEN colour
     + coin-chime under the payoff~~ ✅ **SHIPPED & CLOSED as #148** (Loop 93, v0.0.20260630224900, save v16);
-    **STILL QUEUED:** a distinct **rival-sail-sighted sting** + a continuous **wake/helm water-bed SFX**
-    (see the reservoir note below) — fold into a future audio slice / #81. _audio P3; pure wiring._
+    ~~a continuous **wake/helm water-bed SFX**~~ ✅ **SHIPPED & CLOSED as #150** (Loop 96,
+    v0.0.20260630232820, save v16) — an always-on speed/helm-driven noise wash through musicGain;
+    **STILL QUEUED:** a distinct **rival-sail-sighted sting** — fold into a future audio slice / #81. _audio P3; pure wiring._
   - ~~**#117 — seeded per-pass melody variation**~~ — ✅ **SHIPPED & CLOSED** (Loop 77).
 - **Reactive-world reservoir:**
   - **#124 — crew morale/loyalty meter** fed by your choices (DL #1's earned-mutiny; battle
     surrender/boarding currency — build *before* battle). _design P3; the next reactive meter._
   - ~~**#125 — emergent at-sea encounter: foundering ship, rescue vs plunder**~~ — ✅ **SHIPPED & CLOSED**
     (Loop 66). Follow-ups: more encounter types, grateful-crew-fights-alongside, a flying distress flag.
-  - _Reservoir note (not filed): a continuous wake/helm water-bed SFX (speed/turn-rate driven) — the
-    cheap cousin of #81 hull-creak; fold into #81 or #116 when audio next has a slot._
+  - ~~_Reservoir note: a continuous wake/helm water-bed SFX (speed/turn-rate driven) — the cheap
+    cousin of #81 hull-creak_~~ ✅ **SHIPPED & CLOSED as #150** (Loop 96). #81 proper (a
+    physically-modelled hull-creak voice) still open.
 
 ## Rumour-loop depth (#112 umbrella OPEN — close more reward kinds)
 
