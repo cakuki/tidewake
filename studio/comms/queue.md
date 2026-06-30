@@ -151,9 +151,14 @@ promoted below. **#135 battle is DECIDED & promoted to TOP (from-owner P1, preem
   implied — this is its ready-made reason to fight (stakes-in → consequence-out). **Follow-up:** the
   defensive engagement rides WITH battle #100; richer threat escalation across visits.
 
-1. **#132 — [DL#5] The reputation needle, made personal & audible** — hull/sail material lerp + harmonic
-   modal recolour on the *same* needle; procedural, zero new assets. Makes the symmetric poles FELT on
-   the player. _value **med** · complexity **med** · art+audio+design._
+1. **#132 — [DL#5] The reputation needle, made personal & audible** — _**Slice A (ship hull/sail material
+   lerp) SHIPPED & REOPENED** (Loop 91, v0.0.20260630221704, save v16) — the player's own ship now grimes/
+   darkens toward Infamy and brightens/glows toward Standing off the SAME `repLean` #126 uses; pure
+   `src/systems/reputation-aura.js`, zero new draws. **#132 was prematurely closed earlier by a different
+   (HUD-gauge) slice — reopened to track real scope.** **REMAINS — Slice B (audio):** the harmonic modal
+   recolour of the procedural bed (Infamy→freygish bite / Standing→warm Ionian-Lydian, one cross-faded
+   gain, percussive bed fixed, no `loadTrack`) — rides its own next cycle per the issue DoD._
+   _value **med** · complexity **med** · audio._
 
 - ~~**#131 — [DL#5] Harden the golden-replay gate**~~ — ✅ **SHIPPED & CLOSED** (Loops 79–80) — both
   invariants (determinism-parity + save-round-trip-per-tick) now gate the #123 fixture.
