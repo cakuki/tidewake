@@ -76,12 +76,21 @@ slow) / swivel (quick-firing), **each a distinct effect on the broadside**. New 
 (6 profiles + cycle/fit loadout helpers, TDD'd first, 873 tests); `cannons.resolveBroadside` takes an optional
 ammo profile (omitting = byte-identical round, so slice 2 is untouched). **No save-schema change — the loadout
 is session-scoped, NOT persisted (stays v16)**; perf 32/130 draws · 90k/150k tris (zero new draws). Galleries
-`workshop-loadout-135.png` + `ammo-cycle-135.png`. **#135 stays OPEN — next build is slice 4 (boarding → crew
-brawl → verbal captain duel: "Board!" at ≤30% hull, auto brawl, `duel.js` is the climax, capture = Standing /
-sink = Infamy, early strike-colours short-circuits to a ransom).** Then slice 5 (expanded 50+ insult duel,
-anti-repeat within an engagement), then Option 4 phase-coupling. Slice-3 follow-ups (deferred to keep this
-increment smallest): **PERSIST the loadout + a coin-priced BUY economy** at the workshop (bumps save v16→v17 +
-the #122 migrate-all-forward + frozen-corpus rule); a per-shot reload/aim HUD readout; the arena-spawn._
+`workshop-loadout-135.png` + `ammo-cycle-135.png`._
+
+_**UPDATE Loop 89 (2026-06-30, v0.0.20260630213520): slice 4 — boarding → crew brawl → verbal captain duel —
+SHIPPED.** Beat a foe to **≤30% hull** and a gold **⚔ BOARD HER! (F)** finisher lights — **F** (or tap) sends the
+crew over the rail for a quick **auto crew brawl** (crew × morale × loadout, 2–3 original comic lines), which
+**hands off to the existing verbal captain's duel (#33 — reused, the climax)**. A boarded win is a **CAPTURE** →
+pays **Standing** on top of Infamy; sinking via the broadside stays **pure Infamy** — the owner's capture/sink
+fork is now real. New pure `src/systems/board.js` (canBoard/resolveBrawl/brawlMoraleDent, TDD'd first, 890 tests);
+`duel.tryChallenge` takes an optional `{openingDent, boarded}` (open-sea hail byte-identical). **No save-schema
+change — boarding is transient (stays v16)**; perf 32/130 draws · 90k/150k tris (zero new draws). Galleries
+`boarding-brawl-135.png` + `captain-duel-climax-135.png`. **#135 stays OPEN — next build is slice 5 (expanded
+50+ insult duel, 7 categories, anti-repeat within an engagement), then Option 4 phase-coupling.** Slice-4
+follow-ups (deferred to keep this increment smallest): the **early strike-colours → ransom** short-circuit, a
+post-duel explicit **sink-or-spare** choice, the brawl casualties actually gating the duel (Option 4), an
+arena-spawn for a dedicated boarded target. Slice-3's PERSIST-loadout + BUY-economy follow-up still parked._
 
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
@@ -156,12 +165,16 @@ promoted below. **#135 battle is DECIDED & promoted to TOP (from-owner P1, preem
   Its mode-switch infra (#95) + seam (#106 ph1) + QA (#107) + save-migration codec (#122) are all
   built — battle is the room now being filled, slice by slice.
   **SHIPPED:** slice 1 — Battle Mode shell (Loop 85, v0.0.20260630054448) · slice 2 — real-time
-  broadside (Loop 87, v0.0.20260630073159). **NEXT BUILD (top buildable item) = slice 3 — workshop
-  loadouts + mid-combat ammo cycle (ties town #96):** buy/fit cannons & ammo at a town workshop, one
-  key cycles round/chain/grape/light/heavy/swivel mid-fight (no buying in combat). Then slice 4
-  (boarding → crew brawl → verbal duel: capture=Standing/sink=Infamy), slice 5 (expanded 50+ insult
-  duel), then Option 4 phase-coupling. The de-risk quartet (#120/#121/#123) rides WITH it. **No owner
-  nudge — the decision is in; #135 stays at the TOP until the lane ships impressive + gamer-testable.**
+  broadside (Loop 87, v0.0.20260630073159) · slice 3 — workshop loadouts + mid-combat shot cycle
+  (Loop 88, v0.0.20260630210414) · slice 4 — boarding → crew brawl → verbal captain duel (Loop 89,
+  v0.0.20260630213520; ≤30% hull lights a **Board!** finisher → auto crew brawl → the #33 verbal duel
+  is the climax; **capture = Standing / sink = Infamy**). **NEXT BUILD (top buildable item) = slice 5 —
+  expanded verbal duel:** 14 → 50+ insults, 7 categories (+ Superstition, + Hygiene), **anti-repeat
+  within an engagement**, an original comeback per line. Then **Option 4 phase-coupling** (hull damage →
+  boarding odds; brawl casualties → duel confidence; the early strike-colours → ransom short-circuit +
+  a post-duel sink-or-spare choice fold in here). **No owner nudge — the decision is in; #135 stays at
+  the TOP until the lane ships impressive + gamer-testable (it now has: a full maneuver→broadside→board→
+  brawl→captain-duel beat is playable end-to-end).**
 
 ## DL #4 + DL #5 candidates (research reservoir — below the #135 battle lane at top)
 
