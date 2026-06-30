@@ -304,6 +304,36 @@ const MORALE_NARRATORS = {
 
 const OPENING = 'Gather round and hear it sung — the ballad of a captain, a small boat, and a sea with opinions.';
 
+// The deed's subject for a "best of" boast — a bested foe, a stricken ship, a named port/isle.
+function subjectOf(e) {
+  return e.foe || e.ship || e.name || e.port || null;
+}
+
+// The "best of voyage" superlative (#90 richer composition): the crew's tavern toast — the single
+// RICHEST haul (most coins off one deed) and the FIERCEST foe (most infamy hard-won in one fight),
+// surfaced by NAME from deeds already in the log. Ties go to the earliest deed (deterministic).
+// Returns null when nothing was won (a voyage of only landfalls, rescues, or grumbles has no peak
+// to crow about) so the line is skipped gracefully. Pure — no save fields, no new event types.
+function superlativeLine(events) {
+  let rich = null, fierce = null;
+  for (const e of events) {
+    const coins = nonNegInt(e.coins);
+    const infamy = nonNegInt(e.infamy);
+    const who = subjectOf(e);
+    if (coins > 0 && (!rich || coins > rich.coins)) rich = { coins, who };
+    if (infamy > 0 && (!fierce || infamy > fierce.infamy)) fierce = { infamy, who };
+  }
+  if (!rich && !fierce) return null;
+  // One name towers over the voyage — it filled the hold the deepest AND fought you the hardest.
+  if (rich && fierce && rich.who && rich.who === fierce.who) {
+    return `And one name towers over the voyage: ${rich.who} — the fiercest you fought (${fierce.infamy} infamy hard-won) and the deepest the hold ever rode (${rich.coins} coins).`;
+  }
+  const parts = [];
+  if (rich) parts.push(rich.who ? `the richest haul — ${rich.coins} coins from ${rich.who}` : `the richest haul — ${rich.coins} coins`);
+  if (fierce) parts.push(fierce.who ? `the fiercest foe — ${fierce.who}, ${fierce.infamy} infamy hard-won` : `the fiercest fight — ${fierce.infamy} infamy hard-won`);
+  return `Of it all, the crew still toast ${parts.length === 2 ? 'two deeds' : 'one deed'} above the rest: ${parts.join(', and ')}.`;
+}
+
 function tally(events) {
   let isles = 0, fights = 0, legends = 0;
   for (const e of events) {
@@ -397,6 +427,8 @@ export function composeBallad(events, opts = {}) {
       const i = seen[e.type]++ % pool.length;
       lines.push(pool[i](e));
     }
+    const peak = superlativeLine(log); // #90: the "best of voyage" toast, when there's a peak to crow
+    if (peak) lines.push(peak);
     lines.push(closingLine(log));
     lines.push(closingCouplet(log)); // #90: a last couplet reflecting your dominant pole
     lines.push(BALLAD_FOOTER);

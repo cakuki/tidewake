@@ -142,9 +142,13 @@ test('composeBallad varies the verse for repeated deeds (not the same line twice
   log = recordEvent(log, { type: 'duel', foe: 'Rival A', infamy: 10, coins: 10 });
   log = recordEvent(log, { type: 'duel', foe: 'Rival B', infamy: 10, coins: 10 });
   const { lines } = composeBallad(log);
-  // opening + two duel verses + closing + footer = 5 lines; the two duel verses differ.
-  const duelVerses = lines.filter((l) => l.includes('Rival A') || l.includes('Rival B'));
+  // verses are the per-deed body lines (lines[1..log.length]); the two duel verses differ.
+  // (Sliced by position so the later "best of voyage" superlative — which also names a foe —
+  // can't be mistaken for a duel verse.)
+  const duelVerses = lines.slice(1, 1 + log.length);
   assert.equal(duelVerses.length, 2);
+  assert.ok(duelVerses[0].includes('Rival A'));
+  assert.ok(duelVerses[1].includes('Rival B'));
   assert.notEqual(duelVerses[0], duelVerses[1]);
 });
 
@@ -393,7 +397,9 @@ test('each repeated capture cycles three distinct verses (a 3-variant pool)', ()
   // SAME foe each time so only the verse TEMPLATE can make the lines differ — a real pool-size check.
   let log = [];
   for (let i = 0; i < 3; i++) log = recordEvent(log, { type: 'cannon', foe: 'the Prize', coins: 20, captured: true });
-  const verses = composeBallad(log).lines.filter((l) => /the Prize/.test(l));
+  // the per-deed verses are the body lines (position-sliced, so the "best of voyage" superlative
+  // line — which also names the foe — isn't counted among them).
+  const verses = composeBallad(log).lines.slice(1, 1 + log.length);
   assert.equal(verses.length, 3);
   assert.equal(new Set(verses).size, 3, 'three captures sing three distinct verses');
 });
@@ -405,8 +411,60 @@ test('three lawful pirate-hunts and three treacheries each sing three distinct v
     lawful = recordEvent(lawful, { type: 'duel', foe: 'the Outlaw', infamy: 10, coins: 10, lawful: true });
     treach = recordEvent(treach, { type: 'duel', foe: 'the Mark', infamy: 10, coins: 10, treachery: true });
   }
-  const lv = composeBallad(lawful).lines.filter((l) => /the Outlaw/.test(l));
-  const tv = composeBallad(treach).lines.filter((l) => /the Mark/.test(l));
+  // body verses by position (so the trailing "best of voyage" superlative isn't miscounted).
+  const lv = composeBallad(lawful).lines.slice(1, 1 + lawful.length);
+  const tv = composeBallad(treach).lines.slice(1, 1 + treach.length);
   assert.equal(new Set(lv).size, 3, 'three lawful wins sing three distinct verses');
   assert.equal(new Set(tv).size, 3, 'three treacheries sing three distinct verses');
+});
+
+// ---- "best of voyage" superlative line (#90: richest haul + fiercest foe) ---------------
+
+test('composeBallad crowns the richest haul and fiercest foe BY NAME, just before the closing', () => {
+  // two distinct fights: the Leviathan pays the most coin, Black Sal fights the hardest.
+  const b = composeBallad([
+    { type: 'cannon', foe: 'the Leviathan', infamy: 20, coins: 120 },
+    { type: 'duel', foe: 'Black Sal', infamy: 90, coins: 30 },
+  ]);
+  // the superlative sits right before the closing tally (which is before the couplet + footer).
+  const peak = b.lines.at(-4);
+  assert.match(peak, /richest haul/i);
+  assert.match(peak, /fiercest foe/i);
+  assert.match(peak, /the Leviathan/);   // the richest haul, named
+  assert.match(peak, /Black Sal/);       // the fiercest foe, named
+  assert.match(peak, /120/);             // the coin peak
+  assert.match(peak, /90/);              // the infamy peak
+});
+
+test('when one name both pays and fights the hardest, the superlative merges into one boast', () => {
+  const b = composeBallad([{ type: 'cannon', foe: 'the Leviathan', infamy: 60, coins: 120 }]);
+  const peak = b.lines.at(-4);
+  assert.match(peak, /one name towers/i);
+  assert.match(peak, /the Leviathan/);
+  assert.match(peak, /120/);
+  assert.match(peak, /60/);
+  // the foe is named ONCE in the merged boast, not duplicated across two clauses
+  assert.equal((peak.match(/the Leviathan/g) || []).length, 1);
+});
+
+test('the superlative line is skipped when no coin or infamy was won (a peaceful voyage)', () => {
+  const b = composeBallad([
+    { type: 'landfall', name: 'Rumlost Reef' },
+    { type: 'encounter', choice: 'rescue', ship: 'the Saltwidow', standing: 120 },
+    { type: 'morale', tier: 'low' },
+  ]);
+  assert.ok(!b.lines.some((l) => /richest haul|fiercest|towers over the voyage/i.test(l)),
+    'nothing was plundered or feared, so there is no peak to crow about');
+});
+
+test('the superlative picks the MAX coin/infamy deeds and is deterministic', () => {
+  const log = [
+    { type: 'cannon', foe: 'Small Fry', infamy: 5, coins: 10 },
+    { type: 'duel', foe: 'Mid Mary', infamy: 40, coins: 200 },   // richest
+    { type: 'cannon', foe: 'Grim Gus', infamy: 88, coins: 25 },  // fiercest
+  ];
+  const peak = composeBallad(log).lines.at(-4);
+  assert.match(peak, /200 coins from Mid Mary/);
+  assert.match(peak, /Grim Gus, 88 infamy/);
+  assert.equal(composeBallad(log).text, composeBallad(log).text); // byte-identical
 });
