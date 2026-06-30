@@ -17,23 +17,42 @@ Two outcomes:
 
 ## Release model — "preview always-live, public is curated"
 
-| Channel | Updates | Audience | Gate |
-|---|---|---|---|
-| **Preview** | every green game-code commit (as today, but to a preview URL) | studio + owner, to test | CI tests + headless playtest |
-| **Public** (the real game) | daily 17:00, and Friday weekly | players | promotion-time hardening |
+### Three channels, three stability tiers — **weekly > daily > preview**
 
-- The cycle-runner keeps committing/pushing game code to `main` → CI deploys to **preview**. The game
-  stays "always playable" for the studio + owner. **No per-commit public release / tag-as-release.**
-- **Daily release (17:00 Berlin, every day except Friday — incl. weekends):** the release ritual takes the latest green preview build,
-  re-runs the full gate, **promotes it to the public site**, tags it, and publishes **list-style notes**
-  (bulleted "what changed today", auto-assembled from the day's closed issues + loop-log rows).
-- **Weekly release (Fri, 17:00 — replaces that day's daily):** extra regression + extended playtest,
-  promotes the **weekend build**, and ships **marketing notes** (intro, feature highlights, **screenshots
-  and/or a short capture clip**, "play now" CTA) using the marketing-plan skill. Because the public build
-  only moves on a hardened promote, the "no weekend frustration" guarantee is real.
+The public Pages site becomes a **simple landing page at the root (`/`)** that routes visitors to three
+channels and explains, plainly, how stable each is and which to play.
 
-The **preview→public promote split** (a `release.yml` change + a promote workflow + notes generation) is
-CI/infra → filed as a `from-owner` issue for the loop/TL. Until it lands, release behaviour is unchanged.
+| Channel | URL | Updates | Stability | Gate | Links to (GitHub) |
+|---|---|---|---|---|---|
+| 🌟 **Weekly** | `/weekly/` | Fri 17:00 | **highest** — the week's event | **intense QA session** before promote | **tag + GitHub Release** |
+| 🚀 **Daily** | `/daily/` | 17:00, every day except Fri (incl. weekends) | medium | daily pre-release gate | **commit + date-of-commit** |
+| 🔬 **Preview** | `/preview/` | every green commit | lowest — bleeding edge | CI tests + headless playtest only | **commit + datetime-of-commit** |
+
+- The cycle-runner keeps committing/pushing game code to `main` → CI deploys to **`/preview/`** (remotely
+  viewable from anywhere, incl. phone). The game stays "always playable" for the studio + owner.
+  **No per-commit public release / tag-as-release.**
+- **Daily release (17:00 Berlin, every day except Friday — incl. weekends):** the release ritual takes the
+  latest green preview build, re-runs the full gate, **promotes it to `/daily/`** with **list-style notes**
+  (bulleted "what changed today", auto-assembled from the day's closed issues + loop-log rows), and records
+  the **promoted commit + date**.
+- **Weekly release (Fri, 17:00 — replaces that day's daily):** preceded by an **intense QA session**
+  (Friday is the week's event — full regression + extended playtest + manual-style QA). Promotes the
+  hardened weekend build to **`/weekly/`**, **tags it + cuts a GitHub Release**, and ships **marketing
+  notes** (intro, feature highlights, **screenshots and/or a short capture clip**, "play now" CTA) via the
+  marketing-plan skill. Because `/weekly/` only moves on the hardened promote, "no weekend frustration" is real.
+
+**Landing page (`/`):** very simple. One card per channel — name, one-line "how stable / who it's for"
+(Weekly = recommended, rock-solid · Daily = fresh, mostly stable · Preview = newest, may break), a **Play**
+link to the channel, and a **source** link to its GitHub reference (Weekly→the tag/Release page; Daily→the
+promoted commit at its date; Preview→the latest commit at its datetime). No build step — static HTML.
+
+> **Stability contract:** `/weekly/` is always ≥ `/daily/` is always ≥ `/preview/` in how hardened it is.
+> Weekly carries a tag+Release (a named, citable version); daily carries a dated commit; preview carries a
+> timestamped commit. A visitor can always trace exactly what they're playing back to a GitHub ref.
+
+The **preview/daily/weekly split + landing page** (a `release.yml` change + promote workflow + notes
+generation) is CI/infra → filed as `from-owner` **#145** for the loop/TL. Until it lands, release behaviour
+is unchanged and the release ritual is a documented no-op stub.
 
 ## Ritual schedule (local Berlin wall clock — the loop reads the machine's local time)
 
@@ -50,14 +69,29 @@ The orchestrator, at the **top of each cycle** (before picking the next build sl
 | R7 | 🗺️ **Weekly planning** | 09:00 | **Mon** | PM + TL | set the week's focused lane + the Friday release's headline feature |
 | R1 | 😴 **Sleep / defrag** | 10:00–12:00 | daily | each of the 9 agents (fan-out) | reorganize each agent's in-repo knowledge into a layered **entry → detail → deeper-detail** tree |
 | R2 | 📚 **Deep reading** | 13:00 | daily | each agent (fan-out) | dated inspiration log → `studio/agents/notebooks/<role>.md`; standout ideas → PM-desk inbox |
-| R3 | 🧪 **Pre-release hardening** | 16:00 | daily (heavier Fri) | qa + software-developer | full test+playtest gate; triage/fix reds so the 17:00 promote is clean |
-| R4 | 🚀 **Daily release** | 17:00 | **Mon–Thu + Sat–Sun** (every day except Fri) | project-manager + tech-lead | promote latest green preview → public + **list** notes + tag |
-| R4w | 🌟 **Weekly release** | 17:00 | **Fri** (replaces R4) | PM + TL + graphic-designer + sound-engineer | hardened weekend build → public + **marketing** notes w/ screenshots/clip |
+| R3 | 🧪 **Pre-release hardening** | 16:00 daily · **~14:00 Fri** | daily | qa + software-developer | full gate; triage/fix reds so the 17:00 promote is clean. **Friday runs EARLY as an INTENSE QA SESSION** (the week's event) so there's a multi-hour **fix & stabilize window** before release — see Friday timeline below |
+| R4 | 🚀 **Daily release** | 17:00 | **Mon–Thu + Sat–Sun** (every day except Fri) | project-manager + tech-lead | promote latest green preview → **`/daily/`** + **list** notes (commit + date) |
+| R4w | 🌟 **Weekly release** | 17:00 | **Fri** (replaces R4) | PM + TL + graphic-designer + sound-engineer | after R3 intense QA: hardened build → **`/weekly/`** + **tag + GitHub Release** + **marketing** notes w/ screenshots/clip |
 | R5 | 🔁 **Daily retro** | 18:30 | daily | project-manager (digest all roles) | `studio/retros/YYYY-MM-DD-retro.md`: lessons + process fixes + **queue-sync** |
 
 **Replaces the old counter-based rituals:** retro (was ~every 7–8 cycles) and deep-learning research
 (was ~every 10) are now **daily, time-gated** — the loop-counter triggers in `LOOP.md` Fan-out and the
 `queue.md`/`decisions.md` "next retro ~loop N" notes are superseded.
+
+### Friday weekly-release timeline (room to fix before the event)
+Friday is the week's event, so QA runs **early** and a real **fix window** sits between QA and release —
+the team can find issues, **fix them, and revert risky/unfinished work back to a known-stable state**
+before anything reaches `/weekly/`. A rushed weekly is worse than no weekly.
+
+| Berlin | Step | What |
+|---|---|---|
+| **~14:00** | 🧪 **Intense QA session** | full regression + extended playtest + manual-style QA on the candidate build |
+| **~14:00–16:30** | 🔧 **Fix & stabilize window** | triage QA findings; fix forward where safe; **revert risky/unfinished changes to the last known-good**; re-run QA until green |
+| **~16:30** | ✅ **Go / No-go** | promote **only** if green & stable. If not: ship the **last known-good** build to `/weekly/` instead, or hold — never push a shaky build into the weekend |
+| **17:00** | 🌟 **Weekly release** | promote the hardened build to `/weekly/`, tag + GitHub Release, marketing notes |
+
+This is why R3 fires **early on Fridays** (~14:00) instead of 16:00 — it buys the ~3h fix-and-stabilize
+buffer. The daily flow (Mon–Thu + weekends) keeps the lean 16:00 → 17:00 gate.
 
 ### Behaviour details
 - **Run-late (catch-up), don't skip:** if the loop wasn't running at a window, run the missed ritual on

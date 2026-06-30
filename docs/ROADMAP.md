@@ -228,7 +228,12 @@ Tie the experience together and make it sing.
 - **Release cadence + daily rituals (owner, 2026-06-29):** the loop builds continuously to a **preview**
   channel, but the **public** game is promoted on a **human cadence** — **daily at 17:00 Berlin, 7 days a
   week** (list notes; weekends included) and a **marketed weekly release every Friday** that takes over
-  that day's slot (extra-hardened, screenshots/clip; "no weekend frustration"). The studio runs a **daily ritual schedule** — morning owner briefing, Mon weekly
+  that day's slot (extra-hardened, screenshots/clip; "no weekend frustration"). **Three channels routed by
+  a simple landing page, stability `weekly > daily > preview`:** `/weekly/` (Fri, **tag + GitHub Release**)
+  · `/daily/` (commit + date) · `/preview/` (remotely-viewable, commit + datetime). **Friday flow with room
+  to fix:** intense QA **~14:00** → a **fix & stabilize window** (revert risky/unfinished work to a known
+  stable state, re-QA) → **go/no-go ~16:30** → weekly release **17:00** — a solid weekend build, never a
+  rushed one. The studio runs a **daily ritual schedule** — morning owner briefing, Mon weekly
   planning, sleep/defrag (memory), deep reading, pre-release hardening, release, daily retro — all
   **time-gated by the local loop** (`studio/comms/rituals.md`; `docs/runbook/LOOP.md` step 0.5). Spec:
   `docs/superpowers/specs/2026-06-29-loop-rituals-and-release-cadence-design.md`. Release infra (preview→

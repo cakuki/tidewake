@@ -21,7 +21,7 @@ the **local loop only** — there are no cloud routines.
 | R7 | 🗺️ Weekly planning | 09:00 | Mon | product-manager + tech-lead | — |
 | R1 | 😴 Sleep / defrag (memory) | 10:00–12:00 | daily | all 9 agents (fan-out) | — |
 | R2 | 📚 Deep reading | 13:00 | daily | all 9 agents (fan-out) | — |
-| R3 | 🧪 Pre-release hardening | 16:00 | daily (heavier Fri) | qa + software-developer | — |
+| R3 | 🧪 Pre-release hardening (**Fri = intense QA event, runs early**) | 16:00 daily · **~14:00 Fri** | daily | qa + software-developer | — |
 | R4 | 🚀 Daily release | 17:00 | **Mon–Thu + Sat–Sun** (every day except Fri) | project-manager + tech-lead | — |
 | R4w | 🌟 Weekly release (replaces R4) | 17:00 | Fri | PM + TL + graphic-designer + sound-engineer | — |
 | R5 | 🔁 Daily retro (+ queue-sync) | 18:30 | daily | project-manager | — |
@@ -38,10 +38,18 @@ the **local loop only** — there are no cloud routines.
   **entry → detail → deeper-detail** tree (index files link down to detail files).
 - **R2 Deep reading** — each agent studies (craft, news, fiction↔non-fiction), logs inspiration +
   cross-connections → `studio/agents/notebooks/<role>.md`; standout ideas → PM-desk inbox.
-- **R3 Pre-release hardening** — run the full test + playtest gate so the 17:00 promote is clean; heavier
-  regression on Fridays.
-- **R4 / R4w Release** — promote the latest **green preview** build to **public** (daily = list notes,
-  **every day except Friday, incl. weekends**; Friday = weekly marketing notes with screenshots/clip). Needs the preview→public promote infra (see the
-  `from-owner` infra issue); until that lands, release behaviour is unchanged.
+- **R3 Pre-release hardening** — run the full test + playtest gate so the 17:00 promote is clean.
+  **Friday is an INTENSE QA SESSION — the week's event — and runs EARLY (~14:00)** to leave a real fix
+  window before release. **Friday flow:** 🧪 QA ~14:00 → 🔧 **fix & stabilize ~14:00–16:30** (fix forward
+  where safe; **revert risky/unfinished work to the last known-good**; re-QA until green) → ✅ **go/no-go
+  ~16:30** (if not green, ship the last known-good to `/weekly/` or hold — never a shaky weekend build) →
+  🌟 release **17:00**. A rushed weekly is worse than no weekly.
+- **R4 / R4w Release — three channels, stability `weekly > daily > preview`** (landing page at `/` routes
+  to all three; see spec):
+  - **Daily (R4)** → promote latest green preview to **`/daily/`** with **list** notes; record commit + date.
+  - **Weekly (R4w, Fri)** → after the intense QA, promote the hardened build to **`/weekly/`**, **tag +
+    GitHub Release**, **marketing** notes with screenshots/clip.
+  - Continuous commits keep deploying to **`/preview/`** (commit + datetime). Needs the channels/promote
+    infra (`from-owner` **#145**); until it lands, release behaviour is unchanged.
 - **R5 Daily retro** — `studio/retros/YYYY-MM-DD-retro.md`: lessons + process fixes; **verify accepted
   PM-desk build issues actually reached `queue.md`** (queue-sync — grep `studio/comms/` for the issue #).
