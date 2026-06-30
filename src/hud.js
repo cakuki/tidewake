@@ -120,10 +120,18 @@ export function createHud() {
 
   // Tappable FIRE button (#135 slice 2, touch only): tap to discharge the loaded broadside — we
   // dispatch the same Space keydown the keyboard would, so main.js's fire handler runs unchanged.
-  if (TOUCH && $battle) {
+  if ($battle) {
     $battle.addEventListener('click', (e) => {
-      if (!e.target.closest('.battle-fire')) return;
-      dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
+      // The loaded-shot chip (#135 slice 3) cycles the shot — tappable on every device (desktop also
+      // has the X key). We dispatch the same keydown main.js's handlers run, so wiring stays in one place.
+      if (e.target.closest('.battle-shot')) {
+        dispatchEvent(new KeyboardEvent('keydown', { key: 'x', code: 'KeyX', bubbles: true }));
+        return;
+      }
+      // Tappable FIRE button (#135 slice 2, touch only): tap to discharge the loaded broadside.
+      if (TOUCH && e.target.closest('.battle-fire')) {
+        dispatchEvent(new KeyboardEvent('keydown', { key: ' ', code: 'Space', bubbles: true }));
+      }
     });
   }
 
@@ -354,7 +362,11 @@ export function createHud() {
     const status = !loaded ? '⟳ Reloading the guns…'
       : inArc ? `🎯 ABEAM to ${b.aimSide} — FIRE!`
       : '↪ Bring her broadside to bear…';
-    const sig = `${b.foeName}|${pPct}|${ePct}|${loaded}|${inArc}|${qPct}|${b.lastLine}|${b.round}`;
+    // The LOADED shot (#135 slice 3): which shot is at the rack + its one-line effect. Cycled with X
+    // (or, on touch, by tapping the chip). Falls back gracefully if an older snapshot has no ammo.
+    const ap = b.ammoProfile || null;
+    const shotLabel = ap ? `${ap.icon} ${ap.name} · ${ap.tag}` : '';
+    const sig = `${b.foeName}|${pPct}|${ePct}|${loaded}|${inArc}|${qPct}|${b.lastLine}|${b.round}|${b.ammo || ''}`;
     if (sig === lastBattleSig && $battle.classList.contains('show')) return;
     lastBattleSig = sig;
     $battle.innerHTML =
@@ -364,10 +376,13 @@ export function createHud() {
       + `<div class="duel-bar them"><div class="lab"><span>Their hull</span><span>${Math.round(b.enemyHull)}</span></div><div class="meter"><div class="fill" style="width:${ePct}%"></div></div></div>`
       + '</div>'
       + `<div class="battle-aim${ready ? ' hot' : ''}">${status}</div>`
+      + (shotLabel
+        ? `<button class="battle-shot" data-shot="1" type="button" title="Cycle loaded shot">🎱 ${shotLabel}${TOUCH ? '' : ' <span class="battle-shot-key">(X)</span>'}</button>`
+        : '')
       + `<div class="duel-line">“${b.lastLine || 'Steer for her beam and run out the guns.'}”</div>`
       + (TOUCH
         ? `<button class="battle-fire" data-fire="1"${ready ? '' : ' disabled'}>🔥 FIRE</button>`
-        : `<div class="duel-help">Steer <b>A/D</b> to bring her abeam · <b>Space</b> fires · <b>E</b> breaks off</div>`);
+        : `<div class="duel-help">Steer <b>A/D</b> abeam · <b>Space</b> fires · <b>X</b> cycles shot · <b>E</b> breaks off</div>`);
     $battle.classList.add('show');
   }
 

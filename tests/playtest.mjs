@@ -291,6 +291,65 @@ try {
     if (broadside.active && broadside.result !== 'win') fail(`real-time broadside: engagement neither sank the foe nor resolved (result=${broadside.result}) (#135 slice 2)`);
   }
 
+  // 2b5) Workshop loadouts + mid-combat shot cycle (#135 slice 3): FIT a shot at the town
+  // workshop, then prove the ONE cycle key walks the fitted locker mid-fight and the LOADED shot
+  // actually shapes the broadside — the slice's "load chain at port, cycle to it mid-fight, see the
+  // effect" acceptance, driven headlessly off the QA hooks. Pure-logic safe: no DOM dependency.
+  const ammoCycle = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    // The workshop (town-side): fit grape on top of the starter locker; round can never be unfit.
+    const before = tw.loadout.slice();
+    tw.fitAmmoType('grape');           // ensure grape is fitted
+    if (!tw.loadout.includes('grape')) tw.fitAmmoType('grape'); // toggled off → fit it back on
+    const fitted = tw.loadout.slice();
+    const roundLocked = (() => { const a = tw.fitAmmoType('round'); return a.includes('round'); })();
+    // Square up to the nearest sail (reuse the slice-2 approach).
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return { bi, bd };
+    }
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    tw.press('w');
+    let engaged = false;
+    for (let i = 0; i < 1500 && !engaged; i++) {
+      const { bi, bd } = nearest();
+      if (bi === -1) break;
+      if (bd <= 150) { engaged = tw.engageBattle(); if (engaged) break; }
+      const s = tw.state;
+      const desired = Math.atan2(tw.npcs[bi].pos[0] - s.pos[0], tw.npcs[bi].pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+    }
+    tw.release('w');
+    if (!engaged) return { engaged };
+    // The loaded shot on engage is the first fitted (round); cycle through the whole locker and
+    // confirm it walks distinct fitted shots and wraps back round.
+    const loadedOnEngage = tw.battle.ammo;
+    const seen = [loadedOnEngage];
+    for (let i = 0; i < tw.loadout.length; i++) seen.push(tw.battleCycleShot());
+    const wrapped = seen[seen.length - 1] === loadedOnEngage;
+    const distinctSeen = new Set(seen).size >= Math.min(2, tw.loadout.length);
+    const ammoHasEffect = tw.battle.ammoProfile && typeof tw.battle.ammoProfile.hullMult === 'number';
+    tw.fleeBattle();
+    return { engaged, before, fitted, roundLocked, loadedOnEngage, seen, wrapped, distinctSeen, ammoHasEffect };
+  });
+  if (ammoCycle.engaged) {
+    if (!ammoCycle.fitted.includes('grape')) fail('workshop: fitting grape did not add it to the loadout (#135 slice 3)');
+    if (!ammoCycle.roundLocked) fail('workshop: round must always stay fitted (#135 slice 3)');
+    if (ammoCycle.loadedOnEngage !== ammoCycle.fitted[0]) fail(`shot cycle: engage did not load the first fitted shot (got ${ammoCycle.loadedOnEngage}) (#135 slice 3)`);
+    if (!ammoCycle.distinctSeen) fail(`shot cycle: the cycle key did not walk distinct fitted shots (saw ${ammoCycle.seen.join(',')}) (#135 slice 3)`);
+    if (!ammoCycle.wrapped) fail(`shot cycle: cycling the full locker did not wrap back to the first shot (saw ${ammoCycle.seen.join(',')}) (#135 slice 3)`);
+    if (!ammoCycle.ammoHasEffect) fail('shot cycle: the loaded shot carries no broadside-effect profile (#135 slice 3)');
+  } else {
+    console.warn('  (#135 slice 3 ammo-cycle: no foe came in range to engage — skipped, like slice 2)');
+  }
+
   // 2c) Route-planning map (#54): open the big chart, confirm the overlay is visible,
   // the chart drew (liveness counter) and the open-state is exposed, then close it.
   const bigmap = await page.evaluate(async () => {
@@ -1985,7 +2044,7 @@ try {
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
   console.log(`leak-invariant (#121): ${leak.N}× mode cycles · geom ${leak.baseline.geometries}→${leak.final.geometries} (+${leak.geomGrowth}) · tex ${leak.baseline.textures}→${leak.final.textures} (+${leak.texGrowth}) · worst transition ${leak.worstTransition.drawCalls} draws/${leak.worstTransition.triangles} tris`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, leak, broadside, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, leak, broadside, ammoCycle, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

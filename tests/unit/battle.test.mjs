@@ -247,3 +247,79 @@ test('fire: no-op when not engaged', () => {
   const battle = createBattle({ npcs: fakeNpcs([]), getShipPos: () => [0, 0] });
   assert.equal(battle.fire(), null);
 });
+
+// ---- Workshop loadouts + mid-combat shot cycle (#135 slice 3) ---------------
+
+test('engage: loads the first fitted shot from the workshop loadout', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    getLoadout: () => ['chain', 'grape'],
+    rng: half,
+  });
+  battle.engage();
+  assert.equal(battle.snapshot().ammo, 'chain', 'you square up with the first fitted shot loaded');
+});
+
+test('engage: defaults to round when nothing is wired (slice-2 callers unchanged)', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    rng: half,
+  });
+  battle.engage();
+  assert.equal(battle.snapshot().ammo, 'round');
+});
+
+test('cycleShot: one call walks the fitted loadout and wraps; no-op when not engaged', () => {
+  let cycled = null;
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    getLoadout: () => ['round', 'chain', 'grape'],
+    onCycleAmmo: ({ ammo }) => { cycled = ammo; },
+    rng: half,
+  });
+  assert.equal(battle.cycleShot(), 'round', 'no-op (returns current) while not engaged');
+  battle.engage();
+  assert.equal(battle.cycleShot(), 'chain');
+  assert.equal(cycled, 'chain', 'onCycleAmmo announces the newly-loaded shot');
+  assert.equal(battle.cycleShot(), 'grape');
+  assert.equal(battle.cycleShot(), 'round', 'wraps back to the first fitted shot');
+});
+
+test('the loaded shot changes the broadside: chain dents the hull less than round', () => {
+  const make = (loadout) => createBattle({
+    npcs: fakeNpcs([{ pos: [60, 0] }]), // dead abeam to starboard
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    getLoadout: () => loadout,
+    reloadSeconds: 2,
+    rng: half,
+  });
+  const roundB = make(['round']); roundB.engage();
+  const chainB = make(['chain']); chainB.engage();
+  const rHit = roundB.fire().enemyHit;
+  const cHit = chainB.fire().enemyHit;
+  assert.ok(cHit < rHit, `chain (${cHit}) should dent less than round (${rHit})`);
+});
+
+test('cycleShot does not reset an in-progress reload (you swap the rack, not re-swab the gun)', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [60, 0] }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    getLoadout: () => ['round', 'chain'],
+    reloadSeconds: 2,
+    rng: half,
+  });
+  battle.engage();
+  battle.fire();
+  const r = battle.snapshot().reload;
+  assert.ok(r > 0);
+  battle.cycleShot();
+  assert.equal(battle.snapshot().reload, r, 'the reload timer is untouched by a shot swap');
+});

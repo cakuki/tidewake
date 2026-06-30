@@ -28,6 +28,7 @@ import {
   makeFoe, resolveBroadside, spoils, captureSpoils, repairToll,
   defeatLine, strikeLine, fireQuip, MAX_HULL, MORALE_MAX,
 } from '../cannons.js';
+import { ammoProfile, cycleAmmo, AMMO_TYPES } from './ammo.js';
 
 // Slice 2 (#135) tunables — the Game Designer's fun-shaping numbers:
 //   RELOAD_SECONDS — how long the gun deck takes to swab and reload between volleys, so the
@@ -134,9 +135,15 @@ export function broadsideAim([sx, sz], heading, [fx, fz], { arcThreshold = ARC_T
 //   reloadSeconds : how long the guns take to reload between volleys (slice 2)
 
 export function createBattle({
-  npcs, getShipPos, getShipHeading, onEnter, onFlee, onResolve,
+  npcs, getShipPos, getShipHeading, getLoadout, onEnter, onFlee, onResolve, onCycleAmmo,
   applyReward, applyPenalty, sfx, rng = Math.random, reloadSeconds = RELOAD_SECONDS,
 } = {}) {
+  // The fitted shot locker (#135 slice 3) — what you fit at the town workshop. The cycle key walks
+  // it mid-fight. Defends to a plain round shot so the guns can always fire something.
+  function loadout() {
+    const lo = (getLoadout && getLoadout()) || AMMO_TYPES;
+    return (Array.isArray(lo) && lo.length) ? lo : ['round'];
+  }
   // A sting must never break the stance, so every audio call is swallowed.
   function ping(kind) {
     try { if (sfx) sfx(kind); } catch { /* a sting must never sink the battle */ }
@@ -157,6 +164,7 @@ export function createBattle({
     result: null,     // 'win' (sunk) | 'capture' (yielded) | 'lose' | null
     lastLine: '',     // a quip / the bosun's nudge / the foe's parting cry
     lastSide: 'starboard',
+    ammo: 'round',    // the LOADED shot (#135 slice 3) — cycled mid-fight from the fitted loadout
   };
   let foe = null;
 
@@ -208,6 +216,7 @@ export function createBattle({
     state.result = null;
     state.lastLine = '';
     state.lastSide = 'starboard';
+    state.ammo = loadout()[0]; // load the first fitted shot (round, by default) as you square up
     ping('challenge'); // colours up, gunports ready
     if (onEnter) {
       try { onEnter({ foeName: state.foeName, foeIndex: idx }); }
@@ -295,23 +304,41 @@ export function createBattle({
     if (!state.active || !foe) return null;
     if (state.reload > 0) return null; // the guns aren't loaded yet
     const a = aim();
+    const profile = ammoProfile(state.ammo); // the LOADED shot shapes the volley (#135 slice 3)
     const r = resolveBroadside(
-      { quality: a.quality, enemyHull: state.enemyHull, playerHull: state.playerHull, gunnery: foe.gunnery, morale: state.enemyMorale },
+      { quality: a.quality, enemyHull: state.enemyHull, playerHull: state.playerHull, gunnery: foe.gunnery, morale: state.enemyMorale, ammo: profile },
       rng
     );
     state.enemyHull = r.enemyHull;
     state.playerHull = r.playerHull;
     state.enemyMorale = r.enemyMorale;
-    state.reload = reloadSeconds; // swab and reload before the next volley
+    state.reload = reloadSeconds * (profile.reloadMult ?? 1); // heavy loads slow, swivels quick
     state.round++;
     state.lastSide = a.side;
 
     if (r.sunkEnemy) return finish('win');
     if (r.sunkPlayer) return finish('lose');
     if (r.yielded) return finish('capture');
-    state.lastLine = a.inArc ? fireQuip('broadside', rng) : WIDE_LINE;
+    // The quip reads from the LOADED shot's flavour — chain shreds rigging, the rest pound the hull.
+    state.lastLine = a.inArc ? fireQuip(profile.shock === 'rigging' ? 'rigging' : 'broadside', rng) : WIDE_LINE;
     ping('cut'); // a solid hit / a spent volley
     return r;
+  }
+
+  /**
+   * Cycle the LOADED shot to the next one in the fitted loadout (#135 slice 3) — the ONE mid-fight
+   * key the owner asked for. No-op while not engaged (you load shot for THIS fight). Returns the
+   * newly-loaded shot id. The reload is NOT reset — you swap what's at the rack, not re-swab a gun.
+   */
+  function cycleShot() {
+    if (!state.active) return state.ammo;
+    state.ammo = cycleAmmo(state.ammo, loadout());
+    ping('cut'); // a clack of the shot-rack
+    if (onCycleAmmo) {
+      try { onCycleAmmo({ ammo: state.ammo }); }
+      catch { /* a flourish must never break the stance */ }
+    }
+    return state.ammo;
   }
 
   // A plain, JSON-safe snapshot for the window.__tidewake QA hook + the HUD.
@@ -336,8 +363,12 @@ export function createBattle({
       round: state.round,
       result: state.result,
       lastLine: state.lastLine,
+      // The LOADED shot (#135 slice 3) + the fitted locker, for the HUD readout + the QA hook.
+      ammo: state.ammo,
+      ammoProfile: ammoProfile(state.ammo),
+      loadout: loadout().slice(),
     };
   }
 
-  return { state, engage, flee, end, fire, tick, aim, inRange, nearestInRange, snapshot };
+  return { state, engage, flee, end, fire, tick, aim, cycleShot, inRange, nearestInRange, snapshot };
 }

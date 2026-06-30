@@ -48,6 +48,11 @@ export const AIM_LABELS = {
 // Base bite of a volley before the aim profile + a fairness wobble are applied.
 const BASE = 22;
 
+// The neutral shot profile (== round shot) used when resolveBroadside is called without an `ammo`
+// argument, so slice-2 callers stay byte-identical. The real catalogue lives in systems/ammo.js;
+// cannons.js stays dependency-free and just reads these plain numeric fields off whatever it's given.
+const NEUTRAL_AMMO = { hullMult: 1, returnMult: 1, moraleMult: 1, shock: 'broadside', aimForgive: 0 };
+
 // Characterful foes to open fire on — original to Tidewake, on-tone, harmless.
 const FOE_NAMES = [
   'the Black Gannet', 'Sister Grapeshot', 'Captain Ironwake', 'Saltlung Maggs',
@@ -196,24 +201,34 @@ export function resolveExchange({ aim, enemyHull, playerHull, gunnery = 1, moral
  * morale/yield model as the turn-based exchange (crewShock / strikesColours), so a battered crew
  * can still strike its colours. PURE + injectable rng — deterministic under test.
  *
- * @param {{quality:number, enemyHull:number, playerHull:number, gunnery?:number, morale?:number}} args
+ * The LOADED shot (#135 slice 3) shapes the volley through an `ammo` profile (see systems/ammo.js):
+ * `hullMult` scales the bite, `returnMult` scales her reply (chain's torn rigging answers weakly),
+ * `moraleMult`+`shock` scale the crew-nerve hit (grape sweeps the deck → a faster capture), and
+ * `aimForgive` lifts a glancing off-beam hit toward a clean one (light shot reaches). Omitting `ammo`
+ * is byte-identical to a plain round shot, so slice-2 callers are unchanged.
+ *
+ * @param {{quality:number, enemyHull:number, playerHull:number, gunnery?:number, morale?:number,
+ *          ammo?:{hullMult?:number,returnMult?:number,moraleMult?:number,shock?:string,aimForgive?:number}}} args
  * @param {() => number} [rng]
  * @returns {{enemyHit:number, playerHit:number, enemyHull:number, playerHull:number, quality:number,
  *            sunkEnemy:boolean, sunkPlayer:boolean, enemyMorale:number, yielded:boolean}}
  */
-export function resolveBroadside({ quality, enemyHull, playerHull, gunnery = 1, morale = MORALE_MAX }, rng = Math.random) {
-  const q = Math.max(0, Math.min(1, quality));
+export function resolveBroadside({ quality, enemyHull, playerHull, gunnery = 1, morale = MORALE_MAX, ammo = NEUTRAL_AMMO }, rng = Math.random) {
+  const q0 = Math.max(0, Math.min(1, quality));
+  // A forgiving shot (light) lifts a glancing angle toward a clean one; round forgives nothing (q==q0).
+  const q = q0 + (1 - q0) * (ammo.aimForgive || 0);
   const jitter = () => 0.8 + rng() * 0.4; // ±20% fairness wobble (==1 when rng()==0.5)
-  const enemyHit = Math.round(BASE * 1.5 * q * jitter()); // a clean beam broadside hits harder than a turn-based volley
+  const enemyHit = Math.round(BASE * 1.5 * q * (ammo.hullMult ?? 1) * jitter()); // a clean beam broadside hits harder than a turn-based volley
   const newEnemyHull = clampHull(enemyHull - enemyHit, MAX_HULL);
   // A foe sunk by your volley never gets to fire back; otherwise exposing your beam earns a reply.
-  const playerHit = isSunk(newEnemyHull) ? 0 : Math.round(BASE * 0.9 * gunnery * jitter());
+  const playerHit = isSunk(newEnemyHull) ? 0 : Math.round(BASE * 0.9 * gunnery * (ammo.returnMult ?? 1) * jitter());
   const newPlayerHull = clampHull(playerHull - playerHit, MAX_HULL);
   const sunkEnemy = isSunk(newEnemyHull);
   const sunkPlayer = isSunk(newPlayerHull);
-  const enemyMorale = clampHull(morale - crewShock({ outcome: 'broadside', enemyHull: newEnemyHull }, rng), MORALE_MAX);
+  const shock = crewShock({ outcome: ammo.shock || 'broadside', enemyHull: newEnemyHull }, rng);
+  const enemyMorale = clampHull(morale - Math.round(shock * (ammo.moraleMult ?? 1)), MORALE_MAX);
   const yielded = !sunkEnemy && !sunkPlayer && strikesColours({ enemyHull: newEnemyHull, morale: enemyMorale });
-  return { enemyHit, playerHit, enemyHull: newEnemyHull, playerHull: newPlayerHull, quality: q, sunkEnemy, sunkPlayer, enemyMorale, yielded };
+  return { enemyHit, playerHit, enemyHull: newEnemyHull, playerHull: newPlayerHull, quality: q0, sunkEnemy, sunkPlayer, enemyMorale, yielded };
 }
 
 /**

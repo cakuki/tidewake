@@ -25,6 +25,7 @@ import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
 import { createCannons } from './cannons.js';
 import { createBattle, quarterViewPos, engageLine as battleEngageLine, fleeLine as battleFleeLine } from './systems/battle.js';
+import { AMMO, AMMO_TYPES, ammoProfile, defaultLoadout, fitAmmo } from './systems/ammo.js';
 import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
 import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading } from './systems/harbour.js';
@@ -148,6 +149,13 @@ const sailing = createSailing({
 });
 const state = sailing.state;
 const persistence = createPersistence(state);
+
+// Shot locker (#135 slice 3): the ammo you've FIT at a town workshop. Session-scoped on purpose —
+// a transient combat loadout, NOT persisted, so the save schema stays v16. A fresh boot and a
+// restored voyage both start from the sensible starter locker (round + chain + grape); the town
+// workshop toggles membership, and the battle cycle key walks whatever's fitted, mid-fight.
+function initLoadout(s) { if (!Array.isArray(s.loadout) || !s.loadout.length) s.loadout = defaultLoadout(); }
+initLoadout(state);
 
 // Voyage log (#78): the anecdote factory. Notable systemic deeds — isles raised, rivals
 // out-jeered or sunk, crowns earned — are recorded into a small PURE log on the shared
@@ -298,13 +306,15 @@ const battle = createBattle({
   npcs,
   getShipPos: () => [state.pos.x, state.pos.z],
   getShipHeading: () => state.heading, // slice 2: the broadside arc needs your heading vs the foe
+  getLoadout: () => state.loadout,     // slice 3: the shot you fit at the town workshop
+  onCycleAmmo: ({ ammo }) => { const a = ammoProfile(ammo); hud.flashBanner(`${a.icon} Load ${a.name}`, `${a.tag} — ${a.blurb}`); },
   sfx: (kind) => audio.playDuelHit(kind),
   // Real-time broadside spoils (#135 slice 2): sinking pays Infamy, a capture pays Standing, a
   // loss costs a few coins for repairs — the same ledger the turn-based cannonade writes to.
   applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.infamy; if (r.standing) state.standing = Math.max(0, (state.standing || 0) + r.standing); syncRenown(state); },
   applyPenalty: (p) => { initEconomy(state); state.coins = Math.max(0, state.coins - p.coins); },
   onEnter: ({ foeName }) => hud.flashBanner(`⚔ BATTLE — ${foeName}`,
-    `${battleEngageLine()} (steer to bring her abeam · SPACE to fire · E to break off)`),
+    `${battleEngageLine()} (steer abeam · SPACE fires · X cycles shot · E breaks off)`),
   onFlee: () => hud.flashBanner('⛵ You break off the fight', battleFleeLine()),
   // A real-time broadside resolved the fight — announce the prize/setback + log the deed (#78/#104b).
   onResolve: ({ result, reward, penalty, foeName }) => {
@@ -696,6 +706,13 @@ addEventListener('keydown', (e) => {
     if (battle.state.active && !cannons.state.active && !duel.state.active) { e.preventDefault(); battle.fire(); }
     return;
   }
+  // Mid-combat shot cycle (#135 slice 3): X loads the next shot you FIT at a town workshop —
+  // round/chain/grape/light/heavy/swivel, each a distinct effect on the broadside. No buying in
+  // combat; you only cycle what's already at the rack. No-op outside the deliberate stance.
+  if (k === 'x') {
+    if (battle.state.active && !cannons.state.active && !duel.state.active) battle.cycleShot();
+    return;
+  }
   if (k === 'f') { if (!cannons.state.active) duel.tryChallenge(); return; }
   if (k === 'g') { if (!duel.state.active) cannons.openFire(); return; }
   if (duel.state.active) {
@@ -775,6 +792,9 @@ const town = createTown({
   onInvest: () => investHarbour(),
   onTribute: () => payHarbourTribute(),   // resolve a home-port threat by paying it off (#134)
   onStandFirm: () => standHarbourFirm(),  // ...or stand firm and roll the dice (#134)
+  // The Workshop (#135 slice 3, ties #96): fit/unfit the shot you carry into a fight. Session-scoped
+  // (the loadout isn't persisted → save stays v16); the battle cycle key walks whatever's fitted.
+  onFitAmmo: (id) => { state.loadout = fitAmmo(state.loadout, id); },
 });
 town.init();
 
@@ -1731,6 +1751,13 @@ window.__tidewake = {
   fleeBattle() { return battle.flee(); },
   battleFire() { return battle.fire(); },
   battleAim() { return battle.aim(); },
+  // Workshop loadouts + mid-combat shot cycle (#135 slice 3): battleCycleShot() loads the next
+  // fitted shot mid-fight; the battle snapshot carries `ammo`/`ammoProfile`/`loadout`. The fitted
+  // locker (what you fit at the town workshop) is `loadout`; fitAmmoType(id) toggles a shot in it.
+  battleCycleShot() { return battle.cycleShot(); },
+  get loadout() { return (state.loadout || []).slice(); },
+  get ammoCatalogue() { return AMMO_TYPES.map((id) => ({ id, ...AMMO[id] })); },
+  fitAmmoType(id) { state.loadout = fitAmmo(state.loadout, id); town.render(); return state.loadout.slice(); },
   // Foundering-ship encounter (#125) QA surface: read the live encounter (the founderer + the
   // choice/reward, or inactive), force a deterministic spawn (the spawn hook the contract asks
   // for), and make the choice headlessly. encounterChoose('rescue'|'plunder') resolves it.

@@ -21,6 +21,7 @@ import {
 import {
   isActiveThreat, threatTitle, threatBlurb, canPayTribute, standFirmOdds,
 } from '../systems/harbour-threat.js';
+import { AMMO, AMMO_TYPES } from '../systems/ammo.js';
 
 export function createTown(opts = {}) {
   const getState = typeof opts.getState === 'function' ? opts.getState : () => null;
@@ -39,6 +40,9 @@ export function createTown(opts = {}) {
   // firm (a dice beat). main.js owns applying the result (coin/Standing/the harbour) + persisting.
   const onTribute = typeof opts.onTribute === 'function' ? opts.onTribute : () => {};
   const onStandFirm = typeof opts.onStandFirm === 'function' ? opts.onStandFirm : () => {};
+  // The Workshop (#135 slice 3): fit/unfit the shot you carry into a fight. main.js owns the
+  // loadout (and toggling it via fitAmmo); here we route the tap and paint the board. No-op if unwired.
+  const onFitAmmo = typeof opts.onFitAmmo === 'function' ? opts.onFitAmmo : () => {};
   const root = opts.root ?? (typeof document !== 'undefined' ? document : null);
   // Touch parity (#17/#66): taps drive trades + the Leave plank when there's no keyboard.
   const TOUCH = !!(root && root.body && root.body.classList && root.body.classList.contains('touch'));
@@ -120,6 +124,8 @@ export function createTown(opts = {}) {
         if (e.target.closest?.('#town-invest')) { e.preventDefault(); onInvest(); return; }
         if (e.target.closest?.('#town-tribute')) { e.preventDefault(); onTribute(); return; }
         if (e.target.closest?.('#town-standfirm')) { e.preventDefault(); onStandFirm(); return; }
+        const shotBtn = e.target.closest?.('.town-shot');
+        if (shotBtn && shotBtn.dataset.ammo) { e.preventDefault(); fitShot(shotBtn.dataset.ammo); return; }
         const chaseBtn = e.target.closest?.('.town-chase');
         if (chaseBtn) { e.preventDefault(); chase(Number(chaseBtn.dataset.idx)); return; }
         const tr = e.target.closest?.('.trow');
@@ -198,6 +204,39 @@ export function createTown(opts = {}) {
       + `</div>`;
   }
 
+  // The Workshop (#135 slice 3, ties #96) — the first ASHORE activity beyond the market the owner's
+  // town-mode brief left "room to grow" for. Fit the shot you carry into a fight: tap a shot to fit
+  // or unfit it, and it joins the locker the battle cycle key (X) walks mid-broadside. Round can
+  // never be unfitted (your crew always has a ball at the rack), so you always sail armed.
+  function fitShot(id) {
+    onFitAmmo(id);
+    flashMsg(`Fitted shot updated at the workshop.`);
+    lastSig = ''; // force a repaint so the fitted state shows
+    render();
+  }
+
+  function workshopHTML(state) {
+    const loadout = Array.isArray(state.loadout) ? state.loadout : [];
+    const rows = AMMO_TYPES.map((id) => {
+      const a = AMMO[id];
+      const fitted = loadout.includes(id);
+      const locked = id === 'round'; // round is always fitted
+      const btn = locked
+        ? `<span class="town-shot-fixed">Always fitted</span>`
+        : `<button class="town-shot${fitted ? ' fitted' : ''}" type="button" data-ammo="${id}">${fitted ? '✓ Fitted' : '+ Fit'}</button>`;
+      return `<div class="town-shot-row${fitted ? ' on' : ''}">`
+        + `<div class="town-shot-name">${a.icon} ${esc(a.name)} <span class="town-shot-tag">${esc(a.tag)}</span></div>`
+        + `<div class="town-shot-blurb">${esc(a.blurb)}</div>`
+        + btn
+        + `</div>`;
+    }).join('');
+    return `<div class="town-workshop">`
+      + `<div class="town-workshop-h">⚒ The Gunner's Workshop</div>`
+      + `<div class="town-workshop-sub">Fit the shot you'll carry to sea. In a fight, press <b>X</b> to cycle the loaded shot — round to sink her, chain to cripple her, grape to scare her colours down.</div>`
+      + rows
+      + `</div>`;
+  }
+
   function harbourHTML(state) {
     const port = state.port;
     if (!port) return '';
@@ -265,7 +304,7 @@ export function createTown(opts = {}) {
     const master = recall || info.harbourmaster || 'The harbourmaster nods you ashore.';
     // Cheap cache: only touch the DOM when something the player can see changes.
     const chasing = (state.objective && state.objective.target && state.objective.target.name) || '';
-    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing + '|' + JSON.stringify(state.harbour ?? null) + '|' + (state.standing ?? 0) + '|' + (state.governorship ? 1 : 0) + '|' + JSON.stringify(state.threat ?? null);
+    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing + '|' + JSON.stringify(state.harbour ?? null) + '|' + (state.standing ?? 0) + '|' + (state.governorship ? 1 : 0) + '|' + JSON.stringify(state.threat ?? null) + '|' + JSON.stringify(state.loadout ?? null);
     if (sig === lastSig) return;
     lastSig = sig;
 
@@ -298,6 +337,7 @@ export function createTown(opts = {}) {
       + harbourHTML(state)
       + `<div class="town-market-h">⚖ The Market</div>`
       + `<table class="town-t"><thead><tr><th></th><th>good</th><th>buy</th><th>sell</th><th>hold</th></tr></thead><tbody>${rows}</tbody></table>`
+      + workshopHTML(state)
       + `<div class="town-msg">${flash && Date.now() < flashUntil ? esc(flash) : '&nbsp;'}</div>`
       + `<div class="town-trade-help">${TOUCH
           ? 'Tap a row to <b>buy</b> · tap its <b>sell</b> price to sell'

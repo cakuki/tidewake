@@ -276,6 +276,14 @@
       background: linear-gradient(90deg, #ff8b6a, #ff5a4a); color: #1a0a06; font-weight: 800;
       border: none; border-radius: 9px; padding: 11px; font-size: 15px; letter-spacing: .04em; }
     #battle .battle-fire[disabled] { opacity: .4; filter: grayscale(.5); }
+    /* Loaded-shot chip (#135 slice 3) — which shot is at the rack + its effect; tap (or X) to cycle. */
+    #battle .battle-shot { display: block; width: 100%; margin: 6px 0 2px; pointer-events: auto; cursor: pointer;
+      font-family: inherit; font-size: 11.5px; font-weight: 700; letter-spacing: .02em; color: #f3e3c0;
+      background: linear-gradient(180deg, rgba(80,60,30,.55), rgba(50,36,16,.55)); border: 1px solid rgba(255,210,140,.45);
+      border-radius: 8px; padding: 7px 9px; transition: filter .12s ease, transform .1s ease; }
+    #battle .battle-shot:hover { filter: brightness(1.1); }
+    #battle .battle-shot:active { transform: translateY(1px); }
+    #battle .battle-shot-key { color: #ffce7a; font-weight: 800; }
     /* Foundering-ship choice panel (#125) — the rescue-vs-plunder moral beat, in a teal distress
        accent. Reuses the duel panel's inner line/opts classes, scoped here with its own colour. */
     #encounter {
@@ -652,6 +660,25 @@
     #town .town-listen:hover { filter: brightness(1.07); }
     #town .town-listen:active { transform: translateY(1px); }
     #town .town-listen-again { font-size: 12px; background: linear-gradient(180deg, #d8bd93, #c4a368); }
+    /* The Gunner's Workshop (#135 slice 3) — fit the shot you carry to sea, in a warm forge accent. */
+    #town .town-workshop { margin: 12px 2px 2px; padding: 9px 10px; border: 1px solid rgba(255,170,90,.28);
+      border-radius: 10px; background: linear-gradient(180deg, rgba(70,40,18,.34), rgba(40,24,10,.34)); }
+    #town .town-workshop-h { color: #ffbe7a; font-weight: 800; font-size: 13px; letter-spacing: .02em; }
+    #town .town-workshop-sub { color: #c8b48f; font-size: 10.8px; font-style: italic; line-height: 1.45; margin: 3px 0 8px; }
+    #town .town-workshop-sub b { color: #ffce7a; font-style: normal; }
+    #town .town-shot-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px;
+      padding: 6px 0; border-top: 1px solid rgba(255,210,150,.12); }
+    #town .town-shot-row:first-of-type { border-top: none; }
+    #town .town-shot-name { color: #f1e2bd; font-weight: 700; font-size: 12px; }
+    #town .town-shot-tag { color: #ffb877; font-weight: 600; font-size: 10.5px; }
+    #town .town-shot-blurb { grid-column: 1 / 2; color: #b6a585; font-size: 10.5px; line-height: 1.35; }
+    #town .town-shot { grid-row: 1 / 3; grid-column: 2 / 3; pointer-events: auto; cursor: pointer; font-family: inherit;
+      font-size: 11px; font-weight: 700; color: #2a1d06; background: linear-gradient(180deg, #e9c489, #d6a256);
+      border: 1px solid rgba(255,220,160,.7); border-radius: 8px; padding: 6px 10px; transition: filter .12s ease, transform .1s ease; }
+    #town .town-shot.fitted { background: linear-gradient(180deg, #9af0b4, #5fcf86); color: #093318; border-color: rgba(160,255,190,.7); }
+    #town .town-shot:hover { filter: brightness(1.08); }
+    #town .town-shot:active { transform: translateY(1px); }
+    #town .town-shot-fixed { grid-row: 1 / 3; grid-column: 2 / 3; color: #9b8e74; font-size: 10.5px; font-style: italic; align-self: center; }
     /* Chase a rumour (#111/#112): a small sea-green pull under a chase-able tip; the one being
        chased reads back as a quiet "⚑ Chasing…" tag. Matches the chart's objective-pin colour. */
     #town .town-chase {
