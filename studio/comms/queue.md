@@ -46,10 +46,18 @@ blob of the new version is added to the corpus (the coverage guard enforces it).
 
 _**Next leverage: BUILD BATTLE — the owner decided it, it is the focused lane.** Battle is **DECIDED**
 (owner chose **Option 2 → Option 4**, 2026-06-28). The accepted build is **#135** (`from-owner` · `P1`
-· `epic`); the design brief **#100 is CLOSED** as reference. Per the **PREEMPTION RULE**, #135 jumps
-to the **TOP** of this queue — next build is its **slice 1 (Battle Mode shell)**, riding #95. No owner
-nudge is due; the decision is in. (Stale-state correction 2026-06-29 by the PM desk: the queue had
-never absorbed #135 since it was filed 2026-06-28 09:51, so it kept nudging on a made decision.)_
+· `epic`); the design brief **#100 is CLOSED** as reference. Per the **PREEMPTION RULE**, #135 stays at
+the **TOP** of this queue until the lane ships something impressive + gamer-testable (lane-switch gate)._
+
+_**UPDATE Loop 85 (2026-06-30, v0.0.20260630054448): slice 1 — Battle Mode shell — SHIPPED.** Deliberate
+**E = give battle** → held BATTLE stance on the #95 infra, quarter-view camera, `⚔ BATTLE` banner, #94
+music settle, NPCs sail underneath, **Flee always available**. Pure `src/systems/battle.js` TDD'd first;
+no save-schema change (stays v16); perf unchanged (48 draws/90k tris). **#135 stays OPEN — next build is
+slice 2 (real-time broadside): steer for a beam angle, manual Fire discharges loaded guns in real time
+(today's stance still uses the turn-based #59 exchange inside it).** Then slice 3 (workshop loadouts +
+mid-combat ammo cycle, ties town #96), slice 4 (boarding → crew brawl → verbal duel climax), slice 5
+(expanded 50+ insult duel). Shell follow-ups: a persistent battle HUD panel; an arena-spawn so the
+engaged foe is a real maneuvering target; the flee-vs-flee nuance mid-cannonade._
 
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
