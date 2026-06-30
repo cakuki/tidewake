@@ -86,6 +86,28 @@ try {
     };
   });
 
+  // 2a′) RIVAL-SAIL-SIGHTED sting (#116 follow-up): the world's "uh-oh, company" beat must ring ONCE
+  // when a hostile (outlaw) sail first crosses the sighting horizon, driven purely from NPC state —
+  // proving the WebAudio path is guarded (no AudioContext opens in this headless run). Teleport far
+  // from the fleet to ARM the latch, then onto an outlaw to trip the sighting; assert the cue's NAME
+  // latched (the QA surface records it regardless of the audio engine being up).
+  const rival = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const outlaw = tw.npcs.find((n) => n.kind === 'pirate');
+    if (!outlaw) return { skipped: true };
+    tw.qaTeleport(50000, 50000); // far from the whole fleet → nearest hostile beyond the re-arm band
+    tw.step(0.05);               // a frame to ARM the latch
+    const armedCue = tw.loopCue; // should NOT be the rival sting yet (nothing sighted out here)
+    const o = tw.npcs.find((n) => n.kind === 'pirate') || outlaw; // fresh pos after the step
+    tw.qaTeleport(o.pos[0], o.pos[1]); // drop right onto the outlaw → well inside the sighting horizon
+    tw.step(0.05);               // a frame to SIGHT it → ring once
+    return { skipped: false, armedCue, sightedCue: tw.loopCue };
+  });
+  if (!rival.skipped) {
+    if (rival.armedCue === 'rivalSail') fail('rival sting fired while ARMING far from any sail (false sighting)');
+    if (rival.sightedCue !== 'rivalSail') fail(`rival sting did not ring on sighting a hostile sail (loopCue=${rival.sightedCue})`);
+  }
+
   // 2b) Insult Broadside (#33/#48): sail to the nearest NPC, hail it, and out-jeer
   // it to a win — exercising the duel SFX path (challenge/cut/win stingers fire
   // silently headless but must not throw). Best-effort engage; the hard gate is the

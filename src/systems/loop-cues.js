@@ -18,8 +18,14 @@
 // SHIPPED LATER (#116 follow-up): per-rumour-kind LISTEN colour (the room leans in differently for a
 // trade tip vs a reputation whisper vs danger on the water vs your own deed echoing back) + a bright
 // coin-chime layered UNDER the payoff when a tip actually pays coin. Same pure-recipe discipline.
-// STILL QUEUED (not built here): a distinct "rival sail sighted" sting + a continuous wake/helm
-// water-bed SFX. This module ships the four loop-beat cues, the listen colours, and the coin chime.
+//
+// SHIPPED LATER STILL (#116 follow-up — the RIVAL-SAIL-SIGHTED sting): the world's own "uh-oh,
+// company" beat. When a HOSTILE (outlaw) sail first crosses the sighting horizon, ring a short, tense
+// LOW sting (the `rivalSail` recipe) — dark, lowpassed, a rising tritone creeping up from below — that
+// primes an encounter/battle, ahead of any hail/cannon. A hysteresis latch (sightingEdge) fires it
+// ONCE per sighting and re-arms only after the sail draws back off the horizon, so a loitering rival
+// never spams it. Pure + headless: the sighting edge-detect and the cue are browser-free + unit-tested.
+// STILL QUEUED (not built here): the continuous #81 hull-creak SFX (the last drop in the reservoir).
 
 /**
  * How near (world units) the chased target you must come before the "drawing near" cue rings. Sits
@@ -65,8 +71,22 @@ const INTERACTION_CUES = {
   coin: { degs: [8, 12], octave: 2, type: 'triangle', gain: 0.05, step: 0.05, dur: 0.16, tail: 0.45 },
 };
 
-// Every renderable cue, by name — the four loop beats plus the interaction reactions.
-const ALL_CUES = { ...CUES, ...INTERACTION_CUES };
+// Encounter cue (#116 follow-up — the RIVAL-SAIL-SIGHTED sting): not a loop BEAT nor a player VERB
+// but the WORLD's own warning — the "uh-oh, company" beat when a hostile sail first crests the
+// horizon. Deliberately the opposite of every bright cue above: LOW (an octave down), DARK
+// (heavily lowpassed), a touch FLAT (detuned), and stepping OUT of the bright major on a RISING
+// tritone (semis 0 → 6, the brooding "devil's interval" creeping up from below) — so the ear reads
+// THREAT instantly, distinct from the high sour LOSS droop (a FALLING tritone) and the bright PAYOFF.
+// Modest gain: it primes the encounter, it doesn't jump-scare. Same pure-recipe discipline as CUES.
+const ENCOUNTER_CUES = {
+  rivalSail: { semis: [0, 6], octave: -1, type: 'sawtooth', gain: 0.12, step: 0.16, dur: 0.55, tail: 0.8, lowpass: 760, detune: -10 },
+};
+
+/** The encounter-cue NAME for the rival-sail-sighted sting — the magic-string-free handle main.js arms. */
+export const RIVAL_SAIL_CUE = 'rivalSail';
+
+// Every renderable cue, by name — the four loop beats, the interaction reactions, the encounter sting.
+const ALL_CUES = { ...CUES, ...INTERACTION_CUES, ...ENCOUNTER_CUES };
 
 /** The known reactive-loop cue names, in loop order. */
 export const LOOP_CUE_NAMES = Object.keys(CUES);
@@ -135,4 +155,44 @@ export function payoffCueName(outcome = {}) {
 export function approachCrossed(prevDist, dist, radius = APPROACH_RADIUS) {
   if (!Number.isFinite(prevDist) || !Number.isFinite(dist) || !Number.isFinite(radius)) return false;
   return prevDist > radius && dist <= radius;
+}
+
+/**
+ * How near (world units) a hostile sail must come before it is "sighted" and the RIVAL-SAIL-SIGHTED
+ * sting rings. Sits OUTSIDE both the chased-pin "drawing near" nod (APPROACH_RADIUS = 200) and the
+ * port-music bloom horizon (260), so a rival is spotted FAR off — the warning primes the encounter
+ * long before any hail/cannon/battle, never the moment you're already on top of each other.
+ */
+export const RIVAL_SIGHT_RADIUS = 340;
+
+/**
+ * Hysteresis (Schmitt) band for the sighting latch: a sighted sail must draw back off past
+ * RIVAL_SIGHT_RADIUS × this before a fresh sighting can re-arm. > 1, so the re-arm distance sits
+ * OUTSIDE the sighting radius — a rival jittering across the horizon line stings ONCE, not every frame.
+ */
+export const RIVAL_REARM_FACTOR = 1.3;
+
+/**
+ * PURE — advance the rival-sail SIGHTING latch one frame and say whether to ring the sting NOW. A
+ * hysteresis latch over the distance to the NEAREST hostile sail: while ARMED, the first frame the
+ * nearest hostile is at/inside `radius` fires ONCE and disarms; it re-arms only after that nearest
+ * hostile draws back off past `rearm` (= radius × RIVAL_REARM_FACTOR) — so a rival loitering on the
+ * horizon can't spam the cue. No hostile in the world at all (non-finite dist) counts as "drawn off"
+ * → quietly re-armed. Session-scoped state lives in the caller (one boolean); this is the transition.
+ * Deterministic; never throws.
+ * @param {boolean} armed   the latch's current state (true = ready to sting on the next sighting)
+ * @param {number} dist     distance to the NEAREST hostile sail (Infinity when none exist)
+ * @param {number} [radius] sighting radius (defaults to RIVAL_SIGHT_RADIUS)
+ * @param {number} [rearm]  re-arm distance (defaults to radius × RIVAL_REARM_FACTOR)
+ * @returns {{armed: boolean, fire: boolean}} the next latch state + whether to ring the sting this frame
+ */
+export function sightingEdge(armed, dist, radius = RIVAL_SIGHT_RADIUS, rearm) {
+  const r = Number.isFinite(radius) ? radius : RIVAL_SIGHT_RADIUS;
+  const off = Number.isFinite(rearm) ? rearm : r * RIVAL_REARM_FACTOR;
+  const a = !!armed;
+  const d = Number(dist);
+  if (!Number.isFinite(d)) return { armed: true, fire: false }; // no hostile anywhere → re-armed, silent
+  if (a && d <= r) return { armed: false, fire: true };          // a sail crosses the horizon → sting once
+  if (!a && d > off) return { armed: true, fire: false };        // it draws off past the band → re-arm
+  return { armed: a, fire: false };                              // hold (loitering, or still beyond)
 }

@@ -46,14 +46,14 @@ import {
   earnedGovernorship, governorTitle,
 } from './systems/home-port.js';
 import { makeObjective, resolvesAt, payoffFor, sanitizeObjective, makeContestedObjective, tickContest, isContested, isClaimed, rivalName, shouldContest } from './objectives.js';
-import { payoffCueName, approachCrossed, APPROACH_RADIUS, listenCueName, coinChimes } from './systems/loop-cues.js';
+import { payoffCueName, approachCrossed, APPROACH_RADIUS, listenCueName, coinChimes, sightingEdge, RIVAL_SIGHT_RADIUS, RIVAL_SAIL_CUE } from './systems/loop-cues.js';
 import { createEncounter, HAIL_LINES, RESCUE_LINES, PLUNDER_LINES } from './systems/encounter.js';
 import { freshMorale, sanitizeMorale, applyMorale, moraleBeat, moraleTier } from './systems/morale.js';
 import {
   assessThreat, sanitizeThreat, isActiveThreat, threatTitle, threatWarning,
   payTribute as payThreatTribute, resolveStandFirm, standFirmOdds, canPayTribute,
 } from './systems/harbour-threat.js';
-import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES } from './colours.js';
+import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_LINES, FOOLED_LINES, REVEAL_LINES, pickLine, isSeenThrough, seenThroughChance, LAWFUL_LINES, PIRACY_LINES, SEEN_THROUGH_LINES, isOutlaw } from './colours.js';
 import { BUDGET, formatPerf, pixelRatioCap, isMeasuredFrame } from './perf.js';
 import { isTouchDevice } from './input.js';
 import { GOAL, applyEvent, shouldShowGoal, normalizeFlags, currentStep } from './onboarding.js';
@@ -1222,6 +1222,25 @@ systems.register({ name: 'loop-cue-approach', order: 46, update: (f) => {
   const dist = Math.hypot(f.state.pos.x - t.x, f.state.pos.z - t.z);
   if (approachCrossed(prevTargetDist, dist, APPROACH_RADIUS)) music.loopCue('approach');
   prevTargetDist = dist;
+} });
+// — reactive-loop "rival sail sighted" sting (#116 follow-up): the world's "uh-oh, company" beat.
+//   Ring a short, tense LOW sting ONCE when a HOSTILE (outlaw) sail first crosses the sighting
+//   horizon — the audible warning that primes an encounter/battle, far ahead of any hail/cannon.
+//   A hysteresis latch (pure sightingEdge) fires it once per sighting and re-arms only after the
+//   nearest hostile draws back off past the horizon, so a rival loitering near never spams the cue.
+//   Drives off live NPC state (snapshot kind + position) — no AudioContext needed, so the headless
+//   gate exercises it too. Starts DISARMED so a sail already in view at session load isn't a false sting.
+let rivalArmed = false;
+systems.register({ name: 'loop-cue-rival', order: 47, update: (f) => {
+  let nearest = Infinity;
+  for (const n of npcs.snapshot()) {
+    if (!isOutlaw(n.kind) || !Array.isArray(n.pos)) continue;
+    const d = Math.hypot(f.state.pos.x - n.pos[0], f.state.pos.z - n.pos[1]);
+    if (d < nearest) nearest = d;
+  }
+  const next = sightingEdge(rivalArmed, nearest, RIVAL_SIGHT_RADIUS);
+  rivalArmed = next.armed;
+  if (next.fire) music.loopCue(RIVAL_SAIL_CUE);
 } });
 // — landfall camera ease (#102): only while the gesture is in flight (when blend>0), slide the
 //   chase cam toward a closer "ashore" framing of the moored ship.

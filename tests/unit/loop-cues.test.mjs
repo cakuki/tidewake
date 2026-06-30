@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {
   selectCue, payoffCueName, approachCrossed, APPROACH_RADIUS, LOOP_CUE_NAMES,
   LISTEN_CUE_NAMES, listenCueName, coinChimes,
+  sightingEdge, RIVAL_SIGHT_RADIUS, RIVAL_REARM_FACTOR, RIVAL_SAIL_CUE,
 } from '../../src/systems/loop-cues.js';
 
 test('LOOP_CUE_NAMES: the four loop-beat cues, in loop order (#116)', () => {
@@ -124,4 +125,87 @@ test('coinChimes: only an honest win that actually paid coin rings the chime (#1
   assert.equal(coinChimes({}), false);                             // no data → no chime
   assert.equal(coinChimes(), false);                               // no outcome → no chime
   assert.equal(coinChimes(null), false);                           // junk → fail safe, never throws
+});
+
+// ---- RIVAL-SAIL-SIGHTED sting (#116 follow-up) ----------------------------------------
+
+test('RIVAL_SAIL_CUE resolves to a renderable recipe; it is NOT a loop-beat name (#116 f/u)', () => {
+  assert.equal(RIVAL_SAIL_CUE, 'rivalSail');
+  assert.ok(!LOOP_CUE_NAMES.includes(RIVAL_SAIL_CUE), 'the sting is an encounter cue, not a loop beat');
+  const cue = selectCue(RIVAL_SAIL_CUE);
+  assert.ok(cue, 'rivalSail resolves');
+  assert.equal(cue.name, 'rivalSail');
+  assert.equal(typeof cue.type, 'string');
+  assert.ok(cue.dur > 0 && cue.tail > 0, 'has an envelope');
+  assert.ok(cue.gain > 0 && cue.gain <= 0.3, 'modest — it primes, never jump-scares');
+});
+
+test('the rival sting is DARK + LOW + chromatic — the ear reads THREAT (#116 f/u)', () => {
+  const rival = selectCue('rivalSail');
+  // Steps OUT of the bright major (raw chromatic semitones), like the sour LOSS stab — not in-key.
+  assert.ok(Array.isArray(rival.semis), 'rivalSail is chromatic (raw semitones), out of the bright key');
+  assert.ok(rival.octave < 0, 'pitched DOWN — a low, brooding horn on the horizon');
+  assert.ok(Number.isFinite(rival.lowpass) && rival.lowpass < 1200, 'lowpassed dark — muffled, ominous');
+  // A rising tritone (root → #4) — the brooding "devil's interval" creeping up from below.
+  assert.deepEqual(rival.semis, [0, 6], 'a rising tritone — menace climbing the horizon');
+  // Distinct from the LOSS droop (a FALLING tritone, 6 → 5): the sting RISES, the loss FALLS.
+  const loss = selectCue('loss');
+  assert.ok(rival.semis[1] > rival.semis[0], 'rival sting RISES');
+  assert.ok(loss.semis[1] < loss.semis[0], 'loss droop FALLS — opposite contour');
+});
+
+test('sightingEdge: a hostile crossing the horizon stings ONCE, then disarms (#116 f/u)', () => {
+  const r = RIVAL_SIGHT_RADIUS;
+  // Armed + a sail crosses inside the horizon → sting once, latch disarms.
+  const hit = sightingEdge(true, r - 1, r);
+  assert.deepEqual(hit, { armed: false, fire: true });
+  // Now disarmed, the sail loitering inside the horizon → silent (no spam).
+  assert.deepEqual(sightingEdge(false, r - 50, r), { armed: false, fire: false });
+  assert.deepEqual(sightingEdge(false, r - 1, r), { armed: false, fire: false });
+});
+
+test('sightingEdge: armed but the nearest hostile still beyond the horizon → silent (#116 f/u)', () => {
+  const r = RIVAL_SIGHT_RADIUS;
+  assert.deepEqual(sightingEdge(true, r + 20, r), { armed: true, fire: false });
+  assert.deepEqual(sightingEdge(true, r + 0.5, r), { armed: true, fire: false }); // a hair outside → still silent
+  // At/inside the horizon counts as crossed (the `<=` edge, matching approachCrossed) → sting.
+  assert.deepEqual(sightingEdge(true, r, r), { armed: false, fire: true });
+});
+
+test('sightingEdge: re-arms only after the sail draws back off past the hysteresis band (#116 f/u)', () => {
+  const r = RIVAL_SIGHT_RADIUS;
+  const off = r * RIVAL_REARM_FACTOR;
+  // Disarmed + still within the re-arm band (between r and off) → stays disarmed (no jitter re-fire).
+  assert.deepEqual(sightingEdge(false, r + 5, r), { armed: false, fire: false });
+  assert.deepEqual(sightingEdge(false, off, r), { armed: false, fire: false }); // exactly at the band edge
+  // Drawn off past the band → re-armed (ready for the next sighting), silent on the way out.
+  assert.deepEqual(sightingEdge(false, off + 1, r), { armed: true, fire: false });
+});
+
+test('sightingEdge: no hostile in the world (non-finite dist) → quietly re-armed (#116 f/u)', () => {
+  assert.deepEqual(sightingEdge(false, Infinity), { armed: true, fire: false });
+  assert.deepEqual(sightingEdge(true, Infinity), { armed: true, fire: false });
+  assert.deepEqual(sightingEdge(false, NaN), { armed: true, fire: false });
+  assert.deepEqual(sightingEdge(true, undefined), { armed: true, fire: false });
+});
+
+test('sightingEdge: a full sighting cycle — arm, sting once, hold, draw off, re-arm, sting again (#116 f/u)', () => {
+  const r = RIVAL_SIGHT_RADIUS;
+  let armed = false;                                  // start disarmed (no false sting at session load)
+  const log = [];
+  for (const d of [Infinity, r + 100, r - 10, r - 5, r * 2, r - 10]) {
+    const next = sightingEdge(armed, d, r);
+    armed = next.armed;
+    log.push(next.fire);
+  }
+  // Infinity→arm(no fire), beyond→hold, cross in→FIRE, loiter→silent, draw off→re-arm, cross in→FIRE.
+  assert.deepEqual(log, [false, false, true, false, false, true]);
+});
+
+test('RIVAL_SIGHT_RADIUS spots a rival FAR off — outside the approach + port horizons (#116 f/u)', () => {
+  // A rival is sighted on the HORIZON, well before any encounter — beyond the "drawing near" pin nod
+  // (200) and the port-music bloom (260), so the sting primes long before a hail/cannon/battle.
+  assert.ok(RIVAL_SIGHT_RADIUS > APPROACH_RADIUS, 'sighted farther out than the chased-pin nod');
+  assert.ok(RIVAL_SIGHT_RADIUS > 260, 'sighted beyond the port-music horizon');
+  assert.ok(RIVAL_REARM_FACTOR > 1, 'the re-arm band sits OUTSIDE the sighting radius (true hysteresis)');
 });
