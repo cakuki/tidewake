@@ -20,33 +20,87 @@ import { isDeceptive, treacheryBonus, surpriseDamage, DEFAULT_COLOURS, lawfulSta
 
 export const MAX_MORALE = 100;
 
-// The five flavours of jab. An enemy is WEAK to one (a cutting hit) and GUARDS one
+// The seven flavours of jab. An enemy is WEAK to one (a cutting hit) and GUARDS one
 // (jeer at that and it backfires on your own crew). Everything else just glances.
-export const CATEGORIES = ['pride', 'cowardice', 'looks', 'seamanship', 'wit'];
+// Superstition + Hygiene joined the original five in #135 slice 5 — a sailor's two
+// softest spots: what he fears at sea, and what he smells like ashore.
+export const CATEGORIES = ['pride', 'cowardice', 'looks', 'seamanship', 'wit', 'superstition', 'hygiene'];
 
-// The insult pool. `category` decides the outcome vs the enemy; `sting` is the base
-// bite; `line` is what you shout; `comeback` is the enemy's retort flung back at you.
+// The insult pool — 50+ original Tidewake lines, each a JAB and its captain's RIPOSTE,
+// written for this slice and lifted from no existing game. `category` decides the
+// outcome vs the enemy; `sting` is the base bite; `line` is what you shout; `comeback`
+// is the enemy's retort flung back at you. Each category carries a deep enough bench
+// (≥6) that the anti-repeat picker can keep a long fight feeling fresh (see pickOptions).
 export const INSULTS = [
   // pride
   { id: 'pride1', category: 'pride', sting: 22, line: "Your figurehead's the prettiest thing aboard — and it's a goat.", comeback: "She's worth more than your whole crew, hooves and all." },
   { id: 'pride2', category: 'pride', sting: 24, line: 'They named a wind after you: the one that smells faintly of regret.', comeback: "Breathe deep — you're downwind of greatness." },
   { id: 'pride3', category: 'pride', sting: 20, line: "I've met prouder captains bailing out my bilge.", comeback: 'Then bail faster, the view suits you.' },
+  { id: 'pride4', category: 'pride', sting: 21, line: 'You strut the quarterdeck like a gull that found a whole loaf.', comeback: 'And you skulk yours like one that lost the crumb.' },
+  { id: 'pride5', category: 'pride', sting: 23, line: 'Your crew salutes you — out of pity, I am told.', comeback: "Pity's the only thing your lot can afford to give." },
+  { id: 'pride6', category: 'pride', sting: 25, line: "They'll write ballads of you: short ones, mostly about the smell.", comeback: "At least I rate a verse. You'd struggle for a footnote." },
+  { id: 'pride7', category: 'pride', sting: 22, line: 'You polish that captain\'s hat so the gulls have somewhere grand to land.', comeback: 'Better a perch for gulls than a bare pole like your mast.' },
+  { id: 'pride8', category: 'pride', sting: 24, line: 'Grand title, for a man whose flagship leaks at the bow.', comeback: 'She leaks proudly — more than your slack sails ever managed.' },
   // cowardice
   { id: 'cow1', category: 'cowardice', sting: 23, line: 'You flinch at your own cannon — does the boom frighten the baby?', comeback: "I flinch so the cannonball doesn't have to." },
   { id: 'cow2', category: 'cowardice', sting: 21, line: 'Your battle flag is a white sheet with extra steps.', comeback: "It matches the colour you'll turn shortly." },
   { id: 'cow3', category: 'cowardice', sting: 25, line: 'You sail so bravely — directly away from everything.', comeback: "It's called strategy. You'll learn it, retreating." },
+  { id: 'cow4', category: 'cowardice', sting: 20, line: 'You keep a course so cautious the barnacles outrun you.', comeback: 'Slow and afloat beats fast and drowned, friend.' },
+  { id: 'cow5', category: 'cowardice', sting: 22, line: "Your motto is 'retreat with dignity' — minus the dignity.", comeback: 'And plus the living, which you will shortly lack.' },
+  { id: 'cow6', category: 'cowardice', sting: 24, line: "I've seen jellyfish square up braver than your whole watch.", comeback: "Jellyfish don't have to look at your face. Lucky things." },
+  { id: 'cow7', category: 'cowardice', sting: 23, line: 'You drew your cutlass and asked it to wait outside.', comeback: "It's resting. It'll be along the moment you're worth the swing." },
+  { id: 'cow8', category: 'cowardice', sting: 21, line: 'Even your shadow keeps a safe distance from the fight.', comeback: 'Smart shadow. Wish my crew were half as sensible.' },
   // looks
   { id: 'look1', category: 'looks', sting: 22, line: 'Is that a beard, or did a gull lose a fight on your chin?', comeback: 'The gull won. You are looking at the loser.' },
   { id: 'look2', category: 'looks', sting: 20, line: 'Your face could sour a whole hold of rum.', comeback: 'Good — more sober hands to thrash you with.' },
   { id: 'look3', category: 'looks', sting: 24, line: "I'd call you barnacle-ugly, but the barnacles objected.", comeback: 'They have better taste than your mirror, plainly.' },
+  { id: 'look4', category: 'looks', sting: 23, line: 'Your mother hung a lantern by you so ships knew what to avoid.', comeback: 'And yet you steered straight in. Poor navigator AND blind.' },
+  { id: 'look5', category: 'looks', sting: 21, line: "I've seen friendlier faces carved on ships that sank on purpose.", comeback: 'They sank to get away from looking at you, no doubt.' },
+  { id: 'look6', category: 'looks', sting: 22, line: "Squint and you're almost passable — so everyone aboard squints.", comeback: 'Squint harder and you might pass for competent. We will wait.' },
+  { id: 'look7', category: 'looks', sting: 20, line: 'Your figurehead asked to be moved to the stern, away from you.', comeback: 'Wise wood. Pity your crew can\'t relocate from your jokes.' },
+  { id: 'look8', category: 'looks', sting: 25, line: "You've a face that could becalm a gale out of sheer disappointment.", comeback: "Then I'll save a fortune in canvas, won't I." },
   // seamanship
   { id: 'sea1', category: 'seamanship', sting: 23, line: "You couldn't navigate a bathtub to its own plug.", comeback: 'And yet here I am, plugging up your day.' },
   { id: 'sea2', category: 'seamanship', sting: 21, line: 'Your knots are just confused string having a bad afternoon.', comeback: "They'll hold long enough to hang your pride." },
   { id: 'sea3', category: 'seamanship', sting: 25, line: "You reef a sail like you're wrestling a ghost — and losing.", comeback: 'The ghost tells me you sail even worse.' },
+  { id: 'sea4', category: 'seamanship', sting: 22, line: 'You call that a heading? A drunk compass would file a complaint.', comeback: 'It complained about the company, mostly.' },
+  { id: 'sea5', category: 'seamanship', sting: 20, line: "Your wake spells out 'sorry' in three languages.", comeback: "All three you'll be begging in shortly." },
+  { id: 'sea6', category: 'seamanship', sting: 24, line: 'You trim a sail like you owe it money and dare not meet its canvas.', comeback: 'I trim to win, not to impress a man who rows.' },
+  { id: 'sea7', category: 'seamanship', sting: 21, line: "Your charts have a mark for 'here be me, lost again'.", comeback: 'Better an honest mark than your blank, hopeful guesswork.' },
+  { id: 'sea8', category: 'seamanship', sting: 23, line: 'You tacked so wide you visited a port on the way to nowhere.', comeback: 'Lovely port. Sent your reputation a postcard from it.' },
   // wit
   { id: 'wit1', category: 'wit', sting: 22, line: "I'd trade wits with you, but I never rob the needy.", comeback: 'Keep yours — clearly you are hoarding the lot.' },
   { id: 'wit2', category: 'wit', sting: 24, line: 'Your comebacks arrive like your ship: late and leaking.', comeback: 'Yet still in time to sink you.' },
+  { id: 'wit3', category: 'wit', sting: 21, line: "I'd match wits with you, but I left my smaller one ashore.", comeback: "Bring it next time — you'll need the spare." },
+  { id: 'wit4', category: 'wit', sting: 23, line: 'Your jokes land like an anchor: loud, wet, and dragging everyone down.', comeback: "And yet you're still hooked on every one." },
+  { id: 'wit5', category: 'wit', sting: 20, line: 'You think you are quick — the tide disagrees, and it has seen slower.', comeback: 'The tide and I have an understanding. You it merely tolerates.' },
+  { id: 'wit6', category: 'wit', sting: 22, line: "I'd explain the jest, but your crew is still parsing the last one.", comeback: "We're savouring it. Slowly. Out of charity." },
+  { id: 'wit7', category: 'wit', sting: 24, line: 'Sharp as a spoon, that tongue of yours.', comeback: "Spoons feed people. What have your barbs ever served?" },
+  { id: 'wit8', category: 'wit', sting: 21, line: 'You bring a quip to a quarrel like you bring a sieve to bail.', comeback: 'It bails enough to keep me talking, sadly for you.' },
+  // superstition — what a sailor fears out on the water
+  { id: 'sup1', category: 'superstition', sting: 24, line: 'You sailed on a Friday, renamed the ship, AND whistled — bold, for a man who fears his own bilge.', comeback: 'I make my own luck. You inherited yours, and it has run out.' },
+  { id: 'sup2', category: 'superstition', sting: 22, line: "There's a curse on your hull, and frankly it's the most interesting thing aboard.", comeback: "Keep talking and I'll introduce you to it personally." },
+  { id: 'sup3', category: 'superstition', sting: 21, line: 'You toss salt over both shoulders and still cannot season a victory.', comeback: "I'll season it with your tears, then. Plenty of those coming." },
+  { id: 'sup4', category: 'superstition', sting: 25, line: 'A banana in the hold, a dead albatross, and you out here picking fights — death wish, or just daft?', comeback: 'Daft enough to beat you, which is all the luck I need.' },
+  { id: 'sup5', category: 'superstition', sting: 20, line: 'Even your ship\'s cat leapt overboard rather than share your omens.', comeback: 'Cat couldn\'t swim. Bad omen for it, not for me.' },
+  { id: 'sup6', category: 'superstition', sting: 23, line: 'You painted eyes on the bow so the ship can see what is coming. It looks terrified.', comeback: 'She is looking at you, naturally. Anyone would flinch.' },
+  { id: 'sup7', category: 'superstition', sting: 22, line: 'Mermaids surface just to warn other ships about you.', comeback: 'Flattered they noticed. They will be warning about you by dusk.' },
+  { id: 'sup8', category: 'superstition', sting: 21, line: 'You carry more lucky charms than crew, and twice as useless.', comeback: 'The charms work. You are proof — they sent you straight to me.' },
+  // hygiene — what he smells like when he finally comes ashore
+  { id: 'hyg1', category: 'hygiene', sting: 22, line: 'Downwind of you the fish surface to apologise.', comeback: "Then they'll be right there when I gut your nets." },
+  { id: 'hyg2', category: 'hygiene', sting: 20, line: 'Your crew bathes once a voyage, whether the storm hits them or not.', comeback: 'Cleaner than your conscience, salt-licker.' },
+  { id: 'hyg3', category: 'hygiene', sting: 24, line: 'I smelled your ship before I sighted it, and I sighted it from the horizon.', comeback: "Then you had time to flee, and didn't. Slow nose, slower wits." },
+  { id: 'hyg4', category: 'hygiene', sting: 23, line: 'Your beard has its own ecosystem and pays you no rent.', comeback: 'It guards my chin better than your crew guards your deck.' },
+  { id: 'hyg5', category: 'hygiene', sting: 21, line: 'You could caulk a hull with what is under those fingernails.', comeback: 'Handy, that. Saves me buying tar to seal your fate.' },
+  { id: 'hyg6', category: 'hygiene', sting: 25, line: 'Last time you washed, the harbour filed it as a spill.', comeback: 'And I have out-lasted the clean-up. You will not last the hour.' },
+  { id: 'hyg7', category: 'hygiene', sting: 22, line: 'Your socks could stand a watch on their own — and run a tighter ship.', comeback: "They'd still let you board. That's more mercy than you'll get from me." },
+  { id: 'hyg8', category: 'hygiene', sting: 20, line: 'The barnacles left your hull for somewhere cleaner: a sewer.', comeback: 'More room for speed, then. I will catch you before you catch your breath.' },
 ];
+
+// How many recently-OFFERED lines the duel remembers ACROSS hails in one session, so two
+// duels back-to-back don't open with the same stale hand (#135 slice 5). Session-scoped on
+// purpose — the corpus is static, so nothing here touches the save (stays v16).
+export const DUEL_MEMORY = 18;
 
 // Names for the captain you're hailing — characterful, harmless, on-tone.
 const ENEMY_NAMES = [
@@ -146,18 +200,45 @@ export function makeEnemy(rng = Math.random) {
 /**
  * Offer `n` distinct insults for the round. ALWAYS includes at least one line that
  * matches the enemy's weakness, so a sharp-eyed captain always has a winning move
- * available (and an automated test can always make progress). The rest are random.
+ * available (and an automated test can always make progress).
+ *
+ * ANTI-REPEAT (#135 slice 5): `recent` is a set/array of recently-OFFERED insult ids
+ * (within this engagement AND carried across recent hails). The picker PREFERS lines not
+ * in `recent`, so a long fight — and back-to-back duels — keep feeling fresh. The two hard
+ * guarantees (a sharp line is always offered; the hand is always `n` distinct) ALWAYS win
+ * over freshness: if the fresh bench can't satisfy them, the picker falls back to stale
+ * lines rather than starve the winning move or short the hand. PURE; `rng` is injectable.
+ *
+ * @param {() => number} [rng]
+ * @param {{weakTo:string}} enemy
+ * @param {number} [n]
+ * @param {Iterable<string>} [recent] — ids shown recently; avoided when a fresh bench allows
  * @returns {Array<object>} insult objects from INSULTS
  */
-export function pickOptions(rng = Math.random, enemy, n = 4) {
-  const sharp = INSULTS.filter((i) => i.category === enemy.weakTo);
+export function pickOptions(rng = Math.random, enemy, n = 4, recent = []) {
+  const stale = recent instanceof Set ? recent : new Set(recent);
   const chosen = [];
-  if (sharp.length) chosen.push(sharp[pickIndex(rng, sharp.length)]);
-  const pool = INSULTS.filter((i) => !chosen.includes(i));
-  while (chosen.length < n && pool.length) {
-    const idx = pickIndex(rng, pool.length);
-    chosen.push(pool.splice(idx, 1)[0]);
-  }
+
+  // 1) The sharp (weakness) line — prefer a fresh one, fall back to any sharp line.
+  const sharpAll = INSULTS.filter((i) => i.category === enemy.weakTo);
+  const sharpFresh = sharpAll.filter((i) => !stale.has(i.id));
+  const sharpPool = sharpFresh.length ? sharpFresh : sharpAll;
+  if (sharpPool.length) chosen.push(sharpPool[pickIndex(rng, sharpPool.length)]);
+
+  // 2) Fill the rest: drain the FRESH pool first, only dipping into stale lines if the
+  //    fresh bench can't fill the hand (a very long fight, or a near-exhausted corpus).
+  const remaining = INSULTS.filter((i) => !chosen.includes(i));
+  const fresh = remaining.filter((i) => !stale.has(i.id));
+  const leftover = remaining.filter((i) => stale.has(i.id));
+  const drain = (pool) => {
+    const p = pool.slice();
+    while (chosen.length < n && p.length) {
+      chosen.push(p.splice(pickIndex(rng, p.length), 1)[0]);
+    }
+  };
+  drain(fresh);
+  drain(leftover);
+
   // Light shuffle so the sharp line isn't always slot 1.
   for (let i = chosen.length - 1; i > 0; i--) {
     const j = pickIndex(rng, i + 1);
@@ -213,6 +294,28 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
   let engagedColours = DEFAULT_COLOURS; // the colours flown the instant the hail went up
   let engagedKind = 'merchant';         // the target's kind the instant the hail went up (#91)
 
+  // ANTI-REPEAT memory (#135 slice 5), session-scoped (never persisted — save stays v16):
+  //   * `engagementSeen` — every line offered in the CURRENT duel; reset each hail so a single
+  //     fight never re-offers a jab while the bench can cover it.
+  //   * `sessionRecent` — a rolling window of the last DUEL_MEMORY ids offered ACROSS hails, so
+  //     two duels back-to-back don't open with the same stale hand.
+  let engagementSeen = new Set();
+  const sessionRecent = [];
+  function avoidSet() { return new Set([...engagementSeen, ...sessionRecent]); }
+  function rememberOffered(opts) {
+    for (const o of opts) {
+      engagementSeen.add(o.id);
+      sessionRecent.push(o.id);
+      while (sessionRecent.length > DUEL_MEMORY) sessionRecent.shift();
+    }
+  }
+  // Offer a fresh hand AND record it, so the next pick avoids it. One seam for both call sites.
+  function dealOptions() {
+    const opts = pickOptions(rng, enemy, 4, avoidSet());
+    rememberOffered(opts);
+    return opts;
+  }
+
   // Nearest NPC within range, or -1. Positions are [x,z]; ship pos is [x,z] too.
   function nearestInRange() {
     const ship = getShipPos && getShipPos();
@@ -264,7 +367,8 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
     state.enemyMorale = clampMorale(
       MAX_MORALE - surpriseDamage(engagedColours) - Math.max(0, openingDent || 0), MAX_MORALE);
     state.maxMorale = MAX_MORALE;
-    state.options = pickOptions(rng, enemy, 4);
+    engagementSeen = new Set(); // a new fight forgets the last fight's WITHIN-duel exclusions…
+    state.options = dealOptions(); // …but sessionRecent still steers the opening hand fresh
     state.enemyLine = opener(rng);
     state.lastOutcome = '';
     state.result = null;
@@ -294,7 +398,7 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
 
     if (isOver(state.enemyMorale)) return finish('win');
     if (isOver(state.playerMorale)) return finish('lose');
-    state.options = pickOptions(rng, enemy, 4); // fresh lines for the next round
+    state.options = dealOptions(); // fresh, anti-repeat lines for the next round (#135 slice 5)
     return r;
   }
 
