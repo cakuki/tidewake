@@ -281,8 +281,15 @@ export function createTown(opts = {}) {
     }).join('');
 
     const used = cargoUsed(state.cargo);
+    // #146 (owner, 2026-06-30): the port view was a flat stack with a fixed max-height and no
+    // scroll region, so on small/mobile viewports the quayside content (harbour + threat + tavern +
+    // full market) spilled past the panel box and the "Set Sail" plank slid off-screen — unreachable.
+    // Fix: the scrollable BODY (.town-scroll) holds everything that can grow, while the "Set Sail"
+    // plank + help line stay a PINNED footer outside it, so the one way back to the helm is always
+    // on screen no matter how tall the port gets. The richer low-scroll redesign is the #N follow-up.
     $panel.innerHTML =
-      `<div class="town-h">🏘 ${esc(port)}</div>`
+      `<div class="town-scroll">`
+      + `<div class="town-h">🏘 ${esc(port)}</div>`
       + `<div class="town-sub">${esc(info.blurb || 'A port town, alive with trade.')}</div>`
       + `<div class="town-master${recall ? ' town-master-recall' : ''}">${esc(master)}</div>`
       + `<div class="town-barker">${esc(cry)}</div>`
@@ -295,6 +302,7 @@ export function createTown(opts = {}) {
       + `<div class="town-trade-help">${TOUCH
           ? 'Tap a row to <b>buy</b> · tap its <b>sell</b> price to sell'
           : 'Press <b>1–5</b> to buy · <b>Shift+1–5</b> to sell'}</div>`
+      + `</div>`
       + `<button id="town-leave" class="town-leave" type="button">⚓ Set Sail &nbsp;<span class="town-leave-key">(L)</span></button>`
       + `<div class="town-help">Listen for word in the tavern, trade your hold, then set sail when you're ready.</div>`;
   }

@@ -1836,6 +1836,66 @@ try {
   const transitionBudget = checkBudget(leak.worstTransition, BUDGET);
   for (const v of transitionBudget.violations) fail(`leak-invariant: a mode-transition frame blew the perf budget: ${v.metric}=${v.value} > ${v.ceiling} (#121)`);
 
+  // 2j) Mobile-viewport port view (#146, owner 2026-06-30): the town/port view must NOT clip on
+  // phone-sized screens. Owner flagged that port views had sizing issues and asked us to simulate
+  // mobile viewports in the gate — this is that standing guard. At several phone resolutions we make
+  // landfall, fill the port with content (listen for word so the tavern expands), then assert: the
+  // panel box stays within the viewport, the scrollable body exists and can reach its end, and the
+  // "Set Sail" plank is on-screen and within the panel (a pinned footer, never lost off the bottom).
+  const mobileViewports = [
+    { w: 390, h: 844, name: 'iPhone 13/14 portrait' },
+    { w: 360, h: 640, name: 'small Android portrait' },
+    { w: 844, h: 390, name: 'landscape phone' },
+  ];
+  for (const vp of mobileViewports) {
+    await page.setViewport({ width: vp.w, height: vp.h, deviceScaleFactor: 1 });
+    const m = await page.evaluate(async () => {
+      const tw = window.__tidewake;
+      tw.newVoyage(); tw.step(0.1);
+      const port = tw.ports[0];
+      const [px, pz] = port.pos;           // port.pos = [x, z]
+      tw.qaTeleport(px, pz); tw.step(0.1); // arrive → auto-harbour into TOWN (#67)
+      for (let i = 0; i < 120 && !(tw.mode === 'town' && tw.town && tw.town.open); i++) tw.step(0.1);
+      // Fill the quayside so the panel is content-heavy and the scroll path is genuinely exercised.
+      try { tw.town.listen(); } catch { /* listen is a flourish; never fail the layout gate on it */ }
+      tw.step(0.1);
+      const panel = document.getElementById('town');
+      if (!panel) return { townOpen: false };
+      const scroll = panel.querySelector('.town-scroll');
+      const leave = panel.querySelector('#town-leave');
+      const vpH = window.innerHeight, vpW = window.innerWidth;
+      const pr = panel.getBoundingClientRect();
+      // Drive the body to its end — the deepest content (e.g. last market row) must be reachable.
+      let reachedBottom = true, scrollable = false;
+      if (scroll) {
+        scrollable = scroll.scrollHeight > scroll.clientHeight + 1;
+        scroll.scrollTop = scroll.scrollHeight;
+        reachedBottom = Math.abs(scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop) <= 2;
+      }
+      const lr = leave ? leave.getBoundingClientRect() : null;
+      return {
+        townOpen: !!(tw.mode === 'town' && tw.town && tw.town.open),
+        hasScroll: !!scroll,
+        // The panel box stays inside the viewport (allowing 1px sub-pixel slack).
+        panelInViewport: pr.top >= -1 && pr.bottom <= vpH + 1 && pr.left >= -1 && pr.right <= vpW + 1,
+        // The Set Sail plank is on-screen, has real size, and never escapes the panel box.
+        leaveOnScreen: !!lr && lr.top >= -1 && lr.bottom <= vpH + 1 && lr.width > 1 && lr.height > 1,
+        leaveWithinPanel: !!lr && lr.bottom <= pr.bottom + 1 && lr.top >= pr.top - 1,
+        reachedBottom, scrollable,
+      };
+    });
+    const tag = `mobile port view (${vp.w}x${vp.h}, ${vp.name})`;
+    if (!m.townOpen) fail(`${tag}: town view did not open on landfall`);
+    if (!m.hasScroll) fail(`${tag}: no .town-scroll body — the port content can clip off-screen (#146)`);
+    if (!m.panelInViewport) fail(`${tag}: #town panel box overflows the viewport (clipping #146)`);
+    if (!m.leaveOnScreen) fail(`${tag}: the "Set Sail" plank is not fully on screen (unreachable #146)`);
+    if (!m.leaveWithinPanel) fail(`${tag}: the "Set Sail" plank escaped the panel box (#146)`);
+    if (!m.reachedBottom) fail(`${tag}: could not scroll the port body to its end — content unreachable (#146)`);
+  }
+  // Restore the desktop viewport + a clean voyage for the screenshot artifact below.
+  await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
+  await page.evaluate(() => { const tw = window.__tidewake; tw.newVoyage(); tw.step(0.1); });
+
   // 3) screenshot artifact
   fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
   await page.screenshot({ path: screenshotPath });

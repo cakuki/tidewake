@@ -498,6 +498,15 @@
       #title { font-size: 11px; letter-spacing: .22em; top: calc(12px + env(safe-area-inset-top, 0px)); }
       #trade { width: min(82vw, 290px); }
       #minimap { width: 112px; height: 112px; }
+      /* #146: claim more of a phone screen + trim padding so the port view shows more before it
+         needs to scroll (the quick fix; the low-scroll redesign is the #N follow-up). */
+      #town { width: min(96vw, 480px); padding: 14px 16px; }
+    }
+    /* #146: on short viewports (landscape phones, split-screen) drop the padding further so the
+       pinned Set Sail footer keeps its place and the body has the most room to scroll. */
+    @media (max-height: 560px) {
+      #town { padding: 12px 16px; }
+      #town .town-h { font-size: clamp(16px, 3vw, 20px); }
     }
 
     /* ---- Town / market mode (#96) -------------------------------------------
@@ -506,7 +515,11 @@
        market board and a single "⚓ Set Sail" plank as the only way back to the helm. */
     #town {
       position: fixed; left: 50%; top: 50%; z-index: 22; transform: translate(-50%, -50%) scale(.98);
-      width: min(94vw, 480px); max-height: min(88vh, 720px); display: flex; flex-direction: column;
+      /* #146: cap to the visible viewport minus the safe-area insets so the panel box itself can
+         never run off a notched phone screen; the body inside scrolls when the port is tall. */
+      width: min(94vw, 480px);
+      max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+      display: flex; flex-direction: column; overflow: hidden;
       color: #eaf3fb; pointer-events: none;
       background: linear-gradient(170deg, rgba(16,38,58,.94), rgba(9,22,36,.95) 65%, rgba(30,22,10,.95));
       border: 1px solid rgba(255,217,138,.5); border-radius: 16px; padding: 18px 22px;
@@ -515,6 +528,18 @@
       opacity: 0; transition: opacity .28s ease, transform .28s ease;
     }
     #town.show { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+    /* #146: the scrollable quayside BODY — everything that can grow (harbour, threat, tavern,
+       market) lives here and scrolls; the Set Sail plank + help below it stay a pinned footer so
+       the way back to the helm is ALWAYS on screen, on any viewport. min-height:0 lets a flex
+       child actually shrink-and-scroll instead of forcing the panel taller than the screen. */
+    #town .town-scroll {
+      flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      /* a hair of right padding so the scrollbar never sits on the market numbers */
+      padding-right: 2px; margin-right: -2px;
+    }
+    #town .town-leave, #town .town-help { flex: 0 0 auto; }
+    #town .town-leave { margin-top: 12px; }
     #town .town-h { color: #ffd98a; font-weight: 800; font-size: clamp(18px, 3vw, 24px); letter-spacing: .04em; text-align: center; }
     #town .town-sub { color: #bcd5ea; font-size: 12px; text-align: center; margin-top: 3px; }
     #town .town-master { color: #e7d6a8; font-size: 12px; font-style: italic; text-align: center; margin-top: 8px; line-height: 1.4; }
