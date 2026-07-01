@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "opus",
+  "permissions": { "defaultMode": "acceptEdits" },
+  "includeCoAuthoredBy": false,
+  "hooks": {},
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": false, "feature-dev@claude-plugins-official": false,
+    "learning-output-style@claude-plugins-official": false, "github@claude-plugins-official": false,
+    "skill-creator@claude-plugins-official": false, "claude-md-management@claude-plugins-official": false,
+    "ralph-loop@claude-plugins-official": false, "commit-commands@claude-plugins-official": false,
+    "claude-code-setup@claude-plugins-official": false, "plugin-dev@claude-plugins-official": false,
+    "chrome-devtools-mcp@claude-plugins-official": false, "remember@claude-plugins-official": false,
+    "minimalist-entrepreneur@minimalist-entrepreneur": false, "lean-delivery-loop@loom": false,
+    "swift-lsp@claude-plugins-official": false
+  }
+}
