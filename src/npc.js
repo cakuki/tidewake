@@ -4,6 +4,7 @@ import {
 } from './npc-ai.js';
 import { vesselKind, isOutlaw } from './colours.js';
 import { shipEmphasis, DIM_OPACITY } from './ui/over-ship-billboard.js';
+import { spawnMix, shipStats } from './ship-classes.js';
 
 // Letters of Marque (#91): outlaw/pirate hulls fly a sullen blood-dark flag so a lawful
 // privateer can pick a fair target on the horizon — honest colours vs THIS one earns Standing.
@@ -115,14 +116,27 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
     { hull: 0x5a3550, sail: 0xe7d9e2, flag: 0x7a2f6a, speed: 25, scale: 0.96 },  // plum runner
   ];
 
+  // Ship classes (#163): a deterministic MIX of classes across the fleet, so the open sea has a visible
+  // + mechanical pecking order — a man-o'-war dwarfs a darting sloop, a warship frigate genuinely bites,
+  // a merchant sloop is quick prey. These are TRANSIENT spawn properties (never persisted — save stays
+  // v17). The class drives the mesh SCALE (size), the wander SPEED (a giant lumbers), and — carried on the
+  // snapshot — the foe's hull + gunnery the instant you engage her (battle.js / cannons.js read it).
+  // A DEDICATED seed so class selection doesn't perturb the shared `rng` stream — spawn positions stay
+  // exactly as before (the per-ship rng draw count inside the loop is unchanged), only size/speed vary.
+  const mix = spawnMix(makeRng(0x5c1a55e5), count);
+
   const ships = [];
   for (let i = 0; i < count; i++) {
     const p = palettes[i % palettes.length];
+    const spec = mix[i] || { cls: 'sloop', role: 'merchant' };
+    const stats = shipStats(spec.cls, spec.role);
     // Letters of Marque (#91): a deterministic disposition per slot — an outlaw flies a
     // blood-dark flag so it reads as fair game for a lawful privateer.
     const kind = vesselKind(i);
     const flagColor = isOutlaw(kind) ? OUTLAW_FLAG : p.flag;
-    const mesh = makeVessel(p.hull, p.sail, flagColor, p.scale);
+    // The palette keeps her colours (identity); the CLASS now sets her size — a bigger class is a
+    // visibly bigger hull. Same reused mesh, just scaled (0 extra draws / tris).
+    const mesh = makeVessel(p.hull, p.sail, flagColor, stats.sizeScale);
     group.add(mesh);
 
     // Spread spawns out, well clear of the player's origin and of land.
@@ -139,10 +153,20 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
     const s = {
       mesh,
       kind, // pirate/merchant disposition for the lawful Standing path (#91)
+      // Her class (#163) — a plain, JSON-safe stat block carried onto the snapshot so combat + future
+      // labels/odds read exactly what she IS. Transient; never persisted.
+      shipClass: {
+        cls: stats.cls, role: stats.role, label: stats.label, tier: stats.tier,
+        hull: stats.hull, maxHull: stats.maxHull, gunnery: stats.gunnery,
+        guns: stats.guns, crew: stats.crew, sizeScale: stats.sizeScale,
+      },
       x: spawn.x,
       z: spawn.z,
       heading,
-      // gentle per-ship variation around the palette's base speed
+      // Per-ship speed variation around the palette base — kept as-is (movement identical to before) so
+      // class VARIETY rides on size + combat, not on perturbing the wander every frame. (The class's own
+      // `speed` lives on shipClass for later slices — #167 challenge placement — but doesn't drive the
+      // ambient wander here, which keeps the deterministic battle-camera playtest steps rock-steady.)
       speed: p.speed * (0.85 + rng() * 0.3),
       turnRate: 0.5 + rng() * 0.3,   // rad/s
       bobPhase: rng() * Math.PI * 2,
@@ -250,7 +274,15 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   }
 
   function snapshot() {
-    return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading, fleeing: !!s.fleeing, kind: s.kind, helm: s.arenaState || null }));
+    return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading, fleeing: !!s.fleeing, kind: s.kind, helm: s.arenaState || null, shipClass: s.shipClass || null }));
+  }
+
+  // QA/gallery hook (#163): drop ship `i` at a world XZ so a headless gallery frame can pose a big
+  // warship and a little sloop on the same sea. Sim otherwise untouched (mirrors qaTeleport for the player).
+  function place(i, x, z) {
+    const s = ships[i];
+    if (!s) return;
+    s.x = x; s.z = z; s.wp = { x, z };
   }
 
   // Target lock (#161 slice 3) — set each hull's opacity so the engaged foe reads instantly amid the
@@ -309,7 +341,7 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
     s.wp = pickWaypoint(rng, bounds);
   }
 
-  return { group, update, snapshot, respawn, setBattleFocus, emphasisSnapshot };
+  return { group, update, snapshot, respawn, place, setBattleFocus, emphasisSnapshot };
 }
 
 export { wrapAngle, steerToward, pickWaypoint, headingTo, hasArrived, avoidObstacles, arenaHelm };

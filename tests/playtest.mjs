@@ -93,6 +93,33 @@ try {
     };
   });
 
+  // 2a-classes) SHIP CLASSES (#163, epic #162 FOUNDATION): the sea stops being uniform. NPC ships now
+  // spawn across a MIX of classes (sloop→brig→frigate→man-o'-war × merchant/warship) that differ VISIBLY
+  // (mesh scale / silhouette) AND MECHANICALLY (hull + gunnery feed the EXISTING battle math). Two proofs,
+  // both deterministic + headless: (A) the fleet carries ≥2 distinct classes whose hull, gunnery AND size
+  // genuinely differ — variety you can SEE, not a cosmetic tint; (B) qaClassCombat() resolves the SAME
+  // clean broadside against the SAME target with a frigate's guns vs a sloop's, and the frigate bites
+  // harder — class genuinely SCALES the fight (a frigate threatens where a sloop barely scratches).
+  const classes = await page.evaluate(() => {
+    const tw = window.__tidewake;
+    const fleet = tw.npcs.map((n) => n.shipClass).filter(Boolean);
+    return { count: tw.npcs.length, fleet, combat: tw.qaClassCombat() };
+  });
+  {
+    if (!(classes.fleet.length >= 2)) fail(`ship classes (#163): fewer than 2 NPCs carry a class (${classes.fleet.length}/${classes.count}) — the sea has no variety`);
+    const cls = new Set(classes.fleet.map((f) => f.cls));
+    if (!(cls.size >= 2)) fail(`ship classes (#163): the fleet is a UNIFORM sea (all '${[...cls]}') — classes must vary`);
+    const spread = (key) => { const v = classes.fleet.map((f) => f[key]); return Math.max(...v) - Math.min(...v); };
+    if (!(spread('hull') > 0)) fail('ship classes (#163): every hull is equally tough — class does not vary hull');
+    if (!(spread('sizeScale') > 0)) fail('ship classes (#163): every hull is the same SIZE — you cannot SEE a man-o\'-war dwarf a sloop');
+    if (!(spread('gunnery') > 0)) fail('ship classes (#163): every hull carries the same guns — class does not vary armament');
+    const c = classes.combat;
+    if (!(c.frigateReply > c.sloopReply)) fail(`ship classes (#163): a frigate's broadside did not out-bite a sloop's (${c.frigateReply} !> ${c.sloopReply}) — class does not SCALE combat`);
+    if (!(c.manowarReply > c.frigateReply)) fail(`ship classes (#163): a man-o'-war's broadside did not out-bite a frigate's (${c.manowarReply} !> ${c.frigateReply})`);
+    if (!(c.manowarHull > c.sloopHull)) fail(`ship classes (#163): a man-o'-war is not tougher than a sloop (${c.manowarHull} !> ${c.sloopHull})`);
+    if (process.exitCode !== 1) console.log(`  ✓ ship classes (#163): the fleet spans ${cls.size} classes [${[...cls].join(', ')}] with distinct hull/guns/size; a frigate's broadside (${c.frigateReply}) out-bites a sloop's (${c.sloopReply}) — variety you SEE and FEEL`);
+  }
+
   // 2a′) RIVAL-SAIL-SIGHTED sting (#116 follow-up): the world's "uh-oh, company" beat must ring ONCE
   // when a hostile (outlaw) sail first crosses the sighting horizon, driven purely from NPC state —
   // proving the WebAudio path is guarded (no AudioContext opens in this headless run). Teleport far

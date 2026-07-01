@@ -263,9 +263,30 @@ export function repairToll() {
   return { coins: 14 };
 }
 
-/** Build a fresh foe: full hull, a name, and plausible gunnery in [0.9, 1.1]. */
-export function makeFoe(rng = Math.random) {
+/**
+ * Build a fresh foe: a name plus hull + gunnery. With no class (the legacy call) she's the old uniform
+ * foe — full hull, plausible gunnery in [0.9, 1.1] — so every existing caller/test is byte-identical.
+ * Ship classes (#163): pass the engaged hull's class stats (from src/ship-classes.js, carried on the npc
+ * snapshot) and the foe is seeded from them instead — a sloop squares up with LESS hull + weaker guns,
+ * a frigate with more of both. The stats flow straight into the existing resolveBroadside/resolveExchange
+ * math (hull → enemyHull, gunnery → her return fire), so class VARIES the fight, not just the silhouette.
+ * @param {() => number} [rng]
+ * @param {{hull?:number, maxHull?:number, gunnery?:number, cls?:string, role?:string, tier?:number,
+ *          guns?:number, crew?:number}|null} [shipClass]
+ */
+export function makeFoe(rng = Math.random, shipClass = null) {
   const name = FOE_NAMES[pickIndex(rng, FOE_NAMES.length)];
+  if (shipClass && typeof shipClass === 'object') {
+    const maxHull = clampHull((typeof shipClass.maxHull === 'number' ? shipClass.maxHull
+      : (typeof shipClass.hull === 'number' ? shipClass.hull : MAX_HULL)), MAX_HULL);
+    const gunnery = (typeof shipClass.gunnery === 'number') ? shipClass.gunnery : (0.9 + rng() * 0.2);
+    return {
+      name, hull: maxHull, maxHull, gunnery,
+      // Carried through for the HUD/QA + later slices (labels #165, odds #166): what she IS.
+      cls: shipClass.cls, role: shipClass.role, tier: shipClass.tier,
+      guns: shipClass.guns, crew: shipClass.crew,
+    };
+  }
   const gunnery = 0.9 + rng() * 0.2;
   return { name, hull: MAX_HULL, maxHull: MAX_HULL, gunnery };
 }
@@ -353,7 +374,11 @@ export function createCannons({ npcs, getShipPos, getColours, applyReward, apply
     if (state.active) return false;
     const idx = nearestInRange();
     if (idx === -1) return false;
-    foe = makeFoe(rng);
+    // Ship classes (#163): seed the foe from the engaged hull's class (carried on the snapshot), so
+    // gunning down a merchant sloop is easy prey while a warship frigate genuinely bites back.
+    const snapsForClass = (npcs && npcs.snapshot && npcs.snapshot()) || [];
+    const foeClass = (snapsForClass[idx] && snapsForClass[idx].shipClass) || null;
+    foe = makeFoe(rng, foeClass);
     // False Colours (#79): if you opened fire while flying a disguise, this is a treacherous
     // ambush — the foe starts weakened (a surprise opening volley) and the win pays a perfidy
     // bonus to Infamy. Captured at the instant of attack, before the colours can change.
@@ -368,8 +393,10 @@ export function createCannons({ npcs, getShipPos, getColours, applyReward, apply
     state.foeIndex = idx;
     state.foeName = foe.name;
     state.playerHull = MAX_HULL;
-    state.enemyHull = clampHull(MAX_HULL - surpriseDamage(engagedColours), MAX_HULL);
-    state.maxHull = MAX_HULL;
+    // A class foe brings her OWN hull (a sloop less, a man-o'-war the full scale); maxHull tracks it so the
+    // HUD bar reads full for her class, not "pre-damaged". Falls back to the full scale for a class-less foe.
+    state.maxHull = (typeof foe.maxHull === 'number') ? foe.maxHull : MAX_HULL;
+    state.enemyHull = clampHull(state.maxHull - surpriseDamage(engagedColours), MAX_HULL);
     state.enemyMorale = MORALE_MAX; // a fresh crew starts with full nerve (#72)
     state.maxMorale = MORALE_MAX;
     state.lastLine = fireOpener(rng);

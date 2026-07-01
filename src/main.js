@@ -23,7 +23,8 @@ import { createIslandNamer } from './islands.js';
 import { createSailing } from './sailing.js';
 import { createPersistence } from './persistence.js';
 import { createDuel, CHALLENGE_RANGE } from './duel.js';
-import { createCannons } from './cannons.js';
+import { createCannons, resolveBroadside } from './cannons.js';
+import { shipStats } from './ship-classes.js';
 import { createBattle, quarterViewPos, engageLine as battleEngageLine, fleeLine as battleFleeLine } from './systems/battle.js';
 import { softenDebutFoe, debutPending, debutPhase, debutCue } from './systems/debut-battle.js';
 import { brawlMoraleDent, brawlCasualties, duelConfidenceDent, prizeFork } from './systems/board.js';
@@ -2311,6 +2312,24 @@ window.__tidewake = {
     return isClaimed(state.objective);
   },
   get npcs() { return npcs.snapshot(); },
+  // Ship classes (#163) QA surface. qaClassCombat() PROVES the class table scales the fight: it runs
+  // the SAME clean beam broadside against the SAME target, once with a sloop-warship's gunnery and once
+  // with a frigate-warship's, and returns the foe's return-fire (playerHit) for each — the frigate must
+  // bite harder. Deterministic (fixed rng → jitter 1). qaPlaceShip(i,x,z) poses a hull for a gallery frame.
+  qaClassCombat() {
+    const rng = () => 0.5; // jitter multiplier == 1 → deterministic
+    const target = { quality: 1, enemyHull: 100, playerHull: 100 };
+    const sloop = shipStats('sloop', 'warship');
+    const frigate = shipStats('frigate', 'warship');
+    const manowar = shipStats('manowar', 'warship');
+    return {
+      sloopReply: resolveBroadside({ ...target, gunnery: sloop.gunnery }, rng).playerHit,
+      frigateReply: resolveBroadside({ ...target, gunnery: frigate.gunnery }, rng).playerHit,
+      manowarReply: resolveBroadside({ ...target, gunnery: manowar.gunnery }, rng).playerHit,
+      sloopHull: sloop.hull, frigateHull: frigate.hull, manowarHull: manowar.hull,
+    };
+  },
+  qaPlaceShip(i, x, z) { npcs.place(i, x, z); return npcs.snapshot()[i] || null; },
   // Living sea fauna (#97) QA surface: the gull flock's count, whether it's drawn (distance
   // cull), whether it's roosting over a coast, and the live flock centre — so a headless
   // playtest can assert the sky is alive and tracks the player.
@@ -2424,7 +2443,10 @@ window.__tidewake = {
   battleBreakFoe() {
     if (battle.state.active) {
       battle.state.enemyMorale = 8;
-      battle.state.enemyHull = Math.round(battle.state.maxHull * 0.45);
+      // Sit her hull in the yield window (≤ the 50 strike ceiling) but WELL clear of sinking — an
+      // ABSOLUTE value, so it's sink-safe across ship classes (#163): a small sloop's maxHull is low,
+      // and 0.45×maxHull could let the confirming volley (~40 max) drown her before she can strike.
+      battle.state.enemyHull = Math.min(47, battle.state.maxHull - 1);
       battle.state.reload = 0;
     }
     return battle.snapshot();

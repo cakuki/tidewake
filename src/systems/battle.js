@@ -232,7 +232,12 @@ export function createBattle({
     if (state.active) return false;
     const idx = (Number.isInteger(targetIndex) && targetIndex >= 0) ? targetIndex : nearestInRange();
     if (idx === -1) return false;
-    foe = makeFoe(rng); // a characterful foe: name + a plausible gunnery, full hull
+    // Ship classes (#163): seed the foe from the engaged hull's class (carried on the npc snapshot), so a
+    // frigate squares up tougher + harder-hitting than a darting sloop. A class-less foe (unit-test mocks,
+    // a hull with no class) falls through to the old uniform foe — full hull, plausible gunnery.
+    const snapsForClass = (npcs && npcs.snapshot && npcs.snapshot()) || [];
+    const foeClass = (snapsForClass[idx] && snapsForClass[idx].shipClass) || null;
+    foe = makeFoe(rng, foeClass); // a characterful foe: name + gunnery + hull, scaled by her class
     // A softening hook (#157 The Bosun's First Duel): main.js injects `softenFoe` to hand a fresh
     // captain's FIRST fight a forgiving, already-battered foe (winnable + legible). It returns a NEW
     // foe (may carry a reduced `hull`/`gunnery` + a `debut` marker); a veteran fight passes through.
@@ -244,7 +249,9 @@ export function createBattle({
     // Seed her hull/morale from the foe so a softened debut foe squares up already battered. A normal
     // foe (makeFoe → hull = MAX_HULL, no morale) is unchanged: full hull, full nerve.
     state.enemyHull = (typeof foe.hull === 'number') ? foe.hull : MAX_HULL;
-    state.maxHull = MAX_HULL;
+    // Her class max hull (a sloop less, a man-o'-war the full scale) so the HUD bar + the ≤30% board
+    // window read against HER size, not a fixed 100. A class-less foe keeps the full scale.
+    state.maxHull = (typeof foe.maxHull === 'number') ? foe.maxHull : MAX_HULL;
     state.enemyMorale = (typeof foe.morale === 'number') ? foe.morale : MORALE_MAX;
     state.maxMorale = MORALE_MAX;
     state.reload = 0;          // you square up with the guns loaded and ready
