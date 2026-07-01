@@ -124,6 +124,22 @@ full arc (hull damage → boarding odds; crew casualties → duel confidence), p
 short-circuits (M6 act 1 done, M7 acts 2–3). Closing #135 is the owner's call. (Finished from a prior
 session-limited cycle-runner's uncommitted work; committed the 5 real slice paths race-safe.)_
 
+_**UPDATE Loop 101 (2026-07-01, v0.0.20260701090808): Option 4 slice 2 — HULL DAMAGE → BOARDING ODDS —
+SHIPPED.** The SECOND phase-coupling beat: act 1 (broadside/positioning) now **mechanically feeds** the
+boarding brawl (act 2) — a foe you battered before you grappled boards like a wreck. New pure
+`boardingEdge({foeHull, maxHull})` maps her hull-at-grapple to a brawl-margin bonus, **normalised across
+the boardable window [0..30% hull]** so gunnery PAST the boarding line is what pays: grapple on the ~30%
+line → **0** edge; pound her to splinters → up to **+`MAX_BOARDING_EDGE`=0.35** (monotone, clamped,
+fail-safe). Folded into `resolveBrawl`'s margin, so it flows on into the captain-duel opening dent
+(`brawlMoraleDent`, wired slice 4) — the full chain **gunnery→hull→brawl odds→duel confidence** now runs,
+WITHOUT touching the still-queued crew-casualties coupling. Live `snapshot().boardEdge` + `battleWeaken(frac)`
+QA hook. TDD'd first. **No save change — transient combat state (stays v16).** 966 unit tests (+7); playtest
+✓ PASSED (48/130 draws · 90.4k/150k tris, zero errors); **no gallery** (mechanical + QA-surfaced, no visible
+change). **#135 stays OPEN** — remaining Option 4 work: crew casualties → duel confidence, early-surrender
+short-circuit, per-phase UI, dedicated arena-spawn (M6 act 1 done, M7 acts 2–3). Closing #135 is the owner's
+call. (NB: the active build lane is now **#145 preview subpath** below — this #135 slice was the queued
+Option-4 increment; per-slice value keeps landing while the lane switches.)_
+
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
 ### ⛴️ NEXT LANE (owner, 2026-07-01) — **#145 slice 1: remotely-viewable `/preview/` subpath** — BUILD THIS NEXT
