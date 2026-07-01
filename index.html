@@ -89,6 +89,28 @@
     @keyframes aim-pulse { 0%, 100% { opacity: .85; } 50% { opacity: 1; } }
     @media (prefers-reduced-motion: reduce) { .aim-beam.on-target { animation: none; } }
 
+    /* Hover-to-interact (#161 slice 6): the diegetic affordance over the ship the cursor is on — a cool
+       cyan "you can act on THIS one" ring + a "Give battle / Hail / Board" label. Same reusable billboard
+       as the target ring (src/ui/over-ship-billboard.js), a distinct cyan so it never reads as the red-amber
+       FOE lock (z 13: above the foe ring/aim line, below the fight prompts at 14). pointer-events:none —
+       purely diegetic; the canvas underneath owns the click/raycast. */
+    .hover-affordance { position: fixed; z-index: 13; pointer-events: none; transform: translate(-50%, -50%);
+      display: none; will-change: left, top; }
+    .hover-affordance .osm-ring {
+      width: 40px; height: 40px; border-radius: 50%;
+      border: 2.5px dashed rgba(150, 226, 255, 0.95);
+      box-shadow: 0 0 10px 2px rgba(120, 200, 255, 0.5), inset 0 0 6px rgba(160, 220, 255, 0.4);
+      animation: hover-spin 3.2s linear infinite;
+    }
+    .hover-affordance .osm-label {
+      position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
+      white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: .03em;
+      color: #dff3ff; text-shadow: 0 1px 3px rgba(0,0,0,.85);
+      background: rgba(10, 26, 40, .72); border-radius: 5px; padding: 1px 7px;
+    }
+    @keyframes hover-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .hover-affordance .osm-ring { animation: none; } }
+
     #hud {
       /* Safe-area (#75): pad the top-left corner clear of the notch / status bar in
          standalone PWA. The inset is 0 on desktop & non-notch devices, so it collapses. */

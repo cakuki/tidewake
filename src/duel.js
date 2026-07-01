@@ -343,9 +343,12 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
    *   cost you crew opens with your OWN captain shaken (off your morale), shifting the duel's footing.
    *   Defaults keep the open-sea hail (the existing #33/#79/#91 callers) byte-identical.
    */
-  function tryChallenge({ openingDent = 0, boarded = false, playerDent = 0 } = {}) {
+  function tryChallenge({ openingDent = 0, boarded = false, playerDent = 0, targetIndex } = {}) {
     if (state.active) return false;
-    const idx = nearestInRange();
+    // Default: the NEAREST hailable ship (the keyboard 'f' verb, unchanged). The hover-to-interact
+    // picker (#161 slice 6) passes an explicit `targetIndex` so a CLICK hails exactly the ship under the
+    // cursor. Given index is trusted (the picker only offers 'hail' for an in-range hull).
+    const idx = (Number.isInteger(targetIndex) && targetIndex >= 0) ? targetIndex : nearestInRange();
     if (idx === -1) return false;
     enemy = makeEnemy(rng);
     // False Colours (#79): hailing under a disguise is a treacherous opening — the enemy crew

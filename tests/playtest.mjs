@@ -615,6 +615,91 @@ try {
     if (process.exitCode !== 1) console.log(`  ✓ aim-angle feedback (#161 slice 5): the aim line is drawn + reads ON TARGET abeam (cone ${aimfb.abeam.spreadDeg.toFixed(0)}°) vs OFF bow-on (cone ${aimfb.bowOn.spreadDeg.toFixed(0)}°); clears on flee`);
   }
 
+  // 2b6-hover) HOVER-TO-INTERACT (#161 slice 6, the FINAL lane slice): the owner's note — "interacting
+  // with other ships should be hovering on the ship in the view, not like a HUD element." Now you POINT at
+  // a ship (raycast the hull under the cursor) and it lights up with what you can DO to it — a projected
+  // ring + a "Give battle / Hail / Board" label — and a CLICK routes to the SAME verb handler the keyboard
+  // uses (engage / hail / board), no new mechanics. Two proofs: (A) OPEN SEA — a raycast under a screen
+  // point RESOLVES to that ship + the disposition-correct action, the affordance shows, and clicking an
+  // outlaw ENGAGES her; (B) BATTLE — the boardable foe reads 'board' and a click ROUTES to the boarding
+  // handler (hands off to the captain's duel). Camera aimed via qaLookAtShip so the ray lands headlessly.
+  const hover = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity; // state.pos is [x,y,z]
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    }
+    // (A) OPEN SEA — prefer an OUTLAW (a fair mark → 'target', a cleanly reversible click via fleeBattle);
+    // fall back to the nearest hull (a merchant → 'hail', resolution-only, no click) if no outlaw is afloat.
+    let seaIdx = tw.npcs.findIndex((n) => n.kind === 'pirate');
+    if (seaIdx === -1) seaIdx = nearest();
+    if (seaIdx === -1) return { ok: false };
+    const outlaw = tw.npcs[seaIdx].kind === 'pirate';
+    const fp = tw.npcs[seaIdx].pos;
+    tw.qaTeleport(fp[0], fp[1] - 120);          // drop inside CHALLENGE_RANGE (200) of her
+    tw.step(0.05);
+    tw.qaLookAtShip(seaIdx);                     // aim the real camera at her (NO step after → the ray lands)
+    const seaScr = tw.qaShipScreen(seaIdx);
+    const seaPick = tw.qaPickAt(seaScr.x, seaScr.y);   // raycast under the screen point → which ship + action
+    const seaHover = tw.qaHoverAt(seaScr.x, seaScr.y); // the live over-ship affordance (ring + label)
+    const expectedSea = outlaw ? 'target' : 'hail';
+    let seaClickRouted = null;
+    if (outlaw) {
+      const c = tw.qaClickAt(seaScr.x, seaScr.y);      // CLICK an outlaw → engage THAT ship (battle.engage(idx))
+      seaClickRouted = c.acted && tw.battle.active && tw.battle.foeIndex === seaIdx;
+      if (tw.battle.active) tw.fleeBattle();            // reset for the battle leg
+      tw.step(0.05);
+    }
+
+    // (B) BATTLE — engage a foe, batter her to boardable, point at her → 'board', CLICK routes to boarding.
+    const bi = nearest();
+    if (bi === -1) return { ok: true, seaOnly: true, seaIdx, seaScr, seaPick, seaHover, expectedSea, outlaw, seaClickRouted };
+    const bfp = tw.npcs[bi].pos;
+    tw.qaTeleport(bfp[0], bfp[1] - 120);
+    tw.step(0.05);
+    const engaged = tw.engageBattle();
+    if (!engaged) return { ok: true, seaOnly: true, seaIdx, seaScr, seaPick, seaHover, expectedSea, outlaw, seaClickRouted };
+    const foeIdx = tw.battle.foeIndex;
+    tw.battleWeaken(0.25);                       // beat her hull into the boardable window (≤30%)
+    tw.step(0.05);
+    const canBoard = tw.battle.canBoard;
+    tw.qaLookAtShip(foeIdx);                      // aim at the foe (no step after)
+    const foeScr = tw.qaShipScreen(foeIdx);
+    const foePick = tw.qaPickAt(foeScr.x, foeScr.y);
+    const foeHover = tw.qaHoverAt(foeScr.x, foeScr.y);
+    const foeClick = tw.qaClickAt(foeScr.x, foeScr.y);  // CLICK → boardBattleJuiced() → hands to the duel
+    const boardedRouted = foeClick.acted && foeClick.action === 'board' && !tw.battle.active && tw.duel.active;
+    tw.newVoyage(); tw.step(0.05);               // clean slate for the following battle steps
+    return { ok: true, seaIdx, seaScr, seaPick, seaHover, expectedSea, outlaw, seaClickRouted,
+      engaged, foeIdx, canBoard, foeScr, foePick, foeHover, foeClick, boardedRouted };
+  });
+  if (!hover.ok) {
+    console.warn('  (#161 slice 6 hover-to-interact: no NPC afloat to point at — skipped, like the other battle steps)');
+  } else {
+    // (A) open-sea resolution + affordance
+    if (!hover.seaScr.onScreen) fail('hover-to-interact (#161 slice 6): the aimed ship did not project on-screen — cannot verify the raycast');
+    if (hover.seaPick.index !== hover.seaIdx) fail(`hover-to-interact (#161 slice 6): a raycast under the ship's screen point resolved to the wrong hull (got ${hover.seaPick.index}, expected ${hover.seaIdx}) — the sea is not pickable`);
+    if (hover.seaPick.action !== hover.expectedSea) fail(`hover-to-interact (#161 slice 6): the pointed-at ship offered the wrong action (got ${hover.seaPick.action}, expected ${hover.expectedSea})`);
+    if (!hover.seaHover.shown) fail('hover-to-interact (#161 slice 6): the hover affordance did not SHOW over the pointed-at ship — nothing lights up');
+    if (!(hover.seaHover.label && hover.seaHover.label.length > 0)) fail('hover-to-interact (#161 slice 6): the affordance carried NO action label — the player cannot see what a click will do');
+    if (hover.outlaw && !hover.seaClickRouted) fail('hover-to-interact (#161 slice 6): clicking an outlaw did NOT engage THAT ship (the click did not route to battle.engage(index))');
+    // (B) battle board resolution + routing
+    if (!hover.seaOnly) {
+      if (!hover.canBoard) fail('hover-to-interact (#161 slice 6): could not batter the foe to the boardable window — cannot verify the board affordance');
+      if (hover.foePick.index !== hover.foeIdx) fail(`hover-to-interact (#161 slice 6): a raycast under the FOE\'s screen point resolved to the wrong hull (got ${hover.foePick.index}, foe ${hover.foeIdx})`);
+      if (hover.foePick.action !== 'board') fail(`hover-to-interact (#161 slice 6): the boardable foe did not offer 'board' (got ${hover.foePick.action})`);
+      if (!hover.foeHover.shown) fail('hover-to-interact (#161 slice 6): the board affordance did not show over the foe');
+      if (!hover.boardedRouted) fail('hover-to-interact (#161 slice 6): CLICKING the boardable foe did not route to the boarding handler (battle→duel hand-off)');
+      if (process.exitCode !== 1) console.log(`  ✓ hover-to-interact (#161 slice 6): pointing at a ship resolves the hull + the right action (sea='${hover.expectedSea}', foe='board') and a CLICK routes to the existing verb (engage/board) — the sea is directly manipulable`);
+    } else if (process.exitCode !== 1) {
+      console.log(`  ✓ hover-to-interact (#161 slice 6): pointing at a ship resolves the hull + the right action ('${hover.expectedSea}') with the affordance shown (battle leg skipped — no second foe)`);
+    }
+  }
+
   // 2b5) Workshop loadouts + mid-combat shot cycle (#135 slice 3): FIT a shot at the town
   // workshop, then prove the ONE cycle key walks the fitted locker mid-fight and the LOADED shot
   // actually shapes the broadside — the slice's "load chain at port, cycle to it mid-fight, see the

@@ -222,10 +222,15 @@ export function createBattle({
     foe = null;
   }
 
-  /** Square up to the nearest foe — take the deliberate battle stance. True if it started. */
-  function engage() {
+  /**
+   * Square up to a foe — take the deliberate battle stance. True if it started. Defaults to the NEAREST
+   * ship in range (the keyboard 'e' verb, unchanged); the hover-to-interact picker (#161 slice 6) passes
+   * an explicit `targetIndex` so a CLICK squares up to exactly the ship under the cursor, not "whatever's
+   * nearest". A given index is trusted (the picker only offers 'target' for an in-range hull).
+   */
+  function engage(targetIndex) {
     if (state.active) return false;
-    const idx = nearestInRange();
+    const idx = (Number.isInteger(targetIndex) && targetIndex >= 0) ? targetIndex : nearestInRange();
     if (idx === -1) return false;
     foe = makeFoe(rng); // a characterful foe: name + a plausible gunnery, full hull
     // A softening hook (#157 The Bosun's First Duel): main.js injects `softenFoe` to hand a fresh

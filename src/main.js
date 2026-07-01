@@ -22,7 +22,7 @@ import { createBigMap } from './bigmap.js';
 import { createIslandNamer } from './islands.js';
 import { createSailing } from './sailing.js';
 import { createPersistence } from './persistence.js';
-import { createDuel } from './duel.js';
+import { createDuel, CHALLENGE_RANGE } from './duel.js';
 import { createCannons } from './cannons.js';
 import { createBattle, quarterViewPos, engageLine as battleEngageLine, fleeLine as battleFleeLine } from './systems/battle.js';
 import { softenDebutFoe, debutPending, debutPhase, debutCue } from './systems/debut-battle.js';
@@ -39,6 +39,7 @@ import { interactionsSuppressed, ambientInteractionsAllowed } from './systems/ba
 import { centreSafeZone, clearsCentre } from './ui/safe-zone.js';
 import { createOverShipBillboard, projectToScreen } from './ui/over-ship-billboard.js';
 import { createAimIndicator, aimReadout } from './ui/aim-indicator.js';
+import { pickShipAction, shipIndexFromObject, actionLabel } from './systems/ship-picker.js';
 import { reputationLean, leanPole, gradeHaze, gradeSun, gradeSunKey } from './systems/reputation-grade.js';
 import { shipAura } from './systems/reputation-aura.js';
 import { snapshotAshore, composeAshoreDigest } from './systems/ashore-digest.js';
@@ -186,6 +187,19 @@ let lastTargetLock = { active: false, foeIndex: -1, onScreen: false, screen: nul
 const aimMarker = createAimIndicator({ className: 'aim-indicator' });
 const DECK_HEIGHT = 6;                    // metres above the sea the aim line springs from your deck
 let lastAim = { active: false, onScreen: false, level: '', onTarget: false, quality: 0, spreadDeg: 0, side: 'starboard' };
+// Hover-to-interact (#161 slice 6, the FINAL lane slice): point at a ship and it lights up with what you
+// can DO to it (hail / board / target), and a CLICK does it — the sea becomes directly manipulable instead
+// of a hidden keymap. Reuses the slice-3 OVER-SHIP BILLBOARD (a projected DOM ring + label, 0 draws) as the
+// affordance, and a THREE.Raycaster (pure math, no GPU) to find the hull under the cursor. The pure brain
+// (which ship / which action / the label) lives in src/systems/ship-picker.js; this is the thin shell. The
+// keyboard verbs stay live (additive), and a touch TAP routes through the same click path (#146 guard).
+const hoverMarker = createOverShipBillboard({ className: 'hover-affordance' });
+const hoverMarkerVP = new THREE.Matrix4(); // reused view-projection for the hover marker's world→screen
+const HOVER_MARKER_HEIGHT = 22;            // metres above the sea the affordance ring floats over a hull
+const picker = { raycaster: new THREE.Raycaster(), ndc: new THREE.Vector2() }; // reused — no per-move alloc
+let hoveredShip = -1;                      // the ship index the cursor is over (raycast on pointermove), or -1
+let pointerDown = null;                    // {x,y,t} of the last pointerdown, to tell a CLICK from a camera drag
+let lastHover = { index: -1, action: null, onScreen: false, screen: null };
 // Living sea fauna (#97): a small instanced flock of gulls that keeps the ship company —
 // wheeling overhead at sea, drifting to hang over the shore as you raise an island. One
 // InstancedMesh (one draw call), hidden wholesale beyond the cull radius, so the sky lives
@@ -1040,6 +1054,76 @@ addEventListener('keydown', (e) => {
   }
 });
 
+// ---- Hover-to-interact picker (#161 slice 6) --------------------------------------------------------
+// The diegetic input the owner asked for: raycast the ship under the cursor and route a click to the SAME
+// verb handlers the keyboard uses (engage / hail / board) — no new combat mechanics. A modal/menu or an
+// ashore helm parks it (no stray picking mid-duel/cannonade/prize).
+function canPick() {
+  // Suppressed only while a true MODAL owns the screen (town/menu → lastPaused, a reactive duel/cannonade,
+  // or a held prize choice). An ambient founderer keeps the helm live, so hover-to-interact stays available
+  // (engaging from it just enters battle, which isolates the encounter per slice 1).
+  return !lastPaused && !duel.state.active && !cannons.state.active && !pendingPrize;
+}
+// The interaction reach mirrors the keyboard verbs' CHALLENGE_RANGE, so a hover offers exactly what a
+// keypress could reach.
+function shipInRange(pos) {
+  return Math.hypot(pos[0] - state.pos.x, pos[1] - state.pos.z) <= CHALLENGE_RANGE;
+}
+// Raycast the hull under a screen point → { index, action, inRange }. Pure-ish shell: the THREE raycast
+// finds the hull, ship-picker.js decides the ship + the contextual action off the LIVE world state.
+function resolvePick(screenX, screenY) {
+  const w = window.innerWidth || 1, h = window.innerHeight || 1;
+  picker.ndc.set((screenX / w) * 2 - 1, -(screenY / h) * 2 + 1);
+  camera.updateMatrixWorld();
+  npcs.group.updateWorldMatrix(false, true); // refresh hull transforms so the ray tests their CURRENT poses
+  picker.raycaster.setFromCamera(picker.ndc, camera);
+  const hits = picker.raycaster.intersectObjects(npcs.group.children, true);
+  const index = hits.length ? shipIndexFromObject(hits[0].object, npcs.group) : -1;
+  if (index < 0) return { index: -1, action: null, inRange: false };
+  const snap = npcs.snapshot()[index];
+  if (!snap) return { index: -1, action: null, inRange: false };
+  const inRange = shipInRange(snap.pos);
+  const bs = battle.state;
+  const action = pickShipAction({
+    battleActive: bs.active, foeIndex: bs.foeIndex, index,
+    canBoard: battle.canBoard(), outlaw: isOutlaw(snap.kind), inRange,
+  });
+  return { index, action, inRange };
+}
+// Perform the routed action for the ship under a screen point — CLICK/TAP does what the affordance says.
+// Guards mirror the keyboard verbs so a click can never do something a keypress couldn't.
+function actOnPick(screenX, screenY) {
+  if (!canPick()) return { index: -1, action: null, acted: false };
+  const pick = resolvePick(screenX, screenY);
+  if (pick.index < 0 || !pick.action) return { ...pick, acted: false };
+  let acted = false;
+  if (pick.action === 'target') {
+    if (mode.is(SAILING) && !battle.state.active) { acted = battle.engage(pick.index); }
+  } else if (pick.action === 'hail') {
+    if (mode.is(SAILING) && !battle.state.active) { acted = duel.tryChallenge({ targetIndex: pick.index }); }
+  } else if (pick.action === 'board') {
+    acted = !!boardBattleJuiced();
+  }
+  return { ...pick, acted };
+}
+// Pointer wiring on the canvas. pointerdown records the press so pointerup can tell a tap/click from a
+// camera-orbit drag; pointermove updates which hull is under the cursor (a live hover); a short, still
+// pointerup ACTS. Camera-drag orbit (input.js) is untouched — a drag just never counts as a click.
+const CLICK_MOVE_PX = 6, CLICK_MS = 400;
+renderer.domElement.addEventListener('pointerdown', (e) => { pointerDown = { x: e.clientX, y: e.clientY, t: performance.now() }; });
+renderer.domElement.addEventListener('pointermove', (e) => {
+  if (!canPick()) { hoveredShip = -1; return; }
+  hoveredShip = resolvePick(e.clientX, e.clientY).index;
+});
+renderer.domElement.addEventListener('pointerleave', () => { hoveredShip = -1; });
+renderer.domElement.addEventListener('pointerup', (e) => {
+  const d = pointerDown; pointerDown = null;
+  if (!d) return;
+  const moved = Math.hypot(e.clientX - d.x, e.clientY - d.y);
+  const held = performance.now() - d.t;
+  if (moved <= CLICK_MOVE_PX && held <= CLICK_MS) actOnPick(e.clientX, e.clientY); // a tap/click, not a drag
+});
+
 addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -1681,6 +1765,39 @@ function syncTargetLock(t) {
   lastAim = { active: true, onScreen: aimVisible, level: readout.level, onTarget: readout.onTarget, quality: readout.quality, spreadDeg: readout.spreadDeg, side: readout.side };
 }
 systems.register({ name: 'target-lock', order: 278, update: (f) => syncTargetLock(f.t) });
+// — HOVER-TO-INTERACT (#161 slice 6, the FINAL lane slice): the fun beat — point at a ship and it lights
+//   up with what you can DO to it (a projected ring + a "Give battle / Hail / Board" label above her mast),
+//   so the sea is directly manipulable, not a hidden keymap. The raycast (which hull) happens on
+//   pointermove; THIS frame system RE-DERIVES the contextual action from the live world state each frame
+//   (so the affordance stays correct as she becomes boardable / the fight ends) and glues the marker to
+//   the moving hull by projecting her world position — the SAME 0-draw billboard + VP projection as the
+//   target ring. Hidden when nothing is hoverable (out of range, a non-combatant mid-fight, a menu open).
+function syncHoverAffordance(t) {
+  const idx = hoveredShip;
+  const snap = (idx >= 0 && canPick()) ? npcs.snapshot()[idx] : null;
+  const bs = battle.state;
+  const action = snap ? pickShipAction({
+    battleActive: bs.active, foeIndex: bs.foeIndex, index: idx,
+    canBoard: battle.canBoard(), outlaw: isOutlaw(snap.kind), inRange: shipInRange(snap.pos),
+  }) : null;
+  if (!snap || !action) {
+    hoverMarker.hide();
+    hoverMarker.setRing(false);
+    hoverMarker.setLabel('');
+    lastHover = { index: -1, action: null, onScreen: false, screen: null };
+    return;
+  }
+  const [hx, hz] = snap.pos;
+  const hy = ocean.sampleHeight(hx, hz, t) + HOVER_MARKER_HEIGHT;
+  camera.updateMatrixWorld();
+  hoverMarkerVP.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const p = projectToScreen([hx, hy, hz], hoverMarkerVP.elements, window.innerWidth, window.innerHeight);
+  hoverMarker.setRing(true);
+  hoverMarker.setLabel(actionLabel(action));
+  hoverMarker.place({ x: p.x, y: p.y, visible: p.onScreen });
+  lastHover = { index: idx, action, onScreen: p.onScreen, screen: [p.x, p.y] };
+}
+systems.register({ name: 'hover-affordance', order: 279, update: (f) => syncHoverAffordance(f.t) });
 // — The Bosun's First Duel (#157): during the scaffolded debut, the bosun CALLS the next verb aloud in
 //   the banner as each phase becomes legal (maneuver→board→surrender), once per phase change. It reads
 //   the same live battle snapshot the prompts/earcons do, so the voice can never drift from the verbs.
@@ -2458,6 +2575,44 @@ window.__tidewake = {
       beamShown: !!el && el.style.display !== 'none',
       onScreen: lastAim.onScreen,
     };
+  },
+  // HOVER-TO-INTERACT gate (#161 slice 6): prove the sea is directly manipulable — a raycast against a
+  // ship under a SCREEN POINT resolves to that ship + the correct contextual action, and a CLICK routes
+  // to the existing verb handler. qaShipScreen(i) projects hull i to screen px (the point to aim at);
+  // qaLookAtShip(i) points the real camera at her so a headless open-sea pick lands; qaPickAt(x,y) is the
+  // read-only raycast+classify; qaHoverAt(x,y) drives the live affordance (for the gallery frame);
+  // qaClickAt(x,y) performs the routed action. hoverAffordance() reads the live DOM marker truth.
+  qaShipScreen(index) {
+    const mesh = npcs.group.children[index];
+    if (!mesh) return { onScreen: false, x: 0, y: 0 };
+    // Aim at the hull's ACTUAL world centre (read off the live mesh, not a re-sampled wave height — which
+    // drifts out of phase over a long run) + a touch, so a synthetic screen point lands on solid geometry.
+    camera.updateMatrixWorld();
+    npcs.group.updateWorldMatrix(false, true);
+    const wp = new THREE.Vector3(); mesh.getWorldPosition(wp);
+    hoverMarkerVP.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    const p = projectToScreen([wp.x, wp.y + 0.5, wp.z], hoverMarkerVP.elements, window.innerWidth, window.innerHeight);
+    return { onScreen: p.onScreen, x: p.x, y: p.y };
+  },
+  qaLookAtShip(index, { back = 150, height = 60 } = {}) {
+    const snap = npcs.snapshot()[index];
+    if (!snap) return null;
+    const [x, z] = snap.pos;
+    const y = ocean.sampleHeight(x, z, simT);
+    const dx = x - state.pos.x, dz = z - state.pos.z, len = Math.hypot(dx, dz) || 1;
+    camera.position.set(x - (dx / len) * back, y + height, z - (dz / len) * back);
+    camera.lookAt(x, y + 4, z);
+    camera.updateMatrixWorld();
+    return [camera.position.x, camera.position.y, camera.position.z];
+  },
+  qaPickAt(x, y) { return resolvePick(x, y); },
+  qaHoverAt(x, y) { hoveredShip = resolvePick(x, y).index; syncHoverAffordance(simT); return this.hoverAffordance(); },
+  qaClickAt(x, y) { return actOnPick(x, y); },
+  hoverAffordance() {
+    const el = hoverMarker.el;
+    const shown = !!el && el.style.display !== 'none' && el.classList.contains('has-ring');
+    const labelEl = el ? el.querySelector('.osm-label') : null;
+    return { ...lastHover, shown, label: labelEl ? labelEl.textContent : '' };
   },
   fps: 0,
 };
