@@ -25,6 +25,7 @@ import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
 import { createCannons } from './cannons.js';
 import { createBattle, quarterViewPos, engageLine as battleEngageLine, fleeLine as battleFleeLine } from './systems/battle.js';
+import { softenDebutFoe, debutPending, debutPhase, debutCue } from './systems/debut-battle.js';
 import { brawlMoraleDent, brawlCasualties, duelConfidenceDent, prizeFork } from './systems/board.js';
 import { AMMO, AMMO_TYPES, ammoProfile, defaultLoadout, fitAmmo } from './systems/ammo.js';
 import { createJuice, ammoWeight } from './systems/juice.js';
@@ -392,6 +393,14 @@ const cannons = createCannons({
 // to a quarter-view, the bed settles to battle music (#94), the world keeps sailing underneath,
 // and FLEE (E again) is always on the table. The cannonade (#59) is the teeth INSIDE the stance;
 // later slices (real-time broadside, loadouts, boarding, the expanded duel) layer on this arena.
+// The Bosun's First Duel (#157): a cold save's FIRST engagement is a one-shot scaffolded SOFT debut —
+// a forgiving, already-battered foe + the bosun calling each phase's verb aloud in-world (theatre, not
+// a pop-up). `debutActive` marks the current engagement as the debut; `debutPhaseShown` gates the
+// bosun so she speaks once per phase change. The one-shot `state.debut` flag (persisted, save v17)
+// retires it: once spent it never fires again, and a returning captain is never re-scaffolded.
+let debutActive = false;
+let debutPhaseShown = null;
+
 // Pure lifecycle + quarter-view geometry live in src/systems/battle.js; here we only drive it.
 const battle = createBattle({
   npcs,
@@ -399,6 +408,14 @@ const battle = createBattle({
   getShipHeading: () => state.heading, // slice 2: the broadside arc needs your heading vs the foe
   getLoadout: () => state.loadout,     // slice 3: the shot you fit at the town workshop
   getCrewMorale: () => sanitizeMorale(state.morale), // slice 4: your crew's nerve feeds the boarding brawl (#124)
+  // Soften a fresh captain's FIRST fight (#157): if the debut is still unspent, hand this engagement a
+  // forgiving, already-battered foe and mark it the debut; a veteran fight passes through full-strength.
+  softenFoe: (foe) => {
+    if (!debutPending(state.debut)) return foe;
+    debutActive = true;
+    debutPhaseShown = null;
+    return softenDebutFoe(foe, true);
+  },
   onCycleAmmo: ({ ammo }) => { const a = ammoProfile(ammo); hud.flashBanner(`${a.icon} Load ${a.name}`, `${a.tag} — ${a.blurb}`); },
   // Boarding → crew brawl → captain's duel (#135 slice 4): at ≤30% hull the crew swarms the rail for a
   // quick comic brawl, then we HAND OFF to the verbal captain's duel (#33, the climax) — softened by the
@@ -406,6 +423,7 @@ const battle = createBattle({
   onBoard: ({ foeName, brawl }) => {
     const head = brawl.won ? '⚔ Boarders away — you carry the deck!' : '⚔ Boarders away — a brutal scrap!';
     hud.flashBanner(head, `${brawl.lines.join(' ')} Now face ${foeName} across the deck — out-jeer her captain to take her!`);
+    consumeDebut(); // boarding a debut foe hands off to the duel — the scaffolded first fight is spent (#157)
     battle.end();                                                                  // the broadside gives way to the boarding…
     duel.tryChallenge({
       openingDent: brawlMoraleDent(brawl.advantage),                 // slice 4: HER captain, shaken by how you swept the deck
@@ -427,8 +445,18 @@ const battle = createBattle({
   // loss costs a few coins for repairs — the same ledger the turn-based cannonade writes to.
   applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.infamy; if (r.standing) state.standing = Math.max(0, (state.standing || 0) + r.standing); syncRenown(state); },
   applyPenalty: (p) => { initEconomy(state); state.coins = Math.max(0, state.coins - p.coins); },
-  onEnter: ({ foeName }) => hud.flashBanner(`⚔ BATTLE — ${foeName}`,
-    `${battleEngageLine()} (steer abeam · SPACE fires · X cycles shot · E breaks off)`),
+  onEnter: ({ foeName }) => {
+    if (debutActive) {
+      // The Bosun's First Duel (#157): a warm, scaffolded opener — the bosun names the first verb aloud
+      // and the fight is flagged as the soft one to learn on. Subsequent phases are called by the driver.
+      const cue = debutCue('maneuver');
+      debutPhaseShown = 'maneuver';
+      hud.flashBanner('🎓 The Bosun’s First Duel', `${cue.line} (an easy foe — your first fight to learn the ropes)`);
+      return;
+    }
+    hud.flashBanner(`⚔ BATTLE — ${foeName}`,
+      `${battleEngageLine()} (steer abeam · SPACE fires · X cycles shot · E breaks off)`);
+  },
   onFlee: () => hud.flashBanner('⛵ You break off the fight', battleFleeLine()),
   // A real-time broadside resolved the fight — announce the prize/setback + log the deed (#78/#104b).
   onResolve: ({ result, reward, penalty, foeName }) => {
@@ -446,8 +474,22 @@ const battle = createBattle({
       hud.flashBanner('💥 Hull breached!',
         `${foeName} rakes you stem to stern — you break off and limp away, ${penalty.coins} coins lighter for the repairs.`);
     }
+    consumeDebut(); // a resolved first fight (won/captured/lost) spends the debut — it never repeats (#157)
   },
 });
+
+// Mark the scaffolded debut as spent the moment it resolves (a sinking/capture/loss or a boarding), and
+// persist it so the soft first fight never repeats — a returning captain is never re-taught. A mid-fight
+// FLEE deliberately does NOT spend it (a mis-tapped break-off shouldn't burn the tutorial). Pure guard.
+function consumeDebut() {
+  if (!debutActive) return;
+  debutActive = false;
+  debutPhaseShown = null;
+  if (!state.debut) {
+    state.debut = true;
+    try { persistence.write(); } catch { /* the save is best-effort; the flag still holds this session */ }
+  }
+}
 
 // Reactive-verb JUICE (#155): renderer-only game-feel on the combat verbs the player just learned
 // (#153 prompts / #154 earcons) — a fired broadside KICKS the view (recoil scaled by aim quality +
@@ -710,6 +752,10 @@ state.morale = sanitizeMorale(state.morale);
 // port (so a reload can't make it vanish); a fresh one starts unthreatened. Sanitised so a junk save
 // fails open to null (no stake). It's re-assessed on landfall at home anyway.
 state.threat = sanitizeThreat(state.threat);
+// The Bosun's First Duel (#157): a restored voyage keeps whether it has spent the scaffolded soft debut
+// (so a returning captain is never re-scaffolded); a genuinely fresh voyage (no save) starts pending, so
+// a brand-new captain's first fight is the forgiving, cued one. Coerced to a plain boolean.
+state.debut = !!state.debut;
 
 // ---- False Colours (#79) -------------------------------------------------------------
 // The displayed flag: true black (honest pirate) vs false merchant (a disguise). A restored
@@ -811,6 +857,7 @@ function newVoyage() {
   state.harbour = null; // ...and no home port claimed yet (#118 "Your Harbour")
   state.threat = null; // ...and no threat gathering off any home port (#134)
   state.governorship = false; // ...and no governorship crowned yet (#119)
+  state.debut = false; debutActive = false; debutPhaseShown = null; // ...and re-arm the Bosun's First Duel (#157)
   state.morale = freshMorale(); // ...and a fresh, willing crew at the START baseline (#124)
   state.objective = null; // a fresh voyage chases nothing yet — the chart starts unpinned (#111/#112)
   state.colours = DEFAULT_COLOURS; // a fresh voyage flies honest black again (#79)
@@ -1484,6 +1531,17 @@ systems.register({ name: 'hud-battle', order: 275, update: () => hud.renderBattl
 // — per-phase raid tracker (#135, Option-4 polish): names the act (⚔ Maneuver › 🪝 Boarding › 🗣 Duel)
 //   and surfaces the coupling earned; read-only, spans the battle + the boarded duel snapshots.
 systems.register({ name: 'hud-raid-phases', order: 276, update: () => hud.renderRaidPhases(battle.snapshot(), duel.snapshot()) });
+// — The Bosun's First Duel (#157): during the scaffolded debut, the bosun CALLS the next verb aloud in
+//   the banner as each phase becomes legal (maneuver→board→surrender), once per phase change. It reads
+//   the same live battle snapshot the prompts/earcons do, so the voice can never drift from the verbs.
+systems.register({ name: 'debut-cues', order: 274, when: () => debutActive && battle.state.active, update: () => {
+  const phase = debutPhase(battle.snapshot());
+  if (phase && phase !== debutPhaseShown) {
+    debutPhaseShown = phase;
+    const cue = debutCue(phase);
+    if (cue) { try { hud.flashBanner('🎓 The Bosun calls out', cue.line); } catch { /* a flourish must never break the fight */ } }
+  }
+} });
 // — contextual just-in-time key-prompts (#153, onboarding): teaches each battle verb (fire · change
 //   shot · board · accept/press) the instant it becomes possible, then fades once used. Read-only.
 //   Battle-verb EARCONS (#154, the audio half): when a verb-window opens, the component returns a short
@@ -2034,6 +2092,12 @@ window.__tidewake = {
   get onboarding() {
     const flags = normalizeFlags(state.onboarding);
     return { flags, step: currentStep(flags), goalVisible: shouldShowGoal(flags) };
+  },
+  // The Bosun's First Duel (#157) QA surface: whether the one-shot debut has been spent, and — while the
+  // scaffolded debut is live — the bosun's current call ({verb, line}) for the phase in play (else null).
+  get debutDone() { return !!state.debut; },
+  get debutCue() {
+    return (debutActive && battle.state.active) ? debutCue(debutPhase(battle.snapshot())) : null;
   },
   // Insult Broadside (#33) QA surface: read the live duel + drive it headlessly.
   get duel() { return duel.snapshot(); },

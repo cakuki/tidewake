@@ -771,6 +771,65 @@ try {
     else if (!ftuePersist.hasSetSail) fail('FTUE #156: the town view has no "Set Sail" plank (#town-leave) — the set-sail verb is undiscoverable');
   }
 
+  // 2b10) THE BOSUN'S FIRST DUEL (#157): a cold save's FIRST engagement is the scaffolded SOFT debut —
+  // a forgiving, already-battered foe (winnable) plus the bosun calling each phase's verb aloud (legible).
+  // It fires ONCE: a save flag (v17) retires it, so a returning captain is never re-scaffolded. Drives the
+  // integration off the QA hooks: cold engage → softened + cued; beaten to the board window → the board
+  // cue; sink her → the flag is spent; a fresh fight is now an ordinary, full-strength foe.
+  const debutRun = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    }
+    function closeAndEngage() {
+      const bi = nearest();
+      if (bi === -1) return false;
+      const fp = tw.npcs[bi].pos;
+      tw.qaTeleport(fp[0], fp[1] - 120);   // drop just off her, inside engage range
+      tw.step(0.1);
+      const ok = tw.engageBattle();
+      tw.step(0.1);
+      return ok;
+    }
+    tw.newVoyage(); tw.step(0.1);           // cold start — a brand-new captain, the debut re-armed
+    if (!closeAndEngage()) return { skipped: true };
+    // The debut is live: she squares up softened + already battered, and the bosun opens with the FIRE call.
+    const softened = tw.battle.debut === true;
+    const battered = tw.battle.enemyHull < tw.battle.maxHull;
+    const cueManeuver = tw.debutCue;         // {verb:'fire', line} — the opening call
+    // Beat her into the boarding window → the bosun calls the BOARD verb.
+    tw.battleWeaken(0.2); tw.step(0.1);
+    const canBoardNow = tw.battle.canBoard === true;
+    const cueBoard = tw.debutCue;            // {verb:'board', line}
+    // Sink her (the sink check precedes any surrender), spending the one-shot debut.
+    tw.battleWeaken(0); tw.battleFire(); tw.step(0.1);
+    const doneAfter = tw.debutDone === true;  // the flag is now spent
+    // A fresh fight is now an ordinary, full-strength foe — the debut never repeats.
+    let softened2 = null;
+    if (closeAndEngage()) { softened2 = tw.battle.debut; tw.fleeBattle(); }
+    return {
+      skipped: false, softened, battered,
+      cueManeuverVerb: cueManeuver && cueManeuver.verb, cueBoardVerb: cueBoard && cueBoard.verb,
+      canBoardNow, doneAfter, softened2,
+    };
+  });
+  if (debutRun.skipped) {
+    fail('#157 debut: no NPC available to drive the cold-start first-fight walk');
+  } else {
+    if (!debutRun.softened) fail('#157 debut: a cold save\'s first engagement was NOT flagged the scaffolded debut');
+    if (!debutRun.battered) fail('#157 debut: the debut foe squared up at FULL hull — she should start softened/battered');
+    if (debutRun.cueManeuverVerb !== 'fire') fail(`#157 debut: the bosun\'s opening call did not name FIRE (got ${debutRun.cueManeuverVerb})`);
+    if (!debutRun.canBoardNow) fail('#157 debut: beating her down did not open the boarding window');
+    if (debutRun.cueBoardVerb !== 'board') fail(`#157 debut: the bosun did not call the BOARD verb at the boarding window (got ${debutRun.cueBoardVerb})`);
+    if (!debutRun.doneAfter) fail('#157 debut: resolving the first fight did NOT spend the one-shot debut flag');
+    if (debutRun.softened2 === true) fail('#157 debut: a SECOND fight was still softened — the debut must fire only once');
+  }
+
   // 2c) Route-planning map (#54): open the big chart, confirm the overlay is visible,
   // the chart drew (liveness counter) and the open-state is exposed, then close it.
   const bigmap = await page.evaluate(async () => {

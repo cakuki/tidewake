@@ -95,6 +95,14 @@ const CORPUS = [
     blob: '{"v":15,"heading":1.2,"speed":8,"throttle":0.5,"pos":[120.5,0,-340.25],"coins":250,"cargo":{"rum":3},"infamy":300,"standing":200,"legends":{"pirate":true,"governor":false},"onboarding":{"goal":true,"firstDock":true,"firstTrade":true,"firstRank":false},"voyageLog":[],"colours":"merchant","portMemory":{},"objective":null,"harbour":{"name":"Gullet\'s Rest","level":4,"invested":900},"governorship":true,"morale":42}',
     expect: { coins: 250, governorship: true, harbour: { name: "Gullet's Rest", level: 4, invested: 900 }, morale: 42, threat: null },
   },
+  {
+    v: 16, // home-port threat (#134) — a PRE-DEBUT save: the v17 Bosun's-First-Duel flag (#157) must migrate
+    // forward by INFERENCE — a save this far underway (coins beyond the starting purse, real infamy/standing)
+    // has fought before, so the debut reads as already spent (debut: true) and a returning captain is never
+    // re-scaffolded. A gathering threat rides along to prove the v16 field survives.
+    blob: '{"v":16,"heading":1.2,"speed":8,"throttle":0.5,"pos":[120.5,0,-340.25],"coins":250,"cargo":{"rum":3},"infamy":300,"standing":200,"legends":{"pirate":true,"governor":false},"onboarding":{"goal":true,"firstDock":true,"firstTrade":true,"firstRank":false},"voyageLog":[],"colours":"merchant","portMemory":{},"objective":null,"harbour":{"name":"Gullet\'s Rest","level":4,"invested":900},"governorship":true,"morale":42,"threat":{"kind":"navy","pole":"infamy","port":"Gullet\'s Rest","tier":2,"demand":400}}',
+    expect: { coins: 250, governorship: true, morale: 42, debut: true },
+  },
 ];
 
 // A subset-deep-equality assert: every key in `expect` matches in `actual` (deep), but `actual` may

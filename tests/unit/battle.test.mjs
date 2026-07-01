@@ -481,3 +481,42 @@ test('acceptSurrender / pressAttack: no-op unless a surrender is actually pendin
   assert.equal(battle.acceptSurrender(), null, 'no surrender pending on a fresh engagement');
   assert.equal(battle.pressAttack(), false);
 });
+
+// ---- The Bosun's First Duel: the softenFoe hook (#157) ------------------------------------------
+
+test('softenFoe hook: a softened debut foe squares up already battered (winnable + legible)', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    rng: half,
+    softenFoe: (foe) => ({ ...foe, hull: 40, gunnery: foe.gunnery * 0.4, debut: true }),
+  });
+  assert.equal(battle.engage(), true);
+  const s = battle.snapshot();
+  assert.equal(s.enemyHull, 40, 'she starts at the softened hull, not full');
+  assert.equal(s.maxHull, MAX_HULL, 'her MAX is still the normal max — she is just battered');
+  assert.equal(s.debut, true, 'the engagement is flagged as the scaffolded debut');
+});
+
+test('softenFoe hook: absent → a normal foe squares up at FULL hull (backward compatible)', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    rng: half,
+  });
+  battle.engage();
+  const s = battle.snapshot();
+  assert.equal(s.enemyHull, MAX_HULL, 'no softening → full hull');
+  assert.equal(s.debut, false, 'an ordinary fight is not flagged a debut');
+});
+
+test('softenFoe hook: a throwing hook never breaks the fight (fail-open)', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    rng: half,
+    softenFoe: () => { throw new Error('boom'); },
+  });
+  assert.equal(battle.engage(), true, 'the fight still starts');
+  assert.equal(battle.snapshot().enemyHull, MAX_HULL, 'falls back to the normal foe');
+});

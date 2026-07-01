@@ -57,8 +57,14 @@ export const SAVE_KEY = 'tidewake.save.v1';
 // navy blockade (high Infamy) or a pirate raid (high Standing) gathering off your home water, persisted
 // so a gathering threat survives a reload ({kind, pole, port, tier, demand}, #134); an additive,
 // fail-open sub-object (sanitizeThreat drops junk/absent to null → no threat).
+// v17 added the BOSUN'S FIRST DUEL one-shot flag (#157) — `debut`, true once the scaffolded soft debut
+// battle (a fresh captain's forgiving, cued first fight) has been spent, so it NEVER repeats. Like the
+// onboarding flags it's a teaching marker, not load-bearing physics: coerced to a boolean; an ABSENT
+// value (a leaner/migrated save) is inferred from progress — a captain already underway has fought
+// before, so the debut reads as already spent (they're never re-scaffolded), while an untouched save
+// keeps it pending so a genuinely new captain gets the soft first fight.
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 16;
+export const SAVE_VERSION = 17;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -102,6 +108,7 @@ const migrations = {
   13: (s) => ({ ...s }), // contested-rumour rival + soft clock (#133): additive inside `objective`
   14: (s) => ({ ...s }), // crew morale (#124): reader fail-opens an absent meter to the START baseline
   15: (s) => ({ ...s }), // home-port threat (#134): reader fail-opens an absent threat to null (no threat)
+  16: (s) => ({ ...s }), // Bosun's-First-Duel debut flag (#157): reader fail-opens an absent flag by inferring from progress
 };
 
 /**
@@ -200,6 +207,9 @@ export function serialize(state) {
   // Home-port threat (#134): the stake your home port acquired by a hard pole lean. Sanitised on the
   // way out so only a clean threat persists; an unthreatened caller stores null (no stake in flight).
   const threat = sanitizeThreat(state.threat);
+  // Bosun's First Duel (#157): the one-shot debut flag — true once the scaffolded soft first fight has
+  // been spent. A plain boolean, coerced; a pre-debut caller (no `debut`) records it unspent.
+  const debut = !!state.debut;
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -220,6 +230,7 @@ export function serialize(state) {
     governorship,
     morale,
     threat,
+    debut,
   });
 }
 
@@ -302,11 +313,13 @@ export function deserialize(raw) {
   // already has coin beyond the starting purse, any renown, or cargo isn't new — they're
   // returning, so onboarding is considered done and they're never nagged. An untouched save
   // gets a fresh set so the goal can still greet a genuinely new captain.
+  // A "this captain is already underway" signal, shared by the teaching flags below (onboarding + the
+  // debut). A save carrying coin beyond the starting purse, any renown, or cargo isn't a new captain.
+  const hasProgress = coins !== START_COINS || infamy > 0 || standing > 0 || Object.keys(cleanCargo).length > 0;
   let onboarding;
   if (obj.onboarding !== undefined) {
     onboarding = normalizeFlags(obj.onboarding);
   } else {
-    const hasProgress = coins !== START_COINS || infamy > 0 || standing > 0 || Object.keys(cleanCargo).length > 0;
     onboarding = hasProgress ? completedFlags() : freshFlags();
   }
 
@@ -350,6 +363,12 @@ export function deserialize(raw) {
   // keeps a gathering one from vanishing on a reload.
   const threat = sanitizeThreat(obj.threat);
 
+  // Bosun's First Duel (save v17, #157): the one-shot debut flag. Like onboarding it's a teaching
+  // marker, not load-bearing physics — coerced to a boolean; junk never rejects. ABSENT (a leaner/
+  // migrated save) → inferred from progress: a captain already underway has fought before, so the debut
+  // reads as spent (they're never re-scaffolded); an untouched save keeps it pending for a new captain.
+  const debut = (obj.debut !== undefined) ? !!obj.debut : hasProgress;
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -369,6 +388,7 @@ export function deserialize(raw) {
     governorship,
     morale,
     threat,
+    debut,
     renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }

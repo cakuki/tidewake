@@ -104,6 +104,9 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     // Home-isle governorship (persisted since save v13): keep the earned crown so a reload never
     // re-fires the proclamation and the badge/acknowledgement persist (#119).
     if (saved.governorship) state.governorship = true;
+    // Bosun's First Duel one-shot flag (persisted since save v17): a returning captain keeps whether
+    // they have spent the scaffolded soft debut, so their first fight is never re-taught (#157).
+    if (typeof saved.debut === 'boolean') state.debut = saved.debut;
   }
 
   // Respawn at the origin, dead in the water. Clear economy so initEconomy re-seeds defaults.
@@ -115,6 +118,7 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     delete state.legends; // a new voyage starts legend-less; the crowns are yet to earn
     delete state.harbour; // ...with no home port claimed yet (#118)
     delete state.governorship; // ...and no governorship crowned (#119)
+    delete state.debut; // ...and the Bosun's First Duel re-arms — a new captain gets the soft debut (#157)
     delete state.onboarding; // a fresh voyage re-teaches: the goal + first-win beats arm again (#60)
     delete state.voyageLog; // a new voyage is a blank page — the Ballad starts unwritten (#78)
     delete state.portMemory; // a new voyage = a clean slate; no port remembers you yet (#104)

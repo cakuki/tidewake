@@ -490,3 +490,32 @@ test('deserialize coerces a junk governorship and never rejects the save (#119)'
   const r2 = deserialize(JSON.stringify({ ...good, governorship: 0 }));
   assert.equal(r2.governorship, false);
 });
+
+// ---- The Bosun's First Duel one-shot flag (save v17, #157) --------------------------------------
+
+test('debut: a fresh voyage serialises the debut as unspent (pending), and it round-trips', () => {
+  const obj = JSON.parse(serialize(sampleState()));
+  assert.equal(obj.debut, false, 'a new captain has not yet spent the debut');
+  const restored = deserialize(serialize(sampleState()));
+  assert.equal(restored.debut, false);
+});
+
+test('debut: a spent debut round-trips as spent (it never re-fires)', () => {
+  const restored = deserialize(serialize({ ...sampleState(), debut: true }));
+  assert.equal(restored.debut, true);
+});
+
+test('debut: an ABSENT flag on a save with progress is inferred spent (a returning captain is not re-scaffolded)', () => {
+  // A current-version save missing the debut field, but clearly underway (coin + infamy).
+  const raw = JSON.parse(serialize({ ...sampleState(), coins: 900, infamy: 300 }));
+  delete raw.debut;
+  const restored = deserialize(JSON.stringify(raw));
+  assert.equal(restored.debut, true, 'progress ⇒ they have fought before ⇒ debut already spent');
+});
+
+test('debut: an ABSENT flag on an untouched save stays pending (a genuinely new captain gets the debut)', () => {
+  const raw = JSON.parse(serialize(sampleState()));
+  delete raw.debut;
+  const restored = deserialize(JSON.stringify(raw));
+  assert.equal(restored.debut, false, 'no progress ⇒ still a new captain ⇒ the debut is still to come');
+});

@@ -149,7 +149,7 @@ export function broadsideAim([sx, sz], heading, [fx, fz], { arcThreshold = ARC_T
 
 export function createBattle({
   npcs, getShipPos, getShipHeading, getLoadout, getCrewMorale, onEnter, onFlee, onResolve, onCycleAmmo, onBoard,
-  onSurrender, onPressAttack,
+  onSurrender, onPressAttack, softenFoe,
   applyReward, applyPenalty, sfx, rng = Math.random, reloadSeconds = RELOAD_SECONDS,
 } = {}) {
   // The fitted shot locker (#135 slice 3) — what you fit at the town workshop. The cycle key walks
@@ -228,13 +228,19 @@ export function createBattle({
     const idx = nearestInRange();
     if (idx === -1) return false;
     foe = makeFoe(rng); // a characterful foe: name + a plausible gunnery, full hull
+    // A softening hook (#157 The Bosun's First Duel): main.js injects `softenFoe` to hand a fresh
+    // captain's FIRST fight a forgiving, already-battered foe (winnable + legible). It returns a NEW
+    // foe (may carry a reduced `hull`/`gunnery` + a `debut` marker); a veteran fight passes through.
+    if (softenFoe) { try { foe = softenFoe(foe) || foe; } catch { /* softening must never break the fight */ } }
     state.active = true;
     state.foeIndex = idx;
     state.foeName = foe.name;
     state.playerHull = MAX_HULL;
-    state.enemyHull = MAX_HULL;
+    // Seed her hull/morale from the foe so a softened debut foe squares up already battered. A normal
+    // foe (makeFoe → hull = MAX_HULL, no morale) is unchanged: full hull, full nerve.
+    state.enemyHull = (typeof foe.hull === 'number') ? foe.hull : MAX_HULL;
     state.maxHull = MAX_HULL;
-    state.enemyMorale = MORALE_MAX;
+    state.enemyMorale = (typeof foe.morale === 'number') ? foe.morale : MORALE_MAX;
     state.maxMorale = MORALE_MAX;
     state.reload = 0;          // you square up with the guns loaded and ready
     state.round = 0;
@@ -476,6 +482,9 @@ export function createBattle({
       active: state.active,
       foeName: state.foeName,
       foeIndex: state.foeIndex,
+      // The Bosun's First Duel (#157): true while THIS engagement is the scaffolded soft debut, so the
+      // HUD/QA can tell a fresh captain's forgiving first fight from an ordinary one.
+      debut: state.active ? !!(foe && foe.debut) : false,
       // The dedicated maneuvering foe (#135, Option-4 final slice): her live [x,z] + helm stance, so the
       // headless playtest can watch her actively sail to fight (seek beam / hold range / flee).
       foePos: state.active ? foePos() : null,
