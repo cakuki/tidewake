@@ -53,11 +53,15 @@ try {
     const tw = window.__tidewake;
     const start = tw.state;
     const wakeBecalmed = tw.wake;   // #150: the gentle lap before we make way
+    const creakBecalmed = tw.creak; // #81: the idle timber settle before we make way
     tw.press('w');
+    tw.press('d');         // #81: bring the helm over so the hard-turn driver bites too
     tw.step(3);            // deterministic 3s of simulation, frame-rate independent
     const moving = tw.state;
     const wakeMoving = tw.wake;     // #150: the wash should well up with speed
+    const creakMoving = tw.creak;   // #81: the hull should creak faster under sail + a hard helm
     tw.release('w');
+    tw.release('d');
     // Minimap (#16): canvas exists, has a non-zero size, and is live — it just rendered
     // a stack of frames during the step (swiftshader can't read 2D pixels back, so we
     // assert liveness via the radar's own frame counter rather than getImageData).
@@ -82,6 +86,8 @@ try {
       distance: Math.hypot(moving.pos[0] - start.pos[0], moving.pos[2] - start.pos[2]),
       wakeBecalmed,
       wakeMoving,
+      creakBecalmed,
+      creakMoving,
       minimap,
     };
   });
@@ -2201,6 +2207,10 @@ try {
   // wash wells UP as the ship makes way — sailing sounds like moving water. Drive read AudioContext-free.
   if (!(result.wakeBecalmed > 0)) fail(`wake water-bed silent when becalmed (drive=${result.wakeBecalmed}) (#150)`);
   if (!(result.wakeMoving > result.wakeBecalmed)) fail(`wake water-bed did not swell with speed (becalmed=${result.wakeBecalmed}, moving=${result.wakeMoving}) (#150)`);
+  // Procedural HULL-CREAK voice (#81): the hull always creaks a little (an idle timber settle), and the
+  // creak RATE quickens as she works — under sail with a hard helm over. Rate read AudioContext-free.
+  if (!(result.creakBecalmed > 0)) fail(`hull-creak silent at anchor (rate=${result.creakBecalmed}) (#81)`);
+  if (!(result.creakMoving > result.creakBecalmed)) fail(`hull-creak did not quicken under sail + hard helm (becalmed=${result.creakBecalmed}, moving=${result.creakMoving}) (#81)`);
   if (!result.minimap.exists) fail('minimap canvas (#minimap) missing');
   if (!(result.minimap.w > 0 && result.minimap.h > 0)) fail(`minimap has zero size (${result.minimap.w}x${result.minimap.h})`);
   if (!(result.minimap.frames > 0)) fail('minimap never rendered a frame');

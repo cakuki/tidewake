@@ -30,6 +30,7 @@ import { resolveMix } from './music-director.js';
 import { varyMelodyPass, variationPlan, SEA_VARIATION_SEED } from './systems/melody-variation.js';
 import { selectCue } from './systems/loop-cues.js';
 import { harmonicMood, IONIAN } from './systems/harmonic-mood.js';
+import { creakRate, creakGain, shouldCreak, creakGrain, CREAK_IDLE_RATE } from './systems/hull-creak.js';
 
 // ---- Pure, browser-free helpers (unit-tested) ----
 
@@ -212,6 +213,14 @@ export function createMusic() {
   // `wakeDrive` so a playtest can assert the wash tracks the helm WITHOUT opening an AudioContext.
   let wakeGain = null;      // the water-bed's own gain node under musicGain (mute covers it)
   let wakeDrive = WAKE_FLOOR; // QA surface: the last pure drive [0,1], headless-assertable
+  // Procedural HULL-CREAK voice (#81): sparse resonant noise grains — the ship working in the swell —
+  // layered UNDER the wake-bed. The pure creak RATE + grain GAIN (systems/hull-creak.js) are recomputed
+  // every frame from speed + helm + wave, even headless (no ctx), and stored so a playtest can assert
+  // the creak quickens with the drivers WITHOUT an AudioContext. The scheduler rolls the grains.
+  let creakGain_ = null;    // the creak layer's own gain node under musicGain (mute covers it)
+  let creakNoise = null;    // one shared noise buffer, the raw excitation for every grain
+  let creakRateLive = CREAK_IDLE_RATE; // QA surface: the last pure creak rate (creaks/sec), headless-assertable
+  let creakGainLive = 0;    // the last pure grain intensity [0,1], read at grain-schedule time
   let started = false;
   let muted = false;
   let intensity = 0;      // 0..1, set by update() from ship speed
@@ -380,6 +389,48 @@ export function createMusic() {
     src.start();
   }
 
+  // The HULL-CREAK layer (#81): build one gain node + a shared noise buffer, then let the scheduler
+  // sprinkle short grains through it. A grain = a burst of that noise → a resonant bandpass at the
+  // grain's hull-mode frequency → a fast-attack/short-decay envelope: a single soft wooden creak.
+  // Routes through musicGain (mute + the intensity swell cover it); sits UNDER the wake-bed. Cheap:
+  // one persistent node + a couple of throwaway nodes per (sparse) grain.
+  const CREAK_PEAK = 0.11; // node-gain ceiling — a creak is felt more than heard, well under the melody
+  function buildCreakBed() {
+    creakGain_ = ctx.createGain();
+    creakGain_.gain.value = CREAK_PEAK;
+    creakGain_.connect(musicGain);
+    creakNoise = makeNoiseBuffer(1.0);
+  }
+
+  // Render ONE creak grain at `time`: a short filtered-noise transient shaped by the pure grain
+  // descriptor (freq/dur) and the live grain intensity. A bad grain must never break the frame.
+  function voiceCreak(time, grain, gain) {
+    if (muted || !ctx || !creakGain_ || !creakNoise) return;
+    try {
+      const dur = Number(grain?.dur) || 0.3;
+      const freq = Number(grain?.freq) || 150;
+      const src = ctx.createBufferSource();
+      src.buffer = creakNoise;
+      // Start at a random offset into the shared buffer so repeated grains never share a transient.
+      src.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = freq;
+      bp.Q.value = 9;            // resonant — a pitched groan, not a hiss
+      const env = ctx.createGain();
+      const peak = Math.max(0.0001, CREAK_PEAK * clamp01(gain));
+      const end = time + dur;
+      env.gain.setValueAtTime(0.0001, time);
+      env.gain.exponentialRampToValueAtTime(peak, time + 0.02); // a quick woody knock
+      env.gain.exponentialRampToValueAtTime(0.0001, end);       // groan away
+      src.connect(bp).connect(env).connect(creakGain_);
+      src.start(time);
+      src.stop(end + 0.03);
+    } catch {
+      /* a creak is ambience — never break the frame */
+    }
+  }
+
   // --- Port/tavern layer (#94): a warm, lowpassed D-major chord drone with a gentle
   // accordion-bellows tremolo — the "auditory image" of a harbour. Built once on start() and
   // left running; it stays silent (portLayerGain ≈ 0) until you near a port, when setMix()
@@ -534,6 +585,12 @@ export function createMusic() {
           if (pendingUnder) { voiceLoopCue(pendingUnder, nextNoteTime); pendingUnder = null; }
         }
         fireStep(step, nextNoteTime);
+        // Hull-creak (#81): roll ONE sparse grain per grid step off the live pure rate — the ship
+        // working in the swell, quicker under sail / a hard helm / a heavy sea. Muted covers it (the
+        // grain routes through musicGain) but skip the roll when muted to stay cheap.
+        if (!muted && creakRateLive > 0 && shouldCreak(creakRateLive, stepSec, Math.random())) {
+          voiceCreak(nextNoteTime, creakGrain(Math.random), creakGainLive);
+        }
         nextNoteTime += stepSec;
         const nextStep = (step + 1) % TOTAL_STEPS;
         // At the seam of a pass, re-lay the lead with the NEXT pass's seeded variation (#117) before
@@ -592,6 +649,7 @@ export function createMusic() {
       setMood(recolourState);
 
       buildWakeBed();
+      buildCreakBed();
       buildPortLayer();
       // Apply any per-town identity chosen before the engine came up (#69) — so the drone is
       // already in the nearest port's key the instant the audio bus starts.
@@ -615,6 +673,8 @@ export function createMusic() {
       recolourGain = null;
       recolourBus = null;
       wakeGain = null;
+      creakGain_ = null;
+      creakNoise = null;
       portLayerGain = null;
       portLP = null;
       portTremLfo = null;
@@ -711,6 +771,13 @@ export function createMusic() {
       // so a playtest can swing the helm and assert the wash tracks it without an AudioContext.
       wakeDrive = wakeBedGain(speed, maxSpeed, state?.rudder);
 
+      // Hull-creak (#81): the pure creak RATE + grain GAIN are recomputed EVERY frame from speed +
+      // helm + wave height (the swell scale she's riding), even headless (no ctx) — stored here BEFORE
+      // the engine-up early return so a playtest can make way / swing the helm and assert the creak
+      // quickens without an AudioContext. The scheduler reads these to sprinkle grains when the bus is up.
+      creakRateLive = creakRate(speed, maxSpeed, state?.rudder, state?.wave);
+      creakGainLive = creakGain(speed, maxSpeed, state?.rudder, state?.wave);
+
       // Mode-aware mix (#94): the pure resolver maps WHERE the player is (mode + port distance)
       // → per-layer target gains; setMix ramps the sea/port crossfade. Safe with partial state
       // (defaults to the open-sea bed), so legacy callers keep the sailing theme unchanged.
@@ -768,6 +835,11 @@ export function createMusic() {
   // swing the helm and assert the wash wells up and the becalmed lap settles, AudioContext-free.
   function wakeLevel() { return wakeDrive; }
 
+  // QA surface (#81): the live hull-creak RATE (creaks/sec), recomputed every frame by update() from
+  // ship speed + helm + wave height even with NO AudioContext — so a headless playtest can make way /
+  // swing the helm and assert the creak quickens (and settles to its idle floor becalmed), AudioContext-free.
+  function creakLevel() { return creakRateLive; }
+
   // Seeded per-pass variation QA surface (#117): the live seed + pass counter, plus the ornament
   // plan for the current (or any) pass. Pure + headless-safe — computable even before the audio
   // engine is up (pass stays 0), so a playtest can assert: same seed → same sequence (determinism),
@@ -783,5 +855,5 @@ export function createMusic() {
   // the score recolours (freygish toward Infamy, lydian toward Standing, Ionian at neutral).
   function mood() { return { pole: recolourState.pole, blend: recolourState.blend, scale: recolourState.scale }; }
 
-  return { start, setMute, update, setMix, setMood, setTownTheme, stinger, loopCue, lastCue, lastUnder, wakeLevel, variation, mood };
+  return { start, setMute, update, setMix, setMood, setTownTheme, stinger, loopCue, lastCue, lastUnder, wakeLevel, creakLevel, variation, mood };
 }
