@@ -54,7 +54,17 @@ P1 **preempts the PRODUCT-refill slices below** (#156–159). Build #161's slice
   is now available for #165 over-ship threat labels — the SAME billboard, second consumer (#165-ready).** PURE,
   TDD'd cores (`projectToScreen`, `shipEmphasis`, `DIM_OPACITY`); `tw.targetLock()` QA hook; playtest §2b3-lock
   asserts the foe is ring-marked + the only un-dimmed hull, clears on flee. Gallery `target-lock-161.png`. No save change (v17).
-- ⬜ **4) Rendered cannonballs (M)** — visible balls/tracers + muzzle flash + hit sparks (see the ball, sell the hit).
+- ✅ **4) Rendered cannonballs (M) — SHIPPED (Loop 114, v0.0.20260701215515).** The broadside was pure math +
+  a camera kick; now a fired volley SPAWNS a visible fistful of round-shot that arcs from the guns to the foe,
+  a muzzle PUFF barks at the gunports, and each ball CRACKS into a spark on a clean beam hit or SPLASHES pale
+  in open water on a wide shot — a good angle and a bad one read completely differently. Driven off the SAME
+  resolved shot (`broadsideAim.inArc` + `resolveBroadside.enemyHit`); combat maths untouched. POOLED + INSTANCED
+  for perf: a pure TDD'd trajectory/hit-vs-miss controller (`src/systems/projectiles.js`) over a fixed pool that
+  never allocates a mesh, rendered by exactly TWO reused InstancedMeshes (iron balls + tinted muzzle/spark/splash
+  puffs) created ONCE — **+2 draws (27→29/130), +~2.7k tris (~93k/150k), 0 geometry growth across mode cycles
+  (#121).** Audible report already rings via battle.fire's 'cut' sting. `tw.battleProjectiles()` QA hook; playtest
+  asserts a broadside spawns iron + a muzzle bark and that a wide shot SPLASHES while a clean beam shot SPARKS
+  (hit ≠ miss). Gallery `cannonballs-161.png`. No save change (transient VFX, stays v17).
 - ⬜ **5) Aim-angle feedback (S)** — a firing arc/beam so the angle VISIBLY matters (read-only off `broadsideAim`).
 - ⬜ **6) Hover-to-interact (M)** — raycast the ship under the cursor → hail/board/target (diegetic, not a HUD verb).
 

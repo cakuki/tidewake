@@ -4,6 +4,19 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-01 — #161 slice 4 Rendered cannonballs shipped (Loop 114, v0.0.20260701215515).** Fourth slice of
+  the from-owner "Make Battle FUN" epic (#161): "we should see the cannon balls, the angles should matter." The
+  broadside was pure MATH (a camera kick + the word "ABEAM") — nothing flew. Fix + felt FUN beat: a fired volley
+  now SPAWNS a visible fistful of round-shot that arcs from the guns to the foe, a muzzle PUFF barks at the
+  gunports, and each ball CRACKS into a spark on a clean beam HIT or SPLASHES pale in open water on a wide MISS —
+  a good angle and a bad one read completely differently (the miss sails past into empty sea), driven off the
+  SAME resolved shot (`broadsideAim.inArc` + `resolveBroadside.enemyHit`), combat maths untouched. POOLED +
+  INSTANCED for perf: a PURE, TDD'd trajectory/hit-vs-miss controller (`src/systems/projectiles.js`, +14 tests)
+  over a fixed pool that never allocates a mesh, rendered by exactly TWO reused InstancedMeshes created ONCE —
+  **+2 draws (27→29/130), +~2.7k tris (~93k/150k), 0 geometry growth across mode cycles (#121)**. `tw.battleProjectiles()`
+  QA hook; playtest §2b4b proves a broadside spawns iron + a muzzle bark and that a wide shot SPLASHES while a
+  clean beam shot SPARKS (hit ≠ miss). Gallery `cannonballs-161.png`. No save change (transient VFX, stays v17).
+  1110 unit tests. Slices 5–6 remain (#161 OPEN).
 - **2026-07-01 — #161 slice 3 Target lock shipped (Loop 113, v0.0.20260701212549).** Third slice of the
   from-owner "Make Battle FUN" epic (#161): "while moving other ships are all around: I don't know which one
   I am fighting with!" The engaged foe (just `foeIndex`) was visually identical to the wandering traffic. Fix
