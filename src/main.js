@@ -27,6 +27,7 @@ import { createCannons } from './cannons.js';
 import { createBattle, quarterViewPos, engageLine as battleEngageLine, fleeLine as battleFleeLine } from './systems/battle.js';
 import { brawlMoraleDent, brawlCasualties, duelConfidenceDent, prizeFork } from './systems/board.js';
 import { AMMO, AMMO_TYPES, ammoProfile, defaultLoadout, fitAmmo } from './systems/ammo.js';
+import { createJuice, ammoWeight } from './systems/juice.js';
 import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
 import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading } from './systems/harbour.js';
@@ -447,6 +448,42 @@ const battle = createBattle({
   },
 });
 
+// Reactive-verb JUICE (#155): renderer-only game-feel on the combat verbs the player just learned
+// (#153 prompts / #154 earcons) — a fired broadside KICKS the view (recoil scaled by aim quality +
+// shot weight), a landed hit FLASHES the hull, a boarding LUNGES the camera forward. It changes
+// NOTHING in the sim (pure feel; logic + unit tests untouched, per the #80 doctrine) and costs ~0
+// draws: the shake is a camera-position offset, the flash a single DOM overlay's opacity. A
+// prefers-reduced-motion preference switches the whole thing off (accessibility instinct: subtle).
+// Pure decay curves + trigger edges live in src/systems/juice.js; here we trigger off the live
+// volley/board result and loop() applies the offset + flash each frame.
+function prefersReducedMotion() {
+  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  catch { return false; }
+}
+const juice = createJuice({ reducedMotion: prefersReducedMotion() });
+
+// Fire a real-time broadside AND feel it (#155). Wraps battle.fire so the key AND the QA hook share
+// one juicing path. Reads the pre-fire snapshot for weight (aim quality × loaded-shot bite) and the
+// volley result for the hit-flash: her reply biting your hull flashes RED, a clean hit on her GOLD.
+function battleFireJuiced() {
+  const before = battle.snapshot();
+  const r = battle.fire();
+  if (!r) return r; // reloading / not engaged / a held white flag — no volley discharged
+  try {
+    const weight = ammoWeight(ammoProfile(before.ammo).hullMult);
+    juice.fire({ quality: r.quality ?? before.aimQuality ?? 0, weight });
+    if (r.playerHit > 0) juice.hit({ damage: r.playerHit, tint: 'red' });      // her reply raked your hull
+    else if (r.enemyHit > 0) juice.hit({ damage: r.enemyHit, tint: 'gold' });  // you landed a clean one
+  } catch { /* game-feel must never break the fight */ }
+  return r;
+}
+// Board AND feel the leap (#155): a forward camera lunge as the crew swarms the rail.
+function boardBattleJuiced() {
+  const brawl = battle.board();
+  if (brawl) { try { juice.board(); } catch { /* feel must never break the boarding */ } }
+  return brawl;
+}
+
 // Emergent at-sea encounter (#125, DL#4): while sailing the open sea you occasionally come upon a
 // foundering ship and face a real CHOICE — RESCUE her crew (the lawful road → Standing, a grateful
 // line) or PLUNDER the wreck (the dark road → Infamy + coin, a colder line). One systemic moral beat
@@ -832,7 +869,7 @@ addEventListener('keydown', (e) => {
   // stance. A clean beam shot bites hard; firing wide flies past. No-op while reloading (the HUD
   // shows the reload). Preventing default keeps the spacebar from scrolling the page.
   if (e.key === ' ' || e.code === 'Space') {
-    if (battle.state.active && !cannons.state.active && !duel.state.active) { e.preventDefault(); battle.fire(); }
+    if (battle.state.active && !cannons.state.active && !duel.state.active) { e.preventDefault(); battleFireJuiced(); }
     return;
   }
   // Mid-combat shot cycle (#135 slice 3): X loads the next shot you FIT at a town workshop —
@@ -846,7 +883,7 @@ addEventListener('keydown', (e) => {
   // crew swarms the rail for a quick brawl, then her captain's verbal duel (#33) is the climax. In the
   // stance F NEVER opens a fresh open-sea hail (you board the foe you're already fighting).
   if (k === 'f' && battle.state.active) {
-    if (!cannons.state.active && !duel.state.active && battle.canBoard()) battle.board();
+    if (!cannons.state.active && !duel.state.active && battle.canBoard()) boardBattleJuiced();
     return;
   }
   if (k === 'f') { if (!cannons.state.active) duel.tryChallenge(); return; }
@@ -1329,6 +1366,10 @@ systems.register({ name: 'battle-camera', order: 52, when: () => battle.state.ac
   camera.position.lerp(new THREE.Vector3(qx, hy + qy, qz), Math.min(1, f.dt * 2.2)); // eased swing
   camera.lookAt(f.state.pos.x, hy + 6, f.state.pos.z); // gaze holds on your own deck, foe off the quarter
 } });
+// — reactive-verb juice (#155): age the transient combat game-feel on the sim clock (deterministic,
+//   headless-safe). loop() reads juice.cameraOffset()/flashLevel() and applies the 0-draw shake +
+//   flash AFTER the camera systems have set the base pose, so the kick rides on top of the framing.
+systems.register({ name: 'juice', order: 56, update: (f) => juice.update(f.dt) });
 // — disguise disposition beats (#79/#91): only while the helm is free AND flying false colours
 //   (the `when` gate replaces the old inline `if (!paused && isDeceptive)`). Latches the seen-through
 //   verdict once per approach and fires the matching beat; writes ctx.seenThrough for npcs (below).
@@ -1633,6 +1674,12 @@ function checkOnboarding() {
 
 let simT = 0;
 let qaCamera = null; // lazily-built top-down inspection camera (#65 visual DoD)
+// Reactive-verb juice (#155) render glue: the single full-screen flash overlay + the CSS gradients
+// for its two tints (a red hull-hit vignette / a gold clean-hit flare). Grabbed once; a missing
+// element (or a headless quirk) just means the flash silently no-ops.
+const juiceFlashEl = document.getElementById('juice-flash');
+const JUICE_FLASH_RED = 'radial-gradient(ellipse at center, rgba(0,0,0,0) 42%, rgba(196,26,26,0.95) 100%)';
+const JUICE_FLASH_GOLD = 'radial-gradient(ellipse at center, rgba(255,240,205,0.9) 0%, rgba(255,224,150,0) 68%)';
 function loop() {
   const dt = Math.min(clock.getDelta(), 0.05);
   simT = clock.elapsedTime;
@@ -1653,7 +1700,31 @@ function loop() {
     qaCamera.updateProjectionMatrix();
     renderCam = qaCamera;
   }
+  // Reactive-verb juice (#155): apply the transient camera KICK (0-draw) just before the render, in
+  // the camera's LOCAL axes so it reads as screen-shake/lunge regardless of the framing — then restore
+  // the base pose so the effect never accumulates into the camera smoothing. Skipped in the QA cam.
+  let juiceRestore = null;
+  if (!qa) {
+    const off = juice.cameraOffset();
+    if (off.x || off.y || off.z) {
+      juiceRestore = camera.position.clone();
+      camera.translateX(off.x);       // screen-right
+      camera.translateY(off.y);       // screen-up
+      camera.translateZ(off.z);       // toward the foe on a boarding lunge (negative)
+    }
+  }
+  // The hull hit-flash (#155): one DOM overlay's opacity + tint. ~0 GPU cost, reduce-motion aware.
+  if (juiceFlashEl) {
+    const jf = juice.flashLevel();
+    if (jf.level > 0) {
+      juiceFlashEl.style.background = jf.tint === 'red' ? JUICE_FLASH_RED : JUICE_FLASH_GOLD;
+      juiceFlashEl.style.opacity = jf.level.toFixed(3);
+    } else if (juiceFlashEl.style.opacity !== '0' && juiceFlashEl.style.opacity !== '') {
+      juiceFlashEl.style.opacity = '0';
+    }
+  }
   renderer.render(scene, renderCam);
+  if (juiceRestore) camera.position.copy(juiceRestore); // un-shake: keep the kick purely visual
   updatePerf(dt * 1000);       // refresh the deterministic perf snapshot (#52)
   if (!booted) {
     booted = true;
@@ -1971,9 +2042,12 @@ window.__tidewake = {
   // always breaks off. Slice 2 (real-time broadside): battleFire() discharges the loaded guns
   // (no-op while reloading); the snapshot exposes hull / reload / aim quality for assertions.
   get battle() { return battle.snapshot(); },
+  // Reactive-verb juice (#155): the live game-feel state — so a headless test can assert a fired
+  // volley produced a nonzero camera kick and a hit raised the flash (renderer-only; save-free).
+  get juice() { return juice.snapshot(); },
   engageBattle() { return battle.engage(); },
   fleeBattle() { return battle.flee(); },
-  battleFire() { return battle.fire(); },
+  battleFire() { return battleFireJuiced(); },
   battleAim() { return battle.aim(); },
   // Workshop loadouts + mid-combat shot cycle (#135 slice 3): battleCycleShot() loads the next
   // fitted shot mid-fight; the battle snapshot carries `ammo`/`ammoProfile`/`loadout`. The fitted
@@ -1982,7 +2056,7 @@ window.__tidewake = {
   // Boarding (#135 slice 4): boardBattle() sends the crew over the rail once she's beaten to ≤30% hull
   // (battle.snapshot().canBoard) — it resolves the comic crew brawl, then hands off to the verbal
   // captain's duel (#33). After it, tw.battle.active is false and tw.duel.active is true (boarded=true).
-  boardBattle() { return battle.board(); },
+  boardBattle() { return boardBattleJuiced(); },
   // Sink-or-spare (#135, Option 4 slice 1) QA surface: after a boarding duel is WON the prize is held
   // open — `prizeChoice` reads the pending prize (the beaten captain + the won-duel base, or null once
   // resolved), and choosePrize('sink'|'spare') settles it headlessly. SINK → +Infamy; SPARE → +coin

@@ -28,6 +28,10 @@
     }
     #app { position: fixed; inset: 0; }
     canvas { display: block; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+    /* Reactive-verb juice (#155): the transient hull hit-flash overlay. One full-screen element,
+       driven by opacity/background from the render loop (~0 GPU cost). Sits above the 3D canvas but
+       BELOW every HUD readout/prompt (z-index 10+) so the verb-teaching cues stay fully legible. */
+    #juice-flash { position: fixed; inset: 0; z-index: 9; opacity: 0; pointer-events: none; will-change: opacity; }
 
     #hud {
       /* Safe-area (#75): pad the top-left corner clear of the notch / status bar in
@@ -774,6 +778,7 @@
 </head>
 <body>
   <div id="app"></div>
+  <div id="juice-flash" aria-hidden="true"></div>
   <div id="title">⚓ T I D E W A K E</div>
   <div id="hud">
     <div>Heading <b><span id="heading">0</span>°</b></div>
