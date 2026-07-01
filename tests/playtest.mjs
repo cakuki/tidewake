@@ -607,6 +607,58 @@ try {
     console.warn('  (#135 Option 4 early-surrender: no foe came in range to engage — skipped, like slice 2/3/4)');
   }
 
+  // 2b8) Battle-verb availability EARCONS (#154, the audio half of #153): when an in-battle verb-window
+  // opens, a short DISTINCT earcon rings on the SAME illegal→legal edge the visual prompt lights — so
+  // the captain learns WHICH verb + WHEN by ear. Driven headlessly + AudioContext-free: engage → the
+  // guns-bear earcon; beat her into the boarding window → the boardable earcon; then a fresh engage,
+  // break + fire her colours down → the surrender-offer earcon. Reads the tw.battleEarcon QA surface,
+  // which records the last armed earcon regardless of the (never-opened) WebAudio path.
+  const earcons = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return { bi, bd };
+    }
+    function engageNearest() {
+      const { bi } = nearest();
+      if (bi === -1) return false;
+      const fp = tw.npcs[bi].pos;
+      tw.qaTeleport(fp[0], fp[1] - 120); // drop in ~120u off her — inside engage range (arena-foe trick)
+      tw.step(0.05);
+      return tw.engageBattle();
+    }
+    // Run 1: guns bear, then the boarding window opens.
+    const engaged = engageNearest();
+    if (!engaged) return { engaged };
+    tw.step(0.1);
+    const fireCue = tw.battleEarcon;          // maneuvering broadside → fireReady
+    tw.battleWeaken();                          // beat her hull into the board window
+    tw.step(0.1);
+    const boardCue = tw.battleEarcon;         // she's boardable → boardable
+    tw.fleeBattle();
+    tw.step(0.1);
+    // Run 2: a fresh foe strikes her colours mid-maneuver.
+    const engaged2 = engageNearest();
+    tw.step(0.1);                               // let the fresh fire-window arm first
+    tw.battleBreakFoe();
+    tw.battleFire();                            // firing on a broken foe raises the white flag
+    tw.step(0.1);
+    const surrenderCue = engaged2 ? tw.battleEarcon : null; // colours struck → surrenderOffer
+    tw.fleeBattle();
+    return { engaged, fireCue, boardCue, engaged2, surrenderCue };
+  });
+  if (earcons.engaged) {
+    if (earcons.fireCue !== 'fireReady') fail(`battle earcons: the guns-bear window did not ring fireReady (got ${earcons.fireCue}) (#154)`);
+    if (earcons.boardCue !== 'boardable') fail(`battle earcons: the boarding window did not ring boardable (got ${earcons.boardCue}) (#154)`);
+    if (earcons.engaged2 && earcons.surrenderCue !== 'surrenderOffer') fail(`battle earcons: striking her colours did not ring surrenderOffer (got ${earcons.surrenderCue}) (#154)`);
+  } else {
+    console.warn('  (#154 battle earcons: no foe to engage — skipped)');
+  }
+
   // 2c) Route-planning map (#54): open the big chart, confirm the overlay is visible,
   // the chart drew (liveness counter) and the open-state is exposed, then close it.
   const bigmap = await page.evaluate(async () => {

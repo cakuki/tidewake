@@ -417,7 +417,9 @@ export function createHud() {
   // The onboarding for the deep battle system: surfaces the key(s) for the action that JUST became
   // possible (fire · change shot · board · accept/press) and fades each once used. Pure model + DOM
   // live in the self-contained src/ui/key-prompts.js; reads the battle + duel snapshots (read-only).
-  function renderKeyPrompts(battle, duel) { keyPrompts.update(battle, duel); }
+  // Returns the battle-verb EARCON name to ring this frame (#154), or undefined — main.js arms it on
+  // the music bus. The visual strip is painted here; the audio edge is decided by the same component.
+  function renderKeyPrompts(battle, duel) { return keyPrompts.update(battle, duel); }
 
   // ---- Foundering-ship encounter panel (#125) -------------------------------
   // Reads a plain encounter snapshot and paints the rescue-vs-plunder choice — the founderer's

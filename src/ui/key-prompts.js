@@ -17,6 +17,7 @@
 // "she strikes her colours — 1 take the prize, 2 no quarter" — and quietly bows out the moment your
 // hands have learned it. The tutorial IS the battle; it just whispers the next verb, once.
 import { KEYS } from '../keymap.js';
+import { battleEarcon } from '../systems/loop-cues.js';
 
 /**
  * PURE — the contextual key-prompt(s) the current state warrants, as an ordered, learned-filtered list.
@@ -94,6 +95,10 @@ export function createKeyPrompts(root = (typeof document !== 'undefined' ? docum
   const learned = { set: new Set() };
   let prev = null;
   let lastSig = '';
+  // The battle-verb availability PHASE (#154) — the top prompt's `tone`, or null when nothing's armed.
+  // Tracked frame-to-frame so an EARCON rings ONCE as each verb-window opens (the audio half of the
+  // visual prompt), on the SAME learn-filtered edge, and never re-nags while the window stays open.
+  let prevPhase = null;
 
   function update(battle, duel) {
     learned.set = learnFromTransition(prev, battle, learned.set);
@@ -103,18 +108,25 @@ export function createKeyPrompts(root = (typeof document !== 'undefined' ? docum
       : null;
 
     const prompts = activePrompts(battle, duel, learned.set);
+    // The earcon rides the SAME learn-filtered prompts the strip paints, so audio + visual can't drift:
+    // the phase is the top prompt's tone, and battleEarcon() rings only on the illegal→legal EDGE.
+    const phase = prompts.length ? (prompts[0].tone || null) : null;
+    const earcon = battleEarcon(prevPhase, phase);
+    prevPhase = phase;
+
     if (!prompts.length) {
       if ($el.classList.contains('show')) { $el.classList.remove('show'); lastSig = ''; }
-      return;
+      return earcon;
     }
     const sig = prompts.map((p) => p.id).join(',');
-    if (sig === lastSig && $el.classList.contains('show')) return;
+    if (sig === lastSig && $el.classList.contains('show')) return earcon;
     lastSig = sig;
 
     $el.innerHTML = prompts
       .map((p) => `<span class="kp ${p.tone}"><kbd class="kp-key">${p.glyph}</kbd> ${p.verb}</span>`)
       .join('');
     $el.classList.add('show');
+    return earcon;
   }
 
   return { update };

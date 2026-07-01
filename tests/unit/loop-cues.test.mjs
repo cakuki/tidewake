@@ -8,6 +8,7 @@ import {
   selectCue, payoffCueName, approachCrossed, APPROACH_RADIUS, LOOP_CUE_NAMES,
   LISTEN_CUE_NAMES, listenCueName, coinChimes,
   sightingEdge, RIVAL_SIGHT_RADIUS, RIVAL_REARM_FACTOR, RIVAL_SAIL_CUE,
+  battleEarcon, BATTLE_EARCON_NAMES,
 } from '../../src/systems/loop-cues.js';
 
 test('LOOP_CUE_NAMES: the four loop-beat cues, in loop order (#116)', () => {
@@ -208,4 +209,48 @@ test('RIVAL_SIGHT_RADIUS spots a rival FAR off — outside the approach + port h
   assert.ok(RIVAL_SIGHT_RADIUS > APPROACH_RADIUS, 'sighted farther out than the chased-pin nod');
   assert.ok(RIVAL_SIGHT_RADIUS > 260, 'sighted beyond the port-music horizon');
   assert.ok(RIVAL_REARM_FACTOR > 1, 'the re-arm band sits OUTSIDE the sighting radius (true hysteresis)');
+});
+
+// --- Battle-verb availability EARCONS (#154) — the audio half of #153's contextual key-prompts ---
+
+test('BATTLE_EARCON_NAMES: the three verb-window earcons (#154)', () => {
+  assert.deepEqual(BATTLE_EARCON_NAMES, ['fireReady', 'boardable', 'surrenderOffer']);
+});
+
+test('selectCue: each battle earcon resolves to a renderable, modest recipe (#154)', () => {
+  for (const name of BATTLE_EARCON_NAMES) {
+    const cue = selectCue(name);
+    assert.ok(cue, `${name} should resolve through the shared vocabulary`);
+    assert.equal(cue.name, name);
+    assert.ok(Array.isArray(cue.degs) || Array.isArray(cue.semis), `${name} carries note data`);
+    assert.equal(typeof cue.type, 'string');
+    assert.ok(cue.gain > 0 && cue.gain <= 0.3, `${name} gain is subtle (rides over the bed)`);
+    assert.ok(cue.dur > 0 && cue.tail > 0, `${name} is a SHORT gesture with a tail`);
+  }
+});
+
+test('battleEarcon: a phase opening rings its earcon ONCE on the illegal→legal edge (#154)', () => {
+  assert.equal(battleEarcon(null, 'fire'), 'fireReady');       // guns bear
+  assert.equal(battleEarcon('fire', 'board'), 'boardable');    // she's beaten to the boarding window
+  assert.equal(battleEarcon('fire', 'surrender'), 'surrenderOffer'); // colours struck mid-maneuver
+  assert.equal(battleEarcon('board', 'surrender'), 'surrenderOffer');
+});
+
+test('battleEarcon: a HELD phase stays silent — no re-nag while the window is open (#154)', () => {
+  assert.equal(battleEarcon('fire', 'fire'), null);
+  assert.equal(battleEarcon('board', 'board'), null);
+  assert.equal(battleEarcon('surrender', 'surrender'), null);
+});
+
+test('battleEarcon: a phase CLEARING (verb used / window shut) is silent (#154)', () => {
+  assert.equal(battleEarcon('fire', null), null);       // fire learned → prompt fades → no earcon
+  assert.equal(battleEarcon('surrender', null), null);  // offer answered → silent
+  assert.equal(battleEarcon(null, null), null);         // at sea, nothing armed
+});
+
+test('battleEarcon: an unknown / junk phase fails open to null, never throws (#154)', () => {
+  assert.equal(battleEarcon(null, 'nonsense'), null);
+  assert.equal(battleEarcon('fire', ''), null);
+  assert.equal(battleEarcon('fire', undefined), null);
+  assert.equal(battleEarcon(undefined, 'fire'), 'fireReady'); // a fresh session (no prev) still rings
 });

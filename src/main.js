@@ -1444,7 +1444,14 @@ systems.register({ name: 'hud-battle', order: 275, update: () => hud.renderBattl
 systems.register({ name: 'hud-raid-phases', order: 276, update: () => hud.renderRaidPhases(battle.snapshot(), duel.snapshot()) });
 // — contextual just-in-time key-prompts (#153, onboarding): teaches each battle verb (fire · change
 //   shot · board · accept/press) the instant it becomes possible, then fades once used. Read-only.
-systems.register({ name: 'hud-key-prompts', order: 277, update: () => hud.renderKeyPrompts(battle.snapshot(), duel.snapshot()) });
+//   Battle-verb EARCONS (#154, the audio half): when a verb-window opens, the component returns a short
+//   distinct earcon name — armed on the music bus (quantised/ducked/mute-covered like every #116 cue) so
+//   the captain learns WHICH verb + WHEN by ear. `lastBattleEarcon` is a headless QA surface (below).
+let lastBattleEarcon = null;
+systems.register({ name: 'hud-key-prompts', order: 277, update: () => {
+  const earcon = hud.renderKeyPrompts(battle.snapshot(), duel.snapshot());
+  if (earcon) { lastBattleEarcon = earcon; music.loopCue(earcon); }
+} });
 systems.register({ name: 'hud-encounter', order: 280, update: () => hud.renderEncounter(encounter.snapshot()) });
 // — sea ambience + adaptive sailing theme level (#48).
 systems.register({ name: 'audio', order: 290, update: (f) => audio.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED }) });
@@ -1859,6 +1866,10 @@ window.__tidewake = {
   // The LAYERED cue armed under the last loop cue (the coin chime under a paying payoff, or null) —
   // so a headless playtest can assert the "ka-ching" rang when a tip paid coin, AudioContext-free (#116).
   get loopUnderCue() { return music.lastUnder(); },
+  // Battle-verb EARCON (#154) QA surface: the NAME of the most recently armed availability earcon
+  // (fireReady / boardable / surrenderOffer, or null) — so a headless playtest can open each verb-window
+  // and assert the right earcon rang on its illegal→legal EDGE, without ever opening an AudioContext.
+  get battleEarcon() { return lastBattleEarcon; },
   // Continuous WAKE/HELM water-bed (#150) QA surface: the wash layer's live drive [0,1], set each
   // frame from ship speed + helm — so a headless playtest can make way / swing the helm and assert
   // the sea sounds like moving water (fuller at speed, a gentle lap becalmed), AudioContext-free.

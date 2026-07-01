@@ -85,8 +85,47 @@ const ENCOUNTER_CUES = {
 /** The encounter-cue NAME for the rival-sail-sighted sting — the magic-string-free handle main.js arms. */
 export const RIVAL_SAIL_CUE = 'rivalSail';
 
-// Every renderable cue, by name — the four loop beats, the interaction reactions, the encounter sting.
-const ALL_CUES = { ...CUES, ...INTERACTION_CUES, ...ENCOUNTER_CUES };
+// Battle-verb availability EARCONS (#154) — the AUDIO half of #153's contextual key-prompts. When an
+// in-battle verb-window opens (guns bear / boardable / colours struck) a short, distinct earcon rings
+// so the captain learns WHICH verb and WHEN by ear, not just by reading the HUD. Fired on the SAME
+// availability EDGE the visual prompt appears on (and, like it, ONCE — the learn-filtered edge below),
+// quantised to the next downbeat + routed through musicGain like every #116 cue (so mute covers them).
+// Three registers/directions so the ear tells them apart instantly:
+//   • fireReady     — a brisk rising FIFTH, mid register: "she'll bear — FIRE." (a call to action)
+//   • boardable     — a low, weighty FALLING grab, an octave down + darkened: "close and grapple."
+//   • surrenderOffer— a high, HANGING rising step: "her colours strike — a decision awaits." (unresolved)
+const BATTLE_EARCON_CUES = {
+  fireReady:      { degs: [1, 5],  octave: 0,  type: 'triangle', gain: 0.09, step: 0.07, dur: 0.20, tail: 0.30 },
+  boardable:      { degs: [3, 1],  octave: -1, type: 'triangle', gain: 0.11, step: 0.10, dur: 0.30, tail: 0.42, lowpass: 1300 },
+  surrenderOffer: { degs: [8, 10], octave: 1,  type: 'triangle', gain: 0.09, step: 0.09, dur: 0.24, tail: 0.55 },
+};
+
+/** The battle-verb earcon NAMES — the magic-string-free handles the key-prompts wiring arms. */
+export const BATTLE_EARCON_NAMES = Object.keys(BATTLE_EARCON_CUES);
+
+// Which earcon does each #153 availability PHASE wear? The phase is the top (highest-priority) contextual
+// key-prompt's `tone` — 'fire' while maneuvering for the broadside, 'board' in the boarding window,
+// 'surrender' once she strikes her colours — so the earcon can never drift from the visual prompt.
+const EARCON_BY_PHASE = { fire: 'fireReady', board: 'boardable', surrender: 'surrenderOffer' };
+
+/**
+ * PURE — the earcon to ring when the battle-verb availability PHASE advances to a NEW verb-window this
+ * frame. An EDGE trigger: a non-null cue only on the frame the phase CHANGES to a fresh armable phase,
+ * so it rings ONCE as the window opens, never every frame it stays open (and — since the phase is read
+ * off the learn-FILTERED #153 prompts — never again once the verb has been used). A phase that clears
+ * (→ null) or holds is silent. Unknown phases fail open to null. Deterministic; never throws.
+ * @param {string|null} prevPhase  last frame's availability phase ('fire'|'board'|'surrender'|null)
+ * @param {string|null} curPhase   this frame's availability phase
+ * @returns {'fireReady'|'boardable'|'surrenderOffer'|null}
+ */
+export function battleEarcon(prevPhase, curPhase) {
+  if (curPhase && curPhase !== prevPhase && EARCON_BY_PHASE[curPhase]) return EARCON_BY_PHASE[curPhase];
+  return null;
+}
+
+// Every renderable cue, by name — the four loop beats, the interaction reactions, the encounter sting,
+// and the three battle-verb availability earcons (#154).
+const ALL_CUES = { ...CUES, ...INTERACTION_CUES, ...ENCOUNTER_CUES, ...BATTLE_EARCON_CUES };
 
 /** The known reactive-loop cue names, in loop order. */
 export const LOOP_CUE_NAMES = Object.keys(CUES);
