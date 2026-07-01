@@ -34,6 +34,7 @@ import { createTown } from './ui/town.js';
 import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading } from './systems/harbour.js';
 import { createLandfall, mooredSwellScale } from './systems/landfall.js';
 import { createSystemsRegistry } from './systems/registry.js';
+import { interactionsSuppressed, ambientInteractionsAllowed } from './systems/battle-isolation.js';
 import { reputationLean, leanPole, gradeHaze, gradeSun, gradeSunKey } from './systems/reputation-grade.js';
 import { shipAura } from './systems/reputation-aura.js';
 import { snapshotAshore, composeAshoreDigest } from './systems/ashore-digest.js';
@@ -900,7 +901,10 @@ addEventListener('keydown', (e) => {
   }
   // Foundering-ship choice (#125): while a founderer is alongside, 1 RESCUES, 2 PLUNDERS. The
   // encounter claims the keys and blocks hailing/firing so the moral beat isn't stepped on.
-  if (encounter.state.active) {
+  // Hard battle isolation (#161 slice 1): but NOT while squared up — a fight suppresses the rescue
+  // choice too, so a founderer that was alongside when you engaged can't hijack 1/2 mid-cannonade
+  // (spawns are already deferred; this covers the pre-existing-encounter edge). It resumes on flee.
+  if (encounter.state.active && !interactionsSuppressed({ battleActive: battle.state.active })) {
     if (e.key === '1') encounter.choose('rescue');
     else if (e.key === '2') encounter.choose('plunder');
     return;
@@ -934,6 +938,10 @@ addEventListener('keydown', (e) => {
     if (!cannons.state.active && !duel.state.active && battle.canBoard()) boardBattleJuiced();
     return;
   }
+  // Open-sea hail (f) / open-fire (g) on OTHER ships. Hard battle isolation (#161 slice 1): both are
+  // no-ops while squared up — you fight the foe you're engaged with, and no stray hull is hailed or
+  // fired on mid-battle (the input theft the owner called out). Consult the ONE isolation predicate.
+  if (interactionsSuppressed({ battleActive: battle.state.active })) return;
   if (k === 'f') { if (!cannons.state.active) duel.tryChallenge(); return; }
   if (k === 'g') { if (!duel.state.active) cannons.openFire(); return; }
   if (duel.state.active) {
@@ -1455,7 +1463,11 @@ systems.register({ name: 'npcs', order: 70, update: (f) => {
 // — emergent at-sea encounter (#125): seeded spawn (only while under sail, helm free); pose the
 //   founderer low + heeled when live, hide her otherwise (~1 draw call exactly when on screen).
 systems.register({ name: 'encounter', order: 80, update: (f) => {
-  encounter.update(f.dt, { canSpawn: !f.paused });
+  // Hard battle isolation (#161 slice 1): the helm stays LIVE in the deliberate stance (f.paused is
+  // false), so the old `!f.paused` gate let a founderer heave into view mid-fight — a third hull in
+  // the arena + a rescue panel stealing 1/2. `ambientInteractionsAllowed` folds "helm free" together
+  // with "not fighting", so a founderer is DEFERRED until the fight ends, never spawned into it.
+  encounter.update(f.dt, { canSpawn: ambientInteractionsAllowed({ paused: f.paused, battleActive: battle.state.active }) });
   if (encounter.state.active && encounter.state.ship) {
     const fx = encounter.state.ship.x, fz = encounter.state.ship.z;
     const fy = ocean.sampleHeight(fx, fz, f.t);
@@ -1552,7 +1564,11 @@ systems.register({ name: 'hud-key-prompts', order: 277, update: () => {
   const earcon = hud.renderKeyPrompts(battle.snapshot(), duel.snapshot());
   if (earcon) { lastBattleEarcon = earcon; music.loopCue(earcon); }
 } });
-systems.register({ name: 'hud-encounter', order: 280, update: () => hud.renderEncounter(encounter.snapshot()) });
+// Hard battle isolation (#161 slice 1): a fight hides the rescue-vs-plunder choice panel too, so a
+// founderer that was alongside when you squared up can't paint her plea over the battle. Feeding an
+// inactive snapshot dismisses the panel; the encounter state itself is untouched and resumes on flee.
+systems.register({ name: 'hud-encounter', order: 280, update: () => hud.renderEncounter(
+  interactionsSuppressed({ battleActive: battle.state.active }) ? { active: false } : encounter.snapshot()) });
 // — sea ambience + adaptive sailing theme level (#48).
 systems.register({ name: 'audio', order: 290, update: (f) => audio.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED }) });
 // — per-town music identity (#69): re-key the tavern drone to the nearest harbour, only on a change.
@@ -2169,6 +2185,12 @@ window.__tidewake = {
   get encounter() { return encounter.snapshot(); },
   encounterSpawn() { return encounter.forceSpawn(); },
   encounterChoose(choice) { return encounter.choose(choice); },
+  // Hard battle isolation (#161 slice 1) QA surface: prove the fight is cleanly isolated. In the
+  // deliberate BATTLE stance every non-battle world interaction is a no-op — `interactionsSuppressed`
+  // flips TRUE, and `canAmbientSpawn` (the gate the #125 founderer consults each frame) reads FALSE,
+  // so no rescue offer or open-sea hail can heave into the arena. Both flip back the instant you flee.
+  get interactionsSuppressed() { return interactionsSuppressed({ battleActive: battle.state.active }); },
+  get canAmbientSpawn() { return ambientInteractionsAllowed({ paused: lastPaused, battleActive: battle.state.active }); },
   // False Colours (#79) QA surface: read the colours flown, whether they're a disguise, the
   // pure NPC flee verdict for the current colours+infamy, plus drive the flag headlessly.
   get colours() {

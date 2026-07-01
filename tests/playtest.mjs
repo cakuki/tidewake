@@ -258,6 +258,68 @@ try {
     if (battle.activeAfter) fail('battle.active stayed true after fleeing');
   }
 
+  // 2b3-iso) Hard battle isolation (#161 slice 1): the deliberate stance must CLEANLY ISOLATE the
+  // fight — no #125 rescue offer, no open-sea f/g hail may intrude while engaged (the owner's
+  // playtest bug: the fight felt janky/broken because ambient prompts hijacked it). Deterministic
+  // engage via qaTeleport (the sail-to-a-foe path above skips when no NPC drifts into range), then
+  // stage a founderer alongside + fire the ambient verbs via REAL key events: every one is a no-op.
+  const iso = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    }
+    const suppressedAtSea = tw.interactionsSuppressed;       // false while sailing
+    const ambientLiveAtSea = tw.canAmbientSpawn;             // a founderer CAN meet you at sea
+    const bi = nearest();
+    if (bi === -1) return { engaged: false };
+    const fp = tw.npcs[bi].pos;
+    tw.qaTeleport(fp[0], fp[1] - 120);                       // drop just off her — inside engage range
+    tw.step(0.05);
+    const engaged = tw.engageBattle();
+    if (!engaged) return { engaged: false };
+    const suppressedInBattle = tw.interactionsSuppressed;    // must flip TRUE in the stance
+    const ambientGatedInBattle = !tw.canAmbientSpawn;        // the #125 spawn gate must be SHUT
+    // Stage a founderer alongside mid-fight (or reuse one already up from the natural cadence — an
+    // even more realistic "she was foundering when I squared up" case). Either way we then prove her
+    // rescue choice can't be taken while engaged.
+    const staged = tw.encounter.active || tw.encounterSpawn();
+    const encUpMid = tw.encounter.active;
+    const key = (k) => window.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+    key('1');                                                // RESCUE choice — must NOT resolve
+    const rescueNoOp = tw.encounter.active === true && tw.encounter.choice == null;
+    key('f'); key('g');                                      // open-sea hail + open-fire — must NOT fire
+    tw.step(0.05);
+    const noStrayDuel = !tw.duel.active;
+    const noStrayCannonade = !tw.cannons.active;
+    const stillEngaged = tw.battle.active;
+    tw.encounterChoose('rescue');                            // clear the forced founderer for later steps
+    tw.fleeBattle();                                         // break off — isolation must LIFT
+    tw.step(0.05);
+    const suppressedAfterFlee = tw.interactionsSuppressed;
+    const ambientLiveAfterFlee = tw.canAmbientSpawn;
+    return { engaged, suppressedAtSea, ambientLiveAtSea, suppressedInBattle, ambientGatedInBattle,
+      staged, encUpMid, rescueNoOp, noStrayDuel, noStrayCannonade, stillEngaged,
+      suppressedAfterFlee, ambientLiveAfterFlee };
+  });
+  if (!iso.engaged) fail('battle isolation (#161 slice 1): could not engage a foe to test isolation (no NPC found even after qaTeleport)');
+  if (iso.suppressedAtSea) fail('battle isolation (#161): interactions were suppressed WHILE SAILING (isolation must be battle-only)');
+  if (!iso.ambientLiveAtSea) fail('battle isolation (#161): a founderer could NOT meet us at sea (the ambient world was wrongly gated)');
+  if (!iso.suppressedInBattle) fail('battle isolation (#161): interactionsSuppressed was FALSE in the deliberate stance');
+  if (!iso.ambientGatedInBattle) fail('battle isolation (#161): an ambient founderer could still spawn mid-fight (canAmbientSpawn stayed true)');
+  if (!iso.encUpMid) fail('battle isolation (#161): could not stage a founderer alongside for the no-op check');
+  if (!iso.rescueNoOp) fail('battle isolation (#161): the #125 RESCUE choice (key 1) RESOLVED mid-fight — the rescue prompt leaked into battle');
+  if (!iso.noStrayDuel) fail('battle isolation (#161): an open-sea hail (key f) opened a duel mid-fight');
+  if (!iso.noStrayCannonade) fail('battle isolation (#161): an open-sea open-fire (key g) started a cannonade mid-fight');
+  if (!iso.stillEngaged) fail('battle isolation (#161): the ambient verbs knocked us out of BATTLE stance');
+  if (iso.suppressedAfterFlee) fail('battle isolation (#161): interactions stayed suppressed after fleeing (isolation never lifted)');
+  if (!iso.ambientLiveAfterFlee) fail('battle isolation (#161): the ambient world did not come back after fleeing');
+  if (process.exitCode !== 1) console.log('  ✓ battle isolation (#161 slice 1): rescue + f/g hail are no-ops in the deliberate stance; the fight is cleanly isolated');
+
   // 2b4) Real-time broadside (#135 slice 2): re-engage, then STEER to bring the foe abeam and
   // fire the loaded guns in REAL TIME until she sinks. Proves the deliberate stance keeps the helm
   // LIVE (you can maneuver), the broadside arc + reload work on the sim clock, and a positioned
