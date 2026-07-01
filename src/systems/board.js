@@ -118,9 +118,55 @@ export function resolveBrawl(
   return { won, advantage, margin, lines };
 }
 
-/** How shaken the captain starts the duel, from the brawl advantage (0..MAX_BOARD_DENT). PURE. */
+/** How shaken the ENEMY captain starts the duel, from the brawl advantage (0..MAX_BOARD_DENT). PURE. */
 export function brawlMoraleDent(advantage) {
   return Math.round(Math.max(0, Math.min(1, advantage)) * MAX_BOARD_DENT);
+}
+
+// ── Crew casualties → duel confidence — the act-2→act-3 coupling (#135, Option 4 slice 3) ──────────
+// Slice 2 chained act 1 (gunnery/hull) into act 2 (the boarding brawl). This chains act 2 into act 3
+// (the captain's verbal duel): the brawl no longer only shakes HER captain (brawlMoraleDent above) —
+// a boarding that COST you crew leaves YOUR captain shaken too, shifting the duel's OPENING footing.
+// A clean runaway boards cheap and you stride into the shouting match fresh; a whisker-thin scrap (or
+// one you lose outright) bleeds the deck and your voice cracks when you open your mouth.
+//
+// CREATIVE SPARK (Game Designer): the reactive verb is "the deck you barely held is the confidence you
+// barely have." Nothing here trivialises the duel — your captain is rattled, never routed; the wit
+// still decides it. But a reckless boarding you paid for in blood now genuinely tilts the first words.
+
+// The margin at which a WON brawl's losses become negligible — a runaway this decisive costs almost no
+// hands. Below it, the closer the scrap, the bloodier; a lost or even brawl is the bloodiest of all.
+export const CASUALTY_CLEAN_MARGIN = 0.6;
+
+// The largest confidence dent a ruinous boarding lays on YOUR OWN captain at the duel's open. Kept
+// below MAX_BOARD_DENT (the enemy's ceiling) so a decisive boarding still nets in the boarder's
+// favour, yet a bloody one genuinely tilts the opening footing — the duel stays the decider either way.
+export const MAX_CONFIDENCE_DENT = 22;
+
+/**
+ * How bloody the boarding was, from the brawl outcome — the crew-casualty severity that shakes YOUR
+ * captain going into the duel. PURE. 0 = a clean runaway (few hands lost); 1 = a desperate scrap or a
+ * lost brawl (the deck ran red). Winning by a whisker OR losing outright both bleed the crew fully.
+ * Fails safe: a "win" with no positive margin is a razor-edge boarding → maximally bloody; likewise a
+ * junk/NaN margin sinks to that bloody floor rather than inventing a clean sweep.
+ * @param {{won?:boolean, margin?:number}} p
+ * @returns {number} casualty severity in [0, 1]
+ */
+export function brawlCasualties({ won = true, margin = 0 } = {}) {
+  if (!won) return 1; // repelled — the bloodiest boarding, whatever the margin
+  const m = Number.isFinite(margin) ? margin : 0; // junk margin → 0 → a razor-edge win → bloody
+  if (m <= 0) return 1; // a win by no margin is the closest possible scrap — the deck ran red
+  return Math.max(0, Math.min(1, 1 - m / CASUALTY_CLEAN_MARGIN));
+}
+
+/**
+ * How shaken YOUR captain opens the duel, from the boarding's casualty severity (0..MAX_CONFIDENCE_DENT).
+ * PURE. Mirrors brawlMoraleDent (which shakes HER captain from the brawl advantage) on the player's side.
+ * @param {number} casualties — severity in [0,1] from brawlCasualties
+ * @returns {number} a player-side opening morale dent
+ */
+export function duelConfidenceDent(casualties) {
+  return Math.round(Math.max(0, Math.min(1, casualties)) * MAX_CONFIDENCE_DENT);
 }
 
 // ── Sink-or-spare — the FIRST phase-coupling beat of Option 4 (#135, "Three-Act Raid") ────────────

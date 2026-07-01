@@ -25,7 +25,7 @@ import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
 import { createCannons } from './cannons.js';
 import { createBattle, quarterViewPos, engageLine as battleEngageLine, fleeLine as battleFleeLine } from './systems/battle.js';
-import { brawlMoraleDent, prizeFork } from './systems/board.js';
+import { brawlMoraleDent, brawlCasualties, duelConfidenceDent, prizeFork } from './systems/board.js';
 import { AMMO, AMMO_TYPES, ammoProfile, defaultLoadout, fitAmmo } from './systems/ammo.js';
 import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
@@ -405,7 +405,11 @@ const battle = createBattle({
     const head = brawl.won ? '⚔ Boarders away — you carry the deck!' : '⚔ Boarders away — a brutal scrap!';
     hud.flashBanner(head, `${brawl.lines.join(' ')} Now face ${foeName} across the deck — out-jeer her captain to take her!`);
     battle.end();                                                                  // the broadside gives way to the boarding…
-    duel.tryChallenge({ openingDent: brawlMoraleDent(brawl.advantage), boarded: true }); // …and the captain's verbal duel is the climax (#33)
+    duel.tryChallenge({
+      openingDent: brawlMoraleDent(brawl.advantage),                 // slice 4: HER captain, shaken by how you swept the deck
+      playerDent: duelConfidenceDent(brawlCasualties(brawl)),        // O4 slice 3: YOUR captain, shaken by the crew you spent
+      boarded: true,
+    });                                                                            // …and the captain's verbal duel is the climax (#33)
   },
   sfx: (kind) => audio.playDuelHit(kind),
   // Real-time broadside spoils (#135 slice 2): sinking pays Infamy, a capture pays Standing, a

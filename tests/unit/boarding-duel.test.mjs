@@ -34,3 +34,33 @@ test('the opening dent is clamped and never trivialises the duel (morale stays �
   assert.ok(duel.state.enemyMorale >= 0, 'a huge dent never drives morale negative');
   assert.ok(duel.state.active, 'the duel still opens — it is the decider, not auto-won');
 });
+
+// ── Crew casualties → duel confidence (#135, Option 4 slice 3): a bloodied boarding shakes YOUR captain ──
+test('a plain hail opens the duel at FULL player morale (no confidence dent)', () => {
+  const duel = createDuel({ npcs: stubNpcs(), getShipPos: () => [0, 0], rng: half });
+  duel.tryChallenge();
+  assert.equal(duel.state.playerMorale, MAX_MORALE, 'an open-sea hail never shakes your own captain');
+  assert.equal(duel.snapshot().confidenceDent, 0);
+});
+
+test('a bloodied boarding opens the duel with YOUR captain shaken (playerDent off player morale)', () => {
+  const duel = createDuel({ npcs: stubNpcs(), getShipPos: () => [0, 0], rng: half });
+  duel.tryChallenge({ openingDent: 10, playerDent: 18, boarded: true });
+  assert.equal(duel.state.playerMorale, MAX_MORALE - 18, 'a costly boarding shifts your opening footing');
+  assert.equal(duel.state.enemyMorale, MAX_MORALE - 10, 'her captain is still dented by the brawl (slice 4)');
+  assert.equal(duel.snapshot().confidenceDent, 18, 'the confidence dent is QA-visible for the coupling');
+});
+
+test('the confidence dent is clamped and never drives the player out of the fight (morale ≥ 0, still active)', () => {
+  const duel = createDuel({ npcs: stubNpcs(), getShipPos: () => [0, 0], rng: half });
+  duel.tryChallenge({ playerDent: 9999, boarded: true });
+  assert.ok(duel.state.playerMorale >= 0, 'a huge dent never drives your morale negative');
+  assert.ok(duel.state.active, 'you always still get to open your mouth — the duel is the decider');
+});
+
+test('the enemy-side and player-side dents are independent (slice 4 + slice 3 stack cleanly)', () => {
+  const duel = createDuel({ npcs: stubNpcs(), getShipPos: () => [0, 0], rng: half });
+  duel.tryChallenge({ openingDent: 25, playerDent: 0, boarded: true });
+  assert.equal(duel.state.playerMorale, MAX_MORALE, 'a clean boarding dents only HER captain, not yours');
+  assert.equal(duel.state.enemyMorale, MAX_MORALE - 25);
+});

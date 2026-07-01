@@ -4,6 +4,7 @@ import {
   canBoard, resolveBrawl, brawlMoraleDent, BOARD_HULL_FRACTION,
   BRAWL_LINES_WON, BRAWL_LINES_CLOSE,
   boardingEdge, MAX_BOARDING_EDGE,
+  brawlCasualties, duelConfidenceDent, CASUALTY_CLEAN_MARGIN, MAX_CONFIDENCE_DENT,
   prizeFork, SINK_INFAMY_BONUS, SPARE_RANSOM_BONUS, SPARE_MIN_STANDING,
 } from '../../src/systems/board.js';
 
@@ -122,6 +123,58 @@ test('resolveBrawl: the coupling flows through — a foe you battered harder is 
   const barely = resolveBrawl({ ...base, foeHull: 29 }, half);
   const smashed = resolveBrawl({ ...base, foeHull: 5 }, half);
   assert.ok(smashed.margin > barely.margin, 'battering her hull first lifts the boarding margin');
+});
+
+// ── Crew casualties → duel confidence (Option 4, slice 3 — the act-2→act-3 coupling) ───────────────
+test('brawlCasualties: a clean runaway boarding costs almost no hands (near-zero severity)', () => {
+  const c = brawlCasualties({ won: true, margin: CASUALTY_CLEAN_MARGIN });
+  assert.ok(Math.abs(c) < 1e-9, 'a decisive win bleeds the crew barely at all');
+});
+
+test('brawlCasualties: a whisker-thin win is a bloody scrap (high severity)', () => {
+  const squeaker = brawlCasualties({ won: true, margin: 0.02 });
+  const runaway = brawlCasualties({ won: true, margin: 0.5 });
+  assert.ok(squeaker > runaway, 'the closer the brawl, the bloodier');
+  assert.ok(squeaker <= 1, 'severity is clamped to 1');
+});
+
+test('brawlCasualties: THE COUPLING — casualties fall monotonically as the brawl margin grows', () => {
+  const a = brawlCasualties({ won: true, margin: 0.1 });
+  const b = brawlCasualties({ won: true, margin: 0.3 });
+  const d = brawlCasualties({ won: true, margin: 0.55 });
+  assert.ok(a > b && b > d, 'a more decisive boarding always bleeds fewer hands');
+});
+
+test('brawlCasualties: a lost or even brawl is the bloodiest boarding (full severity)', () => {
+  assert.equal(brawlCasualties({ won: false, margin: -0.4 }), 1, 'repelled → the deck ran red');
+  assert.equal(brawlCasualties({ won: false, margin: 0.5 }), 1, 'a lost brawl bleeds fully regardless of margin');
+  assert.equal(brawlCasualties({ won: true, margin: 0 }), 1, 'an even scrap (zero margin) bleeds fully');
+});
+
+test('brawlCasualties: fails safe on junk / empty input (a razor-edge win → bloody floor, never NaN)', () => {
+  assert.equal(brawlCasualties({}), 1, 'empty → a win by no margin is a razor-edge scrap (bloody)');
+  assert.equal(brawlCasualties(), 1);
+  assert.equal(brawlCasualties({ won: true, margin: NaN }), 1, 'NaN margin sinks to the bloody floor');
+});
+
+test('duelConfidenceDent: a bloodier boarding shakes YOUR captain more, clamped to a sane band', () => {
+  assert.equal(duelConfidenceDent(0), 0, 'a clean boarding leaves your captain unshaken');
+  assert.ok(duelConfidenceDent(1) > duelConfidenceDent(0.4), 'more casualties → a bigger opening dent');
+  assert.equal(duelConfidenceDent(1), MAX_CONFIDENCE_DENT, 'the worst boarding lands the full confidence dent');
+  assert.equal(duelConfidenceDent(5), duelConfidenceDent(1), 'severity is clamped at 1');
+  assert.equal(duelConfidenceDent(-3), 0, 'never a negative dent');
+});
+
+test('the confidence dent stays below the enemy dent ceiling — a decisive boarding still nets in your favour', () => {
+  assert.ok(MAX_CONFIDENCE_DENT < 30, 'MAX_CONFIDENCE_DENT sits under MAX_BOARD_DENT (the duel stays the decider)');
+  assert.ok(MAX_CONFIDENCE_DENT > 0 && CASUALTY_CLEAN_MARGIN > 0, 'both bands are sane positives');
+});
+
+test('the chain end-to-end: a lost brawl shakes your captain, a runaway leaves him steady', () => {
+  const lost = duelConfidenceDent(brawlCasualties({ won: false, margin: -0.3 }));
+  const clean = duelConfidenceDent(brawlCasualties({ won: true, margin: CASUALTY_CLEAN_MARGIN }));
+  assert.ok(lost > clean, 'bleeding for the deck costs you footing in the shouting match');
+  assert.equal(clean, 0, 'a clean boarding opens the duel on level footing');
 });
 
 // ── Sink-or-spare fork (Option 4, slice 1) ────────────────────────────────────────────────────────

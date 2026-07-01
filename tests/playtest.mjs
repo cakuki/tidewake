@@ -423,6 +423,10 @@ try {
     const battleEndedOnBoard = !tw.battle.active;     // the broadside gives way to the boarding
     const duelOpened = tw.duel.active;                // the captain's verbal duel is the climax
     const duelIsBoarded = tw.duel.boarded;            // flagged a capture (Standing)
+    // Crew casualties → duel confidence (#135, Option 4 slice 3): a boarding that cost you crew opens
+    // the duel with YOUR captain shaken too. Read the opening footing BEFORE trading a single jab.
+    const duelOpenPlayerMorale = tw.duel.playerMorale;
+    const duelConfidenceDent = tw.duel.confidenceDent;
     // Win the captain's duel — pick the sharpest jab each round (QA exposes the weakness).
     let result = null;
     for (let r = 0; r < 40 && tw.duel.active; r++) {
@@ -444,6 +448,7 @@ try {
       engaged, boardableFresh, boardableWeak,
       brawlLines: brawl && brawl.lines ? brawl.lines.length : 0,
       battleEndedOnBoard, duelOpened, duelIsBoarded, result,
+      duelOpenPlayerMorale, duelConfidenceDent,
       prizePending, prizeClearedAfter,
       spareCaptured: !!(spare && spare.captured),
       spareRansom: spare ? spare.addCoins : 0,
@@ -459,6 +464,12 @@ try {
     if (!boarding.duelOpened) fail('boarding: boarding did not hand off to the verbal captain duel (#33) (#135 slice 4)');
     if (!boarding.duelIsBoarded) fail('boarding: the captain duel was not flagged as boarded (capture framing) (#135 slice 4)');
     if (boarding.result !== 'win') fail(`boarding: the captain duel did not resolve to a win (result=${boarding.result}) (#135 slice 4)`);
+    // Crew casualties → duel confidence (#135, Option 4 slice 3): the act-2→act-3 coupling must SURFACE —
+    // the confidence dent is a sane number and YOUR captain's opening morale must reflect it exactly.
+    if (!(boarding.duelConfidenceDent >= 0 && boarding.duelConfidenceDent <= 22))
+      fail(`confidence coupling: opening dent out of band (got ${boarding.duelConfidenceDent}) (#135 Option 4 slice 3)`);
+    if (boarding.duelOpenPlayerMorale !== 100 - boarding.duelConfidenceDent)
+      fail(`confidence coupling: your captain's opening morale must reflect the casualty dent (morale=${boarding.duelOpenPlayerMorale}, dent=${boarding.duelConfidenceDent}) (#135 Option 4 slice 3)`);
     // Sink-or-spare (#135, Option 4 slice 1): the won boarding duel must OPEN a deliberate prize choice,
     // and SPARE must pay the governor pole (ransom coin + Standing) without adding infamy.
     if (!boarding.prizePending) fail('sink-or-spare: winning the boarding duel did not open a prize choice (#135 Option 4 slice 1)');

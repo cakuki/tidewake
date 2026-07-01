@@ -289,6 +289,7 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
     treachery: false, // was the duel opened under FALSE colours? (#79)
     targetKind: 'merchant', // the hailed vessel's disposition — pirate/merchant (#91)
     boarded: false, // was this captain's duel reached by BOARDING a beaten ship? (#135 slice 4)
+    confidenceDent: 0, // how shaken YOUR captain opened, from the brawl's crew casualties (#135 O4 slice 3)
   };
   let enemy = null;
   let engagedColours = DEFAULT_COLOURS; // the colours flown the instant the hail went up
@@ -335,12 +336,14 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
 
   /**
    * Hail the nearest NPC and open the duel. Returns true if a duel started.
-   * @param {{openingDent?:number, boarded?:boolean}} [opts] — a captain's duel reached by BOARDING
-   *   (#135 slice 4) opens with her crew already shaken by the deck brawl (`openingDent` off her
-   *   morale) and flags `boarded` so main.js frames the win as a CAPTURE (Standing). Defaults keep
-   *   the open-sea hail (the existing #33/#79/#91 callers) byte-identical.
+   * @param {{openingDent?:number, boarded?:boolean, playerDent?:number}} [opts] — a captain's duel
+   *   reached by BOARDING (#135 slice 4) opens with HER crew already shaken by the deck brawl
+   *   (`openingDent` off her morale) and flags `boarded` so main.js frames the win as a CAPTURE
+   *   (Standing). `playerDent` (#135 Option-4 slice 3) is the mirror on YOUR side — a boarding that
+   *   cost you crew opens with your OWN captain shaken (off your morale), shifting the duel's footing.
+   *   Defaults keep the open-sea hail (the existing #33/#79/#91 callers) byte-identical.
    */
-  function tryChallenge({ openingDent = 0, boarded = false } = {}) {
+  function tryChallenge({ openingDent = 0, boarded = false, playerDent = 0 } = {}) {
     if (state.active) return false;
     const idx = nearestInRange();
     if (idx === -1) return false;
@@ -360,7 +363,11 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
     state.enemyName = enemy.name;
     state.enemyWeakTo = enemy.weakTo;
     state.enemyGuard = enemy.guard;
-    state.playerMorale = MAX_MORALE;
+    // Crew casualties → duel confidence (#135 Option-4 slice 3): a boarding that cost you crew opens
+    // with YOUR captain shaken too. Clamped so a ruinous boarding rattles, never routs — you always
+    // still get to open your mouth, and the wit remains the decider.
+    state.confidenceDent = Math.max(0, playerDent || 0);
+    state.playerMorale = clampMorale(MAX_MORALE - state.confidenceDent, MAX_MORALE);
     // A boarded captain (#135 slice 4) starts already shaken by the deck brawl, on top of any
     // false-colours surprise (#79). The dent is clamped so the duel is always still a real fight.
     state.boarded = !!boarded;
@@ -452,6 +459,7 @@ export function createDuel({ npcs, getShipPos, getColours, applyReward, applyPen
       treachery: state.treachery, // dueling under false colours (#79)
       targetKind: state.targetKind, // the foe's disposition — pirate/merchant (#91)
       boarded: state.boarded, // reached by boarding a beaten ship (#135 slice 4)
+      confidenceDent: state.confidenceDent, // how shaken YOUR captain opened, from brawl casualties (#135 O4 slice 3)
       inRange: inRange(),
       options: state.options.map((o) => ({ id: o.id, category: o.category, line: o.line })),
     };
