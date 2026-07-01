@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {
-  wrapAngle, steerToward, headingTo, pickWaypoint, hasArrived, avoidObstacles,
+  wrapAngle, steerToward, headingTo, pickWaypoint, hasArrived, avoidObstacles, arenaHelm,
 } from './npc-ai.js';
 import { vesselKind, isOutlaw } from './colours.js';
 
@@ -157,12 +157,49 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   // pure disposition math lives in colours.js; main.js passes the verdict in via `ctx`.
   const FLEE_RADIUS = 360; // how close the dread captain must be to scatter a vessel
 
-  // ctx (optional): { playerPos:[x,z]|null, flee:boolean } — drives the colours reaction.
+  // Battle-foe agility (#135, Option-4 final slice): the DUEL foe answers the helm quicker and pushes
+  // harder than a wandering merchant, so the maneuver phase feels like a real contest of positioning.
+  const ARENA_TURN_RATE = 0.9;  // rad/s — she comes about smartly when squaring up
+  const ARENA_SPEED = 26;       // base sail speed in the arena (throttle scales it per the helm stance)
+
+  // ctx (optional): { playerPos:[x,z]|null, flee:boolean,
+  //   arena:{ index, playerPos:[x,z], playerHeading, moraleFrac }|null } — colours reaction + the
+  //   dedicated BATTLE foe. When `arena` names a ship index, THAT ship drops her waypoint wander and
+  //   sails to fight via the pure arenaHelm brain (seek beam / hold range / flee), zero extra draws.
   function update(dt, t, ctx = {}) {
     if (dt <= 0) return;
     const playerPos = ctx && ctx.playerPos;
     const fleeOn = !!(ctx && ctx.flee) && Array.isArray(playerPos);
-    for (const s of ships) {
+    const arena = ctx && ctx.arena;
+    const arenaIdx = (arena && Number.isInteger(arena.index)) ? arena.index : -1;
+    for (let si = 0; si < ships.length; si++) {
+      const s = ships[si];
+
+      // The dedicated BATTLE foe (#135) — she actively maneuvers to fight instead of wandering inertly.
+      if (si === arenaIdx && Array.isArray(arena.playerPos)) {
+        const helm = arenaHelm({
+          foeX: s.x, foeZ: s.z, foeHeading: s.heading,
+          playerX: arena.playerPos[0], playerZ: arena.playerPos[1],
+          playerHeading: arena.playerHeading || 0,
+          moraleFrac: (typeof arena.moraleFrac === 'number') ? arena.moraleFrac : 1,
+        });
+        s.arenaState = helm.state;
+        s.fleeing = helm.state === 'flee';
+        const target = avoidObstacles(s.x, s.z, helm.desiredHeading, islands, 220);
+        s.heading = steerToward(s.heading, target, ARENA_TURN_RATE, dt);
+        const sp = ARENA_SPEED * helm.throttle;
+        s.x += Math.sin(s.heading) * sp * dt;
+        s.z += Math.cos(s.heading) * sp * dt;
+        const y = ocean.sampleHeight(s.x, s.z, t);
+        const roll = Math.sin(t * 0.9 + s.bobPhase) * 0.05;
+        const pitch = Math.sin(t * 1.3 + s.bobPhase) * 0.04;
+        s.mesh.position.set(s.x, y, s.z);
+        s.mesh.rotation.set(pitch, s.heading, roll);
+        if (s.mesh.userData.flag) s.mesh.userData.flag.rotation.z = Math.sin(t * 3 + s.bobPhase) * 0.18;
+        continue;
+      }
+      s.arenaState = null;
+
       // Are these colours making this vessel run? (player near + flee verdict on)
       let fleeing = false;
       if (fleeOn) {
@@ -212,7 +249,7 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   }
 
   function snapshot() {
-    return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading, fleeing: !!s.fleeing, kind: s.kind }));
+    return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading, fleeing: !!s.fleeing, kind: s.kind, helm: s.arenaState || null }));
   }
 
   // Relocate ship `i` far away — a beaten foe slinking off over the horizon (#33).
@@ -236,4 +273,4 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   return { group, update, snapshot, respawn };
 }
 
-export { wrapAngle, steerToward, pickWaypoint, headingTo, hasArrived, avoidObstacles };
+export { wrapAngle, steerToward, pickWaypoint, headingTo, hasArrived, avoidObstacles, arenaHelm };

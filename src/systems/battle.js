@@ -460,6 +460,15 @@ export function createBattle({
     return brawl;
   }
 
+  // The engaged foe's live helm stance (#135, Option-4 final slice), read off the npcs snapshot —
+  // 'close' | 'open' | 'beam' | 'flee' | null. Lets the HUD/QA see the arena foe actively maneuvering.
+  function foeHelm() {
+    if (!state.active) return null;
+    const snaps = (npcs && npcs.snapshot && npcs.snapshot()) || [];
+    const s = snaps[state.foeIndex];
+    return (s && s.helm) ? s.helm : null;
+  }
+
   // A plain, JSON-safe snapshot for the window.__tidewake QA hook + the HUD.
   function snapshot() {
     const a = aim();
@@ -467,6 +476,10 @@ export function createBattle({
       active: state.active,
       foeName: state.foeName,
       foeIndex: state.foeIndex,
+      // The dedicated maneuvering foe (#135, Option-4 final slice): her live [x,z] + helm stance, so the
+      // headless playtest can watch her actively sail to fight (seek beam / hold range / flee).
+      foePos: state.active ? foePos() : null,
+      foeHelm: foeHelm(),
       inRange: inRange(),
       // Real-time broadside (slice 2):
       playerHull: state.playerHull,

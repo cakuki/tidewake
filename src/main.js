@@ -1350,7 +1350,18 @@ systems.register({ name: 'disguise', order: 60, when: (f) => !f.paused && isDece
 //   (False Colours #79 / Seen-through #91 read ctx.seenThrough from the disguise system above).
 systems.register({ name: 'npcs', order: 70, update: (f) => {
   const flee = npcFlees({ colours: f.state.colours, infamy: f.state.infamy ?? 0, seenThrough: f.seenThrough });
-  npcs.update(f.dt, f.t, { playerPos: [f.state.pos.x, f.state.pos.z], flee });
+  // Dedicated BATTLE arena-foe (#135, Option-4 final slice): while a deliberate stance is held and she
+  // hasn't yet struck her colours or been boarded, hand her index + your pose + her nerve to the foe
+  // helm so she actively sails to FIGHT (seek beam / hold range / flee) instead of drifting on her old
+  // waypoint. A struck (surrenderPending) or boarded foe heaves to — she stops maneuvering.
+  const bs = battle.state;
+  const arena = (bs.active && !bs.surrenderPending && !bs.boarded && bs.foeIndex >= 0) ? {
+    index: bs.foeIndex,
+    playerPos: [f.state.pos.x, f.state.pos.z],
+    playerHeading: f.state.heading,
+    moraleFrac: bs.maxMorale > 0 ? bs.enemyMorale / bs.maxMorale : 1,
+  } : null;
+  npcs.update(f.dt, f.t, { playerPos: [f.state.pos.x, f.state.pos.z], flee, arena });
 } });
 // — emergent at-sea encounter (#125): seeded spawn (only while under sail, helm free); pose the
 //   founderer low + heeled when live, hide her otherwise (~1 draw call exactly when on screen).

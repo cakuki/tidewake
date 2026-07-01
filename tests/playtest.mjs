@@ -482,6 +482,64 @@ try {
     console.warn('  (#135 slice 4 boarding: no foe came in range to engage — skipped, like slice 2/3)');
   }
 
+  // 2b6b) Dedicated BATTLE arena foe (#135, Option-4 final slice): squaring up now gives you a foe that
+  // ACTIVELY SAILS TO FIGHT instead of drifting on her open-sea waypoint. Driven headlessly: engage,
+  // then hold the helm still and STEP — the foe must run her dedicated duel brain (a valid helm stance),
+  // actively maneuver (change heading + move), and hold a fighting stand-off rather than wandering off.
+  const arenaFoe = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return { bi, bd };
+    }
+    // Deterministic engage: teleport the hull just off the nearest sail (well inside CHALLENGE_RANGE)
+    // then square up — so this arena-foe check actually RUNS headlessly (the sail-to-a-foe sections
+    // above skip when no NPC drifts into range). qaTeleport is the same QA hook the gallery shots use.
+    const { bi } = nearest();
+    let engaged = false;
+    if (bi !== -1) {
+      const fp = tw.npcs[bi].pos;
+      tw.qaTeleport(fp[0], fp[1] - 120); // drop in ~120u off her — inside engage range
+      tw.step(0.05);
+      engaged = tw.engageBattle();
+    }
+    if (!engaged) return { engaged };
+    const idx = tw.battle.foeIndex;
+    const startPos = [...tw.npcs[idx].pos];
+    const startHeading = tw.npcs[idx].heading;
+    const dist = () => { const s = tw.state.pos; const p = tw.npcs[idx].pos; return Math.hypot(p[0] - s[0], p[1] - s[2]); };
+    // Hold the helm still and let her maneuver for ~7s of sim time.
+    const states = new Set();
+    let headingMoved = false, hadFoePos = true;
+    for (let i = 0; i < 70; i++) {
+      tw.step(0.1);
+      const h = tw.battle.foeHelm;
+      if (h) states.add(h);
+      if (Math.abs(norm(tw.npcs[idx].heading - startHeading)) > 0.05) headingMoved = true;
+      if (!Array.isArray(tw.battle.foePos)) hadFoePos = false;
+    }
+    const endPos = [...tw.npcs[idx].pos];
+    const moved = Math.hypot(endPos[0] - startPos[0], endPos[1] - startPos[1]) > 1;
+    const holdDist = dist(); // a fighting stand-off — she neither rams nor drifts over the horizon
+    const helmDrives = states.size > 0 && [...states].every((s) => ['close', 'open', 'beam', 'flee'].includes(s));
+    tw.fleeBattle();
+    return { engaged, moved, headingMoved, helmDrives, hadFoePos, holdDist, states: [...states] };
+  });
+  if (arenaFoe.engaged) {
+    if (!arenaFoe.helmDrives) fail(`arena foe: her dedicated duel helm did not drive her (states=${arenaFoe.states.join(',')}) (#135 Option-4 final slice)`);
+    if (!arenaFoe.hadFoePos) fail('arena foe: battle snapshot exposed no foePos for the QA hook (#135 Option-4 final slice)');
+    if (!arenaFoe.moved) fail('arena foe: she did not actively sail while engaged — drifted inert (#135 Option-4 final slice)');
+    if (!arenaFoe.headingMoved) fail('arena foe: she never came about to maneuver for position (#135 Option-4 final slice)');
+    if (!(arenaFoe.holdDist < 400)) fail(`arena foe: she drifted off instead of holding the fight (dist=${Math.round(arenaFoe.holdDist)}) (#135 Option-4 final slice)`);
+  } else {
+    console.warn('  (#135 Option-4 arena foe: no foe came in range to engage — skipped, like slice 2)');
+  }
+
   // 2b7) Early surrender / strike-colours short-circuit (#135, Option 4): when your gunnery breaks a
   // foe's nerve+hull hard enough she STRIKES HER COLOURS mid-maneuver — before you ever board — and
   // OFFERS to yield. The offer is HELD OPEN (you can't board or fire past it); accepting is a quick
