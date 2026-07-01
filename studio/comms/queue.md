@@ -27,7 +27,7 @@ when its latest slice shipped.
 
 ---
 
-## 🔴 FROM-OWNER P1 — BUILD FIRST: #161 Make Battle FUN (PREEMPTS everything below)
+## ✅ FROM-OWNER P1 — #161 Make Battle FUN — LANE COMPLETE (all 6 slices shipped, #161 CLOSED)
 The owner playtested battle (#135) and it's **NOT fun** (2026-07-01): occluding center popups cover the
 ship · no target lock among traffic · an **isolation BUG** (#125 rescue + `f`/`g` hails leak into the
 fight) · **NO cannonball visuals** (broadside is pure math). Per the **PREEMPTION RULE** this from-owner
@@ -76,7 +76,26 @@ P1 **preempts the PRODUCT-refill slices below** (#156–159). Build #161's slice
   (wide) and the line clears on flee. **#166-COORDINATE-READY:** the aim chip carries a reserved `.aim-odds` slot
   + `setOdds()` so #166 legible-odds ("skill sets the odds, luck sets the margin") can sit beside the aim
   indicator with NO redo — this aim line is the *skill* half of that readout. Gallery `aim-line-161.png`. No save change (v17).
-- ⬜ **6) Hover-to-interact (M)** — raycast the ship under the cursor → hail/board/target (diegetic, not a HUD verb).
+- ✅ **6) Hover-to-interact (M) — SHIPPED (Loop 116, v0.0.20260701224039).** Interacting with ships is now
+  DIEGETIC, not a hidden keymap: POINT at a hull (a THREE.Raycaster picks the ship under the cursor) and it
+  lights up with what you can DO — a projected cyan ring + a **"Give battle / Hail / Board"** label over her
+  mast — and a CLICK routes to the SAME existing verb handlers (engage / hail / board), no new combat
+  mechanics. The keyboard verbs stay live (additive) and a touch TAP routes through the same click path (the
+  #146 mobile guard — hover is never the only path). Respects hard isolation (#161 s1: no hailing a
+  non-combatant mid-fight — only the engaged foe is pickable, and only to BOARD when she's battered), s3
+  dimming, s2 non-occlusion. Reuses the slice-3 OVER-SHIP BILLBOARD + VP projection (**0 added draws — still
+  29/130**, ~92.8k/150k tris; CPU raycast, no per-frame allocations). PURE TDD'd cores
+  (`src/systems/ship-picker.js`: `shipIndexFromObject` raycast-hit→index, `pickShipAction` contextual verb,
+  `actionLabel`); the three.js raycast is a thin shell in `main.js`. Generalized `battle.engage(index)` +
+  `duel.tryChallenge({targetIndex})` so a click acts on THAT ship, not "nearest". `tw.qaPickAt/qaHoverAt/
+  qaClickAt` QA hooks; playtest §2b6-hover asserts a raycast under a screen point resolves to that ship + the
+  right action AND a click routes to the handler. Gallery `hover-interact-161.png`. No save change (v17).
+
+**🎉 #161 "Make Battle FUN" LANE COMPLETE — all 6 slices shipped (isolation · non-occluding UI · target lock
+· rendered cannonballs · aim-angle feedback · hover-to-interact). #161 CLOSED.** The marquee fight now
+isolates cleanly, keeps the ship visible, names the foe, shows the balls fly with the angle mattering, and is
+pointed-at rather than keymap-guessed — every owner complaint from `2026-07-01` addressed. The
+PRODUCT-refill slices (#156–159) below resume as the next lane.
 
 Plan: **#161** + [`docs/briefs/2026-07-01-battle-fun-fixes.md`](https://github.com/cakuki/tidewake/blob/main/docs/briefs/2026-07-01-battle-fun-fixes.md).
 This IS the **Fun & Working > fast** doctrine (`docs/design/what-makes-it-fun.md`) — a mechanic with no

@@ -4,6 +4,23 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-01 — #161 slice 6 Hover-to-interact shipped — LANE COMPLETE, #161 CLOSED (Loop 116, v0.0.20260701224039).**
+  The SIXTH and FINAL slice of the from-owner "Make Battle FUN" epic (#161): "interacting with other ships should
+  be hovering on the ship in the view, not like a HUD element." Targeting was proximity + a keypress guess; now
+  you POINT at a hull (a `THREE.Raycaster` picks the ship under the cursor) and it lights up with what you can DO —
+  a projected cyan ring + a "Give battle / Hail / Board" label — and a CLICK routes to the SAME existing verb
+  handlers (engage / hail / board), no new combat mechanics. Keyboard verbs stay live (additive); a touch TAP
+  routes through the same click path (#146 guard). Respects the whole lane (s1 isolation — only the engaged foe is
+  pickable mid-fight; s2 non-occlusion; s3 dimming). PURE, TDD'd cores in `src/systems/ship-picker.js`
+  (`shipIndexFromObject`, `pickShipAction`, `actionLabel`, +11 tests); the raycast is a thin shell in `main.js`
+  (reused Raycaster, refreshed hull matrices, 0 per-frame allocs). Generalized `battle.engage(index)` +
+  `duel.tryChallenge({targetIndex})` so a click acts on THAT ship. Reuses the slice-3 over-ship billboard + VP
+  projection — **0 added draws (still 29/130)**, 92.8k/150k tris. `tw.qaPickAt/qaHoverAt/qaClickAt` QA hooks;
+  playtest §2b6-hover asserts a raycast under a screen point resolves to that ship + the right action AND a click
+  routes to the handler (open-sea engage + battle board). Gallery `hover-interact-161.png`. No save change
+  (input/presentation, stays v17). 1131 unit tests. **#161 "Make Battle FUN" is now COMPLETE — all 6 slices
+  shipped (isolation · non-occluding UI · target lock · rendered cannonballs · aim-angle feedback ·
+  hover-to-interact) and #161 is CLOSED.** Every owner complaint from the 2026-07-01 playtest is addressed.
 - **2026-07-01 — #161 slice 5 Aim-angle feedback shipped (Loop 115, v0.0.20260701220930).** Fifth slice of the
   from-owner "Make Battle FUN" epic (#161): "the angles should matter." The angle already decided a clean-vs-wide
   shot in the maths (`broadsideAim`) but the player couldn't SEE their aim before firing. Fix + felt FUN beat: a
