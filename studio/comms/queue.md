@@ -49,6 +49,8 @@ _**Next leverage: BUILD BATTLE — the owner decided it, it is the focused lane.
 · `epic`); the design brief **#100 is CLOSED** as reference. Per the **PREEMPTION RULE**, #135 stays at
 the **TOP** of this queue until the lane ships something impressive + gamer-testable (lane-switch gate)._
 
+_**UPDATE Loop 106 (2026-07-01, v0.0.20260701124406): #153 — CONTEXTUAL JUST-IN-TIME KEY-PROMPTS — SHIPPED & CLOSED.** The R2 deep-reading flagship (5-role convergence): the now-complete battle arc (#135) had NO onboarding for its many keys. This teaches each in-battle verb the instant it becomes possible — maneuver → `SPACE Fire` (+`X Change shot` with a 2+ locker) · boardable → `F Board her` · struck colours → `1 Accept / 2 Press` — and **fades each once used**. READ-ONLY off the battle+duel snapshots (invents no mechanics); a **single keymap source-of-truth** (`src/keymap.js`) feeds the prompts AND the #battle help so labels can't drift. PURE logic TDD'd (14 tests, 1022 green); playtest ✓, perf 27/130 draws · 89.7k/150k tris; save stays v16; gallery `key-prompts-board.png`. **Left for PM triage (deep-reading shortlist #3-8):** verb earcons · reactive-verb juice pass · cold-start FTUE checklist · diegetic keycap skin._
+
 _**UPDATE Loop 85 (2026-06-30, v0.0.20260630054448): slice 1 — Battle Mode shell — SHIPPED.** Deliberate
 **E = give battle** → held BATTLE stance on the #95 infra, quarter-view camera, `⚔ BATTLE` banner, #94
 music settle, NPCs sail underneath, **Flee always available**. Pure `src/systems/battle.js` TDD'd first;
