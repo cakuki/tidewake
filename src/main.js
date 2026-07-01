@@ -1442,6 +1442,9 @@ systems.register({ name: 'hud-battle', order: 275, update: () => hud.renderBattl
 // — per-phase raid tracker (#135, Option-4 polish): names the act (⚔ Maneuver › 🪝 Boarding › 🗣 Duel)
 //   and surfaces the coupling earned; read-only, spans the battle + the boarded duel snapshots.
 systems.register({ name: 'hud-raid-phases', order: 276, update: () => hud.renderRaidPhases(battle.snapshot(), duel.snapshot()) });
+// — contextual just-in-time key-prompts (#153, onboarding): teaches each battle verb (fire · change
+//   shot · board · accept/press) the instant it becomes possible, then fades once used. Read-only.
+systems.register({ name: 'hud-key-prompts', order: 277, update: () => hud.renderKeyPrompts(battle.snapshot(), duel.snapshot()) });
 systems.register({ name: 'hud-encounter', order: 280, update: () => hud.renderEncounter(encounter.snapshot()) });
 // — sea ambience + adaptive sailing theme level (#48).
 systems.register({ name: 'audio', order: 290, update: (f) => audio.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED }) });

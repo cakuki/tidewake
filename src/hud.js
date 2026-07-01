@@ -10,6 +10,8 @@ import { governorshipBeat } from './systems/home-port.js';
 import { colourById } from './colours.js';
 import { createCompass } from './ui/compass.js';
 import { createRaidPhases } from './ui/raid-phases.js';
+import { createKeyPrompts } from './ui/key-prompts.js';
+import { KEYS } from './keymap.js';
 
 export function createHud() {
   const $heading = document.getElementById('heading');
@@ -17,6 +19,7 @@ export function createHud() {
   const $wind = document.getElementById('wind');
   const compass = createCompass();   // self-contained wind compass component (#53)
   const raidPhases = createRaidPhases(); // per-phase Three-Act Raid tracker (#135, Option-4 polish)
+  const keyPrompts = createKeyPrompts(); // contextual just-in-time battle key-prompts (#153, onboarding)
   const $toast = document.getElementById('toast');
   const $coins = document.getElementById('coins');
   const $cargo = document.getElementById('cargo');
@@ -399,8 +402,8 @@ export function createHud() {
           ? '<button class="battle-fire board" data-board="1">⚔ BOARD</button>'
           : `<button class="battle-fire" data-fire="1"${ready ? '' : ' disabled'}>🔥 FIRE</button>`)
         : (canBoard
-          ? '<div class="duel-help">She’s beaten — <b>F</b> to BOARD her, or keep firing to sink her</div>'
-          : '<div class="duel-help">Steer <b>A/D</b> abeam · <b>Space</b> fires · <b>X</b> cycles shot · <b>E</b> breaks off</div>'));
+          ? `<div class="duel-help">She’s beaten — <b>${KEYS.board.glyph}</b> to BOARD her, or keep firing to sink her</div>`
+          : `<div class="duel-help">Steer <b>A/D</b> abeam · <b>${KEYS.fire.glyph}</b> fires · <b>${KEYS.cycle.glyph}</b> cycles shot · <b>${KEYS.flee.glyph}</b> breaks off</div>`));
     $battle.classList.add('show');
   }
 
@@ -409,6 +412,12 @@ export function createHud() {
   // you earned. Reads the battle + duel snapshots (read-only); the pure model + DOM live in the
   // self-contained src/ui/raid-phases.js component. Called each frame from main.js's hud system.
   function renderRaidPhases(battle, duel) { raidPhases.update(battle, duel); }
+
+  // ---- Contextual just-in-time key-prompts (#153) ---------------------------
+  // The onboarding for the deep battle system: surfaces the key(s) for the action that JUST became
+  // possible (fire · change shot · board · accept/press) and fades each once used. Pure model + DOM
+  // live in the self-contained src/ui/key-prompts.js; reads the battle + duel snapshots (read-only).
+  function renderKeyPrompts(battle, duel) { keyPrompts.update(battle, duel); }
 
   // ---- Foundering-ship encounter panel (#125) -------------------------------
   // Reads a plain encounter snapshot and paints the rescue-vs-plunder choice — the founderer's
@@ -559,5 +568,5 @@ export function createHud() {
     compass.update(state);
   }
 
-  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderBattle, renderRaidPhases, renderEncounter, flashBanner, showLegend, showGovernorship, showGoal, hideGoal };
+  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderBattle, renderRaidPhases, renderKeyPrompts, renderEncounter, flashBanner, showLegend, showGovernorship, showGoal, hideGoal };
 }

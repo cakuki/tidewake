@@ -315,6 +315,36 @@
     #raid-phases .rp-couple.good { color: #87e0a4; }
     #raid-phases .rp-couple.warn { color: #ffb27a; }
     #raid-phases .rp-couple.surrender { color: #ffd98a; }
+    /* Contextual just-in-time key-prompts (#153) — the onboarding for the deep battle system. Sits just
+       under the raid strip so the phase and the verb it wants read as one thought; a subtle pulse draws
+       the eye once, then it fades when the verb's been used. Read-only, pointer-events off, ~0 draws. */
+    #key-prompts {
+      position: fixed; left: 50%; top: calc(66px + env(safe-area-inset-top, 0px));
+      z-index: 15; transform: translate(-50%, -6px); pointer-events: none; text-align: center;
+      display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; max-width: 92vw;
+      opacity: 0; transition: opacity .25s ease, transform .25s ease;
+    }
+    #key-prompts.show { opacity: 1; transform: translate(-50%, 0); animation: kp-pulse 1.1s ease-out 2; }
+    #key-prompts .kp {
+      background: rgba(7,18,31,.78); border: 1px solid rgba(255,210,120,.4); border-radius: 8px;
+      padding: 4px 10px 4px 6px; font-size: 11.5px; color: #eaf0f6; white-space: nowrap;
+      backdrop-filter: blur(4px); box-shadow: 0 4px 14px rgba(0,0,0,.4);
+    }
+    #key-prompts .kp-key {
+      display: inline-block; min-width: 16px; padding: 1px 5px; margin-right: 5px; font-size: 10.5px;
+      font-weight: 700; font-family: inherit; color: #1a1206; background: #ffd23f; border-radius: 4px;
+      box-shadow: 0 2px 0 rgba(180,130,20,.8); vertical-align: baseline;
+    }
+    #key-prompts .kp.board { border-color: rgba(135,224,164,.6); }
+    #key-prompts .kp.board .kp-key { background: #87e0a4; box-shadow: 0 2px 0 rgba(40,120,70,.8); }
+    #key-prompts .kp.surrender { border-color: rgba(255,217,138,.7); }
+    @keyframes kp-pulse {
+      0% { transform: translate(-50%, 0) scale(1); }
+      12% { transform: translate(-50%, 0) scale(1.045); }
+      28% { transform: translate(-50%, 0) scale(1); }
+      100% { transform: translate(-50%, 0) scale(1); }
+    }
+    @media (prefers-reduced-motion: reduce) { #key-prompts.show { animation: none; } }
     /* Foundering-ship choice panel (#125) — the rescue-vs-plunder moral beat, in a teal distress
        accent. Reuses the duel panel's inner line/opts classes, scoped here with its own colour. */
     #encounter {
@@ -735,6 +765,7 @@
     body.town #touch-controls,
     body.town #trade,
     body.town #challenge-prompt,
+    body.town #key-prompts,
     body.town #encounter,
     body.town #goal { display: none !important; }
 
@@ -791,6 +822,9 @@
   <div id="cannons" role="dialog" aria-live="polite"></div>
   <div id="battle" role="dialog" aria-live="polite"></div>
   <div id="raid-phases" role="status" aria-live="polite"></div>
+  <!-- Contextual just-in-time key-prompts (#153): teaches each deep-battle verb the instant it
+       becomes possible, then fades once used. Filled by src/ui/key-prompts.js off the battle snapshot. -->
+  <div id="key-prompts" role="status" aria-live="polite"></div>
   <div id="encounter" role="dialog" aria-live="polite"></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <!-- Invisible onboarding (#60): a brand-new captain's seeded first goal. Filled + shown
