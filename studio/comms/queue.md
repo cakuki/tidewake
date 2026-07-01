@@ -140,6 +140,24 @@ short-circuit, per-phase UI, dedicated arena-spawn (M6 act 1 done, M7 acts 2–3
 call. (NB: the active build lane is now **#145 preview subpath** below — this #135 slice was the queued
 Option-4 increment; per-slice value keeps landing while the lane switches.)_
 
+_**UPDATE Loop 102 (2026-07-01, v0.0.20260701100407): Option 4 slice 3 — CREW CASUALTIES → DUEL
+CONFIDENCE — SHIPPED.** The THIRD phase-coupling beat: act 2 (the boarding brawl) now **mechanically
+feeds** the captain's verbal duel (act 3), mirroring how slice 2 fed act 1→act 2. The brawl no longer
+only shakes HER captain (`brawlMoraleDent`, slice 4) — a boarding that **cost you crew** opens the duel
+with YOUR captain rattled too, shifting the opening footing. Two new pure fns in `src/systems/board.js`:
+`brawlCasualties({won, margin})` → severity [0,1] (a clean runaway bleeds ~nothing; a whisker-thin win
+OR a lost/even brawl is bloodiest) and `duelConfidenceDent(casualties)` → a **player-side** opening dent
+[0, `MAX_CONFIDENCE_DENT`=22], kept BELOW the enemy ceiling (`MAX_BOARD_DENT`=30) so a decisive boarding
+still nets in your favour and wit stays the decider. `duel.tryChallenge` gains a `playerDent` option
+(mirror of `openingDent`) denting YOUR opening morale; `snapshot().confidenceDent` surfaces it for QA.
+`main.js` wires `duelConfidenceDent(brawlCasualties(brawl))` into the boarding hand-off; open-sea hails
+stay byte-identical. TDD'd first. **No save change — transient combat state (stays v16).** 978 unit
+tests (+12); playtest ✓ PASSED (27/130 draws · 89.7k/150k tris, zero errors) + a live assertion that the
+opening footing reflects the casualty dent; **no gallery** (mechanical + QA-surfaced, no visible change).
+**#135 stays OPEN** — remaining Option 4 work: early-surrender / strike-colours short-circuit, per-phase
+UI, dedicated arena-spawn (M6 act 1 done, M7 acts 2–3). Closing #135 is the owner's call. (NB: the active
+build lane remains **#145 preview subpath** below — this was the queued Option-4 increment.)_
+
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
 ### ⛴️ NEXT LANE (owner, 2026-07-01) — **#145 slice 1: remotely-viewable `/preview/` subpath** — BUILD THIS NEXT
