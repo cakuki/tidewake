@@ -27,6 +27,62 @@ when its latest slice shipped.
 
 ---
 
+## 🧭 TOP OF QUEUE — PRODUCT REFILL (Loop 107, 2026-07-01) — BUILD IN ORDER
+
+_**UPDATE Loop 107 (2026-07-01) — PRODUCT cycle: roadmap refilled from external inspiration + the R2
+deep-reading shortlist.** The battle epic #135 shipped end-to-end and the reactive/charm reservoir
+drained → the never-idle rule triggered a PRODUCT run. Per the Constitution bias — **make the arc
+REACHABLE before deepening it** (onboarding/legibility/first-session) + **reactive-verb depth-over-
+breadth** — this batch teaches & juices the deep combat a new captain otherwise hits as a wall.
+**Inspiration:** WebSearch on game onboarding (just-in-time / scaffolding / "first enemy is a Goomba" —
+God of War & BOTW contextual prompts, progressive disclosure, the first-5-minutes bar) + the PM-triaged
+R2 deep-reading shortlist (`studio/feedback/inbox/2026-07-01-deep-reading.md`, whose flagship #153
+already shipped). Six original, vision-aligned slices, sequenced value·complexity·deps; **build #154
+first.** #145 preview-subpath (ops track) + the owner-decision items (#147/#135-close/#152) stay parked
+below — untouched. No save/schema change except where flagged (#157)._
+
+- **#154 — Battle verb earcons (READY · S/M · sound-engineer + software-developer) — BUILD THIS NEXT.**
+  A distinct confirmation sound per battle verb + a "ready now" cue the instant a verb becomes legal
+  (reload done / boardable / colours struck), over the ducked #94/#116 bus. Teaches *which* & *when* by
+  ear — the audio half of #153's visual prompts. Reads existing battle+duel snapshot flags (no new
+  mechanics); pure trigger logic TDD'd first, AudioContext-free in the gate; no save change.
+  *"I can hear which verb I used and when a new one opens."*
+
+- **#155 — Reactive-verb juice pass (READY · S/M · software-developer + game-designer).** Renderer-only
+  recoil + short shake on a volley, sting-flash on a landed hit, a lunge on boarding — intensity echoing
+  the verb's weight. Logic/tests untouched (mirrors #80 doctrine, reduce-motion friendly); gallery frame.
+  No save change. *"Every combat verb feels like the deed it is."*
+
+- **#156 — Cold-start FTUE discoverability check (READY · S · qa + software-developer).** A headless
+  "fresh captain" playtest step (cleared save) that walks sail→approach→battle→board and **fails CI on
+  any reachable-but-un-signified verb** (no visible prompt AND no earcon at the moment it becomes legal).
+  Regression-tests legibility so the exact #135-pre-#153 defect can't silently return. Pure test infra;
+  no save change. *"An un-taught verb can never ship again."*
+
+- **#157 — The Bosun's First Duel (M · game-designer + software-developer).** A one-shot **scaffolded soft
+  debut battle** on a cold save's first engagement — softened foe + a crew voice calling each phase's verb
+  aloud in-world (reusing rumour/ballad audio + #153 prompts + #154 earcons). Teaches maneuver→fire→board→
+  duel as theatre, not a pop-up; a save flag makes it never repeat. **Save-schema bump → migrate all prior
+  versions + add a frozen corpus blob (#122 standing rule).** *"My first fight is winnable and legible."*
+
+- **#158 — Per-phase battle musical signatures (M · musician + software-developer).** Each raid act
+  (⚔ Maneuver / 🪝 Boarding / 🗣 Duel — the shipped phase model) gets a distinct musical *layer* (not just
+  louder), swapped on transition via the built bar-clock crossfade (#94/#109/#132; no percussive-bed trap).
+  The score becomes the tutorial timer. Reads the phase model (no new mechanics); no save change.
+  *"I hear when to act before I know which key."*
+
+- **#159 — Diegetic age-of-sail keycap skin (S · graphic-designer + software-developer).** Dress the #153
+  prompts as rope-bound brass / ink-on-parchment glyphs — same DOM component, labels still driven by the
+  single `src/keymap.js` source-of-truth so nothing drifts. Legibility & world-identity become one asset;
+  contrast survives haze; no gameplay/save change; gallery frame. *"The tutorial reads as the world speaking."*
+
+**Sequencing note:** #154→#156 are all S/S-M, unblocked, READY now (≥3 ready slices satisfied). #157 is
+the biggest first-session reachability win but is M + carries the only save-schema change, so it follows
+the cheap legibility/juice wins that it will lean on (#154 earcons, #153 prompts). #158/#159 are depth/
+polish that compound the above. **No owner-decision surfaced** — all six are original, in-vision, buildable.
+
+---
+
 _Set by **Retro 12** (2026-06-28, loops 62–68). State: the **reactive loop is CLOSED end-to-end** —
 walk into a tavern → listen → chase a rumour with a **map marker** → arrive to a **reward** (coin +
 Ballad verse) → Set Sail and the watch **reads your visit back** (#112/#111/#115 + #105). **Both
