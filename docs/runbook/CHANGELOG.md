@@ -4,6 +4,14 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-01 — Never-idle restructure (product + delivery split).** The loop once finished all decided
+  work and **idled ~2h** waiting on the owner because the runbook was a delivery-*consumer* only, with no
+  product/roadmap-generation function inside the loop. Fix: **split into two sub-runbooks** —
+  `docs/runbook/PRODUCT.md` (PM + TL + Game Designer refill `queue.md` from external inspiration when it's
+  empty or below a **LOW-WATER-MARK of 3** READY slices) + `docs/runbook/DELIVERY.md` (the cycle-runner
+  contract, dispatch template, concurrency). Both entry runbooks (`LOOP.md`, `LOOP-SPRINT.md` + the
+  `BOOTSTRAP.md` constitution) now carry **THE NEVER-IDLE RULE**: empty/thin queue → PRODUCT, never hold;
+  owner decisions surface but never block. `LOOP.md` rewritten lean (orchestration + never-idle only).
 - **Retro 8** (loops 37–40) — game is now *genuinely rich* (complete collision + atmosphere + named
   world + shareable Ballad #78). Relaxed retro cadence **3–4 → ~7–8** (HARD trigger 4 → 7; DL stays
   ~10). Fixed **#89**: `release.yml` → allow-list `paths:['src/**','index.html']` (no more `[skip ci]`).
