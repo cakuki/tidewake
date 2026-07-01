@@ -56,6 +56,17 @@ visible feedback is INCOMPLETE. _(The loop's onboarding work #156/#157 aids legi
 these gaps.) Owner's finer call — whether to also FREEZE new battle mechanics — pending over Telegram; the
 fix is P1 regardless. **Next build: slice 3 (target lock — highlight the engaged foe + dim/hide non-combatants, driven off `foeIndex`).**_
 
+## 🟠 FROM-OWNER — Difficulty, Stakes & Ship Variety lane (epic #162) — build AFTER/ALONGSIDE #161
+_Owner steering 2026-07-01: "games are too easy — the player must be able to LOSE when playing badly, and a loss should COST points + fame; fair = clear consistent rules WITH a bounded luck element; a player who wants a hard fight (a big/armed ship) can seek one; ships should VARY, with over-ship displays hinting what they are." Epic **#162** + brief [`docs/briefs/2026-07-01-difficulty-stakes-variety.md`](https://github.com/cakuki/tidewake/blob/main/docs/briefs/2026-07-01-difficulty-stakes-variety.md). **Complements #161** — build ONE shared over-ship billboard module (used by #161 s3 target-lock AND #165 threat-labels) and coordinate odds/aim readouts (#166 ↔ #161 s5)._
+
+**OWNER DECISIONS (2026-07-01, recorded on #162 — these are the build constraints):** loss penalty = **MEDIUM** (coin+fame deduction scaled by foe tier, no death-spiral) · **you KEEP your ship** on a loss (fame/coin only) → **NO save bump, stays v17** · fame loss is **CONTEXT-BASED** (raid loss→Infamy, governor loss→Standing) · difficulty = **FIXED BY REGION/TIER** (sail toward danger; **no rubber-band**).
+
+1. **[#163] Ship classes (M · Dev+GD)** — sloop/brig/frigate/man-o'-war × merchant/warship; distinct size/armament/crew/danger. FUN: SEE a man-o'-war dwarf a darting sloop; FEEL a frigate's broadside threaten you. Foundation, no deps, no save bump.
+2. **[#164] Loss stings (M · Dev+GD)** — the stakes-on-loss ledger (`defeatLedger`, first-ever *decrement* path in `renown.js`): MEDIUM, tier-scaled, context-based (Infamy/Standing), floored at 0, a red "colours struck" defeat card names the cost. FUN: SEE fame/coin drop; FEEL that caution is a real decision. Reads best after #163.
+3. **[#165] Over-ship threat labels (M · Gfx+Dev, dep #163)** — floating "Man-o'-War ☠☠☠☠" vs "Merchant Sloop ·". FUN: pick your fight at a glance. **OVERLAP #161 s3 — ONE shared billboard module, two consumers.**
+4. **[#166] Legible odds (S–M · GD+Dev, dep #163)** — skill sets the odds (deterministic: class matchup + aim geometry + ammo), luck sets the *margin* (bounded ±20%, shown, never flips a favoured fight). FUN: SEE "Even match — she has the guns, you have the crew." OVERLAP #161 s5.
+5. **[#167] Challenge on demand (S–M · GD+Dev, dep #163)** — a hard fight (frigate/man-o'-war off the point) is findable; reward scales by tier, on the FIXED regional-danger model. FUN: FEEL the pull of real Infamy worth the risk.
+
 ## 🧭 TOP OF QUEUE — PRODUCT REFILL (Loop 107, 2026-07-01) — BUILD IN ORDER
 
 _**UPDATE Loop 107 (2026-07-01) — PRODUCT cycle: roadmap refilled from external inspiration + the R2
