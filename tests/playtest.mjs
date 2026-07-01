@@ -493,6 +493,72 @@ try {
     if (broadside.active && broadside.result !== 'win') fail(`real-time broadside: engagement neither sank the foe nor resolved (result=${broadside.result}) (#135 slice 2)`);
   }
 
+  // 2b4b) RENDERED CANNONBALLS (#161 slice 4): the owner's marquee complaint — "we should see the cannon
+  // balls, the angles should matter." The broadside was pure MATH (a camera kick + the word "ABEAM"); now
+  // a fired volley SPAWNS a visible spread of round-shot arcing from the guns, a muzzle puff, and a spark
+  // ON the foe for a clean beam hit vs a SPLASH in open water for a wide shot — pooled/instanced (2 draws,
+  // 0 growth), driven off the SAME resolved shot (broadsideAim.inArc + resolveBroadside.enemyHit). Engage
+  // deterministically, fire ONE WIDE shot (bow-on, out of arc → a splash) and ONE CLEAN shot (abeam, in
+  // arc → a spark), and assert: a volley spawns iron + a muzzle bark, and hit ≠ miss (spark vs splash).
+  const cballs = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity; // state.pos is [x,y,z]
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    }
+    const bi = nearest();
+    if (bi === -1) return { engaged: false };
+    const fp = tw.npcs[bi].pos;
+    tw.qaTeleport(fp[0], fp[1] - 120);            // drop just off her — inside engage range
+    tw.step(0.05);
+    const engaged = tw.engageBattle();
+    if (!engaged) return { engaged: false };
+    const foeIdx = tw.battle.foeIndex;             // LATCHED for the fight — position the ship against it
+    const before = tw.battleProjectiles().spawned; // {balls,muzzles,hits,splashes} — monotone tallies
+    // Convention (battle.js broadsideAim): forward=(sin h, cos h), right=(cos h, −sin h). We place the
+    // ship, then fire the SAME frame (no step, so the latched foe stays put + the AI can't re-beam).
+    // (1) A WIDE shot: put the foe DEAD AHEAD (bow-on → out of the broadside arc) → a MISS → a SPLASH.
+    const F = tw.npcs[foeIdx].pos, h = tw.state.heading;
+    tw.qaTeleport(F[0] - Math.sin(h) * 120, F[1] - Math.cos(h) * 120);
+    const wideAim = tw.battleAim();                // expect inArc:false (foe off the bow, not the beam)
+    tw.battleFire();
+    const afterWideFire = tw.battleProjectiles().spawned;
+    for (let i = 0; i < 12; i++) tw.step(0.12);    // let the iron fly its arc and splash in open water
+    const afterWideLand = tw.battleProjectiles().spawned;
+    // (2) A CLEAN shot: put the foe ABEAM (starboard → in the arc) → a HIT → a SPARK. Wait out the reload.
+    for (let i = 0; i < 16 && !tw.battle.loaded && tw.battle.active; i++) tw.step(0.2);
+    const F2 = tw.npcs[foeIdx].pos, h2 = tw.state.heading;
+    tw.qaTeleport(F2[0] - Math.cos(h2) * 120, F2[1] + Math.sin(h2) * 120);
+    const cleanAim = tw.battleAim();               // expect inArc:true (foe dead abeam)
+    const firedClean = tw.battle.active && tw.battle.loaded;
+    if (firedClean) tw.battleFire();
+    for (let i = 0; i < 12; i++) tw.step(0.12);    // let the clean volley land its spark
+    const afterClean = tw.battleProjectiles().spawned;
+    if (tw.battle.active) tw.fleeBattle();
+    return { engaged, before, wideInArc: wideAim.inArc, afterWideFire, afterWideLand,
+      firedClean, cleanInArc: cleanAim.inArc, afterClean };
+  });
+  if (!cballs.engaged) {
+    console.warn('  (#161 slice 4 rendered cannonballs: no foe to engage — skipped, like the other battle steps)');
+  } else {
+    if (cballs.wideInArc) fail('rendered cannonballs (#161 slice 4): the bow-on "wide" shot was in-arc — the miss geometry failed, cannot verify miss≠hit');
+    if (!(cballs.afterWideFire.balls > cballs.before.balls)) fail(`rendered cannonballs (#161 slice 4): firing a broadside spawned NO cannonballs (balls ${cballs.before.balls}→${cballs.afterWideFire.balls}) — the shot is still invisible`);
+    if (!(cballs.afterWideFire.muzzles > cballs.before.muzzles)) fail('rendered cannonballs (#161 slice 4): firing spawned no muzzle puff at the guns');
+    if (!(cballs.afterWideLand.splashes > cballs.before.splashes)) fail(`rendered cannonballs (#161 slice 4): a WIDE shot produced no splash (splashes ${cballs.before.splashes}→${cballs.afterWideLand.splashes}) — a miss must splash in open water`);
+    if (cballs.afterWideLand.hits > cballs.before.hits) fail(`rendered cannonballs (#161 slice 4): a WIDE (out-of-arc) shot wrongly sparked a HIT (hits ${cballs.before.hits}→${cballs.afterWideLand.hits}) — a miss must NOT read as a hit`);
+    if (!cballs.firedClean) {
+      fail('rendered cannonballs (#161 slice 4): could not fire the clean abeam shot (never reloaded) — cannot verify the hit spark');
+    } else {
+      if (!cballs.cleanInArc) fail('rendered cannonballs (#161 slice 4): the abeam "clean" shot was out-of-arc — the hit geometry failed');
+      if (!(cballs.afterClean.hits > cballs.afterWideLand.hits)) fail(`rendered cannonballs (#161 slice 4): a CLEAN in-arc shot produced no hit spark (hits ${cballs.afterWideLand.hits}→${cballs.afterClean.hits}) — a hit must read differently from a miss`);
+      if (process.exitCode !== 1) console.log(`  ✓ rendered cannonballs (#161 slice 4): a broadside spawns iron + a muzzle bark; a wide shot SPLASHES (${cballs.afterWideLand.splashes}) while a clean beam shot SPARKS (${cballs.afterClean.hits}) — hit ≠ miss, off the resolved shot`);
+    }
+  }
+
   // 2b5) Workshop loadouts + mid-combat shot cycle (#135 slice 3): FIT a shot at the town
   // workshop, then prove the ONE cycle key walks the fitted locker mid-fight and the LOADED shot
   // actually shapes the broadside — the slice's "load chain at port, cycle to it mid-fight, see the
@@ -2772,7 +2838,7 @@ try {
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
   console.log(`leak-invariant (#121): ${leak.N}× mode cycles · geom ${leak.baseline.geometries}→${leak.final.geometries} (+${leak.geomGrowth}) · tex ${leak.baseline.textures}→${leak.final.textures} (+${leak.texGrowth}) · worst transition ${leak.worstTransition.drawCalls} draws/${leak.worstTransition.triangles} tris`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, leak, broadside, ammoCycle, boarding, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, leak, broadside, cballs, ammoCycle, boarding, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

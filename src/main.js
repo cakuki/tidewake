@@ -29,6 +29,7 @@ import { softenDebutFoe, debutPending, debutPhase, debutCue } from './systems/de
 import { brawlMoraleDent, brawlCasualties, duelConfidenceDent, prizeFork } from './systems/board.js';
 import { AMMO, AMMO_TYPES, ammoProfile, defaultLoadout, fitAmmo } from './systems/ammo.js';
 import { createJuice, ammoWeight } from './systems/juice.js';
+import { createProjectiles, classifyShot, BALL_POOL, FX_POOL, FX_SIZE } from './systems/projectiles.js';
 import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
 import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading } from './systems/harbour.js';
@@ -516,6 +517,58 @@ function prefersReducedMotion() {
 }
 const juice = createJuice({ reducedMotion: prefersReducedMotion() });
 
+// RENDERED CANNONBALLS (#161 slice 4): the marquee "see the shot" win — a fired broadside now SPAWNS a
+// spread of round-shot that arcs from your guns to the foe, a muzzle PUFF barks at the gunports, and each
+// ball CRACKS into a spark on a clean hit or SPLASHES pale in open water on a wide miss, so a good angle
+// and a bad one read completely differently. Perf is the risk (#52 draws / #121 mesh-conservation), so the
+// whole thing is POOLED + INSTANCED: the trajectory/hit-vs-miss maths is the pure controller
+// (src/systems/projectiles.js), and the picture is exactly TWO reused InstancedMeshes created ONCE here —
+// the iron balls, and a puff mesh (muzzle/spark/splash, tinted per-instance) — never a mesh allocated per
+// shot, never a growth across fights. Both are added to the scene ONCE and just recycle their instances.
+const projectiles = createProjectiles({ reducedMotion: prefersReducedMotion() });
+const GUN_OFFSET = 14;   // metres out the firing beam the guns sit
+const GUN_HEIGHT = 6;    // metres above the waterline the muzzles are
+const HULL_HEIGHT = 8;   // metres up the foe's hull a clean shot strikes / a splash plumes
+const projBallGeo = new THREE.SphereGeometry(1.35, 8, 6);
+const projBallMat = new THREE.MeshStandardMaterial({ color: 0x14140f, roughness: 0.55, metalness: 0.45 });
+const projBallMesh = new THREE.InstancedMesh(projBallGeo, projBallMat, BALL_POOL);
+projBallMesh.frustumCulled = false; // balls fly fast + wide; never pop out at the frustum edge
+projBallMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+const projFxGeo = new THREE.SphereGeometry(1, 6, 5); // base radius 1 — scaled per instance by FX_SIZE
+const projFxMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthWrite: false });
+const projFxMesh = new THREE.InstancedMesh(projFxGeo, projFxMat, FX_POOL);
+projFxMesh.frustumCulled = false;
+projFxMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+const FX_TINT = { muzzle: new THREE.Color(1.0, 0.55, 0.16), hit: new THREE.Color(1.0, 0.82, 0.30), splash: new THREE.Color(0.78, 0.9, 1.0) };
+scene.add(projBallMesh);
+scene.add(projFxMesh);
+const projDummy = new THREE.Object3D();
+let projWasActive = false;
+// Write the pool into the two InstancedMeshes: one matrix per slot (idle slots scale to 0 → invisible,
+// still ONE draw call for the batch). Only touched while effects are live (+ one frame after, to zero
+// out the last), so a quiet sea costs nothing but the two idle draws.
+function writeProjectiles() {
+  projectiles.eachBall((i, pos) => {
+    if (pos) { projDummy.position.set(pos[0], pos[1], pos[2]); projDummy.scale.setScalar(1); }
+    else projDummy.scale.setScalar(0);
+    projDummy.updateMatrix();
+    projBallMesh.setMatrixAt(i, projDummy.matrix);
+  });
+  projBallMesh.instanceMatrix.needsUpdate = true;
+  projectiles.eachFx((i, pos, scale, kind) => {
+    if (pos && scale > 0) {
+      projDummy.position.set(pos[0], pos[1], pos[2]);
+      projDummy.scale.setScalar((FX_SIZE[kind] || 6) * scale);
+      projFxMesh.setColorAt(i, FX_TINT[kind] || FX_TINT.muzzle);
+    } else projDummy.scale.setScalar(0);
+    projDummy.updateMatrix();
+    projFxMesh.setMatrixAt(i, projDummy.matrix);
+  });
+  projFxMesh.instanceMatrix.needsUpdate = true;
+  if (projFxMesh.instanceColor) projFxMesh.instanceColor.needsUpdate = true;
+}
+writeProjectiles(); // seed every instance to scale 0 so nothing shows before the first shot
+
 // Fire a real-time broadside AND feel it (#155). Wraps battle.fire so the key AND the QA hook share
 // one juicing path. Reads the pre-fire snapshot for weight (aim quality × loaded-shot bite) and the
 // volley result for the hit-flash: her reply biting your hull flashes RED, a clean hit on her GOLD.
@@ -529,6 +582,22 @@ function battleFireJuiced() {
     if (r.playerHit > 0) juice.hit({ damage: r.playerHit, tint: 'red' });      // her reply raked your hull
     else if (r.enemyHit > 0) juice.hit({ damage: r.enemyHit, tint: 'gold' });  // you landed a clean one
   } catch { /* game-feel must never break the fight */ }
+  // RENDER the shot (#161 slice 4): arc a visible volley from the firing gunport to the foe, driven by
+  // the resolved outcome — a clean beam bite sparks ON her, a wide shot splashes past. `before.foePos`
+  // is captured pre-fire because a sinking clears foeIndex; the audible cannon report already rings via
+  // battle.fire's 'cut' sting, so this adds the picture the owner was missing (the balls in flight).
+  try {
+    const fp = before.foePos; // [x,z]
+    if (fp) {
+      const h = state.heading;
+      const sgn = before.aimSide === 'port' ? -1 : 1; // guns run out the firing beam
+      const rightX = Math.cos(h), rightZ = -Math.sin(h);
+      const sx = state.pos.x, sz = state.pos.z;
+      const from = [sx + rightX * GUN_OFFSET * sgn, ocean.sampleHeight(sx, sz, simT) + GUN_HEIGHT, sz + rightZ * GUN_OFFSET * sgn];
+      const to = [fp[0], ocean.sampleHeight(fp[0], fp[1], simT) + HULL_HEIGHT, fp[1]];
+      projectiles.fire({ from, to, hit: classifyShot({ inArc: before.inArc, enemyHit: r.enemyHit }) === 'hit' });
+    }
+  } catch { /* the picture must never break the fight */ }
   return r;
 }
 // Board AND feel the leap (#155): a forward camera lunge as the crew swarms the rail.
@@ -1436,6 +1505,15 @@ systems.register({ name: 'battle-camera', order: 52, when: () => battle.state.ac
 //   headless-safe). loop() reads juice.cameraOffset()/flashLevel() and applies the 0-draw shake +
 //   flash AFTER the camera systems have set the base pose, so the kick rides on top of the framing.
 systems.register({ name: 'juice', order: 56, update: (f) => juice.update(f.dt) });
+// RENDERED CANNONBALLS (#161 slice 4): age the pooled shots + puffs, then write the two InstancedMeshes —
+// but only while anything is live (+ the one frame it goes quiet, to zero the last instances), so a calm
+// sea pays nothing beyond the two idle batch draws. Runs every frame (transient VFX outlive the volley).
+systems.register({ name: 'projectiles', order: 57, update: (f) => {
+  projectiles.update(f.dt);
+  const live = projectiles.active();
+  if (live || projWasActive) writeProjectiles();
+  projWasActive = live;
+} });
 // — disguise disposition beats (#79/#91): only while the helm is free AND flying false colours
 //   (the `when` gate replaces the old inline `if (!paused && isDeceptive)`). Latches the seen-through
 //   verdict once per approach and fires the matching beat; writes ctx.seenThrough for npcs (below).
@@ -2173,6 +2251,10 @@ window.__tidewake = {
   fleeBattle() { return battle.flee(); },
   battleFire() { return battleFireJuiced(); },
   battleAim() { return battle.aim(); },
+  // Rendered cannonballs (#161 slice 4): the pooled projectile/VFX snapshot — live ball/puff counts +
+  // monotone spawn tallies (balls/muzzles/hits/splashes) so the playtest can assert a broadside spawns
+  // iron and that a clean hit sparks while a wide miss splashes (hit ≠ miss), off the resolved shot.
+  battleProjectiles() { return projectiles.snapshot(); },
   // Workshop loadouts + mid-combat shot cycle (#135 slice 3): battleCycleShot() loads the next
   // fitted shot mid-fight; the battle snapshot carries `ammo`/`ammoProfile`/`loadout`. The fitted
   // locker (what you fit at the town workshop) is `loadout`; fitAmmoType(id) toggles a shot in it.
