@@ -126,6 +126,20 @@ session-limited cycle-runner's uncommitted work; committed the 5 real slice path
 
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
+### ⛴️ NEXT LANE (owner, 2026-07-01) — **#145 slice 1: remotely-viewable `/preview/` subpath** — BUILD THIS NEXT
+Battle's lane-switch gate is CLEARED (Loop 100); the owner chose the **release channels** (#145) as the
+next lane, **starting with the preview subpath** so he can watch builds remotely (incl. phone). This is the
+active build lane now (ahead of the reservoir below; #147 stays an owner-decision, not build work).
+- **Slice 1 — `/preview/` (S · `tech`):** split `release.yml` so continuous `src/**`/`index.html` commits
+  **also deploy to a `/preview/` Pages subpath**, stamped with **commit + datetime**. Root/live behaviour
+  **unchanged for now** (later slices flip root → landing page). **Acceptance:** after a commit,
+  `https://cakuki.github.io/tidewake/preview/` shows the latest build with its commit+datetime; root still
+  serves as today. Guard the Actions budget (one deploy per commit, as now). Runner: `software-developer` +
+  `tech-lead`.
+- Then #145 slices 2–5 (P2, sequence after): landing page at `/` · `/daily/` promote + list notes ·
+  `/weekly/` promote + tag + Release + **Marketing-Manager** notes (Monkey Island × Black Isle) · wire
+  R4/R4w. Full scope: issue **#145** + `docs/superpowers/specs/2026-06-29-loop-rituals-and-release-cadence-design.md`.
+
 _**UPDATE Loop 86 (2026-06-30): from-owner P1 #146 — port-view mobile clipping — SHIPPED.** The
 town/port view clipped on phone viewports; fixed with a scrollable `.town-scroll` body + a PINNED
 "⚓ Set Sail" footer + responsive sizing, and a **standing mobile-viewport guard** added to
