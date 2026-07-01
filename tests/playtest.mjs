@@ -368,6 +368,65 @@ try {
     if (process.exitCode !== 1) console.log(`  ✓ non-occluding battle UI (#161 slice 2): fight prompts docked clear of the centre (shown: ${battleUI.shownPanels.join(',')}) — the ship stays visible on desktop + phone`);
   }
 
+  // 2b3-lock) TARGET LOCK (#161 slice 3): the owner's complaint — "while moving other ships are all
+  // around: I don't know which one I am fighting with!" The engaged foe now carries a world-anchored
+  // target RING (a projected DOM billboard, 0 draws) and the non-combatant traffic RECEDES (material
+  // opacity) — so the foe reads instantly. Engage deterministically (qaTeleport), let the camera swing
+  // settle, then assert the foe is marked + the only un-dimmed hull, and that it ALL clears on flee.
+  const lock = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    }
+    const bi = nearest();
+    if (bi === -1) return { engaged: false };
+    const fp = tw.npcs[bi].pos;
+    tw.qaTeleport(fp[0], fp[1] - 120);          // drop just off her — inside engage range, foe ahead
+    tw.step(0.05);
+    // Turn to FACE her so the quarter-view camera (astern of the player, looking at the player) frames
+    // the foe ahead — the deterministic stand-in for the sail-up approach the other battle steps use.
+    for (let i = 0; i < 60; i++) {
+      const s = tw.state, foe = tw.npcs[bi].pos;
+      const bearing = Math.atan2(foe[0] - s.pos[0], foe[1] - s.pos[2]);
+      const err = norm(bearing - s.heading);
+      tw.release('a'); tw.release('d');
+      if (Math.abs(err) < 0.03) break;
+      if (err > 0) tw.press('a'); else tw.press('d');
+      tw.step(0.1);
+    }
+    tw.release('a'); tw.release('d');
+    const engaged = tw.engageBattle();
+    if (!engaged) return { engaged: false };
+    for (let i = 0; i < 16; i++) tw.step(0.05);  // let the quarter-view camera swing settle so she frames
+    const on = tw.targetLock();
+    const foeIdx = tw.battle.foeIndex;
+    const fled = tw.fleeBattle();
+    tw.step(0.05);
+    const off = tw.targetLock();
+    return { engaged, on, off, fled, foeIdx, npcCount: tw.npcs.length };
+  });
+  if (!lock.engaged) {
+    console.warn('  (#161 slice 3 target-lock: no foe to engage — skipped)');
+  } else {
+    if (!lock.on.active) fail('target lock (#161 slice 3): the lock did not activate on engage');
+    if (lock.on.foeIndex !== lock.foeIdx) fail(`target lock (#161 slice 3): locked the wrong hull (lock=${lock.on.foeIndex}, foe=${lock.foeIdx})`);
+    if (!lock.on.markerShown) fail('target lock (#161 slice 3): the engaged foe carries NO target marker — you cannot tell who you are fighting');
+    if (!(lock.on.foeOpacity === 1)) fail(`target lock (#161 slice 3): the foe was dimmed (opacity=${lock.on.foeOpacity}) — she must stay full so she reads`);
+    if (lock.npcCount > 1 && !(lock.on.dimmed.length >= 1)) fail('target lock (#161 slice 3): non-combatant traffic was NOT de-emphasised — the sea did not recede');
+    if (lock.on.dimmed.includes(lock.on.foeIndex)) fail('target lock (#161 slice 3): the FOE was dimmed along with the traffic — she must stand out');
+    // Clears on flee: the ring gone, every hull back to full — the world returns.
+    if (lock.off.active) fail('target lock (#161 slice 3): the lock did not clear on flee');
+    if (lock.off.markerShown) fail('target lock (#161 slice 3): the target marker lingered after fleeing');
+    if (lock.off.dimmed.length !== 0) fail('target lock (#161 slice 3): traffic stayed dimmed after the fight ended — the sea never came back');
+    if (process.exitCode !== 1) console.log(`  ✓ target lock (#161 slice 3): the engaged foe is ring-marked + the only un-dimmed hull (${lock.on.dimmed.length} receded); clears on flee`);
+  }
+
   // 2b4) Real-time broadside (#135 slice 2): re-engage, then STEER to bring the foe abeam and
   // fire the loaded guns in REAL TIME until she sinks. Proves the deliberate stance keeps the helm
   // LIVE (you can maneuver), the broadside arc + reload work on the sim clock, and a positioned

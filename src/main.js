@@ -36,6 +36,7 @@ import { createLandfall, mooredSwellScale } from './systems/landfall.js';
 import { createSystemsRegistry } from './systems/registry.js';
 import { interactionsSuppressed, ambientInteractionsAllowed } from './systems/battle-isolation.js';
 import { centreSafeZone, clearsCentre } from './ui/safe-zone.js';
+import { createOverShipBillboard, projectToScreen } from './ui/over-ship-billboard.js';
 import { reputationLean, leanPole, gradeHaze, gradeSun, gradeSunKey } from './systems/reputation-grade.js';
 import { shipAura } from './systems/reputation-aura.js';
 import { snapshotAshore, composeAshoreDigest } from './systems/ashore-digest.js';
@@ -168,6 +169,14 @@ scene.add(props.group);
 const islandNamer = createIslandNamer({ world });
 const npcs = createNpcs({ ocean, world, count: 3 });
 scene.add(npcs.group);
+// Target lock (#161 slice 3): a reusable OVER-SHIP BILLBOARD hovers a target ring above the engaged
+// foe (DOM/CSS, 0 draws) while npc.js recedes the rest of the traffic — so in a busy sea you always
+// know which ship you're fighting. The `target-lock` system (below) projects the foe's world position
+// to screen each frame; the same billboard module is #165-ready (a threat LABEL is the second consumer).
+const foeMarker = createOverShipBillboard({ className: 'over-ship-marker' });
+const foeMarkerVP = new THREE.Matrix4(); // reused view-projection for the world→screen projection
+const MARKER_HEIGHT = 26;                // metres above the sea the ring floats (clears the foe's mast)
+let lastTargetLock = { active: false, foeIndex: -1, onScreen: false, screen: null };
 // Living sea fauna (#97): a small instanced flock of gulls that keeps the ship company —
 // wheeling overhead at sea, drifting to hang over the shore as you raise an island. One
 // InstancedMesh (one draw call), hidden wholesale beyond the cull radius, so the sky lives
@@ -1544,6 +1553,32 @@ systems.register({ name: 'hud-battle', order: 275, update: () => hud.renderBattl
 // — per-phase raid tracker (#135, Option-4 polish): names the act (⚔ Maneuver › 🪝 Boarding › 🗣 Duel)
 //   and surfaces the coupling earned; read-only, spans the battle + the boarded duel snapshots.
 systems.register({ name: 'hud-raid-phases', order: 276, update: () => hud.renderRaidPhases(battle.snapshot(), duel.snapshot()) });
+// — TARGET LOCK (#161 slice 3): the fun beat — the instant battle starts the engaged foe is
+//   unmistakably marked (a world-anchored target ring above her) and the rest of the sea recedes, so
+//   you always know who you're fighting. Runs AFTER the battle-camera swing (order 52) and re-derives
+//   the camera's matrices so the ring tracks the foe deterministically under tw.step() too. Zero draws:
+//   npc.js dims the traffic via material opacity; the ring is a projected DOM billboard. Clears on flee.
+function syncTargetLock(t) {
+  const bs = battle.state;
+  const active = bs.active && bs.foeIndex >= 0;
+  npcs.setBattleFocus(active ? bs.foeIndex : -1); // recede non-combatants; restore all when cleared
+  const fp = active ? battle.snapshot().foePos : null;
+  if (!active || !fp) {
+    foeMarker.hide();
+    foeMarker.setRing(false);
+    lastTargetLock = { active: false, foeIndex: -1, onScreen: false, screen: null };
+    return;
+  }
+  const [fx, fz] = fp;
+  const fy = ocean.sampleHeight(fx, fz, t) + MARKER_HEIGHT;
+  camera.updateMatrixWorld();
+  foeMarkerVP.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const p = projectToScreen([fx, fy, fz], foeMarkerVP.elements, window.innerWidth, window.innerHeight);
+  foeMarker.setRing(true);
+  foeMarker.place({ x: p.x, y: p.y, visible: p.onScreen });
+  lastTargetLock = { active: true, foeIndex: bs.foeIndex, onScreen: p.onScreen, screen: [p.x, p.y] };
+}
+systems.register({ name: 'target-lock', order: 278, update: (f) => syncTargetLock(f.t) });
 // — The Bosun's First Duel (#157): during the scaffolded debut, the bosun CALLS the next verb aloud in
 //   the banner as each phase becomes legal (maneuver→board→surrender), once per phase change. It reads
 //   the same live battle snapshot the prompts/earcons do, so the voice can never drift from the verbs.
@@ -2274,6 +2309,30 @@ window.__tidewake = {
       return { id, shown, rect, clear: !shown || clearsCentre(rect, w, h) };
     });
     return { clear: panels.every((p) => p.clear), zone: centreSafeZone(w, h), panels, viewport: { w, h } };
+  },
+  // Re-project the foe's target marker against the CURRENT camera without stepping the sim — so a
+  // gallery capture can swing to a wide framing (qaFrameShip) and still have the ring aligned (#161 s3).
+  qaSyncTargetMarker() { syncTargetLock(simT); return this.targetLock(); },
+  // TARGET LOCK gate (#161 slice 3): prove the engaged foe is unmistakably marked and the traffic
+  // recedes. Reads the live over-ship billboard DOM (is the ring shown?) + npc.js's material-opacity
+  // emphasis snapshot (foe full, non-combatants dimmed). The playtest asserts markerShown + the foe is
+  // the only un-dimmed hull while engaged, and that it all clears the instant you flee.
+  targetLock() {
+    const el = foeMarker.el;
+    const markerShown = !!el && el.style.display !== 'none' && el.classList.contains('has-ring');
+    const emphasis = npcs.emphasisSnapshot();
+    const foe = emphasis.find((s) => s.index === lastTargetLock.foeIndex) || null;
+    const dimmed = emphasis.filter((s) => s.dimmed).map((s) => s.index);
+    return {
+      active: lastTargetLock.active,
+      foeIndex: lastTargetLock.foeIndex,
+      onScreen: lastTargetLock.onScreen,
+      screen: lastTargetLock.screen,
+      markerShown,
+      foeOpacity: foe ? foe.opacity : 1,
+      dimmed,
+      emphasis,
+    };
   },
   fps: 0,
 };

@@ -33,6 +33,37 @@
        BELOW every HUD readout/prompt (z-index 10+) so the verb-teaching cues stay fully legible. */
     #juice-flash { position: fixed; inset: 0; z-index: 9; opacity: 0; pointer-events: none; will-change: opacity; }
 
+    /* Target lock (#161 slice 3): the reusable OVER-SHIP BILLBOARD — a world-anchored marker projected
+       from src/ui/over-ship-billboard.js onto the engaged foe. `left`/`top` are set to screen px each
+       frame; the transform centres the element on that anchor. Above the sea/juice, below the fight
+       prompts (z 14) so the docked HUD always wins. pointer-events:none — purely diegetic signage.
+       #165-ready: `.osm-label` is the threat-label slot (unused this slice). */
+    .over-ship-marker { position: fixed; z-index: 12; pointer-events: none; transform: translate(-50%, -50%);
+      display: none; will-change: left, top; }
+    .over-ship-marker .osm-ring {
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 3px solid rgba(255, 196, 92, 0.95);
+      box-shadow: 0 0 12px 2px rgba(255, 168, 60, 0.65), inset 0 0 8px rgba(255, 200, 110, 0.5);
+      animation: osm-pulse 1.15s ease-in-out infinite;
+    }
+    /* Four corner ticks + a downward chevron give the ring a "reticle over the foe" read, not just a dot. */
+    .over-ship-marker .osm-ring::after {
+      content: ''; position: absolute; left: 50%; top: 100%; transform: translate(-50%, -1px);
+      border-left: 6px solid transparent; border-right: 6px solid transparent;
+      border-top: 9px solid rgba(255, 196, 92, 0.95);
+    }
+    .over-ship-marker .osm-label {
+      position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
+      white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: .03em;
+      color: #ffe6b0; text-shadow: 0 1px 3px rgba(0,0,0,.85);
+      background: rgba(24, 14, 6, .6); border-radius: 5px; padding: 1px 7px;
+    }
+    @keyframes osm-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.9; }
+      50% { transform: scale(1.14); opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) { .over-ship-marker .osm-ring { animation: none; } }
+
     #hud {
       /* Safe-area (#75): pad the top-left corner clear of the notch / status bar in
          standalone PWA. The inset is 0 on desktop & non-notch devices, so it collapses. */

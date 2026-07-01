@@ -3,6 +3,7 @@ import {
   wrapAngle, steerToward, headingTo, pickWaypoint, hasArrived, avoidObstacles, arenaHelm,
 } from './npc-ai.js';
 import { vesselKind, isOutlaw } from './colours.js';
+import { shipEmphasis, DIM_OPACITY } from './ui/over-ship-billboard.js';
 
 // Letters of Marque (#91): outlaw/pirate hulls fly a sullen blood-dark flag so a lawful
 // privateer can pick a fair target on the horizon — honest colours vs THIS one earns Standing.
@@ -252,6 +253,44 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
     return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading, fleeing: !!s.fleeing, kind: s.kind, helm: s.arenaState || null }));
   }
 
+  // Target lock (#161 slice 3) — set each hull's opacity so the engaged foe reads instantly amid the
+  // traffic: the foe stays full, non-combatants recede to DIM_OPACITY, and everyone returns to full
+  // the moment the fight ends. Pure per-mesh material opacity (0 extra draws — same meshes) driven off
+  // the shared `shipEmphasis` predicate so "dimmed" means exactly what the QA hook + unit tests say.
+  let focusFoe = -1;
+  function setMeshOpacity(mesh, opacity) {
+    mesh.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) {
+        m.opacity = opacity;
+        m.transparent = opacity < 1;
+        m.needsUpdate = true;
+      }
+    });
+  }
+  function setBattleFocus(foeIndex) {
+    const idx = Number.isInteger(foeIndex) ? foeIndex : -1;
+    if (idx === focusFoe) return; // idempotent — only re-touch materials when the lock changes
+    focusFoe = idx;
+    const battleActive = idx >= 0;
+    for (let i = 0; i < ships.length; i++) {
+      const mode = shipEmphasis({ battleActive, foeIndex: idx, index: i });
+      const opacity = mode === 'dim' ? DIM_OPACITY : 1;
+      ships[i].opacity = opacity;
+      setMeshOpacity(ships[i].mesh, opacity);
+    }
+  }
+  // QA surface for the target-lock gate: which hulls are receded and which is the locked foe.
+  function emphasisSnapshot() {
+    return ships.map((s, i) => ({
+      index: i,
+      opacity: (typeof s.opacity === 'number') ? s.opacity : 1,
+      dimmed: ((typeof s.opacity === 'number') ? s.opacity : 1) < 1,
+      foe: i === focusFoe,
+    }));
+  }
+
   // Relocate ship `i` far away — a beaten foe slinking off over the horizon (#33).
   // Re-uses the spawn rules: clear of the origin and of land, then a fresh waypoint.
   function respawn(i) {
@@ -270,7 +309,7 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
     s.wp = pickWaypoint(rng, bounds);
   }
 
-  return { group, update, snapshot, respawn };
+  return { group, update, snapshot, respawn, setBattleFocus, emphasisSnapshot };
 }
 
 export { wrapAngle, steerToward, pickWaypoint, headingTo, hasArrived, avoidObstacles, arenaHelm };
