@@ -27,6 +27,19 @@ when its latest slice shipped.
 
 ---
 
+## 🔴 FROM-OWNER P1 — BUILD FIRST: #161 Make Battle FUN (PREEMPTS everything below)
+The owner playtested battle (#135) and it's **NOT fun** (2026-07-01): occluding center popups cover the
+ship · no target lock among traffic · an **isolation BUG** (#125 rescue + `f`/`g` hails leak into the
+fight) · **NO cannonball visuals** (broadside is pure math). Per the **PREEMPTION RULE** this from-owner
+P1 **preempts the PRODUCT-refill slices below** (#156–159). Build #161's slices in order: **1) hard mode
+isolation (S, the bug) → 2) non-occluding battle UI → 3) target lock (highlight foe, dim others) →
+4) rendered cannonballs + tracers + hit sparks → 5) aim-angle feedback → 6) hover-to-interact.**
+Plan: **#161** + [`docs/briefs/2026-07-01-battle-fun-fixes.md`](https://github.com/cakuki/tidewake/blob/main/docs/briefs/2026-07-01-battle-fun-fixes.md).
+This IS the **Fun & Working > fast** doctrine (`docs/design/what-makes-it-fun.md`) — a mechanic with no
+visible feedback is INCOMPLETE. _(The loop's onboarding work #156/#157 aids legibility but does NOT cover
+these gaps.) Owner's finer call — whether to also FREEZE new battle mechanics — pending over Telegram; the
+fix is P1 regardless._
+
 ## 🧭 TOP OF QUEUE — PRODUCT REFILL (Loop 107, 2026-07-01) — BUILD IN ORDER
 
 _**UPDATE Loop 107 (2026-07-01) — PRODUCT cycle: roadmap refilled from external inspiration + the R2
