@@ -4,6 +4,20 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-01 — #161 slice 5 Aim-angle feedback shipped (Loop 115, v0.0.20260701220930).** Fifth slice of the
+  from-owner "Make Battle FUN" epic (#161): "the angles should matter." The angle already decided a clean-vs-wide
+  shot in the maths (`broadsideAim`) but the player couldn't SEE their aim before firing. Fix + felt FUN beat: a
+  read-only AIM LINE runs from your ship to the engaged foe and COLOURS + TIGHTENS as she comes abeam — green ON
+  TARGET when the broadside will bite, amber closing, faint red wide when the guns can't bear — so lining up the
+  broadside is a skill you can watch improving. PURE presentation off `broadsideAim` (via `battle.snapshot()`);
+  the aim maths is UNTOUCHED. PURE, TDD'd cores in `src/ui/aim-indicator.js` (`aimReadout` on-target
+  classification + firing-cone spread, `beamGeometry` bar layout, +10 tests); a DOM/CSS overlay reusing the
+  slice-3 over-ship VP projection — **0 added draws (still 29/130)**. #166-COORDINATE-READY: the chip carries a
+  reserved `.aim-odds`/`setOdds()` slot so #166 legible-odds docks beside it with no redo (this aim line is the
+  *skill* half of that readout). `tw.aimIndicator()` QA hook; playtest §2b5-aim asserts an ABEAM foe reads ON
+  TARGET (tight cone) vs a BOW-ON foe OFF (wide cone) and the line clears on flee — the explicit "can I see when
+  I'm on target?" check. Gallery `aim-line-161.png`. No save change (transient UI, stays v17). 1120 unit tests.
+  Slice 6 (hover-to-interact) remains — the LAST #161 slice (#161 OPEN).
 - **2026-07-01 — #161 slice 4 Rendered cannonballs shipped (Loop 114, v0.0.20260701215515).** Fourth slice of
   the from-owner "Make Battle FUN" epic (#161): "we should see the cannon balls, the angles should matter." The
   broadside was pure MATH (a camera kick + the word "ABEAM") — nothing flew. Fix + felt FUN beat: a fired volley

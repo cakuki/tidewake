@@ -65,14 +65,24 @@ P1 **preempts the PRODUCT-refill slices below** (#156–159). Build #161's slice
   (#121).** Audible report already rings via battle.fire's 'cut' sting. `tw.battleProjectiles()` QA hook; playtest
   asserts a broadside spawns iron + a muzzle bark and that a wide shot SPLASHES while a clean beam shot SPARKS
   (hit ≠ miss). Gallery `cannonballs-161.png`. No save change (transient VFX, stays v17).
-- ⬜ **5) Aim-angle feedback (S)** — a firing arc/beam so the angle VISIBLY matters (read-only off `broadsideAim`).
+- ✅ **5) Aim-angle feedback (S) — SHIPPED (Loop 115, v0.0.20260701220930).** The angle now VISIBLY matters
+  before you fire: a read-only **AIM LINE** runs from your ship to the engaged foe and **colours + tightens** as
+  she comes abeam — green **ON TARGET** (tight cone) when your broadside will bite, amber closing, faint red
+  (wide cone) when your guns can't bear — so lining up the broadside is a skill you can watch improving. Pure
+  presentation off `broadsideAim` (via `battle.snapshot()`); the aim maths is untouched. DOM/CSS overlay reusing
+  the slice-3 over-ship VP projection — **0 added draws (still 29/130)**. PURE TDD'd cores (`aimReadout`
+  on-target classification + firing-cone spread, `beamGeometry` bar layout) in `src/ui/aim-indicator.js`;
+  `tw.aimIndicator()` QA hook; playtest §2b5-aim asserts an ABEAM foe reads ON TARGET (tight) vs a BOW-ON foe OFF
+  (wide) and the line clears on flee. **#166-COORDINATE-READY:** the aim chip carries a reserved `.aim-odds` slot
+  + `setOdds()` so #166 legible-odds ("skill sets the odds, luck sets the margin") can sit beside the aim
+  indicator with NO redo — this aim line is the *skill* half of that readout. Gallery `aim-line-161.png`. No save change (v17).
 - ⬜ **6) Hover-to-interact (M)** — raycast the ship under the cursor → hail/board/target (diegetic, not a HUD verb).
 
 Plan: **#161** + [`docs/briefs/2026-07-01-battle-fun-fixes.md`](https://github.com/cakuki/tidewake/blob/main/docs/briefs/2026-07-01-battle-fun-fixes.md).
 This IS the **Fun & Working > fast** doctrine (`docs/design/what-makes-it-fun.md`) — a mechanic with no
 visible feedback is INCOMPLETE. _(The loop's onboarding work #156/#157 aids legibility but does NOT cover
 these gaps.) Owner's finer call — whether to also FREEZE new battle mechanics — pending over Telegram; the
-fix is P1 regardless. **Next build: slice 4 (rendered cannonballs — visible balls/tracers + muzzle flash + hit sparks; see the ball, sell the hit).** The reusable over-ship billboard module (`src/ui/over-ship-billboard.js`, shipped in slice 3) is now available for **#165 over-ship threat labels** (same billboard, second consumer)._
+fix is P1 regardless. **Next build: slice 6 (hover-to-interact — raycast the ship under the cursor → hail/board/target; the diegetic-interaction beat the owner asked for, "hovering on the ship in the view, not like a HUD element"). This is the LAST #161 slice.** The reusable over-ship billboard module (`src/ui/over-ship-billboard.js`, shipped in slice 3) is now available for **#165 over-ship threat labels** (same billboard, second consumer); the slice-5 aim indicator (`src/ui/aim-indicator.js`) left a `.aim-odds`/`setOdds()` slot so **#166 legible-odds** can dock beside it with no redo._
 
 ## 🟠 FROM-OWNER — Difficulty, Stakes & Ship Variety lane (epic #162) — build AFTER/ALONGSIDE #161
 _Owner steering 2026-07-01: "games are too easy — the player must be able to LOSE when playing badly, and a loss should COST points + fame; fair = clear consistent rules WITH a bounded luck element; a player who wants a hard fight (a big/armed ship) can seek one; ships should VARY, with over-ship displays hinting what they are." Epic **#162** + brief [`docs/briefs/2026-07-01-difficulty-stakes-variety.md`](https://github.com/cakuki/tidewake/blob/main/docs/briefs/2026-07-01-difficulty-stakes-variety.md). **Complements #161** — build ONE shared over-ship billboard module (used by #161 s3 target-lock AND #165 threat-labels) and coordinate odds/aim readouts (#166 ↔ #161 s5)._
