@@ -64,6 +64,31 @@
     }
     @media (prefers-reduced-motion: reduce) { .over-ship-marker .osm-ring { animation: none; } }
 
+    /* Aim-angle feedback (#161 slice 5): the AIM LINE from your ship to the foe, from src/ui/aim-indicator.js.
+       The .aim-beam is a rotated bar (transform-origin left-centre) anchored at the ship end and spun toward
+       the foe; the .aim-chip floats the readout at the line's midpoint. Colour + thickness track the live
+       broadside reading, so the player SEES their firing solution before pressing SPACE. Below the target
+       ring (z 12) and the fight prompts (z 14); pointer-events:none — purely diegetic. #166-ready: .aim-odds
+       is the legible-odds slot beside the label (unused this slice). */
+    .aim-indicator { position: fixed; inset: 0; z-index: 11; pointer-events: none; display: none; }
+    .aim-beam { position: absolute; height: 4px; border-radius: 3px; transform-origin: 0 50%;
+      will-change: left, top, width, transform; opacity: .9; }
+    .aim-beam.off-target { background: linear-gradient(90deg, rgba(255,120,100,.15), rgba(255,120,100,.55));
+      box-shadow: 0 0 5px rgba(255,110,90,.4); }
+    .aim-beam.closing { background: linear-gradient(90deg, rgba(255,206,122,.25), rgba(255,206,122,.8));
+      box-shadow: 0 0 7px rgba(255,190,80,.55); }
+    .aim-beam.on-target { background: linear-gradient(90deg, rgba(95,224,138,.45), rgba(120,255,170,.98));
+      box-shadow: 0 0 12px 2px rgba(95,224,138,.75); animation: aim-pulse 0.9s ease-in-out infinite; }
+    .aim-chip { position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
+      font-size: 11px; font-weight: 800; letter-spacing: .05em; padding: 2px 8px; border-radius: 6px;
+      background: rgba(18, 12, 6, .68); text-shadow: 0 1px 3px rgba(0,0,0,.85); }
+    .aim-chip.off-target { color: #ffb0a2; border: 1px solid rgba(255,110,90,.4); }
+    .aim-chip.closing { color: #ffdd9e; border: 1px solid rgba(255,190,80,.45); }
+    .aim-chip.on-target { color: #b6ffce; border: 1px solid rgba(95,224,138,.6); }
+    .aim-chip .aim-odds { margin-left: 7px; font-weight: 700; opacity: .92; } /* #166 legible-odds slot */
+    @keyframes aim-pulse { 0%, 100% { opacity: .85; } 50% { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .aim-beam.on-target { animation: none; } }
+
     #hud {
       /* Safe-area (#75): pad the top-left corner clear of the notch / status bar in
          standalone PWA. The inset is 0 on desktop & non-notch devices, so it collapses. */

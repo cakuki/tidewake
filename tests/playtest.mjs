@@ -559,6 +559,62 @@ try {
     }
   }
 
+  // 2b5-aim) AIM-ANGLE FEEDBACK (#161 slice 5): the owner's note — "the angles should matter." They DO
+  // in the maths (broadsideAim); this slice makes the firing solution VISIBLE — an aim LINE from your
+  // ship to the foe that colours + TIGHTENS as she comes abeam, so you can SEE "I'm on target" before
+  // SPACE. Read-only off broadsideAim. Engage, prove the beam is DRAWN, then position the foe BOW-ON
+  // (off-target, wide cone) vs ABEAM (on-target, tight cone) and assert the readout + the cone tightening.
+  const aimfb = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity; // state.pos is [x,y,z]
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    }
+    const bi = nearest();
+    if (bi === -1) return { engaged: false };
+    const fp = tw.npcs[bi].pos;
+    tw.qaTeleport(fp[0], fp[1] - 120);            // drop just off her — inside engage range
+    tw.step(0.05);
+    const engaged = tw.engageBattle();
+    if (!engaged) return { engaged: false };
+    const foeIdx = tw.battle.foeIndex;             // LATCHED for the fight — position the ship against it
+    for (let i = 0; i < 16; i++) tw.step(0.05);    // let the quarter-view camera swing settle so she frames
+    const drawn = tw.aimIndicator();               // the beam should be DRAWN + active with a foe in frame
+    // Convention (battle.js broadsideAim): forward=(sin h, cos h), right=(cos h, −sin h). Same-frame reads
+    // (no step) so the latched foe stays put and the AI can't re-beam between placement and the readout.
+    // (1) BOW-ON: put the foe DEAD AHEAD → out of the broadside arc → OFF TARGET, widest cone.
+    const F = tw.npcs[foeIdx].pos, h = tw.state.heading;
+    tw.qaTeleport(F[0] - Math.sin(h) * 120, F[1] - Math.cos(h) * 120);
+    const bowOn = tw.aimIndicator();
+    // (2) ABEAM: put the foe dead off the starboard beam → in the arc → ON TARGET, tightest cone.
+    const F2 = tw.npcs[foeIdx].pos, h2 = tw.state.heading;
+    tw.qaTeleport(F2[0] - Math.cos(h2) * 120, F2[1] + Math.sin(h2) * 120);
+    const abeam = tw.aimIndicator();
+    const fled = tw.fleeBattle();
+    tw.step(0.05);
+    const afterFlee = tw.aimIndicator();
+    return { engaged, drawn, bowOn, abeam, fled, afterFlee };
+  });
+  if (!aimfb.engaged) {
+    console.warn('  (#161 slice 5 aim-angle feedback: no foe to engage — skipped, like the other battle steps)');
+  } else {
+    if (!aimfb.drawn.active) fail('aim-angle feedback (#161 slice 5): the aim readout did not activate on engage');
+    if (!aimfb.drawn.beamShown) fail('aim-angle feedback (#161 slice 5): the aim LINE is not drawn while engaged — the player cannot SEE their firing solution');
+    // The core "can I see when I'm on target?" proof: bow-on reads OFF, abeam reads ON — hit ≠ miss geometry.
+    if (aimfb.bowOn.onTarget) fail('aim-angle feedback (#161 slice 5): a BOW-ON foe wrongly read ON TARGET — the angle does not visibly matter');
+    if (aimfb.bowOn.level !== 'off-target') fail(`aim-angle feedback (#161 slice 5): a bow-on foe did not read off-target (level=${aimfb.bowOn.level})`);
+    if (!aimfb.abeam.onTarget) fail('aim-angle feedback (#161 slice 5): an ABEAM foe did NOT read ON TARGET — you cannot see when you are lined up');
+    if (aimfb.abeam.level !== 'on-target') fail(`aim-angle feedback (#161 slice 5): an abeam foe did not read on-target (level=${aimfb.abeam.level})`);
+    // The felt "tightens as you come abeam" beat, verified geometrically: the on-target cone is tighter.
+    if (!(aimfb.abeam.spreadDeg < aimfb.bowOn.spreadDeg)) fail(`aim-angle feedback (#161 slice 5): coming abeam did not TIGHTEN the aim cone (abeam ${aimfb.abeam.spreadDeg} !< bow-on ${aimfb.bowOn.spreadDeg})`);
+    if (aimfb.afterFlee.beamShown) fail('aim-angle feedback (#161 slice 5): the aim line lingered after fleeing — it must clear with the fight');
+    if (process.exitCode !== 1) console.log(`  ✓ aim-angle feedback (#161 slice 5): the aim line is drawn + reads ON TARGET abeam (cone ${aimfb.abeam.spreadDeg.toFixed(0)}°) vs OFF bow-on (cone ${aimfb.bowOn.spreadDeg.toFixed(0)}°); clears on flee`);
+  }
+
   // 2b5) Workshop loadouts + mid-combat shot cycle (#135 slice 3): FIT a shot at the town
   // workshop, then prove the ONE cycle key walks the fitted locker mid-fight and the LOADED shot
   // actually shapes the broadside — the slice's "load chain at port, cycle to it mid-fight, see the

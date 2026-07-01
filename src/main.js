@@ -38,6 +38,7 @@ import { createSystemsRegistry } from './systems/registry.js';
 import { interactionsSuppressed, ambientInteractionsAllowed } from './systems/battle-isolation.js';
 import { centreSafeZone, clearsCentre } from './ui/safe-zone.js';
 import { createOverShipBillboard, projectToScreen } from './ui/over-ship-billboard.js';
+import { createAimIndicator, aimReadout } from './ui/aim-indicator.js';
 import { reputationLean, leanPole, gradeHaze, gradeSun, gradeSunKey } from './systems/reputation-grade.js';
 import { shipAura } from './systems/reputation-aura.js';
 import { snapshotAshore, composeAshoreDigest } from './systems/ashore-digest.js';
@@ -178,6 +179,13 @@ const foeMarker = createOverShipBillboard({ className: 'over-ship-marker' });
 const foeMarkerVP = new THREE.Matrix4(); // reused view-projection for the world→screen projection
 const MARKER_HEIGHT = 26;                // metres above the sea the ring floats (clears the foe's mast)
 let lastTargetLock = { active: false, foeIndex: -1, onScreen: false, screen: null };
+// Aim-angle feedback (#161 slice 5): the SKILL readout — a world-anchored AIM LINE from your ship to
+// the foe that colours + tightens as she comes abeam, so you can SEE your firing solution before SPACE.
+// Read-only off broadsideAim (via battle.snapshot); reuses the same VP projection as the target ring,
+// 0 draws. #166-coordinate-ready: the chip carries a reserved `.aim-odds` slot for legible-odds text.
+const aimMarker = createAimIndicator({ className: 'aim-indicator' });
+const DECK_HEIGHT = 6;                    // metres above the sea the aim line springs from your deck
+let lastAim = { active: false, onScreen: false, level: '', onTarget: false, quality: 0, spreadDeg: 0, side: 'starboard' };
 // Living sea fauna (#97): a small instanced flock of gulls that keeps the ship company —
 // wheeling overhead at sea, drifting to hang over the shore as you raise an island. One
 // InstancedMesh (one draw call), hidden wholesale beyond the cull radius, so the sky lives
@@ -1640,11 +1648,14 @@ function syncTargetLock(t) {
   const bs = battle.state;
   const active = bs.active && bs.foeIndex >= 0;
   npcs.setBattleFocus(active ? bs.foeIndex : -1); // recede non-combatants; restore all when cleared
-  const fp = active ? battle.snapshot().foePos : null;
+  const snap = active ? battle.snapshot() : null;
+  const fp = snap ? snap.foePos : null;
   if (!active || !fp) {
     foeMarker.hide();
     foeMarker.setRing(false);
+    aimMarker.hide();
     lastTargetLock = { active: false, foeIndex: -1, onScreen: false, screen: null };
+    lastAim = { active: false, onScreen: false, level: '', onTarget: false, quality: 0, spreadDeg: 0, side: 'starboard' };
     return;
   }
   const [fx, fz] = fp;
@@ -1655,6 +1666,19 @@ function syncTargetLock(t) {
   foeMarker.setRing(true);
   foeMarker.place({ x: p.x, y: p.y, visible: p.onScreen });
   lastTargetLock = { active: true, foeIndex: bs.foeIndex, onScreen: p.onScreen, screen: [p.x, p.y] };
+
+  // Aim-angle feedback (#161 slice 5): draw the AIM LINE from your deck to the foe, coloured + tightened
+  // off the LIVE broadside reading (read-only — the aim maths in broadsideAim is untouched). It springs
+  // from the ship's deck (projected with the SAME VP as the ring) toward the foe end at the waterline, so
+  // the player SEES their firing solution light up as they come abeam, before pressing SPACE.
+  const readout = aimReadout({ quality: snap.aimQuality, inArc: snap.inArc, side: snap.aimSide });
+  const sx = state.pos.x, sz = state.pos.z;
+  const sy = ocean.sampleHeight(sx, sz, t) + DECK_HEIGHT;
+  const shipEnd = projectToScreen([sx, sy, sz], foeMarkerVP.elements, window.innerWidth, window.innerHeight);
+  const foeEnd = projectToScreen([fx, ocean.sampleHeight(fx, fz, t) + DECK_HEIGHT, fz], foeMarkerVP.elements, window.innerWidth, window.innerHeight);
+  const aimVisible = shipEnd.onScreen && foeEnd.onScreen;
+  aimMarker.place({ from: { x: shipEnd.x, y: shipEnd.y }, to: { x: foeEnd.x, y: foeEnd.y }, readout, visible: aimVisible });
+  lastAim = { active: true, onScreen: aimVisible, level: readout.level, onTarget: readout.onTarget, quality: readout.quality, spreadDeg: readout.spreadDeg, side: readout.side };
 }
 systems.register({ name: 'target-lock', order: 278, update: (f) => syncTargetLock(f.t) });
 // — The Bosun's First Duel (#157): during the scaffolded debut, the bosun CALLS the next verb aloud in
@@ -2414,6 +2438,25 @@ window.__tidewake = {
       foeOpacity: foe ? foe.opacity : 1,
       dimmed,
       emphasis,
+    };
+  },
+  // AIM-ANGLE FEEDBACK gate (#161 slice 5): prove the player can SEE their firing solution — the aim
+  // line reflects an ABEAM (on-target) vs a BOW-ON (off-target) geometry, read-only off broadsideAim.
+  // `level`/`onTarget`/`spreadDeg` come from the LIVE aim reading (deterministic per ship position);
+  // `beamShown` is the DOM truth (is the coloured line actually drawn on screen right now?).
+  aimIndicator() {
+    const el = aimMarker.el;
+    const a = battle.aim();
+    const readout = aimReadout({ quality: a.quality, inArc: a.inArc, side: a.side });
+    return {
+      active: battle.state.active,
+      level: readout.level,
+      onTarget: readout.onTarget,
+      quality: readout.quality,
+      spreadDeg: readout.spreadDeg,
+      side: readout.side,
+      beamShown: !!el && el.style.display !== 'none',
+      onScreen: lastAim.onScreen,
     };
   },
   fps: 0,
