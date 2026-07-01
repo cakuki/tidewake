@@ -401,3 +401,83 @@ test('snapshot.boardEdge: the coupling reads live — battering her hull raises 
   battle.board();
   assert.equal(battle.snapshot().boardEdge, 0, 'once boarded the pre-boarding edge zeroes out');
 });
+
+// ── Early surrender / strike-colours short-circuit (#135, Option 4) ─────────────────────────────
+// A foe with abeam positioning (foe at +x, heading 0 → dead abeam to starboard) so the volley lands;
+// wounded to ~45% hull (in the yield band, not sinkable in one shot) with nerve on the edge of breaking.
+function armSurrender(battle) {
+  battle.engage();
+  battle.state.enemyHull = battle.state.maxHull * 0.45;
+  battle.state.enemyMorale = 20;
+}
+
+test('fire: a broken foe strikes her colours and HOLDS the surrender offer open (#135 Option 4)', () => {
+  let struck = null;
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    onSurrender: (info) => { struck = info; },
+    rng: half,
+  });
+  armSurrender(battle);
+  const r = battle.fire();
+  assert.ok(r && r.surrendered, 'the volley opened a surrender, not a normal hit');
+  assert.equal(battle.state.surrenderPending, true, 'the offer is held open');
+  assert.ok(struck && struck.foeName, 'onSurrender fires with the foe name (for the prompt)');
+  assert.equal(battle.state.active, true, 'the engagement stays live until you answer');
+  assert.equal(battle.snapshot().surrenderPending, true, 'the snapshot surfaces the pending offer');
+  assert.equal(battle.snapshot().canBoard, false, 'you cannot board while a white flag is up');
+  assert.equal(battle.fire(), null, 'you cannot fire again while she is flying a white flag');
+});
+
+test('acceptSurrender: takes her as a quick captured prize and ends the engagement (#135 Option 4)', () => {
+  let reward = null;
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    applyReward: (r) => { reward = r; },
+    rng: half,
+  });
+  armSurrender(battle);
+  battle.fire();
+  const res = battle.acceptSurrender();
+  assert.equal(res.result, 'capture', 'accepting is a capture (the Standing road)');
+  assert.ok(reward && reward.standing > 0, 'a capture pays lawful Standing (the governor pole)');
+  assert.ok(reward.captured, 'the reward is flagged captured');
+  assert.equal(battle.state.active, false, 'the engagement ends on accept');
+  assert.equal(battle.acceptSurrender(), null, 'no double-accept once resolved');
+});
+
+test('pressAttack: refuses quarter — she fights on and never strikes again this engagement (#135 Option 4)', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    rng: half,
+  });
+  armSurrender(battle);
+  battle.fire();
+  assert.equal(battle.state.surrenderPending, true);
+  assert.equal(battle.pressAttack(), true, 'quarter refused');
+  assert.equal(battle.state.surrenderPending, false, 'the offer clears');
+  assert.equal(battle.state.quarterRefused, true, 'she will not strike again');
+  assert.equal(battle.state.active, true, 'the fight goes on');
+  // Even at a yielding hull/morale, the next volley does NOT re-open the white flag.
+  battle.state.reload = 0;
+  battle.state.enemyHull = battle.state.maxHull * 0.45;
+  battle.state.enemyMorale = 5;
+  const r = battle.fire();
+  assert.ok(!(r && r.surrendered), 'no second surrender offer after quarter is refused');
+  assert.equal(battle.state.surrenderPending, false, 'she fights to the bitter end');
+});
+
+test('acceptSurrender / pressAttack: no-op unless a surrender is actually pending (#135 Option 4)', () => {
+  const battle = createBattle({ npcs: fakeNpcs([{ pos: [10, 0] }]), getShipPos: () => [0, 0], rng: half });
+  assert.equal(battle.acceptSurrender(), null, 'nothing to accept un-engaged');
+  assert.equal(battle.pressAttack(), false, 'nothing to refuse un-engaged');
+  battle.engage();
+  assert.equal(battle.acceptSurrender(), null, 'no surrender pending on a fresh engagement');
+  assert.equal(battle.pressAttack(), false);
+});

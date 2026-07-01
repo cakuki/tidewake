@@ -210,3 +210,49 @@ export function prizeFork(choice, { coins = 0, infamy = 0 } = {}) {
     captured: true,
   };
 }
+
+// ── Early surrender / strike-colours short-circuit — Option 4 (#135, "Three-Act Raid") ────────────
+// The reactive OUT. Slices 1–3 chained the three acts (sink-or-spare · hull→boarding odds · crew
+// casualties→duel confidence). This adds the beat where you DON'T fight all three: when your
+// broadsides break a foe's nerve AND wound her hull hard enough — mid-maneuver, BEFORE you ever
+// grapple to board — she STRIKES HER COLOURS and OFFERS to yield: a ransom + capture WITHOUT the
+// board→brawl→duel. You answer: ACCEPT her surrender (a quick capture — a ransom purse + Standing,
+// the governor's merciful road; the engagement ends here) or PRESS THE ATTACK (refuse quarter — no
+// prize now, and she fights to the bitter end toward a sinking or a boarding). A beaten enemy yields;
+// how you answer is who you are.
+//
+// CREATIVE SPARK (Game Designer): the white flag is a TEMPTATION, not a gift — the quick, bloodless
+// prize now, or the greedier, riskier finish (sink for Infamy / board for the duel's Standing). Refuse
+// quarter and there is NO second flag: she sells her deck dear. The world yields to how you fight.
+//
+// The surrender THRESHOLD itself is cannons' strikesColours (nerve broken + hull genuinely hurt) —
+// reused, never re-invented — surfaced here as the `yielded` flag; these two pure helpers decide
+// WHETHER to open the offer and HOW the player's answer forks the engagement.
+
+/**
+ * Should a struck foe be OFFERED early surrender (the reactive out), rather than fought on to a board?
+ * PURE. She offers the white flag only when your gunnery has actually broken her (`yielded`, from
+ * cannons' strikesColours), she isn't ALREADY boarded (the board path has its own resolution), and you
+ * haven't ALREADY refused her quarter this engagement — refuse once and she fights to the bitter end,
+ * no second flag. Fails safe (no offer) on absent state.
+ * @param {{yielded?:boolean, boarded?:boolean, quarterRefused?:boolean}} p
+ * @returns {boolean}
+ */
+export function offersSurrender({ yielded = false, boarded = false, quarterRefused = false } = {}) {
+  return !!yielded && !boarded && !quarterRefused;
+}
+
+/**
+ * How you answer her white flag — the reward FORK. PURE.
+ * ACCEPT → take her surrender: a quick capture (a ransom purse + Standing via captureSpoils, the
+ *   governor's merciful road); the engagement ends here — no board, no brawl, no duel.
+ * PRESS  → refuse quarter: no prize now, and she fights to the bitter end toward a sinking or a boarding.
+ * Unknown/absent choice → ACCEPT (mercy is the ledger-safe default — a stray key never presses a
+ * yielding ship into a needless bloodbath; the deliberate mirror of prizeFork's spare-by-default).
+ * @param {'accept'|'press'} choice
+ * @returns {{choice:'accept'|'press', accepted:boolean, captured:boolean}}
+ */
+export function surrenderFork(choice) {
+  if (choice === 'press') return { choice: 'press', accepted: false, captured: false };
+  return { choice: 'accept', accepted: true, captured: true };
+}

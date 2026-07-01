@@ -6,6 +6,7 @@ import {
   boardingEdge, MAX_BOARDING_EDGE,
   brawlCasualties, duelConfidenceDent, CASUALTY_CLEAN_MARGIN, MAX_CONFIDENCE_DENT,
   prizeFork, SINK_INFAMY_BONUS, SPARE_RANSOM_BONUS, SPARE_MIN_STANDING,
+  offersSurrender, surrenderFork,
 } from '../../src/systems/board.js';
 
 const half = () => 0.5; // deterministic rng
@@ -220,4 +221,44 @@ test('prizeFork: unknown / absent choice defaults to SPARE (ledger-safe — neve
 test('prizeFork: clamps junk numeric input, never emitting a negative delta', () => {
   const f = prizeFork('sink', { coins: -999, infamy: -999 });
   assert.ok(f.addInfamy >= 0 && f.addCoins >= 0 && f.addStanding >= 0, 'no negative rewards leak out');
+});
+
+// ── Early surrender / strike-colours short-circuit (#135, Option 4) ─────────────────────────────
+test('offersSurrender: a struck foe is offered quarter before you board', () => {
+  assert.equal(offersSurrender({ yielded: true }), true, 'a fresh yield opens the white flag');
+});
+
+test('offersSurrender: only when the foe has actually YIELDED (gunnery broke her)', () => {
+  assert.equal(offersSurrender({ yielded: false }), false, 'an unbroken foe never offers to yield');
+  assert.equal(offersSurrender({}), false, 'nothing to offer with no state');
+  assert.equal(offersSurrender(), false, 'fails safe on no args');
+});
+
+test('offersSurrender: no white flag once she is already boarded (the board path took over)', () => {
+  assert.equal(offersSurrender({ yielded: true, boarded: true }), false);
+});
+
+test('offersSurrender: refuse quarter ONCE and she never strikes again this engagement', () => {
+  assert.equal(offersSurrender({ yielded: true, quarterRefused: true }), false,
+    'she fights to the bitter end after quarter is refused');
+});
+
+test('surrenderFork: ACCEPT takes her as a quick captured prize (the governor road)', () => {
+  const f = surrenderFork('accept');
+  assert.equal(f.accepted, true);
+  assert.equal(f.captured, true, 'accepting is a capture, not a sinking');
+  assert.equal(f.choice, 'accept');
+});
+
+test('surrenderFork: PRESS refuses quarter — no prize, the fight goes on', () => {
+  const f = surrenderFork('press');
+  assert.equal(f.accepted, false, 'pressing banks no prize yet');
+  assert.equal(f.captured, false);
+  assert.equal(f.choice, 'press');
+});
+
+test('surrenderFork: unknown / absent choice defaults to ACCEPT (mercy is the ledger-safe road)', () => {
+  assert.equal(surrenderFork(undefined).choice, 'accept');
+  assert.equal(surrenderFork('nonsense').choice, 'accept');
+  assert.equal(surrenderFork().accepted, true, 'a stray key never presses a yielding ship into a bloodbath');
 });

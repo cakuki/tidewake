@@ -482,6 +482,73 @@ try {
     console.warn('  (#135 slice 4 boarding: no foe came in range to engage — skipped, like slice 2/3)');
   }
 
+  // 2b7) Early surrender / strike-colours short-circuit (#135, Option 4): when your gunnery breaks a
+  // foe's nerve+hull hard enough she STRIKES HER COLOURS mid-maneuver — before you ever board — and
+  // OFFERS to yield. The offer is HELD OPEN (you can't board or fire past it); accepting is a quick
+  // capture (ransom + Standing) WITHOUT the board→brawl→duel. Driven headlessly: engage, break the foe
+  // to the strike threshold, fire to open the white flag, assert the invariants, then ACCEPT her.
+  const surrender = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return { bi, bd };
+    }
+    tw.press('w');
+    let engaged = false;
+    for (let i = 0; i < 1500 && !engaged; i++) {
+      const { bi, bd } = nearest();
+      if (bi === -1) break;
+      if (bd <= 150) { engaged = tw.engageBattle(); if (engaged) break; }
+      const s = tw.state;
+      const desired = Math.atan2(tw.npcs[bi].pos[0] - s.pos[0], tw.npcs[bi].pos[1] - s.pos[2]);
+      const err = norm(desired - s.heading);
+      tw.release('a'); tw.release('d');
+      if (err > 0.05) tw.press('a'); else if (err < -0.05) tw.press('d');
+      tw.step(0.1);
+    }
+    tw.release('w');
+    if (!engaged) return { engaged };
+    // No white flag from a fresh, unbroken foe.
+    const offerFresh = !!tw.surrenderOffer;
+    // Break her nerve+hull to the strike threshold, then fire — she should strike her colours.
+    tw.battleBreakFoe();
+    tw.battleFire();
+    const offerOpen = !!tw.surrenderOffer;
+    const pendingFlag = tw.battle.surrenderPending;
+    const cannotBoardUnderFlag = tw.battle.canBoard;   // must be false — answer the flag first
+    const cannotFireUnderFlag = tw.battleFire();        // must be null — no firing past a white flag
+    const standingBefore = tw.state.standing;
+    const infamyBefore = tw.state.infamy;
+    // ACCEPT her surrender — the quick capture (ransom + Standing), no board→brawl→duel.
+    const accepted = tw.acceptSurrender();
+    return {
+      engaged, offerFresh, offerOpen, pendingFlag, cannotBoardUnderFlag,
+      cannotFireUnderFlag, capturedResult: accepted && accepted.result,
+      offerClearedAfter: tw.surrenderOffer === null,
+      battleEnded: !tw.battle.active,
+      standingGained: tw.state.standing - standingBefore,
+      infamyGained: tw.state.infamy - infamyBefore,
+    };
+  });
+  if (surrender.engaged) {
+    if (surrender.offerFresh) fail('early-surrender: a fresh full-hull foe offered to yield (#135 Option 4)');
+    if (!surrender.offerOpen) fail('early-surrender: breaking her nerve+hull did not raise a strike-colours offer (#135 Option 4)');
+    if (!surrender.pendingFlag) fail('early-surrender: the surrender offer was not held open (surrenderPending) (#135 Option 4)');
+    if (surrender.cannotBoardUnderFlag) fail('early-surrender: boarding should be blocked while a white flag is up (#135 Option 4)');
+    if (surrender.cannotFireUnderFlag !== null) fail('early-surrender: firing should be a no-op while a white flag is up (#135 Option 4)');
+    if (surrender.capturedResult !== 'capture') fail(`early-surrender: ACCEPT did not resolve to a capture (got ${surrender.capturedResult}) (#135 Option 4)`);
+    if (!surrender.offerClearedAfter) fail('early-surrender: the offer did not clear after accepting (#135 Option 4)');
+    if (!surrender.battleEnded) fail('early-surrender: accepting the surrender did not end the engagement (#135 Option 4)');
+    if (!(surrender.standingGained > 0)) fail(`early-surrender: ACCEPT paid no Standing (gained ${surrender.standingGained}) (#135 Option 4)`);
+  } else {
+    console.warn('  (#135 Option 4 early-surrender: no foe came in range to engage — skipped, like slice 2/3/4)');
+  }
+
   // 2c) Route-planning map (#54): open the big chart, confirm the overlay is visible,
   // the chart drew (liveness counter) and the open-state is exposed, then close it.
   const bigmap = await page.evaluate(async () => {

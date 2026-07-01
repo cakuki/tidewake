@@ -411,6 +411,15 @@ const battle = createBattle({
       boarded: true,
     });                                                                            // …and the captain's verbal duel is the climax (#33)
   },
+  // Early surrender / strike-colours short-circuit (#135, Option 4): when your broadsides break her
+  // nerve+hull hard enough she strikes her colours BEFORE you board — hold the offer open and let the
+  // player answer. 1 = ACCEPT (a quick capture: ransom + Standing) · 2 = PRESS the attack (no quarter).
+  // Accepting routes through onResolve('capture') below (the existing capture banner + deed); pressing
+  // just narrates the refusal — the fight simply resumes.
+  onSurrender: ({ foeName }) => hud.flashBanner('🏳️ She strikes her colours — quarter?',
+    `${foeName} hauls down her flag and offers to yield. Press 1 to ACCEPT her surrender (a ransom + Standing, quick) — or 2 to PRESS the attack (no quarter: sink or board her).`),
+  onPressAttack: ({ foeName }) => hud.flashBanner('🏴 No quarter!',
+    `You refuse ${foeName}'s surrender — the guns run back out. She fights to the bitter end now: sink her or board her.`),
   sfx: (kind) => audio.playDuelHit(kind),
   // Real-time broadside spoils (#135 slice 2): sinking pays Infamy, a capture pays Standing, a
   // loss costs a few coins for repairs — the same ledger the turn-based cannonade writes to.
@@ -793,6 +802,15 @@ addEventListener('keydown', (e) => {
   if (pendingPrize) {
     if (e.key === '1') resolvePrize('spare');
     else if (e.key === '2') resolvePrize('sink');
+    return;
+  }
+  // Early surrender / strike-colours short-circuit (#135, Option 4): the instant a battered foe strikes
+  // her colours mid-maneuver, the offer is HELD open — 1 ACCEPTS her surrender (a quick capture: ransom +
+  // Standing), 2 PRESSES the attack (no quarter — she fights on to a sinking or a boarding). The offer
+  // claims the keys (ahead of fire/board) so the reactive out is never stepped on by a stray volley.
+  if (battle.state.surrenderPending) {
+    if (e.key === '1') battle.acceptSurrender();
+    else if (e.key === '2') battle.pressAttack();
     return;
   }
   // Foundering-ship choice (#125): while a founderer is alongside, 1 RESCUES, 2 PLUNDERS. The
@@ -1943,6 +1961,25 @@ window.__tidewake = {
   // ransom + Standing. Mirrors encounterChoose()'s force-a-choice hook.
   get prizeChoice() { return pendingPrize ? { ...pendingPrize } : null; },
   choosePrize(choice) { return resolvePrize(choice); },
+  // Early surrender / strike-colours short-circuit (#135, Option 4) QA surface: when your gunnery
+  // breaks a foe hard enough she strikes her colours mid-maneuver — `surrenderOffer` reads the pending
+  // offer (the beaten foe, or null once answered); acceptSurrender() takes the quick capture (ransom +
+  // Standing), pressAttack() refuses quarter (she fights on). Mirrors prizeChoice/choosePrize.
+  get surrenderOffer() { return battle.state.surrenderPending ? { foeName: battle.state.foeName } : null; },
+  acceptSurrender() { return battle.acceptSurrender(); },
+  pressAttack() { return battle.pressAttack(); },
+  // QA-only (#135 Option 4): break the engaged foe's NERVE and wound her hull straight to the
+  // strike-colours threshold, so a headless test can reach the surrender offer deterministically. Sets
+  // her morale into the break band and her hull into the yield window (but well clear of sinking); the
+  // NEXT battleFire() then opens the white flag. No-op un-engaged. Mirrors battleWeaken()'s force-a-state.
+  battleBreakFoe() {
+    if (battle.state.active) {
+      battle.state.enemyMorale = 8;
+      battle.state.enemyHull = Math.round(battle.state.maxHull * 0.45);
+      battle.state.reload = 0;
+    }
+    return battle.snapshot();
+  },
   // QA-only (#135 slice 4 + Option-4 slice 2): beat the engaged foe's hull straight down to the boardable
   // window, so a headless test can reach the Board! prompt deterministically without grinding live volleys
   // (which can sink or capture her first). Pass a hull fraction (0..1) to set exactly how battered she is —

@@ -29,7 +29,7 @@ import {
   defeatLine, strikeLine, fireQuip, MAX_HULL, MORALE_MAX,
 } from '../cannons.js';
 import { ammoProfile, cycleAmmo, AMMO_TYPES } from './ammo.js';
-import { canBoard as canBoardHull, resolveBrawl, boardingEdge } from './board.js';
+import { canBoard as canBoardHull, resolveBrawl, boardingEdge, offersSurrender } from './board.js';
 
 // Slice 2 (#135) tunables — the Game Designer's fun-shaping numbers:
 //   RELOAD_SECONDS — how long the gun deck takes to swab and reload between volleys, so the
@@ -61,6 +61,13 @@ const FLEE_LINES = [
   'Off the wind and away — you leave the foe shaking a fist at your wake. Live to sail again.',
 ];
 
+// On refusing a struck foe's surrender (#135, Option 4) — no quarter. Defiant, a touch grim, on-tone.
+const NO_QUARTER_LINES = [
+  'You wave off her white flag — “No quarter!” Steel comes out; she’ll sell her deck dear now.',
+  'Surrender refused. Her captain spits, hauls the colours back up, and squares to fight to the last plank.',
+  'You deny her quarter. The guns run out again — this one ends in a wreck or over the rail.',
+];
+
 function pickIndex(rng, n) {
   return Math.min(n - 1, Math.floor(rng() * n));
 }
@@ -73,6 +80,11 @@ export function engageLine(rng = Math.random) {
 /** The breaking-off line as you flee the stance. PURE + injectable rng. */
 export function fleeLine(rng = Math.random) {
   return FLEE_LINES[pickIndex(rng, FLEE_LINES.length)];
+}
+
+/** The "no quarter" line as you refuse a struck foe's surrender (#135, Option 4). PURE + injectable rng. */
+export function noQuarterLine(rng = Math.random) {
+  return NO_QUARTER_LINES[pickIndex(rng, NO_QUARTER_LINES.length)];
 }
 
 /**
@@ -137,6 +149,7 @@ export function broadsideAim([sx, sz], heading, [fx, fz], { arcThreshold = ARC_T
 
 export function createBattle({
   npcs, getShipPos, getShipHeading, getLoadout, getCrewMorale, onEnter, onFlee, onResolve, onCycleAmmo, onBoard,
+  onSurrender, onPressAttack,
   applyReward, applyPenalty, sfx, rng = Math.random, reloadSeconds = RELOAD_SECONDS,
 } = {}) {
   // The fitted shot locker (#135 slice 3) — what you fit at the town workshop. The cycle key walks
@@ -168,6 +181,11 @@ export function createBattle({
     ammo: 'round',    // the LOADED shot (#135 slice 3) — cycled mid-fight from the fitted loadout
     boarded: false,   // slice 4 — has the crew gone over the rail this engagement?
     brawl: null,      // slice 4 — the resolved deck-brawl beat ({won, advantage, lines}), for the HUD/QA
+    // Early surrender / strike-colours short-circuit (Option 4): a broken foe strikes her colours
+    // mid-maneuver and the offer is HELD OPEN until you answer — accept the quick capture, or refuse
+    // quarter (then she never strikes again this engagement — fights to the bitter end).
+    surrenderPending: false,
+    quarterRefused: false,
   };
   let foe = null;
 
@@ -199,6 +217,8 @@ export function createBattle({
     state.reload = 0;
     state.boarded = false;
     state.brawl = null;
+    state.surrenderPending = false;
+    state.quarterRefused = false;
     foe = null;
   }
 
@@ -223,6 +243,8 @@ export function createBattle({
     state.lastSide = 'starboard';
     state.boarded = false;
     state.brawl = null;
+    state.surrenderPending = false;
+    state.quarterRefused = false;
     state.ammo = loadout()[0]; // load the first fitted shot (round, by default) as you square up
     ping('challenge'); // colours up, gunports ready
     if (onEnter) {
@@ -309,6 +331,7 @@ export function createBattle({
    */
   function fire() {
     if (!state.active || !foe) return null;
+    if (state.surrenderPending) return null; // she's flying a white flag — answer it before you fire again
     if (state.reload > 0) return null; // the guns aren't loaded yet
     const a = aim();
     const profile = ammoProfile(state.ammo); // the LOADED shot shapes the volley (#135 slice 3)
@@ -325,7 +348,13 @@ export function createBattle({
 
     if (r.sunkEnemy) return finish('win');
     if (r.sunkPlayer) return finish('lose');
-    if (r.yielded) return finish('capture');
+    // Early surrender / strike-colours short-circuit (#135, Option 4): a broken foe strikes her colours
+    // BEFORE you board. Instead of auto-capturing, HOLD the offer open — the player chooses to accept the
+    // quick prize or refuse quarter (below). Refuse once and she never strikes again (offersSurrender
+    // gates on quarterRefused), so this can't loop; she fights on to a sinking or a boarding.
+    if (offersSurrender({ yielded: r.yielded, boarded: state.boarded, quarterRefused: state.quarterRefused })) {
+      return openSurrender();
+    }
     // The quip reads from the LOADED shot's flavour — chain shreds rigging, the rest pound the hull.
     state.lastLine = a.inArc ? fireQuip(profile.shock === 'rigging' ? 'rigging' : 'broadside', rng) : WIDE_LINE;
     ping('cut'); // a solid hit / a spent volley
@@ -348,13 +377,59 @@ export function createBattle({
     return state.ammo;
   }
 
+  // Hold the foe's white flag OPEN (#135, Option 4) — she has struck her colours mid-maneuver and the
+  // player must answer (accept the quick capture, or refuse quarter). Called from fire() the volley she
+  // breaks. The engagement stays ACTIVE and PAUSED on the offer; main.js wires `onSurrender` to the
+  // prompt banner + the 1/2 keys. Returns a small marker so a caller/QA can tell a volley opened a flag.
+  function openSurrender() {
+    state.surrenderPending = true;
+    state.lastLine = strikeLine(rng); // her cry as the colours come down (#72, reused)
+    ping('win'); // a beaten foe strikes — a soft, hopeful sting
+    if (onSurrender) {
+      try { onSurrender({ foeName: state.foeName, foeIndex: state.foeIndex }); }
+      catch { /* a flourish must never break the offer */ }
+    }
+    return { surrendered: true, foeName: state.foeName };
+  }
+
+  /**
+   * ACCEPT a struck foe's surrender (#135, Option 4) — the quick, merciful road. Takes her as a captured
+   * prize (a ransom purse + Standing via finish('capture')) WITHOUT the board→brawl→duel, and ends the
+   * engagement. No-op unless a surrender is actually pending. Returns the resolved capture, or null.
+   */
+  function acceptSurrender() {
+    if (!state.surrenderPending) return null;
+    state.surrenderPending = false;
+    return finish('capture'); // captureSpoils: ransom coin + lawful Standing (the governor pole)
+  }
+
+  /**
+   * PRESS THE ATTACK on a struck foe (#135, Option 4) — refuse quarter. No prize now; she hauls her
+   * colours back up and fights to the bitter end (quarterRefused latches so she never strikes again this
+   * engagement — no offer loop). You must then sink her or board her. No-op unless a surrender is pending.
+   * Returns true if quarter was refused.
+   */
+  function pressAttack() {
+    if (!state.surrenderPending) return false;
+    state.surrenderPending = false;
+    state.quarterRefused = true;
+    state.lastLine = noQuarterLine(rng);
+    ping('challenge'); // steel out, guns run back out
+    if (onPressAttack) {
+      try { onPressAttack({ foeName: state.foeName, foeIndex: state.foeIndex }); }
+      catch { /* a flourish must never break the stance */ }
+    }
+    return true;
+  }
+
   /**
    * Is the foe beaten down enough to grapple and BOARD her (#135 slice 4)? True once her hull is at
    * or below BOARD_HULL_FRACTION — the "Board! at ≤30% hull" prompt lights, the broadside becomes a
-   * finisher. PURE-derived from the live engagement; never while un-engaged or already boarded.
+   * finisher. PURE-derived from the live engagement; never while un-engaged, already boarded, or while
+   * a surrender offer is open (answer her white flag first).
    */
   function canBoard() {
-    if (!state.active || !foe || state.boarded) return false;
+    if (!state.active || !foe || state.boarded || state.surrenderPending) return false;
     return canBoardHull({ enemyHull: state.enemyHull, maxHull: state.maxHull });
   }
 
@@ -414,6 +489,10 @@ export function createBattle({
       // Boarding (#135 slice 4): the Board! prompt lights at ≤30% hull; the resolved brawl beat reads here.
       canBoard: canBoard(),
       boarded: state.boarded,
+      // Early surrender / strike-colours short-circuit (#135, Option 4): once she strikes, the offer is
+      // HELD OPEN (accept the quick capture / press the attack). `quarterRefused` latches a refused offer.
+      surrenderPending: state.surrenderPending,
+      quarterRefused: state.quarterRefused,
       // Hull damage → boarding odds (#135 Option-4 slice 2): how far past the boarding line you battered
       // her — the edge your gunnery buys the coming brawl. 0 on the line, up to MAX_BOARDING_EDGE at a wreck.
       boardEdge: (state.active && !state.boarded) ? boardingEdge({ foeHull: state.enemyHull, maxHull: state.maxHull }) : 0,
@@ -421,5 +500,5 @@ export function createBattle({
     };
   }
 
-  return { state, engage, flee, end, fire, tick, aim, cycleShot, canBoard, board, inRange, nearestInRange, snapshot };
+  return { state, engage, flee, end, fire, tick, aim, cycleShot, canBoard, board, acceptSurrender, pressAttack, inRange, nearestInRange, snapshot };
 }
