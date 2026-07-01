@@ -31,14 +31,25 @@ when its latest slice shipped.
 The owner playtested battle (#135) and it's **NOT fun** (2026-07-01): occluding center popups cover the
 ship · no target lock among traffic · an **isolation BUG** (#125 rescue + `f`/`g` hails leak into the
 fight) · **NO cannonball visuals** (broadside is pure math). Per the **PREEMPTION RULE** this from-owner
-P1 **preempts the PRODUCT-refill slices below** (#156–159). Build #161's slices in order: **1) hard mode
-isolation (S, the bug) → 2) non-occluding battle UI → 3) target lock (highlight foe, dim others) →
-4) rendered cannonballs + tracers + hit sparks → 5) aim-angle feedback → 6) hover-to-interact.**
+P1 **preempts the PRODUCT-refill slices below** (#156–159). Build #161's slices in order — progress:
+- ✅ **1) Hard battle isolation (S, the BUG) — SHIPPED (Loop 111, v0.0.20260701204942).** In the deliberate
+  BATTLE stance ALL non-battle world interactions are now suppressed — the #125 rescue offer is DEFERRED
+  (spawn gate), the open-sea `f`/`g` hail/open-fire verbs + a pre-existing founderer's `1`/`2` choice + its
+  HUD panel are all no-ops mid-fight; a pure `interactionsSuppressed` predicate is the single source of truth
+  (`src/systems/battle-isolation.js`). Felt payoff = the fight no longer feels janky/broken (proven by the
+  gate: playtest asserts rescue + f/g are no-ops in the stance, world returns on flee). No save change (v17).
+- ⬜ **2) Non-occluding battle UI (S)** — move/anchor the center-modal `#battle`/`#cannons` banners off the
+  ship so you can SEE her fight (`index.html` CSS + `hud.js` renderBattle layout).
+- ⬜ **3) Target lock (M)** — highlight the engaged foe + dim/hide non-combatants (drive off `foeIndex`).
+- ⬜ **4) Rendered cannonballs (M)** — visible balls/tracers + muzzle flash + hit sparks (see the ball, sell the hit).
+- ⬜ **5) Aim-angle feedback (S)** — a firing arc/beam so the angle VISIBLY matters (read-only off `broadsideAim`).
+- ⬜ **6) Hover-to-interact (M)** — raycast the ship under the cursor → hail/board/target (diegetic, not a HUD verb).
+
 Plan: **#161** + [`docs/briefs/2026-07-01-battle-fun-fixes.md`](https://github.com/cakuki/tidewake/blob/main/docs/briefs/2026-07-01-battle-fun-fixes.md).
 This IS the **Fun & Working > fast** doctrine (`docs/design/what-makes-it-fun.md`) — a mechanic with no
 visible feedback is INCOMPLETE. _(The loop's onboarding work #156/#157 aids legibility but does NOT cover
 these gaps.) Owner's finer call — whether to also FREEZE new battle mechanics — pending over Telegram; the
-fix is P1 regardless._
+fix is P1 regardless. **Next build: slice 2 (non-occluding battle UI).**_
 
 ## 🧭 TOP OF QUEUE — PRODUCT REFILL (Loop 107, 2026-07-01) — BUILD IN ORDER
 

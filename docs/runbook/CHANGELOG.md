@@ -4,6 +4,15 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-01 — #161 slice 1 Hard battle isolation shipped (Loop 111, v0.0.20260701204942).** First slice of
+  the from-owner "Make Battle FUN" epic (#161) — the only outright BUG: the #125 rescue offer + the open-sea
+  `f`/`g` hails leaked INTO the deliberate fight (input theft + a third hull in the arena) because the helm
+  stays live in the stance, so the old `!f.paused` spawn gate let a founderer heave in. Fix: a PURE, TDD'd
+  isolation predicate (`src/systems/battle-isolation.js` — `interactionsSuppressed` / `ambientInteractionsAllowed`,
+  the single source of truth) consulted at four seams (encounter spawn gate now DEFERS a founderer · keydown
+  `f`/`g` no-op · encounter `1`/`2` choice · HUD panel dismissed while engaged). Felt FUN beat = the ABSENCE of
+  the intrusion, proven by playtest §2b3-iso (real KeyboardEvents assert rescue + f/g are no-ops mid-fight, and
+  the world returns on flee). **No save change (stays v17).** 1086 unit tests. Slices 2–6 remain (#161 OPEN).
 - **2026-07-01 — #157 The Bosun's First Duel shipped (Loop 110, v0.0.20260701201752).** A cold save's FIRST
   engagement is a one-shot **scaffolded SOFT debut** — a forgiving, already-battered foe + the bosun calling
   each phase's verb aloud in-world (maneuver→FIRE, BOARD, surrender), fully player-driven. PURE, TDD'd logic
