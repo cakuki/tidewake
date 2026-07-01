@@ -142,8 +142,10 @@ promoted below. **#135 battle is DECIDED & promoted to TOP (from-owner P1, preem
    bar-clock; battle inherits the feedback vocabulary. Pure `src/systems/loop-cues.js`. **Follow-ups
    (reservoir below):** ~~richer per-rumour-kind interaction SFX~~ ✅ (#148) · ~~a coin-chime under payoff~~ ✅ (#148) ·
    ~~a distinct rival-sail-sighted sting~~ ✅ **SHIPPED & CLOSED as #151** (Loop 98, v0.0.20260630235409) ·
-   ~~a continuous wake/helm water-bed SFX (the #81 cheap cousin)~~ ✅ (#150). **Reservoir DRAINED → only #81
-   hull-creak proper (a physically-modelled continuous voice) remains.**
+   ~~a continuous wake/helm water-bed SFX (the #81 cheap cousin)~~ ✅ (#150) · ~~#81 hull-creak proper~~ ✅
+   **SHIPPED & CLOSED as #81** (Loop 99, v0.0.20260701001358) — sparse parameter-driven creak grains
+   under the wake-bed, driven by speed/helm/swell. **Reservoir FULLY DRAINED.** _(#81 deepenings deferred:
+   a continuous modal resonator bank excited by roll+pitch; a comic over-creak on run-aground #76.)_
 
 - ~~**#134 — [DL#5] Your Harbour, threatened**~~ — ✅ **SHIPPED & CLOSED** (Loop 84, v0.0.20260629214854,
   **save v16**). The home port (#118) now acquires a STAKE: a hard Infamy lean draws a **navy blockade**,
@@ -245,7 +247,9 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
     v0.0.20260630232820, save v16) — an always-on speed/helm-driven noise wash through musicGain;
     ~~a distinct **rival-sail-sighted sting**~~ ✅ **SHIPPED & CLOSED as #151** (Loop 98,
     v0.0.20260630235409, save v16) — a tense low rising-tritone sting on first sighting a hostile sail,
-    a hysteresis sighting latch through musicGain. **Reservoir DRAINED → only #81 hull-creak proper remains.**
+    a hysteresis sighting latch through musicGain. ~~only #81 hull-creak proper remains~~ ✅ **SHIPPED &
+    CLOSED as #81** (Loop 99, v0.0.20260701001358) — parameter-driven creak grains under the wake-bed.
+    **Reservoir FULLY DRAINED.**
   - ~~**#117 — seeded per-pass melody variation**~~ — ✅ **SHIPPED & CLOSED** (Loop 77).
 - **Reactive-world reservoir:**
   - **#124 — crew morale/loyalty meter** fed by your choices (DL #1's earned-mutiny; battle
@@ -253,8 +257,9 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
   - ~~**#125 — emergent at-sea encounter: foundering ship, rescue vs plunder**~~ — ✅ **SHIPPED & CLOSED**
     (Loop 66). Follow-ups: more encounter types, grateful-crew-fights-alongside, a flying distress flag.
   - ~~_Reservoir note: a continuous wake/helm water-bed SFX (speed/turn-rate driven) — the cheap
-    cousin of #81 hull-creak_~~ ✅ **SHIPPED & CLOSED as #150** (Loop 96). #81 proper (a
-    physically-modelled hull-creak voice) still open.
+    cousin of #81 hull-creak_~~ ✅ **SHIPPED & CLOSED as #150** (Loop 96). ~~#81 proper still open~~
+    ✅ **SHIPPED & CLOSED as #81** (Loop 99) — grain-based creak voice under the wake-bed, driven by
+    speed/helm/swell. Deepenings (continuous modal bank excited by roll+pitch; run-aground over-creak) deferred.
 
 ## Rumour-loop depth (#112 umbrella OPEN — close more reward kinds)
 
