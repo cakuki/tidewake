@@ -24,7 +24,7 @@ the **local loop only** — there are no cloud routines.
 | R3 | 🧪 Pre-release hardening (**Fri = intense QA event, runs early**) | 16:00 daily · **~14:00 Fri** | daily | qa + software-developer | — |
 | R4 | 🚀 Daily release | 17:00 | **Mon–Thu + Sat–Sun** (every day except Fri) | project-manager + tech-lead | — |
 | R4w | 🌟 Weekly release (replaces R4) | 17:00 | Fri | **marketing-manager** + PM + TL + graphic-designer + sound-engineer | — |
-| R5 | 🔁 Daily retro (+ queue-sync) | 18:30 | daily | project-manager | 2026-06-30 |
+| R5 | 🔁 Daily retro (+ queue-sync) | 18:30 | daily | project-manager | 2026-07-01 |
 
 > Update the **Last ran** cell (to today's date) when a ritual completes. Full design + each ritual's
 > output: `docs/superpowers/specs/2026-06-29-loop-rituals-and-release-cadence-design.md`.

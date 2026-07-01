@@ -69,10 +69,14 @@ below — untouched. No save/schema change except where flagged (#157)._
   single `src/keymap.js` source-of-truth so nothing drifts. Legibility & world-identity become one asset;
   contrast survives haze; no gameplay/save change; gallery frame. *"The tutorial reads as the world speaking."*
 
-**Sequencing note:** #154→#156 are all S/S-M, unblocked, READY now (≥3 ready slices satisfied). #157 is
-the biggest first-session reachability win but is M + carries the only save-schema change, so it follows
-the cheap legibility/juice wins that it will lean on (#154 earcons, #153 prompts). #158/#159 are depth/
-polish that compound the above. **No owner-decision surfaced** — all six are original, in-vision, buildable.
+**Sequencing note (updated Loop 107 / R5 queue-sync — #154 SHIPPED & CLOSED):** #155/#156 are S/S-M,
+unblocked, READY now; #157/#158/#159 are also unblocked & buildable (their soft deps #153 + #154 are
+BOTH now shipped) → **5 unblocked non-owner-decision slices, ≥3 READY satisfied → loop stays in
+DELIVERY.** #157 is the biggest first-session reachability win but is M + carries the only save-schema
+change, so it follows the cheap legibility/juice wins it leans on (#154 earcons, #153 prompts). #158/#159
+are depth/polish that compound the above. **No owner-decision surfaced** — all five remaining are
+original, in-vision, buildable. Owner-decision items **#147 · #135-close · #152** stay parked below,
+NOT counted as READY.
 
 ---
 
