@@ -23,7 +23,7 @@ the **local loop only** — there are no cloud routines.
 | R2 | 📚 Deep reading | 13:00 | daily | all 9 agents (fan-out) | — |
 | R3 | 🧪 Pre-release hardening (**Fri = intense QA event, runs early**) | 16:00 daily · **~14:00 Fri** | daily | qa + software-developer | — |
 | R4 | 🚀 Daily release | 17:00 | **Mon–Thu + Sat–Sun** (every day except Fri) | project-manager + tech-lead | — |
-| R4w | 🌟 Weekly release (replaces R4) | 17:00 | Fri | PM + TL + graphic-designer + sound-engineer | — |
+| R4w | 🌟 Weekly release (replaces R4) | 17:00 | Fri | **marketing-manager** + PM + TL + graphic-designer + sound-engineer | — |
 | R5 | 🔁 Daily retro (+ queue-sync) | 18:30 | daily | project-manager | 2026-06-30 |
 
 > Update the **Last ran** cell (to today's date) when a ritual completes. Full design + each ritual's
@@ -48,7 +48,9 @@ the **local loop only** — there are no cloud routines.
   to all three; see spec):
   - **Daily (R4)** → promote latest green preview to **`/daily/`** with **list** notes; record commit + date.
   - **Weekly (R4w, Fri)** → after the intense QA, promote the hardened build to **`/weekly/`**, **tag +
-    GitHub Release**, **marketing** notes with screenshots/clip.
+    GitHub Release**, **marketing** notes with screenshots/clip — authored by the **Marketing Manager**
+    in the **Monkey Island × Black Isle** voice (funny, self-aware, roasts the team/our position, kind
+    to players; `studio/agents/marketing-manager.md`).
   - Continuous commits keep deploying to **`/preview/`** (commit + datetime). Needs the channels/promote
     infra (`from-owner` **#145**); until it lands, release behaviour is unchanged.
 - **R5 Daily retro** — `studio/retros/YYYY-MM-DD-retro.md`: lessons + process fixes; **verify accepted

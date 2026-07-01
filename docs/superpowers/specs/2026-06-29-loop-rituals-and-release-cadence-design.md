@@ -38,8 +38,11 @@ channels and explains, plainly, how stable each is and which to play.
 - **Weekly release (Fri, 17:00 — replaces that day's daily):** preceded by an **intense QA session**
   (Friday is the week's event — full regression + extended playtest + manual-style QA). Promotes the
   hardened weekend build to **`/weekly/`**, **tags it + cuts a GitHub Release**, and ships **marketing
-  notes** (intro, feature highlights, **screenshots and/or a short capture clip**, "play now" CTA) via the
-  marketing-plan skill. Because `/weekly/` only moves on the hardened promote, "no weekend frustration" is real.
+  notes** (intro, feature highlights, **screenshots and/or a short capture clip**, "play now" CTA) authored
+  by the **Marketing Manager** (`studio/agents/marketing-manager.md`) in the **Monkey Island × Black Isle**
+  voice — funny, literate, self-aware; gently roasts the team + our one-boat-with-big-dreams position, always
+  kind to players; original style, never franchise IP. Because `/weekly/` only moves on the hardened promote,
+  "no weekend frustration" is real.
 
 **Landing page (`/`):** very simple. One card per channel — name, one-line "how stable / who it's for"
 (Weekly = recommended, rock-solid · Daily = fresh, mostly stable · Preview = newest, may break), a **Play**
@@ -71,7 +74,7 @@ The orchestrator, at the **top of each cycle** (before picking the next build sl
 | R2 | 📚 **Deep reading** | 13:00 | daily | each agent (fan-out) | dated inspiration log → `studio/agents/notebooks/<role>.md`; standout ideas → PM-desk inbox |
 | R3 | 🧪 **Pre-release hardening** | 16:00 daily · **~14:00 Fri** | daily | qa + software-developer | full gate; triage/fix reds so the 17:00 promote is clean. **Friday runs EARLY as an INTENSE QA SESSION** (the week's event) so there's a multi-hour **fix & stabilize window** before release — see Friday timeline below |
 | R4 | 🚀 **Daily release** | 17:00 | **Mon–Thu + Sat–Sun** (every day except Fri) | project-manager + tech-lead | promote latest green preview → **`/daily/`** + **list** notes (commit + date) |
-| R4w | 🌟 **Weekly release** | 17:00 | **Fri** (replaces R4) | PM + TL + graphic-designer + sound-engineer | after R3 intense QA: hardened build → **`/weekly/`** + **tag + GitHub Release** + **marketing** notes w/ screenshots/clip |
+| R4w | 🌟 **Weekly release** | 17:00 | **Fri** (replaces R4) | **marketing-manager** + PM + TL + graphic-designer + sound-engineer | after R3 intense QA: hardened build → **`/weekly/`** + **tag + GitHub Release** + **marketing** notes (Monkey Island × Black Isle voice) w/ screenshots/clip |
 | R5 | 🔁 **Daily retro** | 18:30 | daily | project-manager (digest all roles) | `studio/retros/YYYY-MM-DD-retro.md`: lessons + process fixes + **queue-sync** |
 
 **Replaces the old counter-based rituals:** retro (was ~every 7–8 cycles) and deep-learning research
