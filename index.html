@@ -293,6 +293,28 @@
     #battle .battle-fire.board { background: linear-gradient(90deg, #ffd23f, #ffae3f); color: #2a1a06; }
     #battle .battle-board-key, #battle .battle-board .battle-shot-key { color: #7a4a00; font-weight: 900; }
     @keyframes boardPulse { 0%,100% { box-shadow: 0 0 10px rgba(255,200,70,.4); } 50% { box-shadow: 0 0 18px rgba(255,200,70,.7); } }
+    /* Per-phase raid tracker (#135, Option-4 polish) — a compact strip naming which act of the
+       Three-Act Raid you're in (⚔ Maneuver › 🪝 Boarding › 🗣 Duel), the acts behind you lit,
+       and the coupling you earned (hull → boarding advantage · bloodied boarding → duel footing).
+       Read-only presentation; sits above the battle/duel modals and clear of the banner. */
+    #raid-phases {
+      position: fixed; left: 50%; top: calc(12px + env(safe-area-inset-top, 0px));
+      z-index: 15; transform: translate(-50%, -8px); pointer-events: none; text-align: center;
+      background: rgba(7,18,31,.82); border: 1px solid rgba(255,120,90,.4); border-radius: 10px;
+      padding: 7px 14px; backdrop-filter: blur(5px); box-shadow: 0 8px 24px rgba(0,0,0,.45);
+      opacity: 0; transition: opacity .25s ease, transform .25s ease;
+    }
+    #raid-phases.show { opacity: 1; transform: translate(-50%, 0); }
+    #raid-phases .rp-acts { display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 12.5px; font-weight: 700; letter-spacing: .02em; }
+    #raid-phases .rp-act { color: #5f7d94; transition: color .2s ease; white-space: nowrap; }
+    #raid-phases .rp-act.done { color: #87e0a4; }
+    #raid-phases .rp-act.active { color: #ffd23f; text-shadow: 0 0 10px rgba(255,190,60,.5); }
+    #raid-phases .rp-sep { color: #3f5568; font-weight: 400; }
+    #raid-phases .rp-couple { margin-top: 4px; font-size: 10.5px; font-style: italic; min-height: 13px; color: #9fc4e6; }
+    #raid-phases .rp-couple.good { color: #87e0a4; }
+    #raid-phases .rp-couple.warn { color: #ffb27a; }
+    #raid-phases .rp-couple.surrender { color: #ffd98a; }
     /* Foundering-ship choice panel (#125) — the rescue-vs-plunder moral beat, in a teal distress
        accent. Reuses the duel panel's inner line/opts classes, scoped here with its own colour. */
     #encounter {
@@ -768,6 +790,7 @@
   <div id="duel" role="dialog" aria-live="polite"></div>
   <div id="cannons" role="dialog" aria-live="polite"></div>
   <div id="battle" role="dialog" aria-live="polite"></div>
+  <div id="raid-phases" role="status" aria-live="polite"></div>
   <div id="encounter" role="dialog" aria-live="polite"></div>
   <div id="toast" role="status" aria-live="polite"></div>
   <!-- Invisible onboarding (#60): a brand-new captain's seeded first goal. Filled + shown

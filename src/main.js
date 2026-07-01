@@ -1428,6 +1428,9 @@ systems.register({ name: 'hud-duel', order: 260, update: () => hud.renderDuel(du
 systems.register({ name: 'hud-cannons', order: 270, update: () => hud.renderCannons(cannons.snapshot()) });
 // — real-time broadside panel (#135 slice 2): hull bars + the live ABEAM / reload cue + Fire prompt.
 systems.register({ name: 'hud-battle', order: 275, update: () => hud.renderBattle(battle.snapshot()) });
+// — per-phase raid tracker (#135, Option-4 polish): names the act (⚔ Maneuver › 🪝 Boarding › 🗣 Duel)
+//   and surfaces the coupling earned; read-only, spans the battle + the boarded duel snapshots.
+systems.register({ name: 'hud-raid-phases', order: 276, update: () => hud.renderRaidPhases(battle.snapshot(), duel.snapshot()) });
 systems.register({ name: 'hud-encounter', order: 280, update: () => hud.renderEncounter(encounter.snapshot()) });
 // — sea ambience + adaptive sailing theme level (#48).
 systems.register({ name: 'audio', order: 290, update: (f) => audio.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED }) });

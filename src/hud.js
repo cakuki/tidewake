@@ -9,12 +9,14 @@ import { rankForRenown, renownTier, titleFor, dominantPole, legendBeat } from '.
 import { governorshipBeat } from './systems/home-port.js';
 import { colourById } from './colours.js';
 import { createCompass } from './ui/compass.js';
+import { createRaidPhases } from './ui/raid-phases.js';
 
 export function createHud() {
   const $heading = document.getElementById('heading');
   const $speed = document.getElementById('speed');
   const $wind = document.getElementById('wind');
   const compass = createCompass();   // self-contained wind compass component (#53)
+  const raidPhases = createRaidPhases(); // per-phase Three-Act Raid tracker (#135, Option-4 polish)
   const $toast = document.getElementById('toast');
   const $coins = document.getElementById('coins');
   const $cargo = document.getElementById('cargo');
@@ -402,6 +404,12 @@ export function createHud() {
     $battle.classList.add('show');
   }
 
+  // ---- Per-phase raid tracker (#135, Option-4 polish) -----------------------
+  // The compact strip that makes the Three-Act Raid legible: which act you're in + the coupling
+  // you earned. Reads the battle + duel snapshots (read-only); the pure model + DOM live in the
+  // self-contained src/ui/raid-phases.js component. Called each frame from main.js's hud system.
+  function renderRaidPhases(battle, duel) { raidPhases.update(battle, duel); }
+
   // ---- Foundering-ship encounter panel (#125) -------------------------------
   // Reads a plain encounter snapshot and paints the rescue-vs-plunder choice — the founderer's
   // name + a plea line + the two numbered choices. Reuses the duel panel's inner classes (scoped
@@ -551,5 +559,5 @@ export function createHud() {
     compass.update(state);
   }
 
-  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderBattle, renderEncounter, flashBanner, showLegend, showGovernorship, showGoal, hideGoal };
+  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderBattle, renderRaidPhases, renderEncounter, flashBanner, showLegend, showGovernorship, showGoal, hideGoal };
 }
