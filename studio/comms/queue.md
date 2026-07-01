@@ -158,6 +158,25 @@ opening footing reflects the casualty dent; **no gallery** (mechanical + QA-surf
 UI, dedicated arena-spawn (M6 act 1 done, M7 acts 2–3). Closing #135 is the owner's call. (NB: the active
 build lane remains **#145 preview subpath** below — this was the queued Option-4 increment.)_
 
+_**UPDATE Loop 103 (2026-07-01, v0.0.20260701102815): Option 4 slice 4 — EARLY-SURRENDER / STRIKE-COLOURS
+SHORT-CIRCUIT — SHIPPED. The LAST CORE Option-4 slice → Option-4's CORE is now COMPLETE.** The reactive OUT
+of the "Three-Act Raid": when your broadsides break a foe's nerve+hull hard enough (cannons' `strikesColours`
+`yielded`, reused) — **before you ever grapple to board** — she STRIKES HER COLOURS and the offer is HELD
+OPEN. You choose: **1 = ACCEPT** her surrender (a quick capture — ransom + Standing via the existing
+`finish('capture')`, WITHOUT the board→brawl→duel, engagement over) or **2 = PRESS** the attack (refuse
+quarter — no prize, `quarterRefused` latches so there's no second flag, she fights to the bitter end toward a
+sinking or a boarding). Two new pure fns in `src/systems/board.js`: `offersSurrender({yielded, boarded,
+quarterRefused})` (gates the offer) + `surrenderFork(choice)` (accept→captured / press→fight-on; unknown →
+accept, ledger-safe, mirroring `prizeFork`). `battle.js` holds it in `fire()` (`openSurrender`,
+`surrenderPending`/`quarterRefused`, `acceptSurrender`/`pressAttack`; fire+canBoard no-op under a flag);
+`main.js` wires prompt banners + a 1/2 handler ahead of fire/board + QA hooks. TDD'd first. **No save change —
+transient combat state (stays v16).** 989 unit tests (+11); playtest ✓ PASSED (new step 2b7; perf 48/130 draws ·
+90.4k/150k tris, zero errors); gallery `early-surrender-135.png` (the strike-colours/quarter prompt, visible
+UI). **#135 stays OPEN — closing it is the OWNER's call.** Commented on #135: Option-4 CORE (all phase-couplings
++ the reactive surrender out) is complete for owner review; what REMAINS is NON-core polish — per-phase UI + a
+dedicated arena-spawn. (NB: the active build lane is **#145 preview subpath** below — this was the queued
+Option-4 increment; per-slice value keeps landing.)_
+
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
 ### ⛴️ NEXT LANE (owner, 2026-07-01) — **#145 slice 1: remotely-viewable `/preview/` subpath** — BUILD THIS NEXT
