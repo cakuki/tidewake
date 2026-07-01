@@ -38,8 +38,13 @@ P1 **preempts the PRODUCT-refill slices below** (#156–159). Build #161's slice
   HUD panel are all no-ops mid-fight; a pure `interactionsSuppressed` predicate is the single source of truth
   (`src/systems/battle-isolation.js`). Felt payoff = the fight no longer feels janky/broken (proven by the
   gate: playtest asserts rescue + f/g are no-ops in the stance, world returns on flee). No save change (v17).
-- ⬜ **2) Non-occluding battle UI (S)** — move/anchor the center-modal `#battle`/`#cannons` banners off the
-  ship so you can SEE her fight (`index.html` CSS + `hud.js` renderBattle layout).
+- ✅ **2) Non-occluding battle UI (S) — SHIPPED (Loop 112, v0.0.20260701210637).** The center-modal fight
+  prompts (`#battle`/`#cannons`/`#duel`) are now DOCKED to a lower band (`bottom:18px`) with a `max-height:38vh`
+  guardrail, so the battle camera's centre-framed ship + the action stay VISIBLE the whole fight — the UI frames
+  the action instead of covering it. A pure central-safe-zone predicate (`src/ui/safe-zone.js`) drives a
+  `tw.battleUICentreClear()` QA hook; the playtest asserts every shown battle strip clears the centre on BOTH
+  desktop and a phone-portrait viewport (#146), so occlusion can't regress. Felt payoff = you can SEE your ship
+  fight (gallery `battle-ui-161-non-occluding.png`). No save change (v17).
 - ⬜ **3) Target lock (M)** — highlight the engaged foe + dim/hide non-combatants (drive off `foeIndex`).
 - ⬜ **4) Rendered cannonballs (M)** — visible balls/tracers + muzzle flash + hit sparks (see the ball, sell the hit).
 - ⬜ **5) Aim-angle feedback (S)** — a firing arc/beam so the angle VISIBLY matters (read-only off `broadsideAim`).
@@ -49,7 +54,7 @@ Plan: **#161** + [`docs/briefs/2026-07-01-battle-fun-fixes.md`](https://github.c
 This IS the **Fun & Working > fast** doctrine (`docs/design/what-makes-it-fun.md`) — a mechanic with no
 visible feedback is INCOMPLETE. _(The loop's onboarding work #156/#157 aids legibility but does NOT cover
 these gaps.) Owner's finer call — whether to also FREEZE new battle mechanics — pending over Telegram; the
-fix is P1 regardless. **Next build: slice 2 (non-occluding battle UI).**_
+fix is P1 regardless. **Next build: slice 3 (target lock — highlight the engaged foe + dim/hide non-combatants, driven off `foeIndex`).**_
 
 ## 🧭 TOP OF QUEUE — PRODUCT REFILL (Loop 107, 2026-07-01) — BUILD IN ORDER
 

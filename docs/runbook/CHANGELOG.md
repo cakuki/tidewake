@@ -4,6 +4,17 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-01 — #161 slice 2 Non-occluding battle UI shipped (Loop 112, v0.0.20260701210637).** The marquee
+  complaint of the from-owner "Make Battle FUN" epic (#161): "the popup covers my ship and I cannot see my ship
+  in action." The fight prompts (`#battle`/`#cannons`/`#duel`) were dead-centre `translate(-50%,-50%)` modals
+  landing on the hull the battle camera frames centre-screen. Fix: DOCK all three to a lower band with a
+  `max-height:38vh` guardrail so they can never rise back into the ship zone — the UI now frames the action
+  instead of blocking it. PURE, TDD'd central-safe-zone predicate (`src/ui/safe-zone.js` — `centreSafeZone` /
+  `rectsOverlap` / `clearsCentre`, the single source of truth for "does this UI cover the ship?") exposed via
+  `tw.battleUICentreClear()`; playtest §2b3-ui asserts every shown battle strip clears the centre on BOTH
+  desktop AND a phone-portrait viewport (#146 guard) so occlusion can't regress. Felt FUN beat = you can now
+  SEE your ship + the enemy the whole fight (gallery `battle-ui-161-non-occluding.png`). **No save change (stays
+  v17).** 1088 unit tests. Slices 3–6 remain (#161 OPEN).
 - **2026-07-01 — #161 slice 1 Hard battle isolation shipped (Loop 111, v0.0.20260701204942).** First slice of
   the from-owner "Make Battle FUN" epic (#161) — the only outright BUG: the #125 rescue offer + the open-sea
   `f`/`g` hails leaked INTO the deliberate fight (input theft + a third hull in the arena) because the helm
