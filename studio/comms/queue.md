@@ -39,7 +39,7 @@ God of War & BOTW contextual prompts, progressive disclosure, the first-5-minute
 R2 deep-reading shortlist (`studio/feedback/inbox/2026-07-01-deep-reading.md`, whose flagship #153
 already shipped). Six original, vision-aligned slices, sequenced value·complexity·deps; **#154 shipped
 (Loop 107); #155 reactive-verb juice shipped (Loop 108, v0.0.20260701190242); #156 cold-start FTUE
-discoverability gate shipped (Loop 109, v0.0.20260701194714) — build #157 next.** #145 preview-subpath (ops track) + the owner-decision items (#147/#135-close/#152) stay parked
+discoverability gate shipped (Loop 109, v0.0.20260701194714); #157 Bosun's First Duel shipped (Loop 110, v0.0.20260701201752) — build #158 next.** #145 preview-subpath (ops track) + the owner-decision items (#147/#135-close/#152) stay parked
 below — untouched. No save/schema change except where flagged (#157)._
 
 - **#156 — Cold-start FTUE discoverability check — ✅ SHIPPED & CLOSED (Loop 109, v0.0.20260701194714).** A headless
@@ -49,11 +49,17 @@ below — untouched. No save/schema change except where flagged (#157)._
   +7 unit tests + FTUE playtest section (also locks the sail/steer help bar + town Set Sail plank). No
   undiscoverable verb on the current build. Test/gate only, no save change (v16). *"An un-taught verb can never ship again."*
 
-- **#157 — The Bosun's First Duel (M · game-designer + software-developer).** A one-shot **scaffolded soft
-  debut battle** on a cold save's first engagement — softened foe + a crew voice calling each phase's verb
-  aloud in-world (reusing rumour/ballad audio + #153 prompts + #154 earcons). Teaches maneuver→fire→board→
-  duel as theatre, not a pop-up; a save flag makes it never repeat. **Save-schema bump → migrate all prior
-  versions + add a frozen corpus blob (#122 standing rule).** *"My first fight is winnable and legible."*
+- **#157 — The Bosun's First Duel — ✅ SHIPPED & CLOSED (Loop 110, v0.0.20260701201752).** A cold save's FIRST
+  engagement is now a one-shot **scaffolded SOFT debut**: a forgiving, already-battered foe (gunnery 0.4× ·
+  hull 55%, morale left intact so the taught arc stays maneuver→board→duel) + the **bosun calling each phase's
+  verb aloud in-world** (maneuver→FIRE, BOARD, surrender) via a banner driver over the live battle snapshot —
+  theatre, not a pop-up; the #153 prompts + #154 earcons fire alongside as the audio/visual half. The raid
+  stays **fully player-driven** (softens + narrates, never auto-plays). PURE, TDD'd logic in
+  `src/systems/debut-battle.js`; battle.js gains a `softenFoe` hook (backward-compatible). **One-shot** save
+  flag (v17) retires it — a returning captain is never re-scaffolded. **Save-schema v16→v17: migrated all prior
+  versions + added the frozen v16 corpus blob (#122).** Gallery `bosun-first-duel-157.png`. **Remaining (polish,
+  PM triage):** a dedicated bosun line for the verbal-duel phase + an optional spoken rumour/ballad audio clip
+  for the cue. *"My first fight is winnable and legible."*
 
 - **#158 — Per-phase battle musical signatures (M · musician + software-developer).** Each raid act
   (⚔ Maneuver / 🪝 Boarding / 🗣 Duel — the shipped phase model) gets a distinct musical *layer* (not just
