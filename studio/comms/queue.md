@@ -177,6 +177,21 @@ UI). **#135 stays OPEN — closing it is the OWNER's call.** Commented on #135: 
 dedicated arena-spawn. (NB: the active build lane is **#145 preview subpath** below — this was the queued
 Option-4 increment; per-slice value keeps landing.)_
 
+_**UPDATE Loop 104 (2026-07-01, v0.0.20260701104405): Option 4 polish — PER-PHASE RAID HUD — SHIPPED.** The
+mechanically-rich raid was OPAQUE; this makes it LEGIBLE. A compact **read-only** HUD strip names which act
+you're in — **⚔ Maneuver › 🪝 Boarding › 🗣 Duel** (acts won lit, current highlighted, next dimmed) — and
+surfaces the coupling the player EARNED by name: Boarding → *"Hull battered → boarding advantage +NN%"*
+(`boardEdge`), Duel → *"Bloodied boarding → shaken footing −NN"* / *"Clean boarding → steady footing"*
+(`confidenceDent`), Maneuver → the *"🏳 She strikes her colours"* beat. Invents NO mechanics — reads flags
+already on the battle + duel snapshots; only shows in a real raid (a plain hailed duel shows nothing).
+Self-contained #53 component: new `src/ui/raid-phases.js` with PURE `raidPhaseModel(battle, duel)` TDD'd
+first (12 cases) + a thin DOM-guarded `createRaidPhases()` factory; wired via `hud.renderRaidPhases` +
+a `hud-raid-phases` `main.js` system. 1001 unit tests (+12); playtest ✓ PASSED, zero errors; perf 27/130
+draws · 89.7k/150k tris — a DOM/CSS overlay, **~0 draws**. **No save change (stays v16.)** Gallery
+`raid-phases-135.png` (the strip mid-battle in the Boarding act, +18% earned advantage). **#135 stays
+OPEN — closing it is the OWNER's call.** Option-4 polish now leaves only the dedicated **arena-spawn**
+(a bespoke maneuvering target) queued._
+
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
 ### ⛴️ NEXT LANE (owner, 2026-07-01) — **#145 slice 1: remotely-viewable `/preview/` subpath** — BUILD THIS NEXT
