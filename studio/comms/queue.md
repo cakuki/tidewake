@@ -45,7 +45,15 @@ P1 **preempts the PRODUCT-refill slices below** (#156–159). Build #161's slice
   `tw.battleUICentreClear()` QA hook; the playtest asserts every shown battle strip clears the centre on BOTH
   desktop and a phone-portrait viewport (#146), so occlusion can't regress. Felt payoff = you can SEE your ship
   fight (gallery `battle-ui-161-non-occluding.png`). No save change (v17).
-- ⬜ **3) Target lock (M)** — highlight the engaged foe + dim/hide non-combatants (drive off `foeIndex`).
+- ✅ **3) Target lock (M) — SHIPPED (Loop 113, v0.0.20260701212549).** The instant battle starts the engaged foe
+  carries an unmistakable world-anchored **target RING** (a projected DOM/CSS billboard above her mast — 0 draws)
+  and the non-combatant traffic **RECEDES** to a faint opacity (per-mesh material opacity off `foeIndex`), so you
+  always know who you're fighting; it clears on flee (the sea returns). Built the **reusable OVER-SHIP BILLBOARD
+  module** (`src/ui/over-ship-billboard.js`) — a generic marker/label anchored above a ship in world space,
+  projected to screen; carries the highlight ring (wired now) AND a text-label slot (`setLabel`). **This module
+  is now available for #165 over-ship threat labels — the SAME billboard, second consumer (#165-ready).** PURE,
+  TDD'd cores (`projectToScreen`, `shipEmphasis`, `DIM_OPACITY`); `tw.targetLock()` QA hook; playtest §2b3-lock
+  asserts the foe is ring-marked + the only un-dimmed hull, clears on flee. Gallery `target-lock-161.png`. No save change (v17).
 - ⬜ **4) Rendered cannonballs (M)** — visible balls/tracers + muzzle flash + hit sparks (see the ball, sell the hit).
 - ⬜ **5) Aim-angle feedback (S)** — a firing arc/beam so the angle VISIBLY matters (read-only off `broadsideAim`).
 - ⬜ **6) Hover-to-interact (M)** — raycast the ship under the cursor → hail/board/target (diegetic, not a HUD verb).
@@ -54,7 +62,7 @@ Plan: **#161** + [`docs/briefs/2026-07-01-battle-fun-fixes.md`](https://github.c
 This IS the **Fun & Working > fast** doctrine (`docs/design/what-makes-it-fun.md`) — a mechanic with no
 visible feedback is INCOMPLETE. _(The loop's onboarding work #156/#157 aids legibility but does NOT cover
 these gaps.) Owner's finer call — whether to also FREEZE new battle mechanics — pending over Telegram; the
-fix is P1 regardless. **Next build: slice 3 (target lock — highlight the engaged foe + dim/hide non-combatants, driven off `foeIndex`).**_
+fix is P1 regardless. **Next build: slice 4 (rendered cannonballs — visible balls/tracers + muzzle flash + hit sparks; see the ball, sell the hit).** The reusable over-ship billboard module (`src/ui/over-ship-billboard.js`, shipped in slice 3) is now available for **#165 over-ship threat labels** (same billboard, second consumer)._
 
 ## 🟠 FROM-OWNER — Difficulty, Stakes & Ship Variety lane (epic #162) — build AFTER/ALONGSIDE #161
 _Owner steering 2026-07-01: "games are too easy — the player must be able to LOSE when playing badly, and a loss should COST points + fame; fair = clear consistent rules WITH a bounded luck element; a player who wants a hard fight (a big/armed ship) can seek one; ships should VARY, with over-ship displays hinting what they are." Epic **#162** + brief [`docs/briefs/2026-07-01-difficulty-stakes-variety.md`](https://github.com/cakuki/tidewake/blob/main/docs/briefs/2026-07-01-difficulty-stakes-variety.md). **Complements #161** — build ONE shared over-ship billboard module (used by #161 s3 target-lock AND #165 threat-labels) and coordinate odds/aim readouts (#166 ↔ #161 s5)._

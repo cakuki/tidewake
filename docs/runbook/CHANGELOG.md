@@ -4,6 +4,20 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-01 — #161 slice 3 Target lock shipped (Loop 113, v0.0.20260701212549).** Third slice of the
+  from-owner "Make Battle FUN" epic (#161): "while moving other ships are all around: I don't know which one
+  I am fighting with!" The engaged foe (just `foeIndex`) was visually identical to the wandering traffic. Fix
+  + felt FUN beat: the instant battle starts the foe carries an unmistakable world-anchored **target RING** (a
+  projected DOM/CSS billboard above her mast — 0 draw calls) and the non-combatant traffic **RECEDES** to a
+  faint opacity, so the foe reads instantly; it all clears the moment you flee. Built the **reusable OVER-SHIP
+  BILLBOARD module** (`src/ui/over-ship-billboard.js`) — a generic marker/label anchored above a ship in world
+  space, projected to screen; carries the highlight ring (wired now) AND a text-label slot (`setLabel`) so
+  **#165 over-ship threat labels** is the second consumer (module is #165-ready, label unused this slice).
+  PURE, TDD'd cores (`projectToScreen` world→screen · `shipEmphasis` foe/dim/normal · `DIM_OPACITY`); `npc.js`
+  drives per-mesh material opacity off the shared predicate (0 extra draws); a `target-lock` system projects
+  the foe each frame; `tw.targetLock()` QA hook. Playtest §2b3-lock asserts the foe is ring-marked + the only
+  un-dimmed hull and that it clears on flee. Respects the slice-2 centre safe-zone + #146 mobile guard. Gallery
+  `target-lock-161.png`. **No save change (stays v17).** 1096 unit tests. Slices 4–6 remain (#161 OPEN).
 - **2026-07-01 — #161 slice 2 Non-occluding battle UI shipped (Loop 112, v0.0.20260701210637).** The marquee
   complaint of the from-owner "Make Battle FUN" epic (#161): "the popup covers my ship and I cannot see my ship
   in action." The fight prompts (`#battle`/`#cannons`/`#duel`) were dead-centre `translate(-50%,-50%)` modals
