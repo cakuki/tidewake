@@ -25,7 +25,7 @@ import { createPersistence } from './persistence.js';
 import { createDuel } from './duel.js';
 import { createCannons } from './cannons.js';
 import { createBattle, quarterViewPos, engageLine as battleEngageLine, fleeLine as battleFleeLine } from './systems/battle.js';
-import { brawlMoraleDent } from './systems/board.js';
+import { brawlMoraleDent, prizeFork } from './systems/board.js';
 import { AMMO, AMMO_TYPES, ammoProfile, defaultLoadout, fitAmmo } from './systems/ammo.js';
 import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
@@ -260,18 +260,11 @@ const duel = createDuel({
   onEnd: ({ result, reward, penalty, enemyName }) => {
     if (result === 'win') {
       if (duel.state.boarded) {
-        // Boarding capture (#135 slice 4): you took her DECK, not her keel — capturing a ship intact
-        // pays the GOVERNOR pole (Standing) on top of the swagger (Infamy). The verbal duel WAS the
-        // climax; winning it is the capture. (Sinking via the broadside stays pure Infamy.)
-        initEconomy(state);
-        const captureStanding = Math.max(8, Math.round(reward.renown * 0.5));
-        state.standing = Math.max(0, (state.standing || 0) + captureStanding);
-        syncRenown(state);
-        hud.flashBanner('⚔ Her deck is yours — CAPTURED!',
-          `You out-duel ${enemyName} across the wreck and take her intact: ${reward.coins}c, ${reward.renown} infamy, and +${captureStanding} standing for the prize.`);
-        const boardDeed = { type: 'duel', foe: enemyName, infamy: reward.renown, coins: reward.coins, captured: true, boarded: true };
-        logDeed(boardDeed);            // #78/#135 — the boarding capture sings into the Ballad
-        rememberPortDeed(boardDeed);   // #104b — the nearest port recalls the prize you took
+        // Sink-or-spare (#135, Option 4 slice 1): you've won the boarding duel — now the RAID's climax
+        // is YOUR call, not the code's. The base coins+infamy are already banked; we hold the prize
+        // OPEN and let the player choose her fate (keys 1/2 or the QA hook). SINK her for the pirate
+        // legend, or SPARE/ransom her for the governor's coin. Resolved in `resolvePrize`.
+        openPrizeChoice({ enemyName, coins: reward.coins, infamy: reward.renown });
         return;
       }
       if (reward.treachery) {
@@ -299,6 +292,49 @@ const duel = createDuel({
     }
   },
 });
+
+// ── Sink-or-spare — Option 4 slice 1 (#135, "Three-Act Raid" first phase-coupling beat) ───────────
+// Winning the boarding duel no longer decides the prize FOR the player. We hold it OPEN: `pendingPrize`
+// carries the beaten captain's name + the won-duel base (already banked) while the player chooses her
+// fate. SINK (2) → the pirate road (bonus Infamy). SPARE (1) → the governor road (ransom coin +
+// Standing). Transient by design — resolved in the moment, so the SAVE stays v16 (nothing persisted
+// but the ledger the deed already moves). The key handler claims 1/2 while a prize is pending.
+let pendingPrize = null;
+
+function openPrizeChoice({ enemyName, coins, infamy }) {
+  pendingPrize = { enemyName, coins, infamy };
+  hud.flashBanner('⚔ Her deck is yours — her FATE is your call',
+    `You out-duel ${enemyName} across the wreck. Press 1 to SPARE & ransom her (Standing + coin) — or 2 to SINK her to the deep (Infamy).`);
+}
+
+// Apply the chosen fork on top of the already-banked base, announce it, and write the deed to the
+// Ballad + the nearest port's memory. Unknown/absent choice defaults to SPARE (the ledger-safe road).
+function resolvePrize(choice) {
+  if (!pendingPrize) return null;
+  const { enemyName, coins, infamy } = pendingPrize;
+  pendingPrize = null;
+  const f = prizeFork(choice, { coins, infamy });
+  initEconomy(state);
+  state.coins += f.addCoins;
+  state.infamy += f.addInfamy;
+  if (f.addStanding) state.standing = Math.max(0, (state.standing || 0) + f.addStanding);
+  syncRenown(state);
+  if (f.captured) {
+    hud.flashBanner('⚔ Spared — a prize taken intact!',
+      `You let ${enemyName} live; her crew ransoms her back: +${f.addCoins}c and +${f.addStanding} standing for the mercy.`);
+  } else {
+    hud.flashBanner('🏴 Sent to the deep!',
+      `You put ${enemyName} under with all her colours flying: +${f.addInfamy} infamy for the ruthless road.`);
+  }
+  const prizeDeed = {
+    type: 'duel', foe: enemyName,
+    infamy: infamy + f.addInfamy, coins: coins + f.addCoins,
+    captured: f.captured, sunk: !f.captured, boarded: true, prizeChoice: f.choice,
+  };
+  logDeed(prizeDeed);            // #78/#135 — the raid's climax sings into the Ballad
+  rememberPortDeed(prizeDeed);   // #104b — the nearest port recalls the fate you dealt
+  return f;
+}
 
 // Cannon Broadside (#59): the duel's teeth-y twin. Run out the guns on a nearby ship
 // instead of out-jeering it — so a fight is a genuine CHOICE (talk them down OR open
@@ -747,6 +783,14 @@ addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'n') newVoyage(
 // only claims them while docked.)
 addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
+  // Sink-or-spare (#135, Option 4 slice 1): the instant a boarding duel is won, the prize is HELD
+  // open — 1 SPARES & ransoms her (Standing + coin), 2 SINKS her (Infamy). The choice claims the keys
+  // (ahead of everything) so the raid's climax is never stepped on by a stray hail/fire.
+  if (pendingPrize) {
+    if (e.key === '1') resolvePrize('spare');
+    else if (e.key === '2') resolvePrize('sink');
+    return;
+  }
   // Foundering-ship choice (#125): while a founderer is alongside, 1 RESCUES, 2 PLUNDERS. The
   // encounter claims the keys and blocks hailing/firing so the moral beat isn't stepped on.
   if (encounter.state.active) {
@@ -1889,6 +1933,12 @@ window.__tidewake = {
   // (battle.snapshot().canBoard) — it resolves the comic crew brawl, then hands off to the verbal
   // captain's duel (#33). After it, tw.battle.active is false and tw.duel.active is true (boarded=true).
   boardBattle() { return battle.board(); },
+  // Sink-or-spare (#135, Option 4 slice 1) QA surface: after a boarding duel is WON the prize is held
+  // open — `prizeChoice` reads the pending prize (the beaten captain + the won-duel base, or null once
+  // resolved), and choosePrize('sink'|'spare') settles it headlessly. SINK → +Infamy; SPARE → +coin
+  // ransom + Standing. Mirrors encounterChoose()'s force-a-choice hook.
+  get prizeChoice() { return pendingPrize ? { ...pendingPrize } : null; },
+  choosePrize(choice) { return resolvePrize(choice); },
   // QA-only (#135 slice 4): beat the engaged foe's hull straight down to the boardable window, so a
   // headless test can reach the Board! prompt deterministically without grinding live volleys (which
   // can sink or capture her first). Mirrors encounterSpawn()'s force-a-state hook. No-op un-engaged.

@@ -432,12 +432,23 @@ try {
       tw.duelChoose(idx);
       result = tw.duel.result;
     }
+    // Sink-or-spare (#135, Option 4 slice 1): winning the boarding duel no longer auto-decides the
+    // prize — it holds OPEN a deliberate choice. Confirm the prize is pending, then SPARE her (the
+    // governor road) and confirm the ransom coin + Standing land.
+    const prizePending = !!tw.prizeChoice;
+    const infamyBeforeSpare = tw.state.infamy;
+    const spare = tw.choosePrize('spare');
+    const prizeClearedAfter = tw.prizeChoice === null;
     const standingAfter = tw.state.standing;
     return {
       engaged, boardableFresh, boardableWeak,
       brawlLines: brawl && brawl.lines ? brawl.lines.length : 0,
       battleEndedOnBoard, duelOpened, duelIsBoarded, result,
+      prizePending, prizeClearedAfter,
+      spareCaptured: !!(spare && spare.captured),
+      spareRansom: spare ? spare.addCoins : 0,
       standingGained: standingAfter - standingBefore,
+      infamyOnSpare: tw.state.infamy - infamyBeforeSpare,
     };
   });
   if (boarding.engaged) {
@@ -448,7 +459,14 @@ try {
     if (!boarding.duelOpened) fail('boarding: boarding did not hand off to the verbal captain duel (#33) (#135 slice 4)');
     if (!boarding.duelIsBoarded) fail('boarding: the captain duel was not flagged as boarded (capture framing) (#135 slice 4)');
     if (boarding.result !== 'win') fail(`boarding: the captain duel did not resolve to a win (result=${boarding.result}) (#135 slice 4)`);
-    if (!(boarding.standingGained > 0)) fail(`boarding: a captured prize paid no Standing (gained ${boarding.standingGained}) (#135 slice 4)`);
+    // Sink-or-spare (#135, Option 4 slice 1): the won boarding duel must OPEN a deliberate prize choice,
+    // and SPARE must pay the governor pole (ransom coin + Standing) without adding infamy.
+    if (!boarding.prizePending) fail('sink-or-spare: winning the boarding duel did not open a prize choice (#135 Option 4 slice 1)');
+    if (!boarding.spareCaptured) fail('sink-or-spare: SPARE did not frame the ship as captured (#135 Option 4 slice 1)');
+    if (!boarding.prizeClearedAfter) fail('sink-or-spare: the prize choice did not clear after resolving (#135 Option 4 slice 1)');
+    if (!(boarding.spareRansom > 0)) fail(`sink-or-spare: SPARE paid no ransom coin (got ${boarding.spareRansom}) (#135 Option 4 slice 1)`);
+    if (boarding.infamyOnSpare !== 0) fail(`sink-or-spare: SPARE should add no infamy (added ${boarding.infamyOnSpare}) (#135 Option 4 slice 1)`);
+    if (!(boarding.standingGained > 0)) fail(`sink-or-spare: SPARE paid no Standing (gained ${boarding.standingGained}) (#135 Option 4 slice 1)`);
   } else {
     console.warn('  (#135 slice 4 boarding: no foe came in range to engage — skipped, like slice 2/3)');
   }

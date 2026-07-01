@@ -95,3 +95,45 @@ export function resolveBrawl(
 export function brawlMoraleDent(advantage) {
   return Math.round(Math.max(0, Math.min(1, advantage)) * MAX_BOARD_DENT);
 }
+
+// ── Sink-or-spare — the FIRST phase-coupling beat of Option 4 (#135, "Three-Act Raid") ────────────
+// You've beaten her hull, carried her deck, and out-jeered her captain across the wreck. The old
+// code decided the prize FOR you (a boarded win was always a capture → Standing). Now the raid's
+// climax is a DELIBERATE fork: put her to the deep for the pirate legend, or spare her crew and let
+// them ransom her back for the governor's coin. Same won duel, two captains you could become.
+//
+// CREATIVE SPARK (Game Designer): the sword's already won it — this is the choice the whole raid was
+// FOR. Sink = the cold, feared road (bonus Infamy, no ledger with the ports). Spare = the merciful
+// road (a fat ransom purse + Standing, the swagger tempered). Neither is "correct"; each writes a
+// line of who you are into the arc.
+//
+// PURE + testable: the won-duel base (coins+infamy) is already banked by the duel; this returns only
+// the FORK delta to lay on top, so the two roads stay a genuine, unit-tested trade-off.
+
+export const SINK_INFAMY_BONUS = 0.5;   // sinking her deepens the pirate legend — a ruthless flourish
+export const SPARE_RANSOM_BONUS = 0.5;  // her crew buys her freedom — a fatter purse than a bare win
+export const SPARE_MIN_STANDING = 8;    // the floor the old auto-capture already paid the governor pole
+
+/**
+ * The prize FORK laid on the won boarding-duel base (coins+infamy already banked). PURE.
+ * SINK → the pirate road: bonus Infamy, no ransom, no Standing. SPARE → the governor road: a ransom
+ * purse + Standing, the swagger left as-is. Unknown/absent choice defaults to SPARE (the merciful,
+ * ledger-safe road) so a stray resolve can never quietly scuttle a ship.
+ * @param {'sink'|'spare'} choice
+ * @param {{coins?:number, infamy?:number}} base
+ * @returns {{choice:'sink'|'spare', addCoins:number, addInfamy:number, addStanding:number, captured:boolean}}
+ */
+export function prizeFork(choice, { coins = 0, infamy = 0 } = {}) {
+  const c = Math.max(0, Math.round(coins));
+  const inf = Math.max(0, Math.round(infamy));
+  if (choice === 'sink') {
+    return { choice: 'sink', addCoins: 0, addInfamy: Math.round(inf * SINK_INFAMY_BONUS), addStanding: 0, captured: false };
+  }
+  return {
+    choice: 'spare',
+    addCoins: Math.round(c * SPARE_RANSOM_BONUS),
+    addInfamy: 0,
+    addStanding: Math.max(SPARE_MIN_STANDING, Math.round(inf * 0.5)),
+    captured: true,
+  };
+}
