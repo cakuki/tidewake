@@ -192,6 +192,23 @@ draws · 89.7k/150k tris — a DOM/CSS overlay, **~0 draws**. **No save change (
 OPEN — closing it is the OWNER's call.** Option-4 polish now leaves only the dedicated **arena-spawn**
 (a bespoke maneuvering target) queued._
 
+_**UPDATE Loop 105 (2026-07-01, v0.0.20260701110959): Option 4 polish — DEDICATED ARENA-SPAWN — SHIPPED.
+The LAST queued Option-4 item → Option-4 polish is now COMPLETE.** Entering BATTLE reused whatever open-sea
+NPC triggered it, so the foe drifted on her waypoint AI — inert during the maneuver phase. The engaged foe
+now runs a dedicated DUEL brain and actively SAILS TO FIGHT: **close** when out of broadside range · **open**
+when fouling-close · **beam** in the fighting band (seek a station off YOUR beam → a real circling duel of
+positioning) · **flee** when her nerve breaks. PURE, TDD'd `arenaHelm(relative pos + morale)` →
+`{state, desiredHeading, throttle}` in `src/npc-ai.js` (`ARENA_FLEE_MORALE`=0.2 sits BELOW the 0.25
+strike-colours line, so a foe you're beating STRIKES before she'd ever flee — surrender/board couplings
+untouched). `npc.js` drives the foe index via the helm during battle, REUSING her existing mesh → **zero new
+draws**; **all couplings preserved** (aim → broadside → boarding → surrender flow through `foePos()`, which now
+returns the maneuvering foe). `battle.snapshot()` adds `foePos`/`foeHelm`, npc snapshot adds `helm`, for the
+headless gate. **No save change (stays v16).** 1008 unit tests (+7 in `tests/unit/arena-helm.test.mjs`);
+playtest ✓ PASSED (new deterministic step 2b6b); perf 48/130 draws · 90.4k/150k tris. Gallery
+`arena-duel-135.png` (the Maneuver-phase HUD with the foe maneuvering off to starboard). **#135 stays OPEN —
+Option-4 is COMPLETE end-to-end; NOTHING remains in the build queue for #135, only the OWNER's close-call.**
+(NB: the active build lane remains **#145 preview subpath** below.)_
+
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
 ### ⛴️ NEXT LANE (owner, 2026-07-01) — **#145 slice 1: remotely-viewable `/preview/` subpath** — BUILD THIS NEXT
