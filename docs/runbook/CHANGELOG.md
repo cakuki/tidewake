@@ -12,7 +12,7 @@ files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — th
   the single source of truth) consulted at four seams (encounter spawn gate now DEFERS a founderer · keydown
   `f`/`g` no-op · encounter `1`/`2` choice · HUD panel dismissed while engaged). Felt FUN beat = the ABSENCE of
   the intrusion, proven by playtest §2b3-iso (real KeyboardEvents assert rescue + f/g are no-ops mid-fight, and
-  the world returns on flee). **No save change (stays v17).** 1086 unit tests. Slices 2–6 remain (#161 OPEN).
+  the world returns on flee). **No save change (stays v17).** 1078 unit tests. Slices 2–6 remain (#161 OPEN).
 - **2026-07-01 — #157 The Bosun's First Duel shipped (Loop 110, v0.0.20260701201752).** A cold save's FIRST
   engagement is a one-shot **scaffolded SOFT debut** — a forgiving, already-battered foe + the bosun calling
   each phase's verb aloud in-world (maneuver→FIRE, BOARD, surrender), fully player-driven. PURE, TDD'd logic
