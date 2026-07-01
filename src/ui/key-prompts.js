@@ -53,6 +53,36 @@ export function activePrompts(battle, duel, learned = new Set()) {
 }
 
 /**
+ * PURE — the set of core keymap verbs (src/keymap.js) currently SIGNIFIED to a FRESH captain: taught,
+ * at this exact game-state, by an on-screen teacher and/or its #154 earcon. Three teachers, one model:
+ *   • the persistent #challenge-prompt — the at-sea entry verb E (`engage`), lit when a ship is hailable;
+ *   • the standing #battle panel help — E to break off (`flee`), shown the whole time a fight is live;
+ *   • the contextual just-in-time #key-prompts strip — the in-battle arc (fire/cycle/board/accept/press),
+ *     which arms the availability EARCON (#154) on the very same illegal→legal edge.
+ * Computed with an EMPTY learned-set, so it answers the cold-start question the FTUE gate (#156) asks:
+ * "the instant this verb becomes legal, is it signified?" Read-only; invents no mechanics. Because it
+ * reads the keymap through activePrompts, a verb added to KEYS that no teacher signifies is caught by
+ * the gate (its id never appears here) rather than silently shipping un-taught — the #135/#153 defect.
+ * @param {object|null} battle  the battle snapshot (createBattle().snapshot())
+ * @param {object|null} duel    the duel snapshot (createDuel().snapshot())
+ * @returns {Set<string>} keymap verb ids currently signified
+ */
+export function signifiedVerbs(battle, duel) {
+  const b = battle || {};
+  const d = duel || {};
+  const out = new Set();
+  // A boarded verbal duel owns its own 1–4 jabs — no keymap verb is signified underneath it.
+  if (d.active && d.boarded) return out;
+  // At-sea entry: a hailable ship lights the standing #challenge-prompt → E give battle.
+  if (!b.active && d.inRange) out.add('engage');
+  // A live fight: the #battle panel's standing help always teaches E to break off.
+  if (b.active) out.add('flee');
+  // The in-battle arc: the contextual strip (fresh captain → nothing learned) + its earcon edge.
+  for (const p of activePrompts(b, d, new Set())) out.add(p.id);
+  return out;
+}
+
+/**
  * PURE — the verb ids the player has USED, derived from two successive battle snapshots. An action is
  * "learned" the instant we observe its effect: a spent load (a fired volley), a swapped shot, the crew
  * gone over the rail, an answered surrender. Returns a NEW set (never mutates its input) so the caller

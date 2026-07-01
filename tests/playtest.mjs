@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { BUDGET, checkBudget } from '../src/perf.js';
+import { KEYS } from '../src/keymap.js'; // the keymap source-of-truth: the FTUE gate (#156) auto-covers every verb
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
@@ -657,6 +658,117 @@ try {
     if (earcons.engaged2 && earcons.surrenderCue !== 'surrenderOffer') fail(`battle earcons: striking her colours did not ring surrenderOffer (got ${earcons.surrenderCue}) (#154)`);
   } else {
     console.warn('  (#154 battle earcons: no foe to engage — skipped)');
+  }
+
+  // 2b9) COLD-START FTUE DISCOVERABILITY (#156): a fresh captain must be able to DISCOVER every core
+  // verb the instant it becomes legal — a visible key-prompt (#153) and/or its availability earcon (#154).
+  // This drives a cleared-save captain through the core arc (sight a sail → give battle → fire → board →
+  // strike her colours) and asserts each keymap verb (src/keymap.js) is SIGNIFIED at its legal edge, read
+  // off the tw.signifiers QA surface (the SAME pure model the strip paints, fresh-captain/unlearned). It's
+  // written against the keymap so a NEW verb is auto-covered: every KEYS id must be walked (KEYS ⊆ covered)
+  // AND signified when legal — a reachable-but-un-taught verb FAILS LOUDLY. This locks the onboarding so a
+  // future change can't silently make a verb undiscoverable again (the #135 defect #153/#154 fixed).
+  const ftue = await page.evaluate(async (KEY_IDS) => {
+    const tw = window.__tidewake;
+    tw.newVoyage();              // cold start — a brand-new captain, save cleared
+    tw.step(0.1);
+    const covered = new Set();   // keymap ids we drove to a legal edge + checked
+    const misses = [];           // [{verb, phase, signifiers}] — a reachable verb with NO signifier
+    const want = (verb, phase) => {
+      covered.add(verb);
+      const s = tw.signifiers;
+      if (!s.includes(verb)) misses.push({ verb, phase, signifiers: s.slice() });
+    };
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    }
+    function closeOnNearest() {   // deterministic: drop just off the nearest sail, inside CHALLENGE_RANGE
+      const bi = nearest();
+      if (bi === -1) return false;
+      const fp = tw.npcs[bi].pos;
+      tw.qaTeleport(fp[0], fp[1] - 120);
+      tw.step(0.1);
+      return true;
+    }
+    // 1) AT SEA — a hailable ship lights E give battle (the persistent #challenge-prompt).
+    if (!closeOnNearest()) return { skipped: true };
+    want('engage', 'at-sea foe in hail range');
+    // 2) SQUARE UP — the maneuver broadside: E break off + SPACE fire (+ X cycle once the locker holds 2+).
+    tw.fitAmmoType('grape');                 // fit a 2nd shot so the cycle verb is legal + expected here
+    if (tw.loadout.length < 2) tw.fitAmmoType('chain');
+    tw.engageBattle();
+    tw.step(0.1);
+    want('flee', 'live fight');
+    want('fire', 'maneuver — guns bear');
+    want('cycle', 'maneuver — 2+ fitted shots');
+    // 3) BOARD — beat her into the ≤30% hull window; F board her lights.
+    tw.battleWeaken();
+    tw.step(0.1);
+    want('board', 'foe beaten to the boarding window');
+    // 4) STRIKE HER COLOURS — break her nerve+hull and fire; the 1 accept / 2 press decision lights.
+    tw.fleeBattle();
+    let incomplete = null;
+    if (closeOnNearest()) {
+      tw.engageBattle();
+      tw.step(0.1);
+      tw.battleBreakFoe();
+      tw.battleFire();
+      tw.step(0.1);
+      want('accept', 'foe strikes her colours');
+      want('press', 'foe strikes her colours');
+      tw.fleeBattle();
+    } else {
+      incomplete = 'no fresh foe for the surrender edge';
+    }
+    return { skipped: false, covered: [...covered], misses, keyIds: KEY_IDS, incomplete };
+  }, Object.keys(KEYS));
+  if (ftue.skipped) {
+    fail('FTUE #156: no NPC available to drive the cold-start discoverability walk');
+  } else {
+    // Every core verb that became legal must have been SIGNIFIED at that moment — else it's undiscoverable.
+    for (const m of ftue.misses) fail(`FTUE #156: verb "${m.verb}" was LEGAL but UN-SIGNIFIED at [${m.phase}] — signifiers were {${m.signifiers.join(', ') || 'none'}}`);
+    // Auto-coverage lock against the keymap: a NEW keymap verb with no FTUE drive fails loudly, so a
+    // reachable verb can never silently ship without a discoverability check.
+    const uncovered = ftue.keyIds.filter((id) => !ftue.covered.includes(id));
+    if (uncovered.length) fail(`FTUE #156: keymap verb(s) never checked for discoverability: ${uncovered.join(', ')} — add an FTUE drive (they may be shipping un-taught)`);
+    if (ftue.incomplete) console.warn(`  (FTUE #156: ${ftue.incomplete} — surrender edge skipped)`);
+  }
+
+  // 2b9′) PERSISTENT signifiers for the non-battle core verbs (#156): the sail/steer helm hints must sit
+  // on-screen from boot, and a harboured captain's ONLY way back to sea — the "⚓ Set Sail" plank — must be
+  // present in the town view. These verbs have no keymap prompt; their teachers are the standing #help bar
+  // and the town panel, so the FTUE gate locks them here too.
+  const ftuePersist = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    // sail/steer — the standing help bar teaches throttle (W/S) + steering (A/D) the whole voyage.
+    const help = (document.getElementById('help')?.textContent || '');
+    const teachesThrottle = /W\/S/.test(help);
+    const teachesSteer = /A\/D/.test(help);
+    // town/harbour + set-sail — sail into a port, then the town view must offer the Set Sail plank.
+    tw.newVoyage(); tw.step(0.1);
+    let best = null, bd = Infinity;
+    for (const p of tw.ports) { const d = Math.hypot(p.pos[0] - tw.state.pos[0], p.pos[1] - tw.state.pos[2]); if (d < bd) { bd = d; best = p; } }
+    let inTown = false, hasSetSail = false;
+    if (best) {
+      tw.qaTeleport(best.pos[0], best.pos[1]);   // drop onto the harbour → landfall into TOWN
+      // Wait for the town VIEW to finish its landfall gesture and paint (mode flips to town a beat
+      // before tw.town.open, which is when the panel — incl. the Set Sail plank — is actually rendered).
+      for (let i = 0; i < 120 && !inTown; i++) { tw.step(0.1); inTown = tw.town.open === true; }
+      hasSetSail = !!document.getElementById('town-leave');
+    }
+    tw.leaveHarbour?.(); tw.newVoyage(); tw.step(0.1); // clean slate for the screenshot
+    return { teachesThrottle, teachesSteer, hadPort: !!best, inTown, hasSetSail };
+  });
+  if (!ftuePersist.teachesThrottle) fail('FTUE #156: the help bar does not teach the throttle (W/S) — sail verb un-signified');
+  if (!ftuePersist.teachesSteer) fail('FTUE #156: the help bar does not teach steering (A/D) — steer verb un-signified');
+  if (ftuePersist.hadPort) {
+    if (!ftuePersist.inTown) fail('FTUE #156: sailing onto a harbour did not make landfall into TOWN (cannot check Set Sail)');
+    else if (!ftuePersist.hasSetSail) fail('FTUE #156: the town view has no "Set Sail" plank (#town-leave) — the set-sail verb is undiscoverable');
   }
 
   // 2c) Route-planning map (#54): open the big chart, confirm the overlay is visible,

@@ -49,6 +49,7 @@ import {
 import { makeObjective, resolvesAt, payoffFor, sanitizeObjective, makeContestedObjective, tickContest, isContested, isClaimed, rivalName, shouldContest } from './objectives.js';
 import { payoffCueName, approachCrossed, APPROACH_RADIUS, listenCueName, coinChimes, sightingEdge, RIVAL_SIGHT_RADIUS, RIVAL_SAIL_CUE } from './systems/loop-cues.js';
 import { createEncounter, HAIL_LINES, RESCUE_LINES, PLUNDER_LINES } from './systems/encounter.js';
+import { signifiedVerbs } from './ui/key-prompts.js';
 import { freshMorale, sanitizeMorale, applyMorale, moraleBeat, moraleTier } from './systems/morale.js';
 import {
   assessThreat, sanitizeThreat, isActiveThreat, threatTitle, threatWarning,
@@ -1941,6 +1942,13 @@ window.__tidewake = {
   // (fireReady / boardable / surrenderOffer, or null) — so a headless playtest can open each verb-window
   // and assert the right earcon rang on its illegal→legal EDGE, without ever opening an AudioContext.
   get battleEarcon() { return lastBattleEarcon; },
+  // Cold-start FTUE discoverability (#156) QA surface: the core keymap verbs (src/keymap.js) currently
+  // SIGNIFIED to a fresh captain at THIS game-state — the union of the persistent #challenge-prompt (E
+  // give battle), the standing #battle help (E break off), and the contextual #key-prompts strip (which
+  // also arms the #154 earcon). Read-only; derived from the SAME pure model the strip paints, with an
+  // empty learned-set. Lets the headless FTUE gate drive a fresh captain into each verb's legal edge and
+  // assert it is discoverable — so a reachable verb can never silently ship un-taught again.
+  get signifiers() { return [...signifiedVerbs(battle.snapshot(), duel.snapshot())]; },
   // Continuous WAKE/HELM water-bed (#150) QA surface: the wash layer's live drive [0,1], set each
   // frame from ship speed + helm — so a headless playtest can make way / swing the helm and assert
   // the sea sounds like moving water (fuller at speed, a gentle lap becalmed), AudioContext-free.
