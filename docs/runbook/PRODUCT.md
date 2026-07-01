@@ -10,6 +10,14 @@ the loop once finished all decided work and *held for ~2h* because nothing gener
 Act as `studio/agents/{product-manager,tech-lead,game-designer}.md`; `studio/CONSTITUTION.md` +
 `docs/VISION.md` are canon (north-star: one boat → **feared pirate** or **beloved governor**).
 
+## FUN IS THE FIRST FILTER (PM + GD co-own — see CONSTITUTION → FUN-FIRST)
+Before value/complexity/deps, every proposed slice must answer **"what FUN does this deliver?"** —
+the concrete player-felt payoff (a beat that's more satisfying, tense, funny, or juicy to *play*),
+**signed off by the Game Designer**. No fun answer → don't queue it. **Reject / deprioritise
+feature-count-for-its-own-sake** (breadth of new systems that doesn't move the felt experience).
+**Bias the batch toward** deepening / juicing / tightening what's *already* fun and toward
+**first-session fun** (the opening ~5 min feels good fast). More-features vs. more-fun → **fun.**
+
 ## RUNS WHEN (the entry loop decides this — see LOOP.md step 1)
 - The queue has **no READY build slice**, OR
 - the **READY-slice count is below the LOW-WATER-MARK of 3**, OR
@@ -30,7 +38,7 @@ low-water-mark → refill, don't wait for zero.
    over inventing when one already fits.
 3. **Synthesize a SMALL batch** (aim 3–5) of **concrete, ORIGINAL, vision-aligned** slices — each the
    *smallest always-working increment* that grows the fantasy, with a one-line player-value +
-   acceptance ("I can now …") and a named runner role.
+   a **FUN line (the felt payoff, GD-signed)** + acceptance ("I can now …") and a named runner role.
 4. **Sequence** by **value · complexity · dependencies** (TL sizes S/M/L + flags deps; GD names the fun
    beat). Put the highest-leverage unblocked slice on top.
 5. **Write them to the TOP of `studio/comms/queue.md`** as READY build slices (in queue format, with an

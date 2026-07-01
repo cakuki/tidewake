@@ -16,6 +16,15 @@ and world — but keep a **warm, witty, swashbuckling comedy** in characters, di
 visual charm (expressive, slightly exaggerated, hand-crafted feel). Adventure-game humour
 over grim simulation. Fun first.
 
+## FUN-FIRST — our top value (read this before feature-count)
+
+**Tidewake is a GAME. The point is FUN.** Every slice must make the game *more fun to play* —
+the felt player experience — not merely add capability. **Playable AND fun are BOTH must-haves:
+a feature that works but isn't fun is NOT done.** The **Game Designer owns the fun bar** and can
+send a working slice back for lacking it. PM + GD justify every roadmap item by the *fun it
+delivers*, never the feature it ships. Prefer **deepening / juicing / tightening what's already
+fun** over more new systems. When it's more-features vs. more-fun, **choose fun.**
+
 ## How we work (lean delivery loop)
 
 1. **Always shippable.** Every change keeps the game playable. Tiny increments.

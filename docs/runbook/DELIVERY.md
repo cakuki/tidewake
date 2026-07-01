@@ -35,12 +35,17 @@ sub-subagents** for heavy sub-work (a TL feasibility pass, a QA visual pass).
 ## Cycle-runner contract (the SUBAGENT reads this; the orchestrator never inlines it)
 1. **Clean-tree check** (`git status`) — foreign uncommitted work you didn't create → STOP & report.
 2. **Smallest always-working increment** — game boots+sails every commit; preserve `window.__tidewake`.
-3. **Creative spark** — name a creative driver (Game Designer/Musician) + one charm/fun/feel beat, even
-   on a "technical" slice. Fun-shaping numbers are the Game Designer's first-class output (~5-min session).
+3. **Fun gate (MUST-HAVE, not a nice-to-have)** — a slice ships only if it's **playable AND makes the
+   game more fun to play** (or *protects* existing fun). Name a creative driver (Game Designer/Musician)
+   + the charm/fun/feel beat it lands, even on a "technical" slice. **A working-but-not-fun increment is
+   NOT Done** — reshape or cut it (Game Designer owns the fun bar). Fun-shaping numbers are the Game
+   Designer's first-class output (~5-min session).
 4. **TDD pure logic** (`node:test` in `tests/unit/`) before implementing; keep `main.js` thin
    (`src/systems/`, `src/ui/`).
 5. **Gates green** — `npm test` + `node tests/playtest.mjs` (`✓ PLAYTEST PASSED`, zero console errors)
-   + perf ≤130 draws/150k tris; a *visible* change archives `studio/qa/gallery/<tag>.png`.
+   + perf ≤130 draws/150k tris; a *visible* change archives `studio/qa/gallery/<tag>.png`. QA asks
+   **both** "does it work?" **and** "is it fun / does it feel good?" — a slice that only passes the
+   first is not shippable.
 6. **Commit named paths only** — `git add <paths>` then **`git commit -o <paths>`** (race-safe; NEVER
    `git add -A`); push (`git pull --rebase` on non-ff). Releases fire only on `src/**`/`index.html`.
 7. **CI green + live 200** — `gh run watch`; `curl -sI https://cakuki.github.io/tidewake/`. Fix-forward.

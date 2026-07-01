@@ -5,6 +5,9 @@ never-idle rule only**; the *how* lives in two sub-runbooks the orchestrator pas
 - **`docs/runbook/PRODUCT.md`** — PM + TL + Game Designer fill the queue from external inspiration.
 - **`docs/runbook/DELIVERY.md`** — the full cycle-runner contract (build → gates → ship → bookkeep).
 
+Both are **FUN-FIRST** (CONSTITUTION → FUN-FIRST): PRODUCT filters every slice by the fun it delivers;
+DELIVERY ships only if it's playable **AND** more fun. Working-but-not-fun is not Done.
+
 **Companion files carry the rest — passed by REFERENCE, never inlined:** `studio/CONSTITUTION.md`
 (vision · roles · tone), `studio/comms/OWNER-CHANNEL.md` (release reporting OUT only; inbound
 owner/PM input is a SEPARATE session, not the loop), `studio/comms/queue.md` (next-slice queue),

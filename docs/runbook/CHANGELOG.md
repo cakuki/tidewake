@@ -4,6 +4,11 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-01 — FUN-FIRST encoded into the flow (owner directive).** "Prioritise fun; playable AND
+  fun are both must-haves." Added FUN-FIRST as a top canonical value (`CONSTITUTION.md`); made fun the
+  **first filter** of roadmap generation with GD sign-off (`PRODUCT.md`); elevated the creative spark to
+  a **MUST-HAVE fun gate** + a QA "is it fun?" line (`DELIVERY.md`); signpost in `LOOP.md`. Game Designer
+  owns the fun bar; working-but-not-fun is not Done. → `studio/retros/2026-07-01-fun-first.md`
 - **2026-07-01 — Never-idle restructure (product + delivery split).** The loop once finished all decided
   work and **idled ~2h** waiting on the owner because the runbook was a delivery-*consumer* only, with no
   product/roadmap-generation function inside the loop. Fix: **split into two sub-runbooks** —
