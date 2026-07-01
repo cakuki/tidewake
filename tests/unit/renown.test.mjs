@@ -5,6 +5,8 @@ import {
   renownTier, standingPriceModifier, greetPlayer, GREETINGS,
   dominantPole, titleFor, LADDERS,
   earnedLegend, LEGEND_AT, LEGENDS, legendBeat,
+  defeatLedger, defeatContext,
+  DEFEAT_MAX_TIER, DEFEAT_BASE_COIN, DEFEAT_COIN_PER_TIER, DEFEAT_BASE_FAME, DEFEAT_FAME_PER_TIER,
 } from '../../src/renown.js';
 
 test('RANKS is a non-empty ladder starting at 0 with strictly ascending thresholds', () => {
@@ -356,4 +358,121 @@ test('earnedLegend: junk inputs earn nothing and never throw', () => {
   for (const bad of [NaN, Infinity, -Infinity, undefined, null, 'x']) {
     assert.deepEqual(earnedLegend(bad, bad), { pirate: false, governor: false });
   }
+});
+
+// ---- Defeat ledger: the first reputation-DECREMENT path (#164) ---------------
+// The owner's headline for the difficulty/stakes epic: a lost battle must COST coin + fame,
+// scaled by the foe's tier, floored at 0, never a death-spiral. These lock the pure sting.
+
+test('defeatContext: routes the loss to the pole you were pursuing', () => {
+  // a pirate-leaning captain (Infamy-dominant) loses on the RAIDING road → dents Infamy
+  assert.equal(defeatContext(500, 50), 'raid');
+  // a governor-leaning captain (Standing-dominant) loses on the GOVERNOR road → dents Standing
+  assert.equal(defeatContext(50, 500), 'governor');
+  // a balanced / green captain defaults to raid (combat is the pirate pole, #45)
+  assert.equal(defeatContext(0, 0), 'raid');
+  assert.equal(defeatContext(100, 100), 'raid');
+  // junk never throws and falls to raid
+  for (const bad of [NaN, Infinity, -Infinity, undefined, null, 'x']) {
+    assert.equal(defeatContext(bad, bad), 'raid');
+  }
+});
+
+test('defeatLedger: a raiding loss dents INFAMY (not Standing), plus coin', () => {
+  const before = { coins: 1000, infamy: 1000, standing: 1000 };
+  const r = defeatLedger(3, 'raid', before);
+  assert.equal(r.pole, 'infamy');
+  assert.equal(r.context, 'raid');
+  assert.ok(r.fameLoss > 0, 'infamy was dented');
+  assert.ok(r.coinLoss > 0, 'coin was dented');
+  assert.equal(r.infamy, before.infamy - r.fameLoss);
+  assert.equal(r.coins, before.coins - r.coinLoss);
+  assert.equal(r.standing, before.standing, 'a raiding loss leaves Standing untouched');
+});
+
+test('defeatLedger: a governor-road loss dents STANDING (not Infamy), plus coin', () => {
+  const before = { coins: 1000, infamy: 1000, standing: 1000 };
+  const r = defeatLedger(3, 'governor', before);
+  assert.equal(r.pole, 'standing');
+  assert.equal(r.context, 'governor');
+  assert.ok(r.fameLoss > 0, 'standing was dented');
+  assert.equal(r.standing, before.standing - r.fameLoss);
+  assert.equal(r.coins, before.coins - r.coinLoss);
+  assert.equal(r.infamy, before.infamy, 'a governor-road loss leaves Infamy untouched');
+});
+
+test('defeatLedger: unknown/absent context defaults to raid (Infamy)', () => {
+  const before = { coins: 500, infamy: 500, standing: 500 };
+  for (const ctx of ['raid', 'nonsense', undefined, null, '']) {
+    const r = defeatLedger(2, ctx, before);
+    assert.equal(r.pole, 'infamy');
+    assert.equal(r.context, 'raid');
+  }
+});
+
+test('defeatLedger: the sting SCALES MONOTONICALLY with foe tier (bigger foe = bigger blow)', () => {
+  const before = { coins: 100000, infamy: 100000, standing: 100000 };
+  let prevCoin = -1, prevFame = -1;
+  for (let tier = 1; tier <= DEFEAT_MAX_TIER; tier++) {
+    const r = defeatLedger(tier, 'raid', before);
+    assert.ok(r.coinLoss > prevCoin, `coin loss grows at tier ${tier}`);
+    assert.ok(r.fameLoss > prevFame, `fame loss grows at tier ${tier}`);
+    prevCoin = r.coinLoss; prevFame = r.fameLoss;
+  }
+  // exact schedule: base + tier × per-tier
+  const t3 = defeatLedger(3, 'raid', before);
+  assert.equal(t3.nominalCoin, DEFEAT_BASE_COIN + 3 * DEFEAT_COIN_PER_TIER);
+  assert.equal(t3.nominalFame, DEFEAT_BASE_FAME + 3 * DEFEAT_FAME_PER_TIER);
+});
+
+test('defeatLedger: out-of-range / junk tier clamps to [1, MAX] and never throws', () => {
+  const before = { coins: 1000, infamy: 1000, standing: 1000 };
+  assert.equal(defeatLedger(0, 'raid', before).tier, 1);
+  assert.equal(defeatLedger(-5, 'raid', before).tier, 1);
+  assert.equal(defeatLedger(99, 'raid', before).tier, DEFEAT_MAX_TIER);
+  for (const bad of [NaN, Infinity, undefined, null, 'x']) {
+    const r = defeatLedger(bad, 'raid', before);
+    assert.ok(r.tier >= 1 && r.tier <= DEFEAT_MAX_TIER);
+  }
+});
+
+test('defeatLedger: FLOORS every pole at 0 — never negative, no death-spiral', () => {
+  // a broke, near-nameless captain loses to the deadliest foe: everything floors, nothing goes negative
+  const r = defeatLedger(DEFEAT_MAX_TIER, 'raid', { coins: 3, infamy: 4, standing: 0 });
+  assert.equal(r.coins, 0);
+  assert.equal(r.infamy, 0);
+  assert.equal(r.standing, 0);
+  // the NAMED cost is the actual amount lost, not the nominal (honest card): only what she had
+  assert.equal(r.coinLoss, 3);
+  assert.equal(r.fameLoss, 4);
+  // repeated losses on an empty ledger stay pinned at 0 forever (no runaway)
+  let led = { coins: 0, infamy: 0, standing: 0 };
+  for (let i = 0; i < 20; i++) {
+    const step = defeatLedger(DEFEAT_MAX_TIER, 'raid', led);
+    led = { coins: step.coins, infamy: step.infamy, standing: step.standing };
+    assert.ok(led.coins >= 0 && led.infamy >= 0 && led.standing >= 0);
+  }
+  assert.deepEqual(led, { coins: 0, infamy: 0, standing: 0 });
+});
+
+test('defeatLedger: a single loss wounds but never WIPES a healthy run (bounded)', () => {
+  // a well-established captain: one loss to the worst foe leaves the vast majority of the ledger intact
+  const before = { coins: 2000, infamy: 2000, standing: 2000 };
+  const r = defeatLedger(DEFEAT_MAX_TIER, 'raid', before);
+  assert.ok(r.infamy > before.infamy * 0.9, 'one loss never erases a run — keeps > 90% of the pole');
+  assert.ok(r.coins > before.coins * 0.9);
+});
+
+test('defeatLedger: junk ledger fields read as 0 and never throw', () => {
+  for (const bad of [NaN, Infinity, -1, undefined, null, 'x']) {
+    const r = defeatLedger(3, 'raid', { coins: bad, infamy: bad, standing: bad });
+    assert.equal(r.coins, 0);
+    assert.equal(r.infamy, 0);
+    assert.equal(r.standing, 0);
+    assert.ok(r.coinLoss >= 0 && r.fameLoss >= 0);
+  }
+  // a wholly absent ledger is the same as an empty one
+  const empty = defeatLedger(3, 'raid');
+  assert.equal(empty.coins, 0);
+  assert.equal(empty.infamy, 0);
 });

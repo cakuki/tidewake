@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  createBattle, quarterViewPos, engageLine, fleeLine, broadsideAim,
+  createBattle, quarterViewPos, engageLine, fleeLine, broadsideAim, isDefeat,
 } from '../../src/systems/battle.js';
 import { CHALLENGE_RANGE } from '../../src/duel.js';
 import { MAX_HULL } from '../../src/cannons.js';
@@ -519,4 +519,79 @@ test('softenFoe hook: a throwing hook never breaks the fight (fail-open)', () =>
   });
   assert.equal(battle.engage(), true, 'the fight still starts');
   assert.equal(battle.snapshot().enemyHull, MAX_HULL, 'falls back to the normal foe');
+});
+
+// ---- Loss stings: the defeat condition + the stakes-on-loss ledger (#164) ----
+// The owner's headline for the difficulty/stakes epic: you must be able to LOSE, and a loss
+// must COST coin + fame, scaled by the foe's tier, routed by context, floored at 0.
+
+test('isDefeat: your hull breaking to 0 (or below) is the loss condition', () => {
+  assert.equal(isDefeat({ playerHull: 0 }), true);
+  assert.equal(isDefeat({ playerHull: -5 }), true);
+  assert.equal(isDefeat({ playerHull: 1 }), false);
+  assert.equal(isDefeat({ playerHull: MAX_HULL }), false);
+  // junk / absent hull fails safe to "not defeated" — never spuriously ends a live fight
+  assert.equal(isDefeat({}), false);
+  assert.equal(isDefeat(), false);
+});
+
+// Square up to a frigate, then stage a killing blow: your hull at 1, hers hale, so her reply sinks you.
+function loseTo({ tier = 3, context = 'raid', ledger = { coins: 1000, infamy: 1000, standing: 1000 } } = {}) {
+  const captured = {};
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0], shipClass: { cls: 'frigate', role: 'warship', tier, hull: 88, maxHull: 88, gunnery: 1.1 } }]),
+    getShipPos: () => [0, 0],
+    getShipHeading: () => 0,
+    getLedger: () => ledger,
+    getDefeatContext: () => context,
+    applyPenalty: (p) => { captured.applied = p; },
+    onResolve: ({ result, penalty }) => { captured.resolved = { result, penalty }; },
+    rng: half,
+  });
+  battle.engage();
+  battle.state.playerHull = 1;         // one more hit from her sinks you
+  battle.state.enemyHull = MAX_HULL;   // she's hale — survives your volley and fires back
+  const r = battle.fire();
+  return { battle, r, ...captured };
+}
+
+test('a lost engagement resolves to "lose" and fires the defeat ledger', () => {
+  const { r, applied, resolved } = loseTo();
+  assert.equal(r.result, 'lose', 'the engagement was lost');
+  assert.ok(r.penalty, 'a penalty ledger was produced');
+  assert.equal(resolved.result, 'lose', 'onResolve saw the loss');
+  assert.strictEqual(applied, r.penalty, 'applyPenalty received the same ledger onResolve reports');
+});
+
+test('a RAIDING loss dents Infamy (context-based), scaled by the frigate tier, coin too', () => {
+  const { r } = loseTo({ tier: 3, context: 'raid' });
+  assert.equal(r.penalty.pole, 'infamy');
+  assert.equal(r.penalty.tier, 3);
+  assert.ok(r.penalty.fameLoss > 0 && r.penalty.coinLoss > 0);
+  assert.equal(r.penalty.infamy, 1000 - r.penalty.fameLoss);
+  assert.equal(r.penalty.coins, 1000 - r.penalty.coinLoss);
+  assert.equal(r.penalty.standing, 1000, 'Standing untouched on the raiding road');
+});
+
+test('a GOVERNOR-road loss dents Standing instead of Infamy', () => {
+  const { r } = loseTo({ tier: 3, context: 'governor' });
+  assert.equal(r.penalty.pole, 'standing');
+  assert.ok(r.penalty.fameLoss > 0);
+  assert.equal(r.penalty.standing, 1000 - r.penalty.fameLoss);
+  assert.equal(r.penalty.infamy, 1000, 'Infamy untouched on the governor road');
+});
+
+test('a bigger foe stings harder: a man-o’-war loss costs more than a sloop loss', () => {
+  const small = loseTo({ tier: 1 }).r.penalty;
+  const big = loseTo({ tier: 5 }).r.penalty;
+  assert.ok(big.fameLoss > small.fameLoss, 'more fame lost to a bigger foe');
+  assert.ok(big.coinLoss > small.coinLoss, 'more coin lost to a bigger foe');
+});
+
+test('the sting FLOORS at 0 — a broke, near-nameless captain never goes negative', () => {
+  const { r } = loseTo({ tier: 5, context: 'raid', ledger: { coins: 3, infamy: 4, standing: 0 } });
+  assert.equal(r.penalty.coins, 0);
+  assert.equal(r.penalty.infamy, 0);
+  assert.equal(r.penalty.coinLoss, 3, 'the card names only what she actually had (honest cost)');
+  assert.equal(r.penalty.fameLoss, 4);
 });

@@ -347,6 +347,94 @@ try {
   if (!iso.ambientLiveAfterFlee) fail('battle isolation (#161): the ambient world did not come back after fleeing');
   if (process.exitCode !== 1) console.log('  ✓ battle isolation (#161 slice 1): rescue + f/g hail are no-ops in the deliberate stance; the fight is cleanly isolated');
 
+  // 2b3-loss) LOSS STINGS (#164): the owner's #1 note — "games are too easy; a player must be able to
+  // LOSE, and a loss should COST points + fame." Two things must hold: (1) you can ACTUALLY lose (your
+  // hull breaks under fire → the engagement is lost), and (2) losing STINGS via defeatLedger — a
+  // tier-scaled, CONTEXT-BASED, FLOORED deduction off your already-persisted coin + fame, surfaced on a
+  // red "Colours Struck" card that NAMES the cost. Drive a real defeat headlessly (battleForceDefeat sets
+  // your hull to 1 vs a hale foe, so her reply sinks you through the genuine finish('lose') path) under
+  // BOTH poles — a raiding loss (Infamy-dominant) must dent Infamy; a governor-road loss (Standing-
+  // dominant) must dent Standing — then prove the floor never drives a broke captain negative.
+  const loss = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    function engageNearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      if (bi === -1) return false;
+      const fp = tw.npcs[bi].pos;
+      tw.qaTeleport(fp[0], fp[1] - 120);
+      tw.step(0.05);
+      return tw.engageBattle();
+    }
+
+    // RAID context: a pirate-leaning captain loses → Infamy + coin dented, Standing untouched.
+    if (!engageNearest()) return { engaged: false };
+    tw.qaSetLedger({ coins: 1000, infamy: 1000, standing: 200 });
+    const before1 = tw.state;
+    tw.battleForceDefeat();
+    const fired1 = tw.battleFire();
+    const after1 = tw.state;
+    const card1 = tw.defeatCard;
+
+    // GOVERNOR context: a governor-leaning captain loses → Standing dented, Infamy untouched.
+    if (!engageNearest()) return { engaged: false };
+    tw.qaSetLedger({ coins: 1000, infamy: 200, standing: 1000 });
+    const before2 = tw.state;
+    tw.battleForceDefeat();
+    const fired2 = tw.battleFire();
+    const after2 = tw.state;
+    const card2 = tw.defeatCard;
+
+    // FLOOR: a near-broke, near-nameless captain loses to the same foe → nothing goes negative.
+    if (!engageNearest()) return { engaged: false };
+    tw.qaSetLedger({ coins: 2, infamy: 3, standing: 0 });
+    tw.battleForceDefeat();
+    const fired3 = tw.battleFire();
+    const after3 = tw.state;
+
+    const P = (f) => (f && f.penalty) || {};
+    return {
+      engaged: true,
+      r1: fired1 && fired1.result, r2: fired2 && fired2.result, r3: fired3 && fired3.result,
+      pole1: P(fired1).pole, pole2: P(fired2).pole,
+      fameLoss1: P(fired1).fameLoss, coinLoss1: P(fired1).coinLoss,
+      infBefore1: before1.infamy, infAfter1: after1.infamy,
+      coinBefore1: before1.coins, coinAfter1: after1.coins,
+      stBefore1: before1.standing, stAfter1: after1.standing,
+      stBefore2: before2.standing, stAfter2: after2.standing,
+      infBefore2: before2.infamy, infAfter2: after2.infamy,
+      card1, card2,
+      floorCoins: after3.coins, floorInfamy: after3.infamy, floorStanding: after3.standing,
+    };
+  });
+  if (!loss.engaged) fail('loss stings (#164): could not engage a foe to test a defeat (no NPC found even after qaTeleport)');
+  // (1) You can ACTUALLY lose:
+  if (loss.r1 !== 'lose') fail(`loss stings (#164): a killing blow did not resolve to a LOSS (result=${loss.r1}) — defeat is unreachable`);
+  if (loss.r2 !== 'lose' || loss.r3 !== 'lose') fail(`loss stings (#164): a staged defeat failed to resolve to 'lose' (r2=${loss.r2}, r3=${loss.r3})`);
+  // (2a) A RAIDING loss dents INFAMY + coin, and leaves Standing alone (context-based):
+  if (loss.pole1 !== 'infamy') fail(`loss stings (#164): a raiding loss dented the wrong pole (pole=${loss.pole1}, expected infamy)`);
+  if (!(loss.fameLoss1 > 0) || !(loss.coinLoss1 > 0)) fail(`loss stings (#164): the defeat did not deduct fame + coin (fame=${loss.fameLoss1}, coin=${loss.coinLoss1})`);
+  if (loss.infAfter1 !== loss.infBefore1 - loss.fameLoss1) fail(`loss stings (#164): Infamy did not drop by the ledgered amount (${loss.infBefore1}→${loss.infAfter1}, loss=${loss.fameLoss1})`);
+  if (!(loss.coinAfter1 < loss.coinBefore1)) fail(`loss stings (#164): coin did not drop on a defeat (${loss.coinBefore1}→${loss.coinAfter1})`);
+  if (loss.stAfter1 !== loss.stBefore1) fail(`loss stings (#164): a RAIDING loss wrongly touched Standing (${loss.stBefore1}→${loss.stAfter1})`);
+  // (2b) A GOVERNOR-road loss dents STANDING instead, leaving Infamy alone:
+  if (loss.pole2 !== 'standing') fail(`loss stings (#164): a governor-road loss dented the wrong pole (pole=${loss.pole2}, expected standing)`);
+  if (!(loss.stAfter2 < loss.stBefore2)) fail(`loss stings (#164): Standing did not drop on a governor-road defeat (${loss.stBefore2}→${loss.stAfter2})`);
+  if (loss.infAfter2 !== loss.infBefore2) fail(`loss stings (#164): a GOVERNOR-road loss wrongly touched Infamy (${loss.infBefore2}→${loss.infAfter2})`);
+  // (3) The red "Colours Struck" defeat card NAMES the cost (SEE the fame + coin drop):
+  if (!loss.card1 || loss.card1.pole !== 'infamy' || loss.card1.fameLoss !== loss.fameLoss1 || loss.card1.coinLoss !== loss.coinLoss1) {
+    fail(`loss stings (#164): the raid defeat card did not name the cost (card=${JSON.stringify(loss.card1)})`);
+  }
+  if (!loss.card2 || loss.card2.pole !== 'standing') fail(`loss stings (#164): the governor defeat card did not name a Standing cost (card=${JSON.stringify(loss.card2)})`);
+  // (4) The sting FLOORS at 0 — no death-spiral, no negative pole:
+  if (loss.floorCoins < 0 || loss.floorInfamy < 0 || loss.floorStanding < 0) {
+    fail(`loss stings (#164): a broke captain's ledger went NEGATIVE (coins=${loss.floorCoins}, infamy=${loss.floorInfamy}, standing=${loss.floorStanding})`);
+  }
+  if (process.exitCode !== 1) console.log('  ✓ loss stings (#164): you CAN lose (hull breaks → engagement lost) AND it STINGS — a raiding loss dents Infamy+coin, a governor-road loss dents Standing, the red "Colours Struck" card names the cost, floored at 0 (no death-spiral)');
+
   // 2b3-ui) NON-OCCLUDING battle UI (#161 slice 2): the marquee complaint — "the popup covers my
   // ship and I cannot see my ship in action." The fight prompts (#battle/#cannons/#duel) are now
   // DOCKED to a lower band instead of a dead-centre modal, so the battle camera's centre-framed hull

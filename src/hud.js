@@ -253,11 +253,30 @@ export function createHud() {
   function flashBanner(title, line, ms = 5000) {
     if (!$toast) return;
     $toast.classList.remove('rankup');
+    $toast.classList.remove('defeat'); // clear the red defeat skin so a normal banner reads normal
     $toast.innerHTML = `<div class="toast-title">${title}</div><div class="toast-line">${line}</div>`;
     $toast.classList.add('show');
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => $toast.classList.remove('show'), ms);
   }
+
+  // ---- The "Colours Struck" defeat card (#164) ------------------------------
+  // Loss stings: when a fight is LOST the toast turns RED and NAMES the cost — the fame + coin the
+  // defeat just deducted (see systems/renown.js defeatLedger). The player SEES their colours struck
+  // and their legend + purse visibly DROP, so picking reckless fights now carries a felt risk. Reuses
+  // the shared toast (already docked clear of the battle-camera safe-zone, #161 slice 2) so it never
+  // occludes the framed ship. `lastDefeat` is exposed for the headless QA hook to assert the cost.
+  let lastDefeat = null;
+  function showDefeat({ foeName = 'She', pole = 'infamy', fameLoss = 0, coinLoss = 0 } = {}) {
+    const poleLabel = pole === 'standing' ? 'Standing' : 'Infamy';
+    lastDefeat = { foeName, pole, poleLabel, fameLoss, coinLoss };
+    const cost = `−${fameLoss} ${poleLabel}, −${coinLoss} coin`;
+    flashBanner('⚑ Colours Struck',
+      `${foeName} rakes you under — you strike your colours and limp away. Plundered: <b>${cost}</b>.`);
+    if ($toast) $toast.classList.add('defeat'); // re-add after flashBanner cleared it — the red sting
+  }
+  /** The last defeat card's named cost (or null) — for the headless QA gate. */
+  function defeatCard() { return lastDefeat; }
 
   // Arrival toast — reaching a port shows "⚓ Made port at <Name>" + a greeting.
   function showArrival(portName, line) {
@@ -570,5 +589,5 @@ export function createHud() {
     compass.update(state);
   }
 
-  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderBattle, renderRaidPhases, renderKeyPrompts, renderEncounter, flashBanner, showLegend, showGovernorship, showGoal, hideGoal };
+  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderBattle, renderRaidPhases, renderKeyPrompts, renderEncounter, flashBanner, showDefeat, defeatCard, showLegend, showGovernorship, showGoal, hideGoal };
 }

@@ -293,3 +293,90 @@ export function renownForSale(coinsEarned) {
   if (c <= 0) return 0;
   return Math.round(c * STANDING_PER_COIN);
 }
+
+// ---- Defeat ledger: the FIRST reputation-DECREMENT path (#164) ---------------
+// Until now legend only ever GREW — Infamy and Standing were monotonic, and a lost fight
+// cost a flat 14-coin repair toll and nothing else, so losing never stung. The owner's
+// headline for the difficulty/stakes epic (#162): "games are too easy — a loss should COST
+// points + fame." This is that cost, and the ONLY place a pole ever goes DOWN.
+//
+// BINDING owner decisions (#162, verbatim): the penalty is MEDIUM (stings, never a
+// death-spiral); it is CONTEXT-BASED (a raiding loss dents Infamy, a governor-road loss
+// dents Standing); coin is dented too; and you KEEP your ship (fame/coin only — no
+// persisted ship field, so the save stays v17). Every pole FLOORS at 0 — one loss can
+// wound a run but never wipe it, and a broke/green captain can't go negative.
+//
+// The magnitude SCALES BY FOE TIER (1..5, from src/ship-classes.js): losing to a
+// man-o'-war is a real blow, losing to a sloop a shameful nick — the symmetric mirror of
+// spoils, which already scale the WIN by the foe's hull. PURE + deterministic + junk-safe
+// so the whole sting unit-tests under `node --test` (tier scaling, context routing, floor,
+// no-death-spiral). battle.js calls it on a lost engagement; main.js applies the result to
+// the already-persisted coin/infamy/standing and names the cost on the defeat card.
+
+export const DEFEAT_MAX_TIER = 5;      // the ship-class threat ceiling (a warship man-o'-war)
+export const DEFEAT_BASE_COIN = 8;     // a floor bite so even a sloop loss costs a little coin
+export const DEFEAT_COIN_PER_TIER = 8; // + this much coin per foe tier (tier 1 → 16, tier 5 → 48)
+export const DEFEAT_BASE_FAME = 6;     // a floor bite of fame — a loss always dents your name
+export const DEFEAT_FAME_PER_TIER = 10;// + this much fame per foe tier (tier 1 → 16, tier 5 → 56)
+
+/** Clamp a foe threat tier onto the [1, DEFEAT_MAX_TIER] scale; junk → the gentlest tier. */
+function clampTier(tier) {
+  const t = Math.round(Number(tier));
+  if (!Number.isFinite(t)) return 1;
+  return Math.max(1, Math.min(DEFEAT_MAX_TIER, t));
+}
+
+/**
+ * Which fame pole a lost battle should dent — the CONTEXT of the loss (#162 owner-decision).
+ * "Lose the pole you were pursuing": a captain building a pirate legend (Infamy-dominant, the
+ * raiding road) has her Infamy dented; one building respectable Standing (governor road) has
+ * her Standing dented. A balanced/green captain defaults to the raiding road — combat is the
+ * pirate pole (#45), so an undecided loss reads as a raiding setback.
+ * @param {number} infamy
+ * @param {number} standing
+ * @returns {'raid'|'governor'}
+ */
+export function defeatContext(infamy, standing) {
+  return dominantPole(infamy, standing) === 'governor' ? 'governor' : 'raid';
+}
+
+/**
+ * The stakes-on-loss ledger (#164) — the tier-scaled, context-based, floored deduction a lost
+ * engagement lays on the captain's already-persisted coin + fame. PURE + deterministic.
+ *
+ *   • MEDIUM magnitude, SCALED BY FOE TIER (base + tier × per-tier) — monotonic in tier.
+ *   • CONTEXT-BASED: context 'raid' dents Infamy, 'governor' dents Standing (anything else → raid).
+ *   • Coin is dented too; every pole FLOORS at 0 (never negative, never a death-spiral / total wipe).
+ *
+ * Returns the NEW floored pole values (so a caller can assign them straight onto state) AND the
+ * ACTUAL amounts deducted (old − new, so the defeat card names the true, honest cost — if you only
+ * had 5 Infamy left it says −5, not the nominal −56). Junk-safe: junk ledger fields read as 0.
+ *
+ * @param {number} tier   the foe's threat tier (1..5, from src/ship-classes.js)
+ * @param {'raid'|'governor'} context  which road the loss falls on (see defeatContext)
+ * @param {{coins?:number, infamy?:number, standing?:number}} ledger  the captain's current ledger
+ * @returns {{tier:number, context:'raid'|'governor', pole:'infamy'|'standing',
+ *            coins:number, infamy:number, standing:number,
+ *            coinLoss:number, fameLoss:number, nominalCoin:number, nominalFame:number}}
+ */
+export function defeatLedger(tier, context, ledger = {}) {
+  const t = clampTier(tier);
+  const nominalCoin = DEFEAT_BASE_COIN + t * DEFEAT_COIN_PER_TIER;
+  const nominalFame = DEFEAT_BASE_FAME + t * DEFEAT_FAME_PER_TIER;
+  const pole = context === 'governor' ? 'standing' : 'infamy';
+  const curCoins = poleScore(ledger.coins);
+  const curInfamy = poleScore(ledger.infamy);
+  const curStanding = poleScore(ledger.standing);
+  const coins = Math.max(0, curCoins - nominalCoin);
+  const newInfamy = pole === 'infamy' ? Math.max(0, curInfamy - nominalFame) : curInfamy;
+  const newStanding = pole === 'standing' ? Math.max(0, curStanding - nominalFame) : curStanding;
+  return {
+    tier: t,
+    context: pole === 'standing' ? 'governor' : 'raid',
+    pole,
+    coins, infamy: newInfamy, standing: newStanding,
+    coinLoss: curCoins - coins,                                        // actual coin lost (floored)
+    fameLoss: pole === 'infamy' ? curInfamy - newInfamy : curStanding - newStanding, // actual fame lost
+    nominalCoin, nominalFame,
+  };
+}

@@ -25,9 +25,10 @@
 
 import { CHALLENGE_RANGE } from '../duel.js';
 import {
-  makeFoe, resolveBroadside, spoils, captureSpoils, repairToll,
+  makeFoe, resolveBroadside, spoils, captureSpoils,
   defeatLine, strikeLine, fireQuip, MAX_HULL, MORALE_MAX,
 } from '../cannons.js';
+import { defeatLedger } from '../renown.js';
 import { ammoProfile, cycleAmmo, AMMO_TYPES } from './ammo.js';
 import { canBoard as canBoardHull, resolveBrawl, boardingEdge, offersSurrender } from './board.js';
 
@@ -70,6 +71,20 @@ const NO_QUARTER_LINES = [
 
 function pickIndex(rng, n) {
   return Math.min(n - 1, Math.floor(rng() * n));
+}
+
+/**
+ * The player-DEFEAT condition (#164): your hull has broken under her fire and the engagement is
+ * LOST. A clear, legible, single-source rule — the same "hull ≤ 0 = sunk" line the broadside math
+ * already draws (cannons' isSunk), surfaced here as a named predicate so the loss the owner asked
+ * for ("the player must be able to LOSE when playing badly") is testable + attributable, not an
+ * inline `<=0` buried in fire(). Skill sets the odds (aim/class matchup), the bounded ±20% luck sets
+ * the margin; when your hull runs out, you strike your colours. PURE.
+ * @param {{playerHull?:number}} p
+ * @returns {boolean} true ⇒ the engagement is lost
+ */
+export function isDefeat({ playerHull } = {}) {
+  return Number(playerHull) <= 0;
 }
 
 /** The foe's challenge line as the stance is taken. PURE + injectable rng. */
@@ -150,7 +165,10 @@ export function broadsideAim([sx, sz], heading, [fx, fz], { arcThreshold = ARC_T
 export function createBattle({
   npcs, getShipPos, getShipHeading, getLoadout, getCrewMorale, onEnter, onFlee, onResolve, onCycleAmmo, onBoard,
   onSurrender, onPressAttack, softenFoe,
-  applyReward, applyPenalty, sfx, rng = Math.random, reloadSeconds = RELOAD_SECONDS,
+  // Loss stings (#164): the defeat ledger deducts from the captain's ALREADY-PERSISTED ledger, so
+  // main.js provides a read of it (getLedger) and the context of the loss (getDefeatContext → 'raid'
+  // dents Infamy / 'governor' dents Standing). Both default safe so unit-test mocks need neither.
+  applyReward, applyPenalty, getLedger, getDefeatContext, sfx, rng = Math.random, reloadSeconds = RELOAD_SECONDS,
 } = {}) {
   // The fitted shot locker (#135 slice 3) — what you fit at the town workshop. The cycle key walks
   // it mid-fight. Defends to a plain round shot so the guns can always fire something.
@@ -327,10 +345,13 @@ export function createBattle({
       reward = { ...captureSpoils({ playerHull: state.playerHull, enemyMaxHull: state.maxHull }), captured: true };
       ping('win'); // a capture is a victory too
       if (applyReward) applyReward(reward);
-    } else { // 'lose'
-      penalty = repairToll();
+    } else { // 'lose' — loss stings (#164): a tier-scaled, context-based, floored deduction
+      const tier = (foe && Number.isFinite(foe.tier)) ? foe.tier : 1; // a class-less mock foe = gentlest tier
+      const context = (getDefeatContext && getDefeatContext()) || 'raid'; // raid dents Infamy / governor dents Standing
+      const ledger = (getLedger && getLedger()) || {};
+      penalty = defeatLedger(tier, context, ledger); // the FIRST fame-DECREMENT path (renown.js)
       ping('lose');
-      if (applyPenalty) applyPenalty(penalty);
+      if (applyPenalty) applyPenalty(penalty); // main.js assigns the new floored coin/infamy/standing
     }
     const foeName = state.foeName;
     if (onResolve) {
@@ -365,7 +386,7 @@ export function createBattle({
     state.lastSide = a.side;
 
     if (r.sunkEnemy) return finish('win');
-    if (r.sunkPlayer) return finish('lose');
+    if (isDefeat({ playerHull: state.playerHull })) return finish('lose'); // your hull broke — colours struck (#164)
     // Early surrender / strike-colours short-circuit (#135, Option 4): a broken foe strikes her colours
     // BEFORE you board. Instead of auto-capturing, HOLD the offer open — the player chooses to accept the
     // quick prize or refuse quarter (below). Refuse once and she never strikes again (offersSurrender

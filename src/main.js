@@ -23,7 +23,7 @@ import { createIslandNamer } from './islands.js';
 import { createSailing } from './sailing.js';
 import { createPersistence } from './persistence.js';
 import { createDuel, CHALLENGE_RANGE } from './duel.js';
-import { createCannons, resolveBroadside } from './cannons.js';
+import { createCannons, resolveBroadside, MAX_HULL } from './cannons.js';
 import { shipStats } from './ship-classes.js';
 import { createBattle, quarterViewPos, engageLine as battleEngageLine, fleeLine as battleFleeLine } from './systems/battle.js';
 import { softenDebutFoe, debutPending, debutPhase, debutCue } from './systems/debut-battle.js';
@@ -48,7 +48,7 @@ import { mixHex } from './sea-color.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
-import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat, renownTier } from './renown.js';
+import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat, renownTier, defeatContext } from './renown.js';
 import { recallLine, rememberArrival, sanitizePortMemory, recordDeed, deedPhrase, homePort } from './systems/port-memory.js';
 import {
   sanitizeHarbour, claim as claimHome, invest as investHome, canClaim, canInvest, harbourLevelName,
@@ -476,10 +476,21 @@ const battle = createBattle({
   onPressAttack: ({ foeName }) => hud.flashBanner('🏴 No quarter!',
     `You refuse ${foeName}'s surrender — the guns run back out. She fights to the bitter end now: sink her or board her.`),
   sfx: (kind) => audio.playDuelHit(kind),
-  // Real-time broadside spoils (#135 slice 2): sinking pays Infamy, a capture pays Standing, a
-  // loss costs a few coins for repairs — the same ledger the turn-based cannonade writes to.
+  // Real-time broadside spoils (#135 slice 2): sinking pays Infamy, a capture pays Standing.
   applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.infamy; if (r.standing) state.standing = Math.max(0, (state.standing || 0) + r.standing); syncRenown(state); },
-  applyPenalty: (p) => { initEconomy(state); state.coins = Math.max(0, state.coins - p.coins); },
+  // Loss stings (#164): the FIRST fame-DECREMENT path. getLedger reads the captain's already-persisted
+  // ledger and getDefeatContext routes the loss (a raiding loss dents Infamy, a governor-road loss
+  // dents Standing — the pole she was pursuing). defeatLedger (in renown.js) computes the tier-scaled,
+  // floored deduction; applyPenalty ASSIGNS the new floored values (no save bump — stays v17).
+  getLedger: () => ({ coins: state.coins ?? 0, infamy: state.infamy ?? 0, standing: state.standing ?? 0 }),
+  getDefeatContext: () => defeatContext(state.infamy ?? 0, state.standing ?? 0),
+  applyPenalty: (p) => {
+    initEconomy(state);
+    if (typeof p.coins === 'number') state.coins = Math.max(0, p.coins);
+    if (typeof p.infamy === 'number') state.infamy = Math.max(0, p.infamy);
+    if (typeof p.standing === 'number') state.standing = Math.max(0, p.standing);
+    syncRenown(state);
+  },
   onEnter: ({ foeName }) => {
     if (debutActive) {
       // The Bosun's First Duel (#157): a warm, scaffolded opener — the bosun names the first verb aloud
@@ -506,8 +517,10 @@ const battle = createBattle({
       const deed = { type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins, captured: true };
       logDeed(deed); rememberPortDeed(deed);
     } else {
-      hud.flashBanner('💥 Hull breached!',
-        `${foeName} rakes you stem to stern — you break off and limp away, ${penalty.coins} coins lighter for the repairs.`);
+      // Loss stings (#164): the red "Colours Struck" defeat card NAMES exactly what the loss cost —
+      // the tier-scaled, context-based fame + coin just deducted. The player SEES their legend + purse
+      // drop and FEELS that reckless fights now carry real risk. `penalty` is the defeatLedger result.
+      hud.showDefeat({ foeName, pole: penalty.pole, fameLoss: penalty.fameLoss, coinLoss: penalty.coinLoss });
     }
     consumeDebut(); // a resolved first fight (won/captured/lost) spends the debut — it never repeats (#157)
   },
@@ -2457,6 +2470,35 @@ window.__tidewake = {
   // the snapshot's `boardEdge` then reads the hull-damage→boarding-odds coupling. Defaults to 0.25 (mid
   // window). Mirrors encounterSpawn()'s force-a-state hook. No-op un-engaged.
   battleWeaken(frac = 0.25) { if (battle.state.active) battle.state.enemyHull = Math.round(battle.state.maxHull * Math.max(0, Math.min(1, frac))); return battle.snapshot(); },
+  // QA-only (#164 loss stings): stage a killing blow so a headless test can reach a real DEFEAT
+  // deterministically. Your hull is dropped to 1 while the foe is set HALE (full hull + nerve) — she
+  // survives your next volley and her reply sinks you, driving the genuine finish('lose') + defeatLedger
+  // path (not a shortcut). The NEXT battleFire() then resolves to a loss. No-op un-engaged. Mirrors
+  // battleBreakFoe()'s force-a-state hook.
+  battleForceDefeat() {
+    if (battle.state.active) {
+      battle.state.maxHull = MAX_HULL;
+      battle.state.enemyHull = MAX_HULL;   // hale — she survives your volley and fires back
+      battle.state.enemyMorale = battle.state.maxMorale; // full nerve — she won't strike her colours instead
+      battle.state.playerHull = 1;         // one more hit from her breaks your hull
+      battle.state.reload = 0;
+    }
+    return battle.snapshot();
+  },
+  // QA-only (#164): set the captain's ledger directly so a headless test can pin the defeat CONTEXT
+  // (Infamy-dominant → a raiding loss dents Infamy; Standing-dominant → a governor-road loss dents
+  // Standing) and assert the exact deduction. Floors at 0. Persists via syncRenown. Not used in play.
+  qaSetLedger({ coins, infamy, standing } = {}) {
+    initEconomy(state);
+    if (typeof coins === 'number') state.coins = Math.max(0, coins);
+    if (typeof infamy === 'number') state.infamy = Math.max(0, infamy);
+    if (typeof standing === 'number') state.standing = Math.max(0, standing);
+    syncRenown(state);
+    return { coins: state.coins, infamy: state.infamy, standing: state.standing };
+  },
+  // The last "Colours Struck" defeat card's named cost (or null) — so the headless gate can assert a
+  // lost fight surfaced a card that NAMES the fame + coin it deducted (#164).
+  get defeatCard() { return hud.defeatCard(); },
   get loadout() { return (state.loadout || []).slice(); },
   get ammoCatalogue() { return AMMO_TYPES.map((id) => ({ id, ...AMMO[id] })); },
   fitAmmoType(id) { state.loadout = fitAmmo(state.loadout, id); town.render(); return state.loadout.slice(); },
