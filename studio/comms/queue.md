@@ -110,6 +110,20 @@ is the OWNER's call** — commented on the issue with the full shipped/remains r
 cleared, the loop MAY now consider switching lanes (e.g. #132 reputation-needle, or the next reactive/charm
 reservoir item) — owner/PM steering applies._
 
+_**UPDATE Loop 100 (2026-07-01, v0.0.20260701054217): Option 4 slice 1 — SINK-OR-SPARE — SHIPPED.** The
+FIRST phase-coupling beat of the "Three-Act Raid": a won boarding duel no longer auto-decides the prize;
+it HOLDS OPEN a deliberate fork — **1 = SPARE & ransom** (governor road: `+round(coins×0.5)` ransom +
+`+max(8, round(infamy×0.5))` Standing, captured) or **2 = SINK** (pirate road: `+round(infamy×0.5)` bonus
+Infamy, no coin/Standing). The won-duel base is already banked, so pure `prizeFork` lays only the DELTA on
+top (unknown/absent choice → SPARE, ledger-safe; junk clamped ≥0); TDD'd first (6 tests). `main.js` thin:
+`pendingPrize` + a 1/2 key handler that claims the keys ahead of hail/fire (mirrors #125); `resolvePrize`
+writes ONE deed to the Ballad + port memory; QA `tw.prizeChoice`/`tw.choosePrize`. **No save change — transient
+choice (stays v16).** 959 unit tests; playtest ✓ PASSED (27/130 draws · 89.7k/150k tris, zero errors);
+gallery `sink-or-spare-135.png`. **#135 stays OPEN** — remaining Option 4 work: couple the phases into the
+full arc (hull damage → boarding odds; crew casualties → duel confidence), per-phase UI, early-surrender
+short-circuits (M6 act 1 done, M7 acts 2–3). Closing #135 is the owner's call. (Finished from a prior
+session-limited cycle-runner's uncommitted work; committed the 5 real slice paths race-safe.)_
+
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
 _**UPDATE Loop 86 (2026-06-30): from-owner P1 #146 — port-view mobile clipping — SHIPPED.** The
