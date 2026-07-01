@@ -384,3 +384,20 @@ test('board: resolves a comic brawl and hands the foe off for the captain duel',
   assert.equal(handed.brawl, brawl, 'the hand-off carries the brawl result (advantage feeds the duel dent)');
   assert.equal(battle.state.boarded, true, 'the engagement is marked boarded');
 });
+
+test('snapshot.boardEdge: the coupling reads live — battering her hull raises the boarding edge (#135 Option-4 slice 2)', () => {
+  const battle = createBattle({
+    npcs: fakeNpcs([{ pos: [10, 0] }]),
+    getShipPos: () => [0, 0],
+    rng: half,
+  });
+  battle.engage();
+  battle.state.enemyHull = battle.state.maxHull * 0.29; // barely into the boardable window
+  const barely = battle.snapshot().boardEdge;
+  battle.state.enemyHull = battle.state.maxHull * 0.03; // pounded to splinters
+  const smashed = battle.snapshot().boardEdge;
+  assert.ok(smashed > barely, 'a more-battered foe shows a bigger boarding edge');
+  assert.ok(barely >= 0, 'the edge is never negative');
+  battle.board();
+  assert.equal(battle.snapshot().boardEdge, 0, 'once boarded the pre-boarding edge zeroes out');
+});

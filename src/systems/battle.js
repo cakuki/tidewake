@@ -29,7 +29,7 @@ import {
   defeatLine, strikeLine, fireQuip, MAX_HULL, MORALE_MAX,
 } from '../cannons.js';
 import { ammoProfile, cycleAmmo, AMMO_TYPES } from './ammo.js';
-import { canBoard as canBoardHull, resolveBrawl } from './board.js';
+import { canBoard as canBoardHull, resolveBrawl, boardingEdge } from './board.js';
 
 // Slice 2 (#135) tunables — the Game Designer's fun-shaping numbers:
 //   RELOAD_SECONDS — how long the gun deck takes to swab and reload between volleys, so the
@@ -414,6 +414,9 @@ export function createBattle({
       // Boarding (#135 slice 4): the Board! prompt lights at ≤30% hull; the resolved brawl beat reads here.
       canBoard: canBoard(),
       boarded: state.boarded,
+      // Hull damage → boarding odds (#135 Option-4 slice 2): how far past the boarding line you battered
+      // her — the edge your gunnery buys the coming brawl. 0 on the line, up to MAX_BOARDING_EDGE at a wreck.
+      boardEdge: (state.active && !state.boarded) ? boardingEdge({ foeHull: state.enemyHull, maxHull: state.maxHull }) : 0,
       brawl: state.brawl ? { won: state.brawl.won, advantage: state.brawl.advantage, lines: state.brawl.lines.slice() } : null,
     };
   }

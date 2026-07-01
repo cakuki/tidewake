@@ -27,6 +27,31 @@ const BOARDING_SHOT_BONUS = { grape: 0.18, swivel: 0.10 };
 // (#33) is always a real fight, never a walkover. Slice 5 / Option 4 deepen the casualties→confidence link.
 const MAX_BOARD_DENT = 30;
 
+// ── Hull damage → boarding odds — the act-1→act-2 coupling (#135, Option 4 slice 2) ────────────────
+// The maneuvering/broadside phase (act 1) now MECHANICALLY feeds the boarding brawl (act 2): a foe you
+// battered before you grappled boards like a wreck — half her deck has already yielded. Normalised
+// across the boardable window [0 .. 30% hull] so that gunnery PAST the boarding line matters: grapple
+// her the instant she's boardable and the boarders earn nothing extra; pound her to splinters first and
+// they carry a real edge into the scrap. The largest edge is kept modest so crew nerve still dominates
+// and the captain duel (#33) downstream is always a genuine fight.
+export const MAX_BOARDING_EDGE = 0.35;
+
+/**
+ * How much your battering has SOFTENED the boarding, from the foe's hull at the moment you grapple. PURE.
+ * 0 when she's boarded right on the ≤30% line (a spry deck); up to MAX_BOARDING_EDGE when she's a floating
+ * wreck. This is the coupling: positioning + gunnery in the broadside phase now set up the brawl odds.
+ * Fails safe on junk input (no edge, never negative).
+ * @param {{foeHull?:number, maxHull?:number}} p
+ * @returns {number} a positive brawl-margin bonus in [0, MAX_BOARDING_EDGE]
+ */
+export function boardingEdge({ foeHull = 0, maxHull = 0 } = {}) {
+  if (!(maxHull > 0)) return 0;
+  const window = maxHull * BOARD_HULL_FRACTION; // the boardable band: full battering credit spans this
+  if (!(window > 0)) return 0;
+  const frac = Math.max(0, Math.min(1, foeHull / window)); // 1 at the boarding line, 0 at a smashed hull
+  return (1 - frac) * MAX_BOARDING_EDGE;
+}
+
 // Comic brawl beats — ORIGINAL to Tidewake, family-friendly, swashbuckling, slightly daft. 2–3 are
 // shown per boarding (anti-repeat within the beat). WON narrates a deck carried; CLOSE a near-run scrap.
 export const BRAWL_LINES_WON = [
@@ -66,8 +91,9 @@ function pickLines(pool, rng, n) {
  * a narrow/runaway margin, and 2–3 comic lines — never mutates. The brawl ALWAYS carries through to the
  * verbal duel (the duel is the decider); a won brawl just hands the captain an opening morale dent.
  *
- * crew strength = your crew's nerve × a boarding-shot edge; foe resistance = her remaining nerve plus a
- * sliver of fight left in a holed hull. A ±10% jitter keeps it lively but the maths stays honest.
+ * crew strength = your crew's nerve × a boarding-shot edge, PLUS the battering edge (#135 Option-4 slice 2)
+ * — how far past the boarding line you pounded her hull; foe resistance = her remaining nerve plus a sliver
+ * of fight left in a holed hull. A ±10% jitter keeps it lively but the maths stays honest.
  *
  * @param {{crewMorale?:number, maxMorale?:number, loadout?:string[], foeMorale?:number, foeHull?:number, maxHull?:number}} p
  * @param {() => number} [rng]
@@ -82,8 +108,9 @@ export function resolveBrawl(
   const shotBonus = (Array.isArray(loadout) ? loadout : []).reduce((b, id) => b + (BOARDING_SHOT_BONUS[id] || 0), 0);
   const crew = (Math.max(0, crewMorale) / mm) * (1 + shotBonus);
   const foe = (Math.max(0, foeMorale) / mm) * 0.85 + (Math.max(0, foeHull) / mh) * 0.25;
+  const edge = boardingEdge({ foeHull, maxHull: mh }); // act-1 gunnery → act-2 odds (#135 Option-4 slice 2)
   const jitter = 0.9 + rng() * 0.2; // ±10% fairness wobble (==1 when rng()==0.5)
-  const margin = crew * jitter - foe;
+  const margin = crew * jitter - foe + edge;
   const won = margin > 0;
   const advantage = Math.max(0, Math.min(1, margin));
   const n = rng() < 0.5 ? 2 : 3;

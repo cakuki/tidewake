@@ -1939,10 +1939,12 @@ window.__tidewake = {
   // ransom + Standing. Mirrors encounterChoose()'s force-a-choice hook.
   get prizeChoice() { return pendingPrize ? { ...pendingPrize } : null; },
   choosePrize(choice) { return resolvePrize(choice); },
-  // QA-only (#135 slice 4): beat the engaged foe's hull straight down to the boardable window, so a
-  // headless test can reach the Board! prompt deterministically without grinding live volleys (which
-  // can sink or capture her first). Mirrors encounterSpawn()'s force-a-state hook. No-op un-engaged.
-  battleWeaken() { if (battle.state.active) battle.state.enemyHull = Math.round(battle.state.maxHull * 0.25); return battle.snapshot(); },
+  // QA-only (#135 slice 4 + Option-4 slice 2): beat the engaged foe's hull straight down to the boardable
+  // window, so a headless test can reach the Board! prompt deterministically without grinding live volleys
+  // (which can sink or capture her first). Pass a hull fraction (0..1) to set exactly how battered she is —
+  // the snapshot's `boardEdge` then reads the hull-damage→boarding-odds coupling. Defaults to 0.25 (mid
+  // window). Mirrors encounterSpawn()'s force-a-state hook. No-op un-engaged.
+  battleWeaken(frac = 0.25) { if (battle.state.active) battle.state.enemyHull = Math.round(battle.state.maxHull * Math.max(0, Math.min(1, frac))); return battle.snapshot(); },
   get loadout() { return (state.loadout || []).slice(); },
   get ammoCatalogue() { return AMMO_TYPES.map((id) => ({ id, ...AMMO[id] })); },
   fitAmmoType(id) { state.loadout = fitAmmo(state.loadout, id); town.render(); return state.loadout.slice(); },

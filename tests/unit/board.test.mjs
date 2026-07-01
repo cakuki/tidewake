@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   canBoard, resolveBrawl, brawlMoraleDent, BOARD_HULL_FRACTION,
   BRAWL_LINES_WON, BRAWL_LINES_CLOSE,
+  boardingEdge, MAX_BOARDING_EDGE,
   prizeFork, SINK_INFAMY_BONUS, SPARE_RANSOM_BONUS, SPARE_MIN_STANDING,
 } from '../../src/systems/board.js';
 
@@ -79,6 +80,48 @@ test('brawlMoraleDent: a bigger advantage softens the captain more, clamped to a
 test('the comic line pools are non-trivial and original (>=3 each so a brawl never starves)', () => {
   assert.ok(BRAWL_LINES_WON.length >= 3);
   assert.ok(BRAWL_LINES_CLOSE.length >= 3);
+});
+
+// ── Hull damage → boarding odds (Option 4, slice 2 — the act-1→act-2 coupling) ─────────────────────
+test('boardingEdge: a foe grappled right on the ≤30% line hands the boarders no edge', () => {
+  // Boarding the instant she's boardable = a spry, angry deck — gunnery earned nothing extra yet.
+  assert.equal(boardingEdge({ foeHull: 30, maxHull: 100 }), 0, 'at the boarding line the edge is zero');
+});
+
+test('boardingEdge: a foe smashed toward zero hull hands the boarders the full edge', () => {
+  const edge = boardingEdge({ foeHull: 0, maxHull: 100 });
+  assert.ok(Math.abs(edge - MAX_BOARDING_EDGE) < 1e-9, 'a floating wreck gives the full boarding edge');
+  assert.ok(MAX_BOARDING_EDGE > 0 && MAX_BOARDING_EDGE < 1, 'the edge is a sane, non-trivialising band');
+});
+
+test('boardingEdge: THE COUPLING — the more you battered her hull, the bigger the boarding edge (monotonic)', () => {
+  // This is the whole point of the slice: positioning + gunnery in act 1 feed the brawl odds in act 2.
+  const line = boardingEdge({ foeHull: 29, maxHull: 100 }); // barely boardable
+  const mid  = boardingEdge({ foeHull: 15, maxHull: 100 }); // half-smashed
+  const wreck = boardingEdge({ foeHull: 3, maxHull: 100 }); // pounded to splinters
+  assert.ok(mid > line && wreck > mid, 'a more-battered foe always hands a bigger edge');
+});
+
+test('boardingEdge: normalises across the boardable window and tracks a different max hull', () => {
+  // 30% of 200 = 60 is the line; 30 hull (halfway down the window) sits mid-band.
+  assert.equal(boardingEdge({ foeHull: 60, maxHull: 200 }), 0, 'the edge zeroes at the line for any max hull');
+  const mid = boardingEdge({ foeHull: 30, maxHull: 200 });
+  assert.ok(Math.abs(mid - MAX_BOARDING_EDGE * 0.5) < 1e-9, 'halfway down the window = half the edge');
+});
+
+test('boardingEdge: fails safe on junk input (no edge, never negative)', () => {
+  assert.equal(boardingEdge({ foeHull: 10, maxHull: 0 }), 0, 'no max hull → no edge');
+  assert.equal(boardingEdge({}), 0);
+  assert.equal(boardingEdge(), 0);
+  assert.ok(boardingEdge({ foeHull: 999, maxHull: 100 }) >= 0, 'over-full hull clamps, never negative');
+});
+
+test('resolveBrawl: the coupling flows through — a foe you battered harder is easier to take', () => {
+  // Hold everything but hull constant: a foe pounded to 5% boards far more favourably than one at 29%.
+  const base = { crewMorale: 60, maxMorale: 100, loadout: ['round'], foeMorale: 50, maxHull: 100 };
+  const barely = resolveBrawl({ ...base, foeHull: 29 }, half);
+  const smashed = resolveBrawl({ ...base, foeHull: 5 }, half);
+  assert.ok(smashed.margin > barely.margin, 'battering her hull first lifts the boarding margin');
 });
 
 // ── Sink-or-spare fork (Option 4, slice 1) ────────────────────────────────────────────────────────
