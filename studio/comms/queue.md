@@ -284,11 +284,11 @@ town/port view clipped on phone viewports; fixed with a scrollable `.town-scroll
 end, Set Sail stays on screen). **#146 CLOSED.** The owner's larger "less scroll, MORE navigation"
 ask is now an **[OWNER-DECISION]** below._
 
-- **[OWNER-DECISION] #147 — Port-view redesign: less scroll, MORE navigation.** Follow-up to #146
-  (the quick fix shipped). Ask the owner to pick a navigation model before building: **A** segmented
-  tabs (Market·Tavern·Harbour) · **B** collapsible accordion · **C** quayside hub + drill-in cards
-  (most mobile-native, biggest build). Options + tradeoffs in issue #147. **Do not build until the
-  owner picks** (owner-decision rule); whichever ships inherits the #146 mobile-viewport guard.
+- **#147 — Port-view redesign → Option C: quayside hub + drill-in cards (owner DECIDED 2026-07-01).**
+  Follow-up to #146 (stopgap shipped). No longer owner-held — **ready to build, P2 UX**, sequenced by
+  PM+TL **after the #145 `/preview/` slice**. Sliceable: **quayside hub shell → drill-in cards
+  (Market·Tavern·Harbour) → transitions/polish**; inherits the #146 mobile-viewport guard. Model +
+  tradeoffs in issue #147.
 
 
 **DL #5 (2026-06-28, 9-role fan-out) re-sorted this top. #126 / #120-mechanism / #123 / #125 / #118 /
