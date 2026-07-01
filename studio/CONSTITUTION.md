@@ -16,6 +16,18 @@ and world — but keep a **warm, witty, swashbuckling comedy** in characters, di
 visual charm (expressive, slightly exaggerated, hand-crafted feel). Adventure-game humour
 over grim simulation. Fun first.
 
+<!-- BEGIN owner-doctrine 2026-07-01: Fun & Working over fast delivery (additive; do not remove) -->
+## Fun & Working over fast delivery — WE ARE A GAME STUDIO (owner, 2026-07-01)
+
+**Our top studio value.** The goal is **not fast delivery — it is FUN.** A slice is **not done** until
+the player can **SEE / FEEL / USE** the fun: visible feedback (projectiles, muzzle flash, VFX),
+audible cues, and a real **progression payoff** — a purchase must *visibly change something*. Buy a
+cannon → see it on the deck, hear a heavier boom, feel enemies sink faster. **"Working" (tests pass) ≠
+"done."** Never ship the bare-minimum mechanic without its fun. Research the definition of fun from
+real gamer reviews/comments and design to it: [`docs/design/what-makes-it-fun.md`](../docs/design/what-makes-it-fun.md).
+No one goes lazy for speed. **WE ARE A GAME STUDIO.**
+<!-- END owner-doctrine 2026-07-01 -->
+
 ## FUN-FIRST — our top value (read this before feature-count)
 
 **Tidewake is a GAME. The point is FUN.** Every slice must make the game *more fun to play* —

@@ -8,6 +8,15 @@ never-idle rule only**; the *how* lives in two sub-runbooks the orchestrator pas
 Both are **FUN-FIRST** (CONSTITUTION → FUN-FIRST): PRODUCT filters every slice by the fun it delivers;
 DELIVERY ships only if it's playable **AND** more fun. Working-but-not-fun is not Done.
 
+<!-- BEGIN owner-doctrine 2026-07-01: Definition of Done — ship the FUN beat (additive; do not remove) -->
+> **Definition of Done — Working ≠ done — ship the FUN beat (owner, 2026-07-01).** Every slice delivers
+> a **visible/felt player payoff** — you can **see it** (projectiles, VFX, the purchased thing actually
+> appears/changes), **hear it** (an audible cue), and **feel the progression** (a purchase visibly
+> changes something). A mechanic with **no visible feedback is INCOMPLETE** — a green gate alone is not
+> done. Cross-check every slice against [`docs/design/what-makes-it-fun.md`](../design/what-makes-it-fun.md)
+> (its per-slice FUN checklist). This is **additive** to the existing DoD — do not drop any existing item.
+<!-- END owner-doctrine 2026-07-01 -->
+
 **Companion files carry the rest — passed by REFERENCE, never inlined:** `studio/CONSTITUTION.md`
 (vision · roles · tone), `studio/comms/OWNER-CHANNEL.md` (release reporting OUT only; inbound
 owner/PM input is a SEPARATE session, not the loop), `studio/comms/queue.md` (next-slice queue),

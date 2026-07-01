@@ -214,6 +214,14 @@ Tie the experience together and make it sing.
 
 ### Delivery doctrine (owner, 2026-06-28 — standing rules)
 
+- **Fun & Working > fast delivery (owner, 2026-07-01):** the goal is **fun, not speed**. **Bare-minimum
+  mechanics are rejected** — a slice that "works" but has no visible/audible/felt payoff is not done. The
+  **felt/visible fun + progression payoff is part of the Definition of Done**: a purchase must *visibly
+  change something* (buy a cannon → see it, hear it, feel enemies sink faster). Each agent **researches
+  the definition of fun from real gamers** (reviews/comments) and designs to it. Source-of-truth &
+  per-slice checklist: [`docs/design/what-makes-it-fun.md`](design/what-makes-it-fun.md). **WE ARE A GAME
+  STUDIO.**
+
 - **Self-eval bar:** every slice ships with a **clearly achievable, testable outcome**. If it can't be
   machine-verified, put a **human in the loop** (for now that human is **only the owner**). Plus a
   standing **self-improvement** duty — iterate on the *process itself* (raise self-awareness, fix the

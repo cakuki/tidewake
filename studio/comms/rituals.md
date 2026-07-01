@@ -38,6 +38,10 @@ the **local loop only** — there are no cloud routines.
   **entry → detail → deeper-detail** tree (index files link down to detail files).
 - **R2 Deep reading** — each agent studies (craft, news, fiction↔non-fiction), logs inspiration +
   cross-connections → `studio/agents/notebooks/<role>.md`; standout ideas → PM-desk inbox.
+  **Also (owner, 2026-07-01):** each agent researches **the definition of fun from real gamer
+  reviews/comments** on topics relevant to its craft (Steam reviews, Reddit, forums, GDC talks —
+  arcade naval combat, progression feel, game feel/"juice", shallow-vs-deep). Findings feed
+  `docs/design/what-makes-it-fun.md` and the day's design decisions — cite sources, no going lazy for speed.
 - **R3 Pre-release hardening** — run the full test + playtest gate so the 17:00 promote is clean.
   **Friday is an INTENSE QA SESSION — the week's event — and runs EARLY (~14:00)** to leave a real fix
   window before release. **Friday flow:** 🧪 QA ~14:00 → 🔧 **fix & stabilize ~14:00–16:30** (fix forward
