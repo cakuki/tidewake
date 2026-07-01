@@ -35,6 +35,7 @@ import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading }
 import { createLandfall, mooredSwellScale } from './systems/landfall.js';
 import { createSystemsRegistry } from './systems/registry.js';
 import { interactionsSuppressed, ambientInteractionsAllowed } from './systems/battle-isolation.js';
+import { centreSafeZone, clearsCentre } from './ui/safe-zone.js';
 import { reputationLean, leanPole, gradeHaze, gradeSun, gradeSunKey } from './systems/reputation-grade.js';
 import { shipAura } from './systems/reputation-aura.js';
 import { snapshotAshore, composeAshoreDigest } from './systems/ashore-digest.js';
@@ -2257,6 +2258,22 @@ window.__tidewake = {
     camera.position.set(sx + Math.sin(az) * dist, sy + height, sz + Math.cos(az) * dist);
     camera.lookAt(sx, sy + look, sz);
     return [camera.position.x, camera.position.y, camera.position.z];
+  },
+  // Non-occluding battle UI gate (#161 slice 2): are the shown fight prompts clear of the central
+  // safe-zone, so the camera-framed ship + the action stay VISIBLE? Reads the live DOM rects of the
+  // battle panels and runs them through the pure src/ui/safe-zone.js predicate — one source of truth
+  // for "does this UI cover the ship?", used by the playtest so occlusion can never silently regress.
+  battleUICentreClear() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const ids = ['battle', 'cannons', 'duel', 'raid-phases', 'key-prompts'];
+    const panels = ids.map((id) => {
+      const el = document.getElementById(id);
+      const shown = !!el && el.classList.contains('show');
+      const r = shown ? el.getBoundingClientRect() : null;
+      const rect = r ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom } : null;
+      return { id, shown, rect, clear: !shown || clearsCentre(rect, w, h) };
+    });
+    return { clear: panels.every((p) => p.clear), zone: centreSafeZone(w, h), panels, viewport: { w, h } };
   },
   fps: 0,
 };

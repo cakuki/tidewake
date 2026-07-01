@@ -200,15 +200,21 @@
     #trade .trade-msg { margin-top: 6px; min-height: 14px; color: #f3e6c4; font-size: 11px; }
     #trade .trade-help { margin-top: 4px; color: #8fb4d6; font-size: 10.5px; }
     #trade .trade-help b { color: #ffd98a; }
+    /* Non-occluding battle UI (#161 slice 2): the fight prompts (#duel/#cannons/#battle) are DOCKED
+       to a lower band instead of a dead-centre translate(-50%,-50%) modal, so the battle camera's
+       centre-framed ship + the action stay VISIBLE the whole fight (the owner's playtest complaint —
+       "the popup covers my ship"). `max-height:38vh` is the guardrail that keeps the panel below the
+       central safe-zone (src/ui/safe-zone.js) even if its text wraps; the QA hook asserts no overlap. */
     #duel {
-      position: fixed; left: 50%; top: 50%; z-index: 14; transform: translate(-50%, -50%) scale(.98);
-      width: min(92vw, 460px); pointer-events: none;
+      position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 14;
+      transform: translate(-50%, 8px) scale(.98);
+      width: min(92vw, 460px); max-height: 38vh; overflow-y: auto; pointer-events: none;
       color: #f0e6d2; background: rgba(7, 18, 31, .9); border: 1px solid rgba(255,180,120,.5);
       border-radius: 12px; padding: 16px 18px; backdrop-filter: blur(6px);
       box-shadow: 0 12px 40px rgba(0,0,0,.6); font-size: 13px;
       opacity: 0; transition: opacity .25s ease, transform .25s ease;
     }
-    #duel.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #duel.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
     #duel .duel-h { color: #ffb478; font-weight: 700; font-size: 15px; letter-spacing: .04em; text-align: center; }
     #duel .duel-bars { display: flex; gap: 12px; margin: 10px 0 6px; }
     #duel .duel-bar { flex: 1; }
@@ -227,15 +233,16 @@
     #duel .duel-help b { color: #ffb478; }
     /* Cannon Broadside panel (#59) — the duel's teeth-y twin, in fire-orange. Reuses the
        duel's inner bar/line/opts classes, scoped here with its own hotter accent. */
-    #cannons {
-      position: fixed; left: 50%; top: 50%; z-index: 14; transform: translate(-50%, -50%) scale(.98);
-      width: min(92vw, 460px); pointer-events: none;
+    #cannons { /* non-occluding dock (#161 slice 2) — see the #duel note above */
+      position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 14;
+      transform: translate(-50%, 8px) scale(.98);
+      width: min(92vw, 460px); max-height: 38vh; overflow-y: auto; pointer-events: none;
       color: #f0e6d2; background: rgba(7, 18, 31, .9); border: 1px solid rgba(255,120,90,.5);
       border-radius: 12px; padding: 16px 18px; backdrop-filter: blur(6px);
       box-shadow: 0 12px 40px rgba(0,0,0,.6); font-size: 13px;
       opacity: 0; transition: opacity .25s ease, transform .25s ease;
     }
-    #cannons.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #cannons.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
     #cannons .cannon-h { color: #ff8b6a; font-weight: 700; font-size: 15px; letter-spacing: .04em; text-align: center; }
     #cannons .duel-bars { display: flex; gap: 12px; margin: 10px 0 6px; }
     #cannons .duel-bar { flex: 1; }
@@ -253,15 +260,16 @@
     #cannons .duel-help b { color: #ff8b6a; }
     /* Real-time broadside panel (#135 slice 2) — the deliberate-stance fight. Reuses the cannonade
        panel's bar/line/help classes (scoped under #battle); adds the live ABEAM/reload aim cue. */
-    #battle {
-      position: fixed; left: 50%; top: 50%; z-index: 14; transform: translate(-50%, -50%) scale(.98);
-      width: min(92vw, 460px); pointer-events: none;
+    #battle { /* non-occluding dock (#161 slice 2) — the marquee real-time fight; see the #duel note */
+      position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 14;
+      transform: translate(-50%, 8px) scale(.98);
+      width: min(92vw, 460px); max-height: 38vh; overflow-y: auto; pointer-events: none;
       color: #f0e6d2; background: rgba(7, 18, 31, .9); border: 1px solid rgba(255,120,90,.5);
       border-radius: 12px; padding: 16px 18px; backdrop-filter: blur(6px);
       box-shadow: 0 12px 40px rgba(0,0,0,.6); font-size: 13px;
       opacity: 0; transition: opacity .25s ease, transform .25s ease;
     }
-    #battle.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #battle.show { opacity: 1; transform: translate(-50%, 0) scale(1); }
     #battle .cannon-h { color: #ff8b6a; font-weight: 700; font-size: 15px; letter-spacing: .04em; text-align: center; }
     #battle .duel-bars { display: flex; gap: 12px; margin: 10px 0 6px; }
     #battle .duel-bar { flex: 1; }

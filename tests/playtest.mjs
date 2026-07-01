@@ -320,6 +320,54 @@ try {
   if (!iso.ambientLiveAfterFlee) fail('battle isolation (#161): the ambient world did not come back after fleeing');
   if (process.exitCode !== 1) console.log('  ✓ battle isolation (#161 slice 1): rescue + f/g hail are no-ops in the deliberate stance; the fight is cleanly isolated');
 
+  // 2b3-ui) NON-OCCLUDING battle UI (#161 slice 2): the marquee complaint — "the popup covers my
+  // ship and I cannot see my ship in action." The fight prompts (#battle/#cannons/#duel) are now
+  // DOCKED to a lower band instead of a dead-centre modal, so the battle camera's centre-framed hull
+  // + the action stay VISIBLE. Engage deterministically (qaTeleport), confirm the #battle panel is
+  // SHOWN, then assert it (and every other shown battle strip) clears the CENTRAL SAFE-ZONE — read
+  // off the tw.battleUICentreClear() hook, which runs the live DOM rects through the pure
+  // src/ui/safe-zone.js predicate. Asserted on BOTH desktop AND a phone-portrait viewport (the #146
+  // responsive guard) so the occlusion the owner reported can never silently regress.
+  const battleUI = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    }
+    const bi = nearest();
+    if (bi === -1) return { engaged: false };
+    const fp = tw.npcs[bi].pos;
+    tw.qaTeleport(fp[0], fp[1] - 120);       // drop just off her — inside engage range
+    tw.step(0.05);
+    const engaged = tw.engageBattle();
+    if (!engaged) return { engaged: false };
+    tw.step(0.1);                            // let the hud-battle system paint the panel → .show
+    const $b = document.getElementById('battle');
+    const shown = !!$b && $b.classList.contains('show');
+    const desk = tw.battleUICentreClear();
+    return { engaged, shown, deskClear: desk.clear,
+      shownPanels: desk.panels.filter((p) => p.shown).map((p) => p.id),
+      offenders: desk.panels.filter((p) => p.shown && !p.clear).map((p) => p.id) };
+  });
+  if (!battleUI.engaged) {
+    console.warn('  (#161 slice 2 non-occluding UI: no foe to engage — skipped)');
+  } else {
+    if (!battleUI.shown) fail('non-occluding battle UI (#161 slice 2): the #battle panel never showed — cannot verify occlusion');
+    if (!(battleUI.shownPanels.length > 0)) fail('non-occluding battle UI (#161 slice 2): no battle UI was shown to test');
+    if (!battleUI.deskClear) fail(`non-occluding battle UI (#161 slice 2): battle prompt(s) OVERLAP the central safe-zone on desktop — the ship is occluded (offenders: ${battleUI.offenders.join(',')})`);
+    // The non-occlusion must ALSO hold on a phone-portrait viewport (#146 responsive guard).
+    await page.setViewport({ width: 400, height: 860 });
+    const phone = await page.evaluate(() => { const tw = window.__tidewake; tw.step(0.05); const r = tw.battleUICentreClear(); return { clear: r.clear, offenders: r.panels.filter((p) => p.shown && !p.clear).map((p) => p.id) }; });
+    if (!phone.clear) fail(`non-occluding battle UI (#161 slice 2): battle prompt(s) occlude the ship on a phone-portrait viewport (offenders: ${phone.offenders.join(',')})`);
+    await page.setViewport({ width: 1280, height: 800 });
+    await page.evaluate(() => { window.__tidewake.fleeBattle(); window.__tidewake.step(0.05); });
+    if (process.exitCode !== 1) console.log(`  ✓ non-occluding battle UI (#161 slice 2): fight prompts docked clear of the centre (shown: ${battleUI.shownPanels.join(',')}) — the ship stays visible on desktop + phone`);
+  }
+
   // 2b4) Real-time broadside (#135 slice 2): re-engage, then STEER to bring the foe abeam and
   // fire the loaded guns in REAL TIME until she sinks. Proves the deliberate stance keeps the helm
   // LIVE (you can maneuver), the broadside arc + reload work on the sim clock, and a positioned
