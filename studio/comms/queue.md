@@ -38,15 +38,10 @@ breadth** — this batch teaches & juices the deep combat a new captain otherwis
 God of War & BOTW contextual prompts, progressive disclosure, the first-5-minutes bar) + the PM-triaged
 R2 deep-reading shortlist (`studio/feedback/inbox/2026-07-01-deep-reading.md`, whose flagship #153
 already shipped). Six original, vision-aligned slices, sequenced value·complexity·deps; **#154 shipped
-(Loop 107) — build #155 next.** #145 preview-subpath (ops track) + the owner-decision items (#147/#135-close/#152) stay parked
+(Loop 107); #155 reactive-verb juice shipped (Loop 108, v0.0.20260701190242) — build #156 next.** #145 preview-subpath (ops track) + the owner-decision items (#147/#135-close/#152) stay parked
 below — untouched. No save/schema change except where flagged (#157)._
 
-- **#155 — Reactive-verb juice pass (READY · S/M · software-developer + game-designer) — BUILD THIS NEXT.** Renderer-only
-  recoil + short shake on a volley, sting-flash on a landed hit, a lunge on boarding — intensity echoing
-  the verb's weight. Logic/tests untouched (mirrors #80 doctrine, reduce-motion friendly); gallery frame.
-  No save change. *"Every combat verb feels like the deed it is."*
-
-- **#156 — Cold-start FTUE discoverability check (READY · S · qa + software-developer).** A headless
+- **#156 — Cold-start FTUE discoverability check (READY · S · qa + software-developer) — BUILD THIS NEXT.** A headless
   "fresh captain" playtest step (cleared save) that walks sail→approach→battle→board and **fails CI on
   any reachable-but-un-signified verb** (no visible prompt AND no earcon at the moment it becomes legal).
   Regression-tests legibility so the exact #135-pre-#153 defect can't silently return. Pure test infra;
@@ -69,9 +64,9 @@ below — untouched. No save/schema change except where flagged (#157)._
   single `src/keymap.js` source-of-truth so nothing drifts. Legibility & world-identity become one asset;
   contrast survives haze; no gameplay/save change; gallery frame. *"The tutorial reads as the world speaking."*
 
-**Sequencing note (updated Loop 107 / R5 queue-sync — #154 SHIPPED & CLOSED):** #155/#156 are S/S-M,
-unblocked, READY now; #157/#158/#159 are also unblocked & buildable (their soft deps #153 + #154 are
-BOTH now shipped) → **5 unblocked non-owner-decision slices, ≥3 READY satisfied → loop stays in
+**Sequencing note (updated Loop 108 — #155 SHIPPED & CLOSED):** #156 is S, unblocked, READY now;
+#157/#158/#159 are also unblocked & buildable (their soft deps #153 + #154 are
+shipped) → **4 unblocked non-owner-decision slices, ≥3 READY satisfied → loop stays in
 DELIVERY.** #157 is the biggest first-session reachability win but is M + carries the only save-schema
 change, so it follows the cheap legibility/juice wins it leans on (#154 earcons, #153 prompts). #158/#159
 are depth/polish that compound the above. **No owner-decision surfaced** — all five remaining are
