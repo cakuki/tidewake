@@ -263,6 +263,16 @@ Option-4 is COMPLETE end-to-end; NOTHING remains in the build queue for #135, on
 
 ## Top of queue (do in order) — re-sorted by DL #5 (loop ~71): finish engine de-risk, drain DL #4
 
+### 🔴 FROM-OWNER P1 — #161 **Make Battle FUN** (presentation hardening) — recommended next lane
+The owner playtested battle (#135) and it's **NOT fun**: occluding center popups, no target lock, an
+**isolation BUG** (rescue/#125 + hails leak into the fight), and **no cannonball visuals**. GD+TL slice
+plan in **#161** + [`docs/briefs/2026-07-01-battle-fun-fixes.md`](https://github.com/cakuki/tidewake/blob/main/docs/briefs/2026-07-01-battle-fun-fixes.md).
+Per the **PREEMPTION RULE** this from-owner P1 sits at the TOP. **First slice = hard mode isolation (S, the
+bug)**, then non-occluding UI → target lock → **rendered cannonballs** → aim-angle feedback → hover-interact.
+**Recommend this presentation-hardening lane PREEMPTS new battle MECHANICS** (freeze Option-4 deepening/new
+ammo) until slices 1–5 land — this is the **Fun & Working > fast** doctrine in action. Owner's final
+lane-order confirm pending over Telegram; the #145 `/preview/` slice rides alongside.
+
 ### ⛴️ NEXT LANE (owner, 2026-07-01) — **#145 slice 1: remotely-viewable `/preview/` subpath** — BUILD THIS NEXT
 Battle's lane-switch gate is CLEARED (Loop 100); the owner chose the **release channels** (#145) as the
 next lane, **starting with the preview subpath** so he can watch builds remotely (incl. phone). This is the

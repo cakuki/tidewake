@@ -2,11 +2,11 @@
 id: 2026-07-01-battle-not-fun-readability-isolation-diegetic
 date: 2026-07-01
 type: feedback
-status: triaging
+status: accepted
 value: "The marquee battle system (#135, ~20 loops of work) isn't FUN because it's not readable, not isolated, and not diegetic. Highest-value fix set — combat is the core arcade fantasy and the owner is disappointed."
-feasibility: "GD+TL triage dispatched 2026-07-01 — mapping each complaint to root cause + buildable slices."
-decision: ""
-issue: ""
+feasibility: "GD+TL triage done → docs/briefs/2026-07-01-battle-fun-fixes.md. Presentation gap, not mechanics: center-modal occlusion, no foe highlight, isolation BUG (f.paused=false lets #125 + hails leak in), zero cannonball meshes, no raycast. 6 slices, first = hard mode isolation (the bug)."
+decision: "Accept → filed epic #161 (from-owner P1). Recommend a presentation-hardening lane that preempts new battle mechanics until slices 1-5 land; owner lane-order confirm pending over Telegram."
+issue: "https://github.com/cakuki/tidewake/issues/161"
 assets: []
 ---
 
