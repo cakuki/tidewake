@@ -4,6 +4,22 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-01 — #163 Ship classes shipped — epic #162 FOUNDATION (Loop 117, v0.0.20260701233123).**
+  The owner's steering: "games are too easy; ships should VARY; a player who wants a challenge can seek a
+  big/armed ship." Establishes the ship-class model — sloop → brig → frigate → man-o'-war × merchant/warship
+  — in a new PURE `src/ship-classes.js`: each (class × role) gets a hull (on the shared 0..100 combat scale),
+  gunnery, gun count, crew, a visible `sizeScale` and a threat tier (1–5), plus `spawnMix` (a deterministic,
+  always-varied fleet). The class feeds the EXISTING battle math with zero new mechanics: `makeFoe(rng, shipClass)`
+  seeds the foe's hull+gunnery off the engaged hull's class (carried on the npc snapshot), so `battle.js`/`cannons.js`
+  resolve a frigate as a genuine threat and a merchant sloop as easy prey; `npc.js` scales the reused mesh so a
+  man-o'-war (1.6) visibly dwarfs a sloop (0.72) at **0 extra draws/tris**. Class selection runs off its own rng
+  seed so spawn positions/movement stay byte-identical (the deterministic battle-camera playtest steps unchanged),
+  and the warship man-o'-war (threat 5) is withheld from the open-sea pool — the opt-in #167 challenge — so an
+  unlucky pass never yields an unwinnable fight. Fun beat: the sea stops being uniform — you SEE big warships vs
+  little merchants at a glance and FEEL the difference the instant you fight one. +9 pure tests + a playtest
+  ship-classes step (≥2 distinct classes with distinct hull/guns/size; a frigate's broadside out-bites a sloop's
+  via `tw.qaClassCombat`). Gallery `ship-classes-163.png`. NO save-schema change — transient spawn props, stays v17.
+  The foundation #164 (tier-scaled loss ledger), #165 (threat labels), #166 (odds) and #167 (challenge on demand) build on.
 - **2026-07-01 — #161 slice 6 Hover-to-interact shipped — LANE COMPLETE, #161 CLOSED (Loop 116, v0.0.20260701224039).**
   The SIXTH and FINAL slice of the from-owner "Make Battle FUN" epic (#161): "interacting with other ships should
   be hovering on the ship in the view, not like a HUD element." Targeting was proximity + a keypress guess; now
