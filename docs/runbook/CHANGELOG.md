@@ -4,6 +4,27 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #164 Loss stings shipped — epic #162 stakes layer (Loop 118, v0.0.20260701235745).**
+  The owner's #1 note for the difficulty/stakes epic: "games are too easy — the player must be able to
+  LOSE when playing badly, and a loss should COST points + fame." Two things now hold. (1) **You can
+  actually lose:** `isDefeat({playerHull})` (a legible, tested, single-source rule in `src/systems/battle.js`
+  — hull ≤ 0 under her fire → `finish('lose')`) is the clear player-defeat condition; skill sets the odds,
+  the existing bounded ±20% luck sets the margin. (2) **Losing stings:** `defeatLedger(tier, context, ledger)`
+  — the FIRST-ever reputation-DECREMENT path in `src/renown.js` (legend used to only ever grow) — deducts
+  coin + fame on a loss: **MEDIUM** magnitude, **scaled by the foe's threat tier** (`ship-classes.js` via
+  `foe.tier`), **CONTEXT-BASED** (`defeatContext` off the dominant pole → a raiding loss dents **Infamy**, a
+  governor-road loss dents **Standing** — the pole you were pursuing), **coin dented too**, and **floored at 0**
+  (never negative, no death-spiral — one loss never wipes a run). Surfaced by a red **"⚑ Colours Struck"**
+  defeat card (`hud.showDefeat`) that **NAMES the cost** ("−N Infamy, −C coin"); it reuses the shared toast
+  (already docked clear of the #161-slice-2 centre safe-zone) → **0 extra draws** (perf 29/130 · ~93k tris).
+  Binding owner decisions (#162): MEDIUM · you KEEP your ship (fame/coin only) · context-based fame · **no save
+  bump — deducts from already-persisted coin/infamy/standing, stays v17.** Fun beat: you SEE your fame + coin
+  visibly DROP on the red card and FEEL that reckless fights now carry real risk (caution becomes a decision).
+  +11 renown unit tests + 6 battle unit tests (tier scaling, context routing, floor, no-death-spiral, the
+  defeat condition) + a playtest loss gate (a real defeat fires the ledger; raid→Infamy / governor→Standing;
+  floored at 0; the card names the cost). Gallery `colours-struck-164.png`. **For #166/#167 to read:** the loss
+  condition + the ledger (`isDefeat`/`defeatLedger`/`defeatContext` + `DEFEAT_*` constants) now exist — #166
+  legible-odds can show the stake a loss carries, #167 challenge-on-demand scales its risk off the same tier→sting.
 - **2026-07-01 — #163 Ship classes shipped — epic #162 FOUNDATION (Loop 117, v0.0.20260701233123).**
   The owner's steering: "games are too easy; ships should VARY; a player who wants a challenge can seek a
   big/armed ship." Establishes the ship-class model — sloop → brig → frigate → man-o'-war × merchant/warship
