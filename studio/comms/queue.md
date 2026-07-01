@@ -37,18 +37,11 @@ breadth** — this batch teaches & juices the deep combat a new captain otherwis
 **Inspiration:** WebSearch on game onboarding (just-in-time / scaffolding / "first enemy is a Goomba" —
 God of War & BOTW contextual prompts, progressive disclosure, the first-5-minutes bar) + the PM-triaged
 R2 deep-reading shortlist (`studio/feedback/inbox/2026-07-01-deep-reading.md`, whose flagship #153
-already shipped). Six original, vision-aligned slices, sequenced value·complexity·deps; **build #154
-first.** #145 preview-subpath (ops track) + the owner-decision items (#147/#135-close/#152) stay parked
+already shipped). Six original, vision-aligned slices, sequenced value·complexity·deps; **#154 shipped
+(Loop 107) — build #155 next.** #145 preview-subpath (ops track) + the owner-decision items (#147/#135-close/#152) stay parked
 below — untouched. No save/schema change except where flagged (#157)._
 
-- **#154 — Battle verb earcons (READY · S/M · sound-engineer + software-developer) — BUILD THIS NEXT.**
-  A distinct confirmation sound per battle verb + a "ready now" cue the instant a verb becomes legal
-  (reload done / boardable / colours struck), over the ducked #94/#116 bus. Teaches *which* & *when* by
-  ear — the audio half of #153's visual prompts. Reads existing battle+duel snapshot flags (no new
-  mechanics); pure trigger logic TDD'd first, AudioContext-free in the gate; no save change.
-  *"I can hear which verb I used and when a new one opens."*
-
-- **#155 — Reactive-verb juice pass (READY · S/M · software-developer + game-designer).** Renderer-only
+- **#155 — Reactive-verb juice pass (READY · S/M · software-developer + game-designer) — BUILD THIS NEXT.** Renderer-only
   recoil + short shake on a volley, sting-flash on a landed hit, a lunge on boarding — intensity echoing
   the verb's weight. Logic/tests untouched (mirrors #80 doctrine, reduce-motion friendly); gallery frame.
   No save change. *"Every combat verb feels like the deed it is."*
