@@ -17,7 +17,7 @@ the **local loop only** — there are no cloud routines.
 
 | # | Ritual | Window | Days | Runs as | Last ran |
 |---|---|---|---|---|---|
-| R6 | 📨 Morning owner briefing | 08:00 | daily | product-manager | 2026-07-01 |
+| R6 | 📨 Morning owner briefing | 08:00 | daily | product-manager | 2026-07-02 |
 | R7 | 🗺️ Weekly planning | 09:00 | Mon | product-manager + tech-lead | — |
 | R1 | 😴 Sleep / defrag (memory) | 10:00–12:00 | daily | all 9 agents (fan-out) | — |
 | R2 | 📚 Deep reading | 13:00 | daily | all 9 agents (fan-out) | 2026-07-01 |
