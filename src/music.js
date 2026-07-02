@@ -32,6 +32,7 @@ import { selectCue } from './systems/loop-cues.js';
 import { harmonicMood, IONIAN } from './systems/harmonic-mood.js';
 import { creakRate, creakGain, shouldCreak, creakGrain, CREAK_IDLE_RATE } from './systems/hull-creak.js';
 import { battleLayer, crossfadeGains, nextTransition } from './systems/battle-score.js';
+import { townDockedCue } from './town-theme.js';
 
 // Per-phase battle crossfade (#158): pre-baked constant-power (equal-power) gain curves the battle-
 // layer crossfade rides — sampled from the PURE crossfadeGains() so a phase swap sums to unity loudness
@@ -197,6 +198,20 @@ export function bassPattern() {
 const ROOT = noteNameToMidi('D4'); // 62 — tune the whole theme from here
 const TEMPO = 108; // BPM — a comfortable, jaunty sailing pace
 
+// The DEFAULT landfall flourish (#129): the old #102 "we've made port" bell arpeggio (D-major
+// 1·3·5·8, an octave up) — used before any per-town identity is set, so an untyped/early dock still
+// rings home. Once you're near a real harbour, setTownTheme() re-keys it to that town's own cue.
+const DEFAULT_DOCKED_CUE = Object.freeze({
+  port: null,
+  mode: 'major',
+  shape: 'rise',
+  notes: [1, 3, 5, 8].map((d) => scaleDegreeToMidi(d, ROOT + 12)),
+  type: 'triangle',
+  rollSec: 0.06,
+  peak: 0.16,
+  tailSec: 1.2,
+});
+
 /**
  * Create the music system. Returns:
  *   start(bus)    build the music graph under a shared { ctx, master } and run the loop
@@ -256,6 +271,11 @@ export function createMusic() {
   let intensity = 0;      // 0..1, set by update() from ship speed
   let schedulerId = null;
   let stingerArmed = false; // landfall "we've made port" punch, fired on the next downbeat (#102 ph2)
+  // Per-town DOCKED CUE (#129): the flourish that rings on landfall is the CURRENT town's own — its
+  // key/mode + a per-town motif shape + its timbre (townDockedCue). `lastDockedCue` records the cue
+  // ARMED on the most recent landfall (from the town keyed at that moment), so a headless playtest can
+  // dock and assert the harbour greeted it with its OWN character, without ever opening an AudioContext.
+  let lastDockedCue = null;
   // Reactive-loop diegetic cues (#116): a tiny pure recipe (listen/approach/payoff/loss) armed by
   // loopCue(name) and fired ON the next bar downbeat so it nods WITH the music, not over it. Only the
   // latest pending cue is held (loop beats are spaced — no queue needed). `lastLoopCue` records the
@@ -508,26 +528,44 @@ export function createMusic() {
     });
   }
 
-  // Landfall stinger (#102 ph2): a bright, bell-like D-major arpeggio swell — the single "we've
-  // made port" punch (DL#2 juice on the *transition*). Fired ONCE on the next bar downbeat so it
-  // lands on the beat as the gesture eases ashore. Routes through musicGain, so the mute covers it.
+  // The docked cue that a landfall RIGHT NOW would ring — the current town's own flourish (#129), or
+  // the default D-major bell before any harbour is keyed. Pure + headless-safe (no ctx needed): it just
+  // resolves the numbers townDockedCue() bakes from the stored per-town identity. Never throws.
+  function currentDockedCue() {
+    try {
+      if (currentTownTheme) return townDockedCue(currentTownTheme);
+    } catch { /* fall through to the default bell */ }
+    return DEFAULT_DOCKED_CUE;
+  }
+
+  // Landfall docked cue (#102 ph2 → #129): a bright, bell-like arpeggio swell — the single "we've made
+  // port, and THIS is the place" flourish (DL#2 juice on the *transition*), now voiced in the CURRENT
+  // town's own key/mode + motif shape + timbre so each harbour greets you with its own character. Fired
+  // ONCE on the next bar downbeat so it lands on the beat as the gesture eases ashore. Routes through
+  // musicGain, so the mute covers it. Reads the cue armed at landfall (lastDockedCue), falling back live.
   function voiceStinger(time) {
     if (muted) return;
-    // A rising D-major spread (tonic→third→fifth→octave) with a soft mallet attack and long tail.
-    const degs = [1, 3, 5, 8];
-    degs.forEach((deg, i) => {
+    const cue = lastDockedCue || currentDockedCue();
+    const notes = Array.isArray(cue.notes) && cue.notes.length ? cue.notes : DEFAULT_DOCKED_CUE.notes;
+    const type = cue.type || 'triangle';
+    const roll = Number(cue.rollSec) || 0.06;
+    const peak0 = Number(cue.peak) || 0.16;
+    const tail = Number(cue.tailSec) || 1.2;
+    notes.forEach((midi, i) => {
+      const f = midiToFreq(midi);
+      if (!Number.isFinite(f) || f <= 0) return;
       const osc = ctx.createOscillator();
-      osc.type = 'triangle';
-      osc.frequency.value = degreeToFreq(deg, ROOT + 12); // an octave up — bright, bell-like
+      osc.type = type;
+      osc.frequency.value = f;                 // already an octave up — bright, bell-like
       const env = ctx.createGain();
-      const at = time + i * 0.06;       // gentle upward roll
-      const peak = 0.16 * (1 - i * 0.12);
+      const at = time + i * roll;              // gentle roll along the town's motif
+      const peak = Math.max(0.0001, peak0 * (1 - i * 0.12));
       env.gain.setValueAtTime(0.0001, at);
       env.gain.exponentialRampToValueAtTime(peak, at + 0.02);
-      env.gain.exponentialRampToValueAtTime(0.0001, at + 1.2); // long shimmering tail
+      env.gain.exponentialRampToValueAtTime(0.0001, at + tail); // long shimmering tail
       osc.connect(env).connect(musicGain);
       osc.start(at);
-      osc.stop(at + 1.3);
+      osc.stop(at + tail + 0.1);
     });
   }
 
@@ -926,10 +964,12 @@ export function createMusic() {
     }
   }
 
-  // Arm the landfall stinger (#102 ph2): the "we've made port" punch fires on the NEXT bar
-  // downbeat (quantised to the bar-clock, so it lands on the beat). Safe to call before the engine
-  // is up — it just arms a flag the scheduler reads once the music is running and unmuted.
-  function stinger() { stingerArmed = true; }
+  // Arm the landfall stinger (#102 ph2 → #129): the "we've made port" flourish fires on the NEXT bar
+  // downbeat (quantised to the bar-clock, so it lands on the beat). It LATCHES the CURRENT town's own
+  // docked cue at arm-time — so the harbour you just made greets you in its own key/mode/timbre even if
+  // you sail on before the downbeat. Safe to call before the engine is up (it just arms a flag +
+  // records the cue the scheduler reads once the music is running and unmuted). Headless-assertable.
+  function stinger() { stingerArmed = true; lastDockedCue = currentDockedCue(); }
 
   // Arm a reactive-loop diegetic cue (#116): listen / approach / payoff / loss (and the listen
   // colours). Resolves the pure recipe (src/systems/loop-cues.js) and holds it for the next bar
@@ -991,5 +1031,11 @@ export function createMusic() {
     };
   }
 
-  return { start, setMute, update, setMix, setMood, setBattleAct, setTownTheme, stinger, loopCue, lastCue, lastUnder, wakeLevel, creakLevel, variation, mood, battleScore };
+  // Per-town DOCKED CUE (#129) QA surface: the flourish a landfall would ring at THIS moment — the
+  // current town's own { port, mode, shape, notes, type } (or the cue armed on the last landfall).
+  // Pure + headless-safe (no AudioContext), so a playtest can sail into a harbour and assert it greets
+  // the captain in its own key/mode/timbre, and that distinct towns get distinct docked flourishes.
+  function dockedCue() { return lastDockedCue || currentDockedCue(); }
+
+  return { start, setMute, update, setMix, setMood, setBattleAct, setTownTheme, stinger, dockedCue, loopCue, lastCue, lastUnder, wakeLevel, creakLevel, variation, mood, battleScore };
 }

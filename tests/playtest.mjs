@@ -2588,6 +2588,49 @@ try {
   if (!memory.masterIsRecall) fail('port-memory: the town greeting was not flagged as a remembered-return (visual cue missing) (#104)');
   if (memory.persistedVisits !== 2) fail('port-memory: the per-port memory did not survive a save round-trip (#104)');
 
+  // 2h2b2) Per-town DOCKED CUE — each harbour greets you with its OWN musical character (#129, the #69
+  // follow-up). The fun beat: you sail into a port and it rings its own flourish — voiced in the town's
+  // key/mode with a per-town motif shape and timbre — distinct from every other harbour, so arriving
+  // feels like arriving SOMEWHERE. Proven AudioContext-free off the pure cue + the live landfall arm:
+  //   (1) distinct ports → DISTINCT docked cues, deterministically (a town always greets you the same);
+  //   (2) the cue is voiced in the town's own key/mode (its chord, an octave up — bright/bell-like);
+  //   (3) making landfall ARMS the docked port's OWN cue (the harbour greets you as THIS place).
+  const townCue = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);
+    const names = tw.ports.map((p) => p.name);
+    // Determinism + distinctness of the pure per-town cue.
+    const stable = names.every((n) => JSON.stringify(tw.townDockedCueFor(n)) === JSON.stringify(tw.townDockedCueFor(n)));
+    const cues = names.map((n) => tw.townDockedCueFor(n));
+    const distinct = new Set(cues.map((c) => `${c.notes.join(',')}|${c.shape}|${c.type}`)).size;
+    // The cue rings in the town's own key: every note is a town-chord degree lifted an octave.
+    const inKey = names.every((n) => {
+      const up = tw.townMusicFor(n).chordMidi.map((m) => m + 12);
+      return tw.townDockedCueFor(n).notes.every((x) => up.includes(x));
+    });
+    // Make landfall at a real port → the flourish armed must be THAT port's own docked cue.
+    const port = tw.ports[0];
+    tw.qaTeleport(port.pos[0], port.pos[1]); tw.step(0.1);
+    let inTown = false; for (let i = 0; i < 120 && !inTown; i++) { tw.step(0.1); inTown = tw.town.open === true; }
+    const docked = tw.docked;
+    const armed = tw.townMusic.dockedCue;
+    const expected = tw.townDockedCueFor(docked || port.name);
+    tw.newVoyage(); tw.step(0.1);
+    return {
+      names, stable, distinct, inKey, inTown, docked,
+      armedPort: armed && armed.port, armedNotes: armed && armed.notes, armedShape: armed && armed.shape,
+      expectedNotes: expected && expected.notes, expectedShape: expected && expected.shape,
+    };
+  });
+  if (townCue.names.length < 2) fail(`docked cue (#129): fewer than 2 ports to compare (${townCue.names.length})`);
+  if (!townCue.stable) fail('docked cue (#129): townDockedCueFor is not deterministic — a town must always greet you the same way');
+  if (townCue.distinct !== townCue.names.length) fail(`docked cue (#129): harbours share a flourish (${townCue.distinct}/${townCue.names.length} distinct) — each port must sound like itself`);
+  if (!townCue.inKey) fail('docked cue (#129): a docked cue is not voiced in its town\'s own key/mode (notes are not off the town chord)');
+  if (!townCue.inTown) fail('docked cue (#129): could not make landfall to arm a docked cue');
+  if (townCue.armedPort !== townCue.docked) fail(`docked cue (#129): landfall armed the wrong port's cue (armed "${townCue.armedPort}" at "${townCue.docked}")`);
+  if (JSON.stringify(townCue.armedNotes) !== JSON.stringify(townCue.expectedNotes) || townCue.armedShape !== townCue.expectedShape) fail(`docked cue (#129): the armed landfall flourish is not the docked port's own (armed ${townCue.armedShape}:${JSON.stringify(townCue.armedNotes)} vs ${townCue.expectedShape}:${JSON.stringify(townCue.expectedNotes)})`);
+  if (process.exitCode !== 1) console.log(`  ✓ per-town docked cue (#129): ${townCue.distinct} harbours each greet you with their OWN flourish (key/mode/motif/timbre); landfall at "${townCue.docked}" rang its cue [${townCue.armedShape}: ${townCue.armedNotes.join(',')}] — a port sounds like somewhere with character, AudioContext-free`);
+
   // 2h2c) Rumours that pay off (#111/#112/#115): the reactive town→rumour→sail→reward loop. Make
   // landfall, LISTEN in the tavern, CHASE a trade tip (it becomes a typed objective with the named
   // port's coords — a marker heading), then sail to that port and assert ARRIVING pays off (coins

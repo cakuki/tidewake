@@ -19,7 +19,7 @@ import { createPorts, DOCK_RADIUS } from './ports.js';
 import { loadProps } from './props.js';
 import { createAudio } from './audio.js';
 import { createMusic } from './music.js';
-import { townMusicIdentity } from './town-theme.js';
+import { townMusicIdentity, townDockedCue } from './town-theme.js';
 import { createInput } from './input.js';
 import { createHud } from './hud.js';
 import { createReputationNeedle } from './ui/reputation-needle.js';
@@ -2917,9 +2917,21 @@ window.__tidewake = {
   // the identity is stable across reloads, and that distinct towns get distinct musical characters.
   get townMusic() {
     const port = themePort || ports.docked || null;
-    return { port, identity: port ? townMusicIdentity(port) : null };
+    return {
+      port,
+      identity: port ? townMusicIdentity(port) : null,
+      // Per-town DOCKED CUE (#129): the flourish a landfall rings — the town's own key/mode/motif/timbre.
+      // `dockedCue` is the cue armed on the most recent landfall (music.js latches it on stinger());
+      // `dockedCueFor` is the pure descriptor for THIS keyed port. So a playtest can dock and assert the
+      // harbour greeted it in its own character, and compare distinct towns' cues — AudioContext-free.
+      dockedCue: music.dockedCue(),
+      dockedCueFor: port ? townDockedCue(port) : null,
+    };
   },
   townMusicFor(name) { return townMusicIdentity(name); },
+  // Per-town docked cue (#129) pure lookup for ANY port — headless-assertable so the gate can prove
+  // distinct harbours greet you with distinct flourishes (key/mode/motif/timbre), deterministically.
+  townDockedCueFor(name) { return townDockedCue(name); },
   // Seeded per-pass sea-theme variation (#117) QA surface: the live { seed, pass, displaced } so a
   // playtest can assert it's deterministic (same seed → same sequence) and that each loop glints in
   // key. `seaVariationFor(pass)` is a pure lookup for ANY pass (headless-safe; no AudioContext).

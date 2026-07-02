@@ -37,6 +37,21 @@ export const TOWN_TINTS = Object.freeze([
   { name: 'bright', lowpassHz: 2200, leadType: 'triangle' },// airy, open square
 ]);
 
+/**
+ * The DOCKED-CUE motif shapes (#129): a short per-town flourish that rings on making landfall — a
+ * settled "you're moored here, and this is where" greeting distinct from the approach swell. Each
+ * shape is a 4-note order over the town's own chord degrees [root, third, fifth, octave] (indices
+ * 0..3), so the SAME cue always sounds in the town's key + mode (its major/minor colour comes free
+ * from the chord's third). A town's shape is picked deterministically off its name — so one harbour
+ * greets you with a rising peal, another with a lilting call, and it's always the same one.
+ */
+export const TOWN_CUE_SHAPES = Object.freeze([
+  { name: 'rise', steps: [0, 1, 2, 3] }, // a clean rising spread — root→third→fifth→octave
+  { name: 'peal', steps: [0, 2, 3, 2] }, // rise to the octave then settle — a little bell peal
+  { name: 'call', steps: [3, 2, 1, 0] }, // a descending "welcome home" call from the octave down
+  { name: 'lilt', steps: [0, 2, 1, 3] }, // a jaunty, skipping lilt up to the octave
+]);
+
 /** FNV-1a 32-bit hash — a stable, well-spread integer from a port name (deterministic). */
 function hashName(name) {
   const s = typeof name === 'string' ? name : String(name ?? '');
@@ -86,5 +101,41 @@ export function townMusicIdentity(portName) {
     leadType: tint.leadType,
     tremoloHz,
     chordMidi,
+  };
+}
+
+/**
+ * Resolve a port → its DOCKED CUE (#129): the pure, deterministic descriptor of the short musical
+ * flourish that rings ONCE on making landfall there — a settled "you've moored, and THIS is the place"
+ * greeting, distinct from the approach swell. Voiced in the town's own key + mode (a rising bell peal
+ * off its chord, an octave up so it's bright) and coloured by the town's timbre (leadType). Different
+ * towns get a different motif SHAPE + key + timbre, so each harbour greets you like somewhere with
+ * character; the same town always greets you the same way. PURE — no AudioContext (the audio engine
+ * just voices these numbers); accepts either a port NAME or an already-resolved identity. Junk-safe.
+ *
+ * @param {string|object} portNameOrIdentity a port name, or a townMusicIdentity() descriptor
+ * @returns {{
+ *   port:string, mode:string, shape:string,
+ *   notes:number[], type:string,
+ *   rollSec:number, peak:number, tailSec:number
+ * }}
+ */
+export function townDockedCue(portNameOrIdentity) {
+  const id = portNameOrIdentity && Array.isArray(portNameOrIdentity.chordMidi)
+    ? portNameOrIdentity
+    : townMusicIdentity(portNameOrIdentity);
+  const shape = TOWN_CUE_SHAPES[(id.seed >>> 16) % TOWN_CUE_SHAPES.length];
+  // Ring the town's chord an octave up — bright + bell-like, above the warm drone. The shape orders
+  // the four chord degrees into the town's little motif; the third carries its major/minor colour.
+  const notes = shape.steps.map((i) => id.chordMidi[i] + 12);
+  return {
+    port: id.port,
+    mode: id.mode,
+    shape: shape.name,
+    notes,
+    type: id.leadType,   // the town's timbre (fife-bright triangle vs. lamplit sine) — instrument character
+    rollSec: 0.07,       // a gentle roll between the flourish's notes
+    peak: 0.16,          // matches the old landfall stinger's presence — sits under the melody
+    tailSec: 1.2,        // a long shimmering tail as the ship glides to her moorings
   };
 }

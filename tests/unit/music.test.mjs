@@ -18,7 +18,9 @@ import {
   LOOP_BEATS,
   STEPS_PER_BAR,
   isDownbeat,
+  createMusic,
 } from '../../src/music.js';
+import { townMusicIdentity, townDockedCue } from '../../src/town-theme.js';
 
 test('isDownbeat: true only on a bar boundary (the landfall stinger bar-clock, #102 ph2)', () => {
   assert.equal(STEPS_PER_BAR, BEATS_PER_BAR * 2, 'eighth-note grid → 8 steps per bar');
@@ -147,4 +149,44 @@ test('bassPattern: one chord root per bar', () => {
 
 test('loop geometry: bars * beats-per-bar == loop beats', () => {
   assert.equal(BARS * BEATS_PER_BAR, LOOP_BEATS);
+});
+
+// ---- Per-town docked cue wiring (#129), fully headless (no AudioContext) ----
+
+test('createMusic.dockedCue: defaults to a valid bell before any town is keyed', () => {
+  const m = createMusic();
+  const cue = m.dockedCue();
+  assert.ok(cue && Array.isArray(cue.notes) && cue.notes.length === 4, 'a 4-note default flourish');
+  assert.equal(cue.port, null, 'no town keyed yet → the default cue');
+});
+
+test('createMusic.dockedCue: follows the town set via setTownTheme (harbour sounds like itself)', () => {
+  const m = createMusic();
+  for (const name of ['Saltpurse Quay', 'Barnacle Bottom', "Gullet's Rest"]) {
+    m.setTownTheme(townMusicIdentity(name));   // no engine up → just stores the identity
+    assert.deepEqual(m.dockedCue(), townDockedCue(name), `${name}: cue matches its pure descriptor`);
+  }
+});
+
+test('createMusic.stinger: latches the CURRENT town cue at arm-time (landfall greets you in THIS port)', () => {
+  const m = createMusic();
+  m.setTownTheme(townMusicIdentity('Barnacle Bottom'));
+  m.stinger();                                  // arm on landfall — no ctx, but the cue is latched
+  const armed = m.dockedCue();
+  assert.deepEqual(armed, townDockedCue('Barnacle Bottom'), 'the armed cue is the port you made');
+  // Sailing on and re-keying does NOT rewrite the already-armed landfall cue until the next stinger.
+  m.setTownTheme(townMusicIdentity("Gullet's Rest"));
+  assert.deepEqual(m.dockedCue(), townDockedCue('Barnacle Bottom'), 'armed cue survives a later re-key');
+});
+
+test('createMusic: distinct towns arm distinct docked cues', () => {
+  const sigs = new Set();
+  for (const name of ['Saltpurse Quay', 'Barnacle Bottom', "Gullet's Rest"]) {
+    const m = createMusic();
+    m.setTownTheme(townMusicIdentity(name));
+    m.stinger();
+    const c = m.dockedCue();
+    sigs.add(`${c.notes.join(',')}|${c.shape}|${c.type}`);
+  }
+  assert.equal(sigs.size, 3, 'each harbour arms its own flourish');
 });
