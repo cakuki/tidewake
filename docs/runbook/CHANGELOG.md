@@ -4,6 +4,24 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #178 The weather gage: the wind becomes a rule BOTH hulls obey (Loop 147,
+  v0.0.20260702121814; the "one more voyage" lane slice 3/4, #178 CLOSED).** Promoted the shipped wind
+  (`state.windDir`, the one the HUD windrose already shows) from decoration to a RULE: heading relative to
+  the wind modifies sailing speed — downwind faster, upwind slower — by ONE bounded point-of-sail multiplier
+  (`physics.windFactor`, the shipped [0.55,1.0] curve). The PLAYER already obeyed it via `targetSpeed`; this
+  slice makes EVERY NPC obey the IDENTICAL function — the arena duel foe (#105) AND the wander/flee fleet —
+  so a chase becomes a fight for the wind (claim the weather gage, dictate the range). Extracted the shared
+  `sailSpeed(base,heading,windDir)=base*windFactor` so player + NPC route through ONE rule (fair, no
+  asymmetry); `npc.js` publishes each hull's live `windMult` on its snapshot so the gate can prove the rule
+  is real; `main.js` passes the live wind into the NPC update ctx + exposes `windDir` on the QA state.
+  BOUNDED (≤~1.8× downwind/upwind) so it shifts odds without trivializing the shipped battle/aim (#161)/
+  dread (#172)/regional-danger (#167) — skill sets position, the wind sets the margin (#166). PURE
+  `sailSpeed` TDD'd first (bounded/deterministic/monotonic downwind>beam>upwind, base-independent = same
+  gage for both hulls, composes with throttle/class); playtest asserts the fleet's LIVE windMult stays
+  in-band, matches windFactor(heading,windDir) exactly, and spans the beam. The #161 aim-angle gate setup
+  was hardened to frame the latched foe ahead through the camera settle (robust to where the wind carries
+  her). NO save-schema change — transient sailing rule stays v18. Perf 31/130 draws · 93188/150000 tris
+  (logic = 0 draws).
 - **2026-07-02 — #177 Fear you can SEE on your own ship: Infamy dresses the rigging (Loop 146,
   v0.0.20260702115054; the "one more voyage" retention lane slice 2/4, #177 CLOSED).** Notoriety is now
   rendered on the PLAYER's OWN ship, derived purely from the persisted Infamy value (NO save bump — v18):

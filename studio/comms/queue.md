@@ -58,11 +58,23 @@ onto **parked owner-decision frontiers** and are surfaced as `[OWNER-DECISION]` 
   the layers stack) and rides the #171 class scale (trophies parented to the hull); cheap (#121: shared
   geometry, hidden = not drawn, +2 draws at peak). Playtest asserts monotonic-with-Infamy + a real defeat
   strips a trophy (2→1) + composition. Gallery `feared-black-sails-177.png`. **#178 is next.**
-- **#178 — The weather gage: wind as a global rule** *(design/tech, S/M — P2)* **← NEXT.** Promote the shipped wind
-  vector (#88) to a property BOTH hulls obey — downwind = speed + smoke-screen approach, upwind = dictate
-  range. One reused property → emergent tactics, no new system (the home for #88's deferred gameplay half).
-  **FUN:** the sky suddenly matters to every chase. *Builds on weather #88 + maneuver #135; NO save bump.*
-- **#179 — Negative space: the held breath before the payoff** *(audio/art, S — P3).* Three cheap beats on
+- ✅ **#178 — The weather gage: wind as a global rule** *(design/tech, S/M — P2)* — **SHIPPED Loop 147,
+  v0.0.20260702121814, #178 CLOSED.** Promoted the shipped wind (the `state.windDir` the HUD windrose
+  already shows) from decoration to a **rule BOTH hulls obey**: heading vs the wind modifies sailing speed
+  by ONE bounded point-of-sail multiplier — **downwind faster, upwind slower** (`physics.windFactor`, the
+  shipped [0.55,1.0] curve). The PLAYER already obeyed it (`targetSpeed`); this slice makes **every NPC obey
+  the IDENTICAL function** — the arena duel foe (#105) AND the wander/flee fleet — so a chase becomes a
+  **fight for the wind** (claim the weather gage and you dictate the range). Extracted the shared
+  `sailSpeed(base,heading,windDir)=base*windFactor` so player + NPC route through ONE rule (no asymmetry);
+  main.js passes the live wind into the NPC ctx + exposes it on the QA state; npc.js publishes each hull's
+  live `windMult` on its snapshot so the gate can prove it. **BOUNDED** (≤~1.8× downwind/upwind) so it
+  shifts odds without trivializing the shipped battle/aim(#161)/dread(#172)/regional-danger(#167) — skill
+  sets position, the wind sets the margin (consistent with #166). PURE `sailSpeed` TDD'd first
+  (bounded/deterministic/monotonic downwind>beam>upwind, **base-independent = fair to both hulls**, composes
+  with throttle/class); playtest asserts the fleet's LIVE windMult stays in-band, matches
+  windFactor(heading,windDir) exactly, and spans the beam. **NO save bump — transient sailing rule stays
+  v18.** **#179 is next (last of the lane).**
+- **#179 — Negative space: the held breath before the payoff** *(audio/art, S — P3)* **← NEXT (last of the lane).** Three cheap beats on
   SHIPPED climaxes: (a) ~1s near-silence before a surrender sting + #80 settle; (b) a charged rank-up swell →
   bass "thunk"; (c) a one-pass colour-grade pulse on a notorious kill / rank-up. **FUN:** the wins feel
   *bigger* for free. *Builds on juice #80 + rank-up #169 + audio bus; ~0 draws, NO save bump, respects the
