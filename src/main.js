@@ -641,8 +641,20 @@ function battleFireJuiced() {
   try {
     const weight = ammoWeight(ammoProfile(before.ammo).hullMult);
     juice.fire({ quality: r.quality ?? before.aimQuality ?? 0, weight });
-    if (r.playerHit > 0) juice.hit({ damage: r.playerHit, tint: 'red' });      // her reply raked your hull
-    else if (r.enemyHit > 0) juice.hit({ damage: r.enemyHit, tint: 'gold' });  // you landed a clean one
+    // #80 game-feel "juice" pass — make the impact LAND. Alongside the existing gold/red hull FLASH, a
+    // clean bite on HER now ROCKS the view + hit-stops (scaled by the bite); her reply raking YOU rocks
+    // + hit-stops (scaled by what she took out of you); a SINKING punctuates hardest. All feed the SAME
+    // camera-shake stack the broadside recoil uses (one effect, generalised — NOT a second camera
+    // system), and the freeze is bounded + drains on real time so it can never stall the loop.
+    // r.result==='win' is the sink verdict from battle.finish().
+    if (r.result === 'win') juice.sink();                                       // she goes down — the kill lands
+    if (r.playerHit > 0) {
+      juice.hit({ damage: r.playerHit, tint: 'red' });                          // her reply raked your hull…
+      juice.impact({ damage: r.playerHit });                                    // …and it ROCKS your view
+    } else if (r.enemyHit > 0) {
+      juice.hit({ damage: r.enemyHit, tint: 'gold' });                          // you landed a clean one…
+      juice.impact({ damage: r.enemyHit });                                     // …and it THUDS home
+    }
   } catch { /* game-feel must never break the fight */ }
   // RENDER the shot (#161 slice 4): arc a visible volley from the firing gunport to the foe, driven by
   // the resolved outcome — a clean beam bite sparks ON her, a wide shot splashes past. `before.foePos`
@@ -1210,6 +1222,13 @@ settings.register({
 settings.register({
   id: 'daynight', label: 'Day & night', hint: 'a gentle dawn-to-dusk cycle — sunny by default',
   default: false, apply: (on) => daynight.setEnabled(on),
+});
+// Combat feel (#80) — STORED, default ON: the screen-shake, camera kick + hit-stop that make a hit
+// LAND. Toggling it OFF (or a prefers-reduced-motion preference) leaves the game fully playable with
+// zero screen motion; setEnabled clears any live effect so there's no residual jolt.
+settings.register({
+  id: 'combatfeel', label: 'Combat feel', hint: 'screen-shake & hit-stop on a solid hit — motion',
+  default: true, apply: (on) => juice.setEnabled(on),
 });
 settings.init(); // builds the panel, wires the O / Esc keys, applies the saved/default toggles
 
@@ -2129,8 +2148,15 @@ const juiceFlashEl = document.getElementById('juice-flash');
 const JUICE_FLASH_RED = 'radial-gradient(ellipse at center, rgba(0,0,0,0) 42%, rgba(196,26,26,0.95) 100%)';
 const JUICE_FLASH_GOLD = 'radial-gradient(ellipse at center, rgba(255,240,205,0.9) 0%, rgba(255,224,150,0) 68%)';
 function loop() {
-  const dt = Math.min(clock.getDelta(), 0.05);
+  const rawDt = Math.min(clock.getDelta(), 0.05);
   simT = clock.elapsedTime;
+  // #80 HIT-STOP: on a solid strike juice owes a few frames of freeze — zero the sim step for the real
+  // frames it lasts so the world (ship/projectiles/battle timers) HOLDS on impact, then snaps back. The
+  // freeze DRAINS on real wall-clock dt inside consumeHitStop (bounded ~5 frames), so it always
+  // auto-resumes and can NEVER stall the loop; the procedural clock (simT) keeps ticking so the ocean
+  // never freezes oddly and the world clock never desyncs. The deterministic tw.step() path does NOT
+  // call this, so the fixed sim / mesh-conservation gate (#121) stays pristine.
+  const dt = rawDt * juice.consumeHitStop(rawDt);
   update(dt, simT);
   // QA visual-DoD override (#65): when a top-down inspection camera is requested, render
   // the live scene straight down on the ship so a screenshot can verify no sea shows
@@ -2529,6 +2555,11 @@ window.__tidewake = {
   // Reactive-verb juice (#155): the live game-feel state — so a headless test can assert a fired
   // volley produced a nonzero camera kick and a hit raised the flash (renderer-only; save-free).
   get juice() { return juice.snapshot(); },
+  // #80 juice-pass QA surface: flip the runtime "Combat feel" toggle, and drain the hit-stop the way
+  // loop() does (on real dt) so a headless test can prove the freeze decays to zero (no residual) and
+  // that the toggle/reduced-motion fully suppresses it — without needing a real camera or a live frame.
+  juiceSetEnabled(on) { juice.setEnabled(on); return juice.snapshot(); },
+  juiceConsumeHitStop(dt = 1 / 60) { return juice.consumeHitStop(dt); },
   engageBattle() { return battle.engage(); },
   fleeBattle() { return battle.flee(); },
   battleFire() { return battleFireJuiced(); },

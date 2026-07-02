@@ -904,6 +904,92 @@ try {
     }
   }
 
+  // 2b4c) COMBAT GAME-FEEL "JUICE" PASS (#80): make the (now-visible) hit LAND. A clean broadside that
+  // BITES her rocks the view (a camera kick on the SAME shake stack the recoil uses — one effect,
+  // generalised) AND owes a brief HIT-STOP (a few-frame sim freeze); the freeze is bounded + drains on
+  // real time so it decays cleanly to zero and can NEVER stall the loop; and the whole pass is fully
+  // suppressed (no shake, no freeze, no residual offset) when the "Combat feel" toggle is off. The
+  // impact→intensity SCALING is unit-tested (tests/unit/juice.test.mjs); here we prove the wiring:
+  // event→shake/hit-stop, decay-to-zero, and toggle-off suppression, end to end in the real game.
+  const juicePass = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    }
+    // Bring a foe abeam and fire a CLEAN shot (the same geometry the cannonballs test uses).
+    function fireClean() {
+      const foeIdx = tw.battle.foeIndex;
+      const F = tw.npcs[foeIdx].pos, h = tw.state.heading;
+      tw.qaTeleport(F[0] - Math.cos(h) * 120, F[1] + Math.sin(h) * 120); // foe dead abeam to starboard
+      const aim = tw.battleAim();
+      if (!(tw.battle.active && tw.battle.loaded && aim.inArc)) return false;
+      tw.battleFire();
+      return true;
+    }
+    const bi = nearest();
+    if (bi === -1) return { engaged: false };
+    const fp = tw.npcs[bi].pos;
+    tw.qaTeleport(fp[0], fp[1] - 120);
+    tw.step(0.05);
+    if (!tw.engageBattle()) return { engaged: false };
+
+    // (1) EVENT → HIT-STOP + SHAKE: a clean landed broadside owes a freeze and rocks the view.
+    for (let i = 0; i < 16 && !tw.battle.loaded && tw.battle.active; i++) tw.step(0.2);
+    const firedClean = fireClean();
+    const afterFire = tw.juice; // read BEFORE any consume/step — the freeze is still owed
+    // (2) DECAY-TO-ZERO + BOUNDED: drain the freeze the way loop() does (on real dt); it must reach 0
+    //     in a bounded number of frames (it can NEVER stall the loop), each frozen frame returning 0.
+    let drainFrames = 0, sawFrozen = false, everScaleAfter = 1;
+    while (tw.juice.hitStop > 0) {
+      const scale = tw.juiceConsumeHitStop(1 / 60);
+      if (scale === 0) sawFrozen = true;
+      if (++drainFrames > 30) break; // guard: a runaway freeze would trip this (a stall)
+    }
+    everScaleAfter = tw.juiceConsumeHitStop(1 / 60); // once drained, the sim runs at full speed
+    const afterDrain = tw.juice;
+
+    // (3) TOGGLE OFF → FULL SUPPRESSION, NO RESIDUAL: turning "Combat feel" off clears live effects,
+    //     and a fresh clean broadside produces no freeze and no camera offset (fully playable).
+    const offSnap = tw.juiceSetEnabled(false); // clears any live shake/flash/freeze immediately
+    for (let i = 0; i < 16 && !tw.battle.loaded && tw.battle.active; i++) tw.step(0.2);
+    const firedWhileOff = fireClean();
+    tw.step(1 / 60);
+    const afterFireOff = tw.juice;
+    const offScale = tw.juiceConsumeHitStop(1 / 60); // no freeze owed while off → full speed
+    tw.juiceSetEnabled(true); // restore the default
+    if (tw.battle.active) tw.fleeBattle();
+    return {
+      engaged: true, firedClean, afterFire, sawFrozen, drainFrames, everScaleAfter, afterDrain,
+      offEnabled: offSnap.enabled, offResidualOffset: offSnap.offsetMag, offResidualStop: offSnap.hitStop,
+      firedWhileOff, afterFireOff, offScale,
+    };
+  });
+  if (!juicePass.engaged || !juicePass.firedClean) {
+    console.warn('  (#80 combat game-feel juice pass: no foe to engage / never reloaded — skipped, like the other battle steps)');
+  } else {
+    // (1) the clean hit LANDED: it owed a real, BOUNDED hit-stop.
+    if (!(juicePass.afterFire.hitStop > 0)) fail(`combat juice (#80): a clean landed broadside owed NO hit-stop (hitStop=${juicePass.afterFire.hitStop}) — the hit does not FEEL like it lands`);
+    if (!(juicePass.afterFire.hitStop <= 0.1)) fail(`combat juice (#80): the hit-stop is NOT bounded (hitStop=${juicePass.afterFire.hitStop} > 0.1s) — a freeze this long risks a stall`);
+    if (!(juicePass.afterFire.offsetMag > 0)) fail(`combat juice (#80): a clean hit did not rock the view (offsetMag=${juicePass.afterFire.offsetMag}) — no camera kick on impact`);
+    // (2) the freeze DECAYS to zero, was actually felt (a frozen frame), and never ran away (no stall).
+    if (!juicePass.sawFrozen) fail('combat juice (#80): the hit-stop never froze a frame (consumeHitStop never returned 0) — no felt freeze');
+    if (!(juicePass.drainFrames <= 8)) fail(`combat juice (#80): the hit-stop took ${juicePass.drainFrames} frames to drain (>8) — an unbounded freeze can STALL the loop`);
+    if (!(juicePass.afterDrain.hitStop === 0)) fail(`combat juice (#80): the hit-stop did not decay to zero (residual hitStop=${juicePass.afterDrain.hitStop})`);
+    if (!(juicePass.everScaleAfter === 1)) fail(`combat juice (#80): the sim did not resume full speed after the freeze (scale=${juicePass.everScaleAfter}) — the world clock could desync`);
+    // (3) TOGGLE OFF fully suppresses — no residual, and a fresh hit produces nothing.
+    if (juicePass.offEnabled !== false) fail('combat juice (#80): the runtime toggle did not turn the juice off');
+    if (!(juicePass.offResidualOffset === 0)) fail(`combat juice (#80): toggling off left a RESIDUAL camera offset (${juicePass.offResidualOffset}) — motion must fully cease`);
+    if (!(juicePass.offResidualStop === 0)) fail(`combat juice (#80): toggling off left a residual freeze (${juicePass.offResidualStop})`);
+    if (juicePass.firedWhileOff && !(juicePass.afterFireOff.hitStop === 0 && juicePass.afterFireOff.offsetMag === 0)) fail(`combat juice (#80): firing with the toggle OFF still produced motion (hitStop=${juicePass.afterFireOff.hitStop}, offsetMag=${juicePass.afterFireOff.offsetMag}) — juice-off must be fully still`);
+    if (!(juicePass.offScale === 1)) fail(`combat juice (#80): the sim was frozen while the juice toggle is OFF (scale=${juicePass.offScale}) — juice-off must be fully playable`);
+    if (process.exitCode !== 1) console.log(`  ✓ combat game-feel juice (#80): a clean hit LANDS — a ${juicePass.afterFire.hitStop.toFixed(3)}s hit-stop + a camera kick (offsetMag ${juicePass.afterFire.offsetMag.toFixed(2)}), decays to zero in ${juicePass.drainFrames} frames (bounded, no stall), and toggles fully OFF (no residual motion)`);
+  }
+
   // 2b5-aim) AIM-ANGLE FEEDBACK (#161 slice 5): the owner's note — "the angles should matter." They DO
   // in the maths (broadsideAim); this slice makes the firing solution VISIBLE — an aim LINE from your
   // ship to the foe that colours + TIGHTENS as she comes abeam, so you can SEE "I'm on target" before
@@ -3383,7 +3469,7 @@ try {
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
   console.log(`leak-invariant (#121): ${leak.N}× mode cycles · geom ${leak.baseline.geometries}→${leak.final.geometries} (+${leak.geomGrowth}) · tex ${leak.baseline.textures}→${leak.final.textures} (+${leak.texGrowth}) · worst transition ${leak.worstTransition.drawCalls} draws/${leak.worstTransition.triangles} tris`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, leak, broadside, cballs, ammoCycle, boarding, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, props, islandStyle, leak, broadside, cballs, juicePass, ammoCycle, boarding, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));
