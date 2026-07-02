@@ -27,7 +27,73 @@ when its latest slice shipped.
 
 ---
 
-## 🧭 TOP OF QUEUE — PRODUCT REFILL (2026-07-02) — **POST-RISE POLISH** (consolidate the big run) — BUILD IN ORDER
+## 🧭 TOP OF QUEUE — PRODUCT REFILL (2026-07-02) — **"ONE MORE VOYAGE" — the world remembers you** — BUILD IN ORDER
+
+_**UPDATE 2026-07-02 — PRODUCT triage of the fresh R2 Deep-Reading shortlist**
+(`studio/feedback/inbox/2026-07-02-deep-reading.md`) — roadmap change, report-worthy._ The prior POST-RISE
+POLISH lane (below) is **fully shipped** (#175 · #90 · #80 · #70), leaving the queue with no READY slice.
+The deep-reading's convergence signal across all three research passes was **"the world remembers you"** —
+turn the now-closed RISE loop into a **remembered, replayable world** (the retention / "one more voyage"
+hook), plus cheap combat depth and juice that make it land. This lane is **4 SMALL, buildable-now,
+FUN-FIRST slices that build on shipped systems and need NO save bump (all v18, derived/transient/fail-open).**
+The *bigger* remembered-world ideas (a named Nemesis rival, ports that visibly react, a daily ranking) map
+onto **parked owner-decision frontiers** and are surfaced as `[OWNER-DECISION]` options below — recommended,
+**not auto-adopted** (the owner hasn't reacted to the overnight run yet).
+
+- **#176 — Never close the tab empty-handed** *(feature/design, S/M — P1, the convergence).* A LOST voyage
+  STILL banks something visible (a scrap of Infamy / a plank on the home-port fund / a rumour) and the Ballad
+  records the defeat as a **chapter** — so you lean into "one more voyage" instead of closing the tab.
+  **Guardrail:** the loss must STILL STING (#164) — bank + sting coexist. **FUN:** you lose and STILL see a
+  needle tick. *Builds on THE RISE #168 + loss-stings #164 + Ballad #90 + home-fund #174 — existing persisted
+  fields only, NO save bump.*
+- **#177 — Fear you can SEE on your own ship** *(feature/art, S — P2).* Render Infamy on your OWN hull the
+  way #170 shows bought cannons: black sails / trophy flags / a fiercer figurehead as notoriety climbs, and a
+  bad loss visibly strips a trophy. **FUN:** fame you can see — and lose. *Derived from the persisted infamy
+  value; NO save bump.*
+- **#178 — The weather gage: wind as a global rule** *(design/tech, S/M — P2).* Promote the shipped wind
+  vector (#88) to a property BOTH hulls obey — downwind = speed + smoke-screen approach, upwind = dictate
+  range. One reused property → emergent tactics, no new system (the home for #88's deferred gameplay half).
+  **FUN:** the sky suddenly matters to every chase. *Builds on weather #88 + maneuver #135; NO save bump.*
+- **#179 — Negative space: the held breath before the payoff** *(audio/art, S — P3).* Three cheap beats on
+  SHIPPED climaxes: (a) ~1s near-silence before a surrender sting + #80 settle; (b) a charged rank-up swell →
+  bass "thunk"; (c) a one-pass colour-grade pulse on a notorious kill / rank-up. **FUN:** the wins feel
+  *bigger* for free. *Builds on juice #80 + rank-up #169 + audio bus; ~0 draws, NO save bump, respects the
+  Combat-feel toggle + reduced-motion.*
+
+**Sequencing note.** Build in listed order: **#176** (highest-leverage — the actual retention hook) →
+**#177** (cheapest high-confidence identity win) → **#178** (combat depth) → **#179** (juice polish). All four
+are S/S-M, no save bump, direct builds on shipped systems — a deliberate *deepen-what's-fun* lane, NOT a third
+big epic, chosen while the owner reacts to THE RISE. **Deprioritised from the shortlist:** *"Choose your shot:
+ammo types"* (idea #5) is **already shipped** — `src/systems/ammo.js` (round/chain/grape/light/heavy/swivel,
+mid-fight cycle via `onCycleAmmo`, `fitAmmo` at a town workshop, consumed by `resolveBroadside`) landed as
+**#135 slice 3**; not re-filed.
+
+**[OWNER-DECISION] — The Remembered Rival (Nemesis-lite).** *(shortlist idea #1 — maps to parked #142 named
+persons.)* Upgrade the bounty board (#173) into ONE persistent named captain who **escalates** if he beats you
+and **grudges** if he escaped — the Ballad (#90) narrates the feud, port NPCs reference him. A rivalry that is
+uniquely YOURS: the bespoke story you'd retell. **Recommend** as the next MAJOR remembered-world frontier —
+but it needs **one additive fail-open save field** (#122 discipline) and touches the parked **#142 named-persons**
+decision, so it is the owner's call, not auto-adopted. Sliceable as a vertical ladder (persists+returns →
+escalates → Ballad names it → NPCs reference him), each independently shippable — **NOT a "rival epic."**
+- **[OWNER-DECISION] — The port remembers you.** *(shortlist idea #2 — maps to parked #137 nations/factions.)*
+  Ports react VISIBLY + AUDIBLY to your reputation (shutters + doubled guards + a "WANTED" poster + the town
+  cue re-voiced minor for a feared pirate; banners + a lit quay + warmer harmony for a beloved governor), all
+  keyed off the already-persisted reputation value (**no save bump**). **Recommend** as a parallel
+  remembered-world frontier — but it opens the **#137 nations/factions** direction, so surface for the owner's
+  steer before committing the M-sized lane.
+- **[OWNER-DECISION] — "Today's Tide" + a daily ranking.** *(shortlist idea #4 — maps to parked #136 leaderboard.)*
+  The session-goal *core* — 1–3 rotating short voyage goals on the bounty board (#173) with a purse, a crisp
+  "done for today" arc — is a **buildable no-bump small slice** IF the owner wants it; its natural v2, a
+  **daily-run ranking**, is the **#136 leaderboard** decision. **Recommend** holding the goal slice as the next
+  reservoir candidate and surfacing the ranking as the owner's frontier call.
+
+**Prompt-injection note:** the shortlist was built only from the repo vision + shipped systems; the source file
+flags that web content was treated as untrusted reference and one source was skipped on an expired TLS cert. No
+shortlist item attempted to redirect studio scope — this triage found nothing to flag.
+
+---
+
+## 🧭 SHIPPED — PRODUCT REFILL (2026-07-02) — **POST-RISE POLISH** (consolidate the big run) — BUILD IN ORDER
 
 _**UPDATE 2026-07-02 — PRODUCT cycle right after THE RISE (epic #168) closed (roadmap change, report-worthy).**
 Two enormous fun-first lanes just shipped back-to-back — battle-fun #161, difficulty/variety #162, and THE RISE
