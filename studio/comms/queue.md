@@ -27,6 +27,80 @@ when its latest slice shipped.
 
 ---
 
+## 🧭 TOP OF QUEUE — PRODUCT REFILL (2026-07-02) — **POST-RISE POLISH** (consolidate the big run) — BUILD IN ORDER
+
+_**UPDATE 2026-07-02 — PRODUCT cycle right after THE RISE (epic #168) closed (roadmap change, report-worthy).**
+Two enormous fun-first lanes just shipped back-to-back — battle-fun #161, difficulty/variety #162, and THE RISE
+#168 (rank-up → buy-a-cannon → bigger-ship → world-fears-you → bounty-board → port-growth). Per
+`docs/design/what-makes-it-fun.md` the fun loop **action→feedback→progression→mastery is now closed end-to-end**.
+The honest call this cycle: **DEEPEN & CONSOLIDATE what just shipped — do NOT spin up a third large epic while
+the owner hasn't reacted to #168.** This is a short, cheap, high-fun, low-risk lane built entirely from **filed
+follow-ups** of the big run — it completes half-finished beats (a dread that flees but never speaks; a Ballad that
+can't yet sing the rise), juices the RISE's climaxes, and keeps the sea alive. **Every slice is NO save bump.**
+Brief [`docs/briefs/2026-07-02-post-rise-polish.md`](https://github.com/cakuki/tidewake/blob/main/docs/briefs/2026-07-02-post-rise-polish.md)._
+
+- **#175 — Dread's HEAR half: a fearful hail names you (S · game-designer + software-developer). BUILD FIRST.**
+  #172 shipped the SEE + FEEL of dread (a weak ship flees / strikes early to a notorious captain) but left the
+  **HEAR** half unbuilt (noted on #172, now filed as #175). When the sea blinks, the world **names you** — a short
+  fearful hail / watch murmur sized to your dread (*"God ha' mercy — it's the [rank] herself!"*), via the EXISTING
+  hail banner + voice path; pole-aware, anti-repeat, withheld under a false-colours disguise (#79). **FUN:** HEAR the
+  crew name your Infamy aloud — the payoff of being feared, now audible. Reuses #172's dread gate — **no new
+  mechanic, NO save bump.** _Completes the freshest just-shipped beat → highest-fun cheapest win, leads the lane._
+
+- **#90 — The Ballad sings your RISE (S · software-developer + writer). Reuse #90.** The voyage-log recorder is
+  pure + extensible (add a `sanitizeEvent` case + a narrator line), and THE RISE just created rich new deed material
+  it can't yet narrate. Add deed types for the arc the player just lived — **rank climbed** (#169), **a bounty
+  claimed** (#173), **a bigger ship bought** (#171), **a port grown** (#174) — so the end-of-voyage Ballad reads
+  the rise back to you. **FUN:** SEE your climb narrated as a story ("…rose to Corsair, ran down the Grey Gull, and
+  set a frigate under her flag"). Builds on `src/voyage-log.js` — **NO save bump.**
+
+- **#80 — Climax juice: the kill & the surrender LAND (S · game-designer + software-developer). Reuse #80
+  (deferred events).** #80's juice pass shipped the broadside; its deferred events (kill time-dilation · the
+  surrender beat · harbour settle) are the RISE's climaxes going unjuiced. Add a beat of **hit-stop + light
+  time-dilation on a bounty-target sinking/capture** (#173) and a **camera settle on "she strikes her colours"**
+  (#172) — each short, event-tied, and **toggle-able via the #73 settings panel** (juice echoes the mechanic,
+  never masks it). **FUN:** FEEL the notorious kill land with weight; the surrender beat gets its exhale. Reuses
+  the shipped juice rig — **NO save bump.**
+
+- **#70 — One new sea curio (S · game-designer + software-developer). [STANDING-RULE] — the 1–2-per-loop drip.**
+  Honour the standing #70 rule with one fresh ocean micro-detail that keeps the world alive between the big beats —
+  bias it RISE-flavoured (e.g. drifting flotsam that murmurs a rumour of *your* deeds by name, reusing #104b port
+  memory; or a gull that shadows a notorious hull). Data-driven prop + witty line pool (never twice running) + SFX,
+  on the shipped `src/sealife.js` pattern. **FUN:** SEE a small surprise reward attention; a smile between fights.
+  **NO save bump.**
+
+**Sequencing note:** all four slices are unblocked, buildable now, original, in-vision, and carry **NO save bump** —
+**4 READY build slices → the loop stays in DELIVERY.** #175 leads (completes the freshest shipped beat, cheapest,
+highest-fun), then the Ballad weaves the arc, then the climax juice, then the curio keeps the drip alive. This is a
+**deliberate consolidation lane** — small, cheap, low-risk — chosen over a third big epic while the owner reacts to
+THE RISE. The owner-decision items below are **questions to surface, NOT build blockers.**
+
+**[OWNER-DECISION] — Playtest THE RISE & steer the next MAJOR direction.** The loop has now delivered well beyond
+the explicit ask: three big fun-first lanes (#161 · #162 · #168) all live and green. The big open questions are the
+owner's. **Recommend:** invite the owner to playtest THE RISE (rank-up → buy a cannon → bigger ship → the world
+fears you → bounty board → grow your port) and pick the next major frontier from the parked big epics —
+**#137 nations/allegiance · #141 shipyards · #140 maps · #136 pirate leaderboard · #142 named persons.** Default
+until he steers: run this cheap post-RISE polish lane (no big commitment) and hold the big epics for his call.
+
+**[OWNER-DECISION] — #145 preview-ops lane, now that THE RISE is done.** #145 (curated releases: preview→public
+promote split + release notes) is release **infra**, not game FUN — earlier owner-named as a candidate "next."
+**Recommend:** run it as a **parallel ops track alongside** this fun-polish lane (non-competing); do not let it
+displace fun work. Surface over the owner channel; the polish lane is buildable regardless.
+
+**[OWNER-DECISION] — Close the finished battle epics (#135).** #161 is already CLOSED; #135's Option-2 + Option-4
+core (all phase-couplings + the reactive surrender out + per-phase HUD + arena-spawn) is complete and only non-core
+art polish remains. **Recommend:** owner closes **#135** (or hands it to the loop to close) so the board reflects
+reality. Question, not a blocker.
+
+**[OWNER-DECISION] — Player-ship / NPC-ship art (#144/#143).** #171 (bigger ship) made the class-scale change
+visible but NPC hulls still out-dress the player's. **Recommend:** queue the **CC0 ship-class set (#144)** as a
+**parallel art follow-up** (under the standing visual-quality order #143), NOT a blocker to the polish lane.
+
+**[OWNER-DECISION] — Port-view redesign #147.** Still parked: pick a direction (A/B/C) for less-scroll /
+more-navigation. Owner's pick; unchanged this cycle.
+
+---
+
 ## ✅ THE RISE (epic #168) — LANE COMPLETE (all 6 slices shipped, #168 CLOSED 2026-07-02)
 
 _**🎉 THE RISE is DONE — all 6 slices shipped, epic #168 CLOSED (Loop 131, v0.0.20260702062846).** The
