@@ -41,6 +41,7 @@ import { centreSafeZone, clearsCentre } from './ui/safe-zone.js';
 import { createOverShipBillboard, projectToScreen } from './ui/over-ship-billboard.js';
 import { threatLabelFor, selectLabels, maxLabelsForViewport } from './systems/threat-label.js';
 import { createAimIndicator, aimReadout } from './ui/aim-indicator.js';
+import { combatOdds, oddsReadout } from './systems/odds.js';
 import { pickShipAction, shipIndexFromObject, actionLabel } from './systems/ship-picker.js';
 import { reputationLean, leanPole, gradeHaze, gradeSun, gradeSunKey } from './systems/reputation-grade.js';
 import { shipAura } from './systems/reputation-aura.js';
@@ -49,7 +50,7 @@ import { mixHex } from './sea-color.js';
 import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
-import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat, renownTier, defeatContext } from './renown.js';
+import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat, renownTier, defeatContext, defeatLedger } from './renown.js';
 import { recallLine, rememberArrival, sanitizePortMemory, recordDeed, deedPhrase, homePort } from './systems/port-memory.js';
 import {
   sanitizeHarbour, claim as claimHome, invest as investHome, canClaim, canInvest, harbourLevelName,
@@ -189,6 +190,10 @@ let lastTargetLock = { active: false, foeIndex: -1, onScreen: false, screen: nul
 const aimMarker = createAimIndicator({ className: 'aim-indicator' });
 const DECK_HEIGHT = 6;                    // metres above the sea the aim line springs from your deck
 let lastAim = { active: false, onScreen: false, level: '', onTarget: false, quality: 0, spreadDeg: 0, side: 'starboard' };
+// Legible odds (#166): the fair-fight READ docked in the aim-indicator's reserved `.aim-odds` slot — a
+// plain verdict + the bounded ±20% margin BAND, computed (pure, read-only) from the class matchup + your
+// live aim geometry + loaded shot. SKILL sets the odds, LUCK is the shown margin. Mirrored here for the QA hook.
+let lastOdds = { active: false, tier: '', verdict: '', edge: 0, stronglyFavoured: false, couldLuckFlip: false, favoured: false };
 // Hover-to-interact (#161 slice 6, the FINAL lane slice): point at a ship and it lights up with what you
 // can DO to it (hail / board / target), and a CLICK does it — the sea becomes directly manipulable instead
 // of a hidden keymap. Reuses the slice-3 OVER-SHIP BILLBOARD (a projected DOM ring + label, 0 draws) as the
@@ -1771,9 +1776,11 @@ function syncTargetLock(t) {
   if (!active || !fp) {
     foeMarker.hide();
     foeMarker.setRing(false);
+    aimMarker.setOdds(''); // clear the legible-odds read (#166) with the aim line
     aimMarker.hide();
     lastTargetLock = { active: false, foeIndex: -1, onScreen: false, screen: null };
     lastAim = { active: false, onScreen: false, level: '', onTarget: false, quality: 0, spreadDeg: 0, side: 'starboard' };
+    lastOdds = { active: false, tier: '', verdict: '', edge: 0, stronglyFavoured: false, couldLuckFlip: false, favoured: false };
     return;
   }
   const [fx, fz] = fp;
@@ -1797,6 +1804,29 @@ function syncTargetLock(t) {
   const aimVisible = shipEnd.onScreen && foeEnd.onScreen;
   aimMarker.place({ from: { x: shipEnd.x, y: shipEnd.y }, to: { x: foeEnd.x, y: foeEnd.y }, readout, visible: aimVisible });
   lastAim = { active: true, onScreen: aimVisible, level: readout.level, onTarget: readout.onTarget, quality: readout.quality, spreadDeg: readout.spreadDeg, side: readout.side };
+
+  // Legible odds (#166): the fair-fight READ, docked in the aim indicator's reserved `.aim-odds` slot.
+  // PURE + read-only: combatOdds turns the deterministic inputs — the class matchup (her hull + gunnery),
+  // your live aim GEOMETRY (skill), your loaded shot (ammo) and both hulls — into a plain verdict + the
+  // bounded ±20% margin BAND. Nothing here touches the combat math or the luck bounds; it only READS them.
+  // The stake hint reads #164's defeatLedger nominals for THIS foe's tier, so the odds also name what a
+  // loss would cost — "reckless, and it stings this much". Only when the aim line itself is on screen.
+  const odds = combatOdds({
+    playerHull: snap.playerHull, enemyHull: snap.enemyHull, gunnery: snap.foeGunnery,
+    ammo: snap.ammoProfile, aimQuality: snap.aimQuality,
+  });
+  let stake = {};
+  if (Number.isFinite(snap.foeTier)) {
+    const led = defeatLedger(snap.foeTier, defeatContext(state.infamy ?? 0, state.standing ?? 0));
+    stake = { stakeCoin: led.nominalCoin, stakeFame: led.nominalFame };
+  }
+  aimMarker.setOdds({ ...oddsReadout(odds, stake), bar: odds.bar });
+  lastOdds = {
+    active: true, tier: odds.tier, verdict: odds.verdict, edge: odds.edge,
+    stronglyFavoured: odds.stronglyFavoured, couldLuckFlip: odds.couldLuckFlip, favoured: odds.favoured,
+    yourDamage: odds.yourDamage, herDamage: odds.herDamage, marginPct: odds.luck.marginPct,
+    barLo: odds.bar.lo, barHi: odds.bar.hi,
+  };
 }
 systems.register({ name: 'target-lock', order: 278, update: (f) => syncTargetLock(f.t) });
 // — OVER-SHIP THREAT LABELS (#165): the fun beat — glance across the sea and instantly read a fat
@@ -2714,6 +2744,21 @@ window.__tidewake = {
       side: readout.side,
       beamShown: !!el && el.style.display !== 'none',
       onScreen: lastAim.onScreen,
+    };
+  },
+  // LEGIBLE ODDS gate (#166): prove the player can READ whether they're favoured — the odds verdict
+  // reflects the DETERMINISTIC class matchup (outclass a merchant sloop ⇒ favoured; a man-o'-war vs a
+  // sloop ⇒ dire), the shown margin band == the ±20% luck bounds, and luck can't flip a strong verdict.
+  // `live` is the last docked read (mirrors the DOM); the pure fns are re-exported so the gate can probe
+  // canonical matchups head-on without steering the sim into one.
+  odds(inputs) {
+    const o = combatOdds(inputs || {});
+    return {
+      tier: o.tier, verdict: o.verdict, edge: o.edge, favoured: o.favoured,
+      stronglyFavoured: o.stronglyFavoured, hopeless: o.hopeless, couldLuckFlip: o.couldLuckFlip,
+      yourDamage: o.yourDamage, herDamage: o.herDamage, marginPct: o.luck.marginPct,
+      luckLo: o.luck.lo, luckHi: o.luck.hi, bar: o.bar,
+      live: { ...lastOdds, shown: !!aimMarker.el && aimMarker.el.style.display !== 'none' },
     };
   },
   // HOVER-TO-INTERACT gate (#161 slice 6): prove the sea is directly manipulable — a raycast against a

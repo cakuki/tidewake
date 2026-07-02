@@ -9,6 +9,7 @@ import puppeteer from 'puppeteer';
 import { BUDGET, checkBudget } from '../src/perf.js';
 import { KEYS } from '../src/keymap.js'; // the keymap source-of-truth: the FTUE gate (#156) auto-covers every verb
 import { threatLabelFor } from '../src/systems/threat-label.js'; // #165: assert the live label matches the pure class→label read
+import { shipStats } from '../src/ship-classes.js'; // #166: canonical class matchups for the legible-odds fairness gate
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
@@ -649,6 +650,62 @@ try {
     }
     if (coexist.npcCount > 1 && coexist.trafficShown !== 0) fail(`over-ship threat labels (#165): non-combatant labels did not recede in a fight (${coexist.trafficShown} still shown) — the duel is cluttered`);
     if (process.exitCode !== 1) console.log(`  ✓ threat label ↔ target ring coexist (#165 × #161 s3): the foe shows ring + "${coexist.foeLabelText}" on one anchor; traffic labels recede — the duel reads clean`);
+  }
+
+  // 2b3-odds) LEGIBLE ODDS (#166, epic #162 slice 4): the owner's fair-fight contract, made READABLE —
+  // "SKILL sets the odds, LUCK swings the margin." Prove, all deterministic + headless: (A) the odds
+  // verdict reflects the DETERMINISTIC class matchup — outclassing a merchant sloop reads FAVOURED, a
+  // man-o'-war vs your sloop reads DIRE; (B) the shown margin band IS the ±20% luck bound (0.8/1.2/±20%),
+  // not a hidden roll; (C) luck can NEVER flip a strongly-favoured verdict (the band sits wholly on the
+  // favoured side); (D) the read is actually DOCKED + shown in the aim-indicator slot during a real fight.
+  {
+    const sloopPrey = shipStats('sloop', 'merchant');   // easy prey — feeble guns, thin hull
+    const manowar = shipStats('manowar', 'warship');    // the terror — heavy guns, full hull
+    const mySloop = shipStats('sloop', 'warship');      // you, in a small toothy sloop
+    const ROUND = { hullMult: 1, returnMult: 1, aimForgive: 0 };
+    // (A)+(B)+(C): probe the canonical matchups head-on through the LIVE game's odds model (the SAME
+    // combatOdds the DOM readout uses), so the gate proves the read the player sees is fair + legible.
+    const oc = await page.evaluate((args) => {
+      const tw = window.__tidewake;
+      const fav = tw.odds({ playerHull: 100, enemyHull: args.prey.hull, gunnery: args.prey.gunnery, ammo: args.round });
+      const dire = tw.odds({ playerHull: args.me.hull, enemyHull: args.war.hull, gunnery: args.war.gunnery, ammo: args.round });
+      return { fav, dire };
+    }, { prey: sloopPrey, war: manowar, me: mySloop, round: ROUND });
+    // (A) the matchup reads right:
+    if (!oc.fav.favoured || oc.fav.tier !== 'dominant') fail(`legible odds (#166): outclassing a merchant sloop did not read favoured (tier=${oc.fav.tier}, favoured=${oc.fav.favoured})`);
+    if (oc.dire.favoured || oc.dire.tier !== 'dire') fail(`legible odds (#166): a man-o'-war vs your sloop did not read dire (tier=${oc.dire.tier}, favoured=${oc.dire.favoured})`);
+    // (B) the shown margin band == the ACTUAL ±20% luck bound (not a hidden dice roll):
+    if (!(oc.fav.luckLo === 0.8 && oc.fav.luckHi === 1.2 && oc.fav.marginPct === 20)) fail(`legible odds (#166): the shown margin band is not the ±20% luck bound (lo=${oc.fav.luckLo}, hi=${oc.fav.luckHi}, ±${oc.fav.marginPct}%)`);
+    // (C) luck can't flip a strongly-favoured verdict — the whole band sits on the favoured side of centre:
+    if (!oc.fav.stronglyFavoured) fail('legible odds (#166): a merchant-sloop matchup did not read strongly-favoured — luck could wrongly flip it');
+    if (!(oc.fav.bar.lo > 0.5)) fail(`legible odds (#166): the favoured band straddled the even line (bar.lo=${oc.fav.bar.lo.toFixed(3)}) — luck could flip a won fight`);
+    if (!oc.dire.hopeless || !(oc.dire.bar.hi <= 0.5)) fail(`legible odds (#166): the dire band did not sit wholly on her side (bar.hi=${oc.dire.bar.hi.toFixed(3)}) — luck could wrongly save it`);
+    // (D) the read is actually docked + SHOWN in the aim-indicator slot during a live fight:
+    const live = await page.evaluate(async () => {
+      const tw = window.__tidewake;
+      function nearest() { const s = tw.state.pos; let bi = -1, bd = Infinity;
+        for (let i = 0; i < tw.npcs.length; i++) { const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]); if (d < bd) { bd = d; bi = i; } }
+        return bi; }
+      tw.newVoyage(); tw.step(0.1);
+      const bi = nearest(); if (bi === -1) return { engaged: false };
+      const fp = tw.npcs[bi].pos; tw.qaTeleport(fp[0], fp[1] - 120); tw.step(0.05);
+      const engaged = tw.engageBattle(); if (!engaged) return { engaged: false };
+      for (let i = 0; i < 16; i++) tw.step(0.05);   // let the quarter-view camera settle so the line projects on screen
+      const o = tw.odds();
+      tw.fleeBattle(); tw.step(0.05);
+      const afterFlee = tw.odds();
+      return { engaged, verdict: o.live.verdict, tier: o.live.tier, shown: o.live.shown, active: o.live.active,
+        marginPct: o.live.marginPct, clearedAfterFlee: !afterFlee.live.active };
+    });
+    if (!live.engaged) {
+      console.warn('  (#166 legible odds: no foe to engage for the live-dock check — pure matchup proofs A–C still ran)');
+    } else {
+      if (!live.active || !live.verdict) fail('legible odds (#166): no live odds verdict during a real fight — the fair-fight read is missing');
+      if (!live.shown) fail('legible odds (#166): the odds read is not SHOWN in the aim-indicator slot during a fight');
+      if (live.marginPct !== 20) fail(`legible odds (#166): the live margin band is not ±20% (got ±${live.marginPct}%)`);
+      if (!live.clearedAfterFlee) fail('legible odds (#166): the odds read did not clear when the fight ended');
+    }
+    if (process.exitCode !== 1) console.log(`  ✓ legible odds (#166): sloop prey reads "${oc.fav.verdict}" (band right of even), man-o'-war reads "${oc.dire.verdict}" (band left); margin band == ±20% luck; luck can't flip a strong verdict${live.engaged ? `; live read "${live.verdict}" docked in the aim slot` : ''}`);
   }
 
   // 2b4) Real-time broadside (#135 slice 2): re-engage, then STEER to bring the foe abeam and

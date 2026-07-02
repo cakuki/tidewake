@@ -534,6 +534,10 @@ export function createBattle({
       aimQuality: a.quality,
       aimSide: a.side,
       inArc: a.inArc,
+      // Legible odds (#166): the foe's return-fire multiplier + threat tier, so the odds READ can compute
+      // her expected reply (skill=odds) and hint the loss STAKE (#164). null while un-engaged / class-less.
+      foeGunnery: state.active && foe && Number.isFinite(foe.gunnery) ? foe.gunnery : null,
+      foeTier: state.active && foe && Number.isFinite(foe.tier) ? foe.tier : null,
       round: state.round,
       result: state.result,
       lastLine: state.lastLine,

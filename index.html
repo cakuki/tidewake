@@ -85,7 +85,23 @@
     .aim-chip.off-target { color: #ffb0a2; border: 1px solid rgba(255,110,90,.4); }
     .aim-chip.closing { color: #ffdd9e; border: 1px solid rgba(255,190,80,.45); }
     .aim-chip.on-target { color: #b6ffce; border: 1px solid rgba(95,224,138,.6); }
-    .aim-chip .aim-odds { margin-left: 7px; font-weight: 700; opacity: .92; } /* #166 legible-odds slot */
+    /* #166 legible odds — the fair-fight READ beside the aim line. A verdict, a legible damage/±20%-margin
+       sub-line, and a MARGIN BAND: a bar whose lit segment is the bounded luck swing and whose side of the
+       centre tick tells favoured-from-doomed. The whole segment on your side of centre = "luck can't flip
+       it"; straddling the centre = "the margin decides". Coloured by tier. Presentation-only, ~0 draws. */
+    .aim-chip .aim-odds { display: none; flex-direction: column; align-items: center; gap: 1px;
+      margin-left: 8px; padding-left: 8px; border-left: 1px solid rgba(255,255,255,.18); }
+    .aim-odds .aim-odds-text { font-weight: 800; font-size: 11px; letter-spacing: .03em; white-space: nowrap; }
+    .aim-odds .aim-odds-sub { font-weight: 600; font-size: 9px; opacity: .82; white-space: nowrap; }
+    .aim-odds .aim-odds-band { position: relative; width: 92px; height: 5px; border-radius: 3px; margin-top: 1px;
+      background: rgba(255,255,255,.12); overflow: hidden; }
+    .aim-odds .aim-odds-fill { position: absolute; top: 0; height: 100%; border-radius: 3px; opacity: .92;
+      background: currentColor; box-shadow: 0 0 6px 1px currentColor; }
+    .aim-odds .aim-odds-even { position: absolute; left: 50%; top: -1px; width: 1px; height: calc(100% + 2px);
+      background: rgba(255,255,255,.85); transform: translateX(-50%); }
+    .aim-odds.dominant { color: #7dffb0; } .aim-odds.favoured { color: #b6ffce; }
+    .aim-odds.even     { color: #ffdd9e; }
+    .aim-odds.risky    { color: #ffc07a; } .aim-odds.dire     { color: #ff8f7a; }
     @keyframes aim-pulse { 0%, 100% { opacity: .85; } 50% { opacity: 1; } }
     @media (prefers-reduced-motion: reduce) { .aim-beam.on-target { animation: none; } }
 

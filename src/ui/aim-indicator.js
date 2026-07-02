@@ -97,7 +97,11 @@ export function beamGeometry(from, to) {
 export function createAimIndicator({ parent, className = 'aim-indicator' } = {}) {
   const host = parent || (typeof document !== 'undefined' ? document.body : null);
   const el = typeof document !== 'undefined' ? document.createElement('div') : null;
-  let beam = null, chip = null, label = null, odds = null;
+  let beam = null, chip = null, label = null;
+  // #166 legible-odds slot: a verdict line, a legible damage/±20%-margin sub-line, and a visual MARGIN
+  // BAND (a bar whose lit segment = the bounded luck swing, its side of centre = favoured-or-not). Built
+  // once here so #166 docks into the reserved slot with no redo; presentation-only, ~0 draws (DOM).
+  let odds = null, oddsText = null, oddsSub = null, oddsBand = null, oddsFill = null;
   if (el) {
     el.className = className;
     el.style.display = 'none';
@@ -105,13 +109,23 @@ export function createAimIndicator({ parent, className = 'aim-indicator' } = {})
     chip = document.createElement('div'); chip.className = 'aim-chip';
     label = document.createElement('span'); label.className = 'aim-label';
     odds = document.createElement('span'); odds.className = 'aim-odds'; odds.style.display = 'none';
+    oddsText = document.createElement('span'); oddsText.className = 'aim-odds-text';
+    oddsSub = document.createElement('span'); oddsSub.className = 'aim-odds-sub';
+    oddsBand = document.createElement('span'); oddsBand.className = 'aim-odds-band';
+    oddsFill = document.createElement('span'); oddsFill.className = 'aim-odds-fill'; // the lit luck-swing segment
+    const oddsEven = document.createElement('span'); oddsEven.className = 'aim-odds-even'; // the "even fight" centre tick
+    oddsBand.appendChild(oddsFill);
+    oddsBand.appendChild(oddsEven);
+    odds.appendChild(oddsText);
+    odds.appendChild(oddsSub);
+    odds.appendChild(oddsBand);
     chip.appendChild(label);
-    chip.appendChild(odds); // #166 will drive this — near the aim, no redo
+    chip.appendChild(odds); // #166 drives this — beside the aim, no redo
     el.appendChild(beam);
     el.appendChild(chip);
     if (host) host.appendChild(el);
   }
-  let level = '';
+  let level = '', oddsTier = '';
 
   function setLevel(next) {
     if (level === next) return;
@@ -143,12 +157,47 @@ export function createAimIndicator({ parent, className = 'aim-indicator' } = {})
       label.textContent = readout.label || '';
       setLevel(readout.level || '');
     },
-    /** #166-ready: add (or clear, with '') the odds/margin text beside the aim label. Unused this slice. */
-    setOdds(text) {
+    /**
+     * #166 legible odds — dock the fair-fight read beside the aim line. Accepts either a bare string
+     * (back-compat) or a structured read `{ text, sub, tier, bar }` from oddsReadout()+combatOdds():
+     *   text — the plain-language verdict ("She outguns you — reckless")
+     *   sub  — the legible damage-per-volley + the bounded ±20% margin (+ optional stake hint)
+     *   tier — dominant|favoured|even|risky|dire (drives the colour band)
+     *   bar  — { lo, hi } 0..1 band positions: the lit segment = the bounded LUCK swing, its side of the
+     *          centre tick = favoured-or-not. Straddling the centre = "luck can flip this" (the tension).
+     * Passing '' / null clears it. Presentation-only — reads combat, never changes it.
+     */
+    setOdds(read) {
       if (!el) return;
-      const t = text || '';
-      odds.textContent = t;
-      odds.style.display = t ? 'inline' : 'none';
+      if (!read || (typeof read === 'string' && read === '')) {
+        odds.style.display = 'none';
+        if (oddsTier) { odds.classList.remove(oddsTier); oddsTier = ''; }
+        return;
+      }
+      if (typeof read === 'string') { // legacy string form
+        oddsText.textContent = read; oddsSub.textContent = ''; oddsBand.style.display = 'none';
+        odds.style.display = 'inline-flex';
+        return;
+      }
+      oddsText.textContent = read.text || '';
+      oddsSub.textContent = read.sub || '';
+      const nextTier = read.tier || '';
+      if (oddsTier !== nextTier) {
+        if (oddsTier) odds.classList.remove(oddsTier);
+        if (nextTier) odds.classList.add(nextTier);
+        oddsTier = nextTier;
+      }
+      const bar = read.bar;
+      if (bar && Number.isFinite(bar.lo) && Number.isFinite(bar.hi)) {
+        const lo = Math.max(0, Math.min(1, bar.lo));
+        const hi = Math.max(lo, Math.min(1, bar.hi));
+        oddsFill.style.left = `${(lo * 100).toFixed(1)}%`;
+        oddsFill.style.width = `${Math.max(2, (hi - lo) * 100).toFixed(1)}%`;
+        oddsBand.style.display = 'inline-block';
+      } else {
+        oddsBand.style.display = 'none';
+      }
+      odds.style.display = 'inline-flex';
     },
     hide() { if (el) el.style.display = 'none'; },
     dispose() { if (el) el.remove(); },
