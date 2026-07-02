@@ -10,6 +10,9 @@ import { BUDGET, checkBudget } from '../src/perf.js';
 import { KEYS } from '../src/keymap.js'; // the keymap source-of-truth: the FTUE gate (#156) auto-covers every verb
 import { threatLabelFor } from '../src/systems/threat-label.js'; // #165: assert the live label matches the pure class→label read
 import { shipStats } from '../src/ship-classes.js'; // #166: canonical class matchups for the legible-odds fairness gate
+import { regionDanger, regionalSpec, DEEP_R } from '../src/systems/danger.js'; // #167: the FIXED regional-danger rule the fleet spawns against
+import { spoils } from '../src/cannons.js'; // #167: prove the sinking reward scales by foe tier
+import { SAVE_VERSION } from '../src/save.js'; // #167 owner-decision: regional danger is positional — NO save bump (stays v17)
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
@@ -50,6 +53,66 @@ try {
 
   // 1) game boots
   await page.waitForFunction('window.__tidewake && window.__tidewake.ready === true', { timeout: 30000 });
+
+  // 1b-challenge) CHALLENGE ON DEMAND (#167, epic #162 slice 5 — the PAYOFF of the whole difficulty lane):
+  // the owner's #5 note — "a player who WANTS a hard fight can seek one out and get it." Danger is now
+  // FIXED BY REGION (owner decision: NO rubber-band): the safe home coast breeds gentle prey; the deep
+  // breeds frigates and — out past the points — the withheld WARSHIP man-o'-war. Point the bow at deadly
+  // water and the stakes rise; a kill out there pays real fame (reward scales by tier). Read the PRISTINE
+  // spawned fleet (before any battle step drifts/sinks a hull) and prove, all deterministic + headless
+  // off the FIXED pure rule (regionDanger) + the live fleet + the reward model: (A) the danger region
+  // spawns a STRICTLY higher-tier ship than the safe coast; (B) the withheld warship man-o'-war (tier 5)
+  // is present + reachable out in the tier-5 deep; (C) a tier-N victory reward scales with tier; (D) no
+  // rubber-band — the rule reads POSITION only; (E) the save schema is unchanged (stays v17).
+  const challenge = await page.evaluate(() => {
+    const tw = window.__tidewake;
+    return {
+      count: tw.npcs.length,
+      fleet: tw.npcs.map((n, i) => ({
+        i,
+        cls: n.shipClass ? n.shipClass.cls : null,
+        role: n.shipClass ? n.shipClass.role : null,
+        tier: n.shipClass ? n.shipClass.tier : 0,
+        x: n.pos[0], z: n.pos[1],
+      })),
+    };
+  });
+  {
+    const classed = challenge.fleet.filter((f) => f.tier > 0);
+    if (classed.length < 2) fail(`challenge on demand (#167): fewer than 2 classed hulls to compare regions (${classed.length})`);
+    // Tag each hull with the FIXED region danger of WHERE it spawned (the same pure rule the spawner used).
+    const tagged = classed.map((f) => ({ ...f, region: regionDanger(f.x, f.z), r: Math.hypot(f.x, f.z) }));
+    // (A) THE FIXED RULE — pure + deterministic: the deep spawns STRICTLY higher-tier ships than the safe
+    // coast. Proven directly off the spawner's own rule (regionalSpec) so it can NEVER drift, coast→deep.
+    const half = () => 0.5;
+    const coastSpec = regionalSpec(0, 320, half, { apex: true });          // the gentle home coast
+    const deepSpec = regionalSpec(0, DEEP_R + 200, half, { apex: true });  // the deadly deep
+    const coastRuleTier = shipStats(coastSpec.cls, coastSpec.role).tier;
+    const deepRuleTier = shipStats(deepSpec.cls, deepSpec.role).tier;
+    if (!(deepRuleTier > coastRuleTier)) fail(`challenge on demand (#167): the FIXED rule does not out-class the deep vs the coast (deep tier ${deepRuleTier} !> coast tier ${coastRuleTier}) — danger is not seekable via place`);
+    // (B) the withheld WARSHIP man-o'-war is present + reachable out in the tier-5 deep:
+    const manowar = tagged.find((f) => f.cls === 'manowar' && f.role === 'warship' && f.tier === 5);
+    if (!manowar) fail('challenge on demand (#167): no warship man-o\'-war (tier 5) afloat — the seekable terror never spawned');
+    else if (!(manowar.region === 5 && manowar.r >= DEEP_R)) fail(`challenge on demand (#167): the man-o'-war is not out in the deep (region ${manowar.region}, r ${manowar.r.toFixed(0)} < ${DEEP_R}) — she must be reachable by SAILING to danger`);
+    // (B2) the LIVE fleet bears out the gradient: the man-o'-war sits in a STRICTLY more dangerous region
+    // (and out-tiers) the tamest hull afloat — danger genuinely varies by WHERE a ship is in the world.
+    const coast = tagged.reduce((a, b) => (b.region < a.region ? b : a));
+    if (manowar && !(manowar.region > coast.region && manowar.tier > coast.tier)) {
+      fail(`challenge on demand (#167): the man-o'-war did not out-rank the tamest hull by region+tier (mow region ${manowar.region}/tier ${manowar.tier} vs tame region ${coast.region}/tier ${coast.tier})`);
+    }
+    // (C) reward SCALES BY TIER — a man-o'-war kill pays strictly more coin + Infamy than a sloop's:
+    const hull = { playerHull: 100, enemyMaxHull: 100 };
+    let prevC = -1, prevI = -1, monotone = true;
+    for (let t = 1; t <= 5; t++) { const s = spoils({ ...hull, tier: t }); if (!(s.coins > prevC && s.infamy > prevI)) monotone = false; prevC = s.coins; prevI = s.infamy; }
+    const prey = spoils({ ...hull, tier: 1 }), terror = spoils({ ...hull, tier: 5 });
+    if (!monotone) fail('challenge on demand (#167): the sinking reward does not climb monotonically with foe tier');
+    if (!(terror.coins > prey.coins && terror.infamy > prey.infamy)) fail(`challenge on demand (#167): a man-o'-war kill did not out-pay a sloop's (t5 ${terror.coins}c/${terror.infamy}inf vs t1 ${prey.coins}c/${prey.infamy}inf)`);
+    // (D) no rubber-band: the rule reads POSITION only (a fixed point always reads the same danger):
+    if (!(regionDanger(0, 320) < regionDanger(0, DEEP_R + 100))) fail('challenge on demand (#167): regionDanger is not fixed-by-region (coast !< deep) — danger looks rubber-banded');
+    // (E) NO save bump — regional danger is positional/deterministic, not a persisted field (owner decision):
+    if (SAVE_VERSION !== 17) fail(`challenge on demand (#167): the save schema bumped to v${SAVE_VERSION} — regional danger must stay transient/positional (v17)`);
+    if (process.exitCode !== 1) console.log(`  ✓ challenge on demand (#167): the FIXED rule out-classes the deep (tier ${deepRuleTier}) vs the coast (tier ${coastRuleTier}); the warship man-o'-war (tier 5) roams the deep (r ${manowar ? manowar.r.toFixed(0) : '?'} ≥ ${DEEP_R}) above the tamest hull (region ${coast.region}/tier ${coast.tier}) — reachable by sailing to danger; reward scales (t1 ${prey.coins}c → t5 ${terror.coins}c); fixed-by-region, no rubber-band, save v${SAVE_VERSION}`);
+  }
 
   // 2) it sails: throttle up and confirm speed climbs and position changes
   const result = await page.evaluate(async () => {

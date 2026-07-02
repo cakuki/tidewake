@@ -4,7 +4,8 @@ import {
 } from './npc-ai.js';
 import { vesselKind, isOutlaw } from './colours.js';
 import { shipEmphasis, DIM_OPACITY } from './ui/over-ship-billboard.js';
-import { spawnMix, shipStats } from './ship-classes.js';
+import { shipStats } from './ship-classes.js';
+import { regionalSpec, regionDanger, DEEP_R } from './systems/danger.js';
 
 // Letters of Marque (#91): outlaw/pirate hulls fly a sullen blood-dark flag so a lawful
 // privateer can pick a fair target on the horizon — honest colours vs THIS one earns Standing.
@@ -116,38 +117,56 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
     { hull: 0x5a3550, sail: 0xe7d9e2, flag: 0x7a2f6a, speed: 25, scale: 0.96 },  // plum runner
   ];
 
-  // Ship classes (#163): a deterministic MIX of classes across the fleet, so the open sea has a visible
-  // + mechanical pecking order — a man-o'-war dwarfs a darting sloop, a warship frigate genuinely bites,
-  // a merchant sloop is quick prey. These are TRANSIENT spawn properties (never persisted — save stays
-  // v17). The class drives the mesh SCALE (size), the wander SPEED (a giant lumbers), and — carried on the
-  // snapshot — the foe's hull + gunnery the instant you engage her (battle.js / cannons.js read it).
-  // A DEDICATED seed so class selection doesn't perturb the shared `rng` stream — spawn positions stay
-  // exactly as before (the per-ship rng draw count inside the loop is unchanged), only size/speed vary.
-  const mix = spawnMix(makeRng(0x5c1a55e5), count);
+  // Ship classes (#163) + regional danger (#167): the open sea has a visible + mechanical pecking order
+  // that is FIXED BY REGION — danger is a property of WHERE a hull sails. The safe home coast breeds
+  // gentle prey; the deep breeds frigates and, out past the points, the withheld WARSHIP man-o'-war.
+  // A player who WANTS a hard fight points the bow at deadly water and finds one worth real fame (reward
+  // scales by tier, cannons.js spoils). These are TRANSIENT spawn properties (never persisted — save
+  // stays v17). A DEDICATED seed so class selection never perturbs the shared `rng` position stream.
+  const dangerRng = makeRng(0x5c1a55e5);
+  // The DEEP HUNTER: one slot is guaranteed to spawn out in the tier-5 deep as the apex man-o'-war, so a
+  // hard fight is ALWAYS reachable if you sail out to meet her (#167 acceptance). It's the LAST slot, so
+  // its extra spawn draws never perturb the earlier ships' positions (determinism preserved).
+  const deepSlot = count - 1;
 
   const ships = [];
+  const specs = [];
   for (let i = 0; i < count; i++) {
     const p = palettes[i % palettes.length];
-    const spec = mix[i] || { cls: 'sloop', role: 'merchant' };
-    const stats = shipStats(spec.cls, spec.role);
     // Letters of Marque (#91): a deterministic disposition per slot — an outlaw flies a
     // blood-dark flag so it reads as fair game for a lawful privateer.
     const kind = vesselKind(i);
     const flagColor = isOutlaw(kind) ? OUTLAW_FLAG : p.flag;
-    // The palette keeps her colours (identity); the CLASS now sets her size — a bigger class is a
-    // visibly bigger hull. Same reused mesh, just scaled (0 extra draws / tris).
-    const mesh = makeVessel(p.hull, p.sail, flagColor, stats.sizeScale);
-    group.add(mesh);
 
-    // Spread spawns out, well clear of the player's origin and of land.
+    // Spread spawns out, well clear of the player's origin and of land. The deep hunter ALSO demands
+    // deadly water (r ≥ DEEP_R) so a man-o'-war genuinely roams the deep — sail out and she's there.
+    const wantDeep = (i === deepSlot);
     let spawn, tries = 0;
     do {
       spawn = pickWaypoint(rng, bounds);
       tries++;
     } while (tries < 24 && (
       (spawn.x * spawn.x + spawn.z * spawn.z) < 300 * 300 ||
-      islands.some(s => Math.hypot(s.x - spawn.x, s.z - spawn.z) < s.r + 90)
+      islands.some(s => Math.hypot(s.x - spawn.x, s.z - spawn.z) < s.r + 90) ||
+      (wantDeep && Math.hypot(spawn.x, spawn.z) < DEEP_R)
     ));
+    // Guarantee the deep hunter is truly in the deep even if the sampler never satisfied it: push her
+    // out along her bearing so she reads tier-5 (the man-o'-war reachability the epic promises).
+    if (wantDeep && Math.hypot(spawn.x, spawn.z) < DEEP_R) {
+      const r = Math.hypot(spawn.x, spawn.z) || 1;
+      const k = (DEEP_R + 40) / r;
+      spawn = { x: spawn.x * k, z: spawn.z * k };
+    }
+
+    // Her CLASS is FIXED BY REGION (#167): the deeper the water she wanders, the deadlier she is. The
+    // deep hunter takes the region's APEX (the warship man-o'-war). Deterministic; no rubber-band.
+    const spec = regionalSpec(spawn.x, spawn.z, dangerRng, { apex: wantDeep });
+    specs.push(spec);
+    const stats = shipStats(spec.cls, spec.role);
+    // The palette keeps her colours (identity); the CLASS sets her size — a bigger class is a visibly
+    // bigger hull. Same reused mesh, just scaled (0 extra draws / tris).
+    const mesh = makeVessel(p.hull, p.sail, flagColor, stats.sizeScale);
+    group.add(mesh);
 
     const heading = rng() * Math.PI * 2 - Math.PI;
     const s = {
@@ -171,8 +190,24 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
       turnRate: 0.5 + rng() * 0.3,   // rad/s
       bobPhase: rng() * Math.PI * 2,
       wp: pickWaypoint(rng, bounds),
+      // The deep hunter haunts the DEEP (#167): her waypoints stay in deadly water so she doesn't drift
+      // inshore — the coasts stay gentle, and the man-o'-war is where the fixed rule says she'll be.
+      deep: wantDeep,
     };
     ships.push(s);
+  }
+
+  // Variety guard (mirrors the retired spawnMix net): the sea must never read UNIFORM. If every hull
+  // drew the same class, nudge slot 0 to a contrasting gentle coastal class so "the sea VARIES" holds.
+  if (count >= 2 && specs.every((sp) => sp.cls === specs[0].cls)) {
+    const alt = specs[0].cls === 'sloop' ? shipStats('brig', 'warship') : shipStats('sloop', 'merchant');
+    const s0 = ships[0];
+    s0.mesh.scale.setScalar(alt.sizeScale);
+    s0.shipClass = {
+      cls: alt.cls, role: alt.role, label: alt.label, tier: alt.tier,
+      hull: alt.hull, maxHull: alt.maxHull, gunnery: alt.gunnery,
+      guns: alt.guns, crew: alt.crew, sizeScale: alt.sizeScale,
+    };
   }
 
   const ARRIVE_R = 80;
@@ -244,7 +279,11 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
           do {
             wp = pickWaypoint(rng, bounds);
             tries++;
-          } while (tries < 16 && islands.some(o => Math.hypot(o.x - wp.x, o.z - wp.z) < o.r + 90));
+          } while (tries < 16 && (
+            islands.some(o => Math.hypot(o.x - wp.x, o.z - wp.z) < o.r + 90) ||
+            // The deep hunter (#167) keeps her marks in deadly water — she patrols the deep, not the coast.
+            (s.deep && Math.hypot(wp.x, wp.z) < DEEP_R)
+          ));
           s.wp = wp;
         }
         // Desired heading = toward the mark, deflected around any island ahead.
@@ -324,7 +363,9 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   }
 
   // Relocate ship `i` far away — a beaten foe slinking off over the horizon (#33).
-  // Re-uses the spawn rules: clear of the origin and of land, then a fresh waypoint.
+  // Re-uses the spawn rules: clear of the origin and of land, then a fresh waypoint. A DEEP HUNTER
+  // (#167) sails back in from the deadly deep, so the man-o'-war stays where the fixed rule says — a
+  // beaten one is replaced by another out past the points (the coasts stay gentle).
   function respawn(i) {
     const s = ships[i];
     if (!s) return;
@@ -334,8 +375,14 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
       tries++;
     } while (tries < 24 && (
       (spawn.x * spawn.x + spawn.z * spawn.z) < 300 * 300 ||
-      islands.some(o => Math.hypot(o.x - spawn.x, o.z - spawn.z) < o.r + 90)
+      islands.some(o => Math.hypot(o.x - spawn.x, o.z - spawn.z) < o.r + 90) ||
+      (s.deep && Math.hypot(spawn.x, spawn.z) < DEEP_R)
     ));
+    if (s.deep && Math.hypot(spawn.x, spawn.z) < DEEP_R) {
+      const r = Math.hypot(spawn.x, spawn.z) || 1;
+      const k = (DEEP_R + 40) / r;
+      spawn = { x: spawn.x * k, z: spawn.z * k };
+    }
     s.x = spawn.x;
     s.z = spawn.z;
     s.wp = pickWaypoint(rng, bounds);

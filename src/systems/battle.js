@@ -337,7 +337,8 @@ export function createBattle({
     let reward = null, penalty = null;
     if (result === 'win') {
       state.lastLine = defeatLine(rng);
-      reward = spoils({ playerHull: state.playerHull, enemyMaxHull: state.maxHull });
+      // Reward scales by foe TIER (#167) — the seekable payoff: a man-o'-war hunted down pays real fame.
+      reward = spoils({ playerHull: state.playerHull, enemyMaxHull: state.maxHull, tier: (foe && Number.isFinite(foe.tier)) ? foe.tier : 0 });
       ping('win');
       if (applyReward) applyReward(reward);
     } else if (result === 'capture') {

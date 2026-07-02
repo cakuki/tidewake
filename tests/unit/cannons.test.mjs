@@ -87,6 +87,26 @@ test('spoils: positive, scales with the fight, teeth-y infamy, stays bounded', (
   assert.ok(big.coins <= 140, 'reward stays modest (not free riches)');
 });
 
+test('spoils: reward SCALES BY FOE TIER — a hard fight pays real coin + Infamy (#167)', () => {
+  // Challenge on demand (#167): sinking a higher-tier foe pays STRICTLY more, mirroring #164's
+  // tier-scaled loss sting. Same hull held constant, so the growth is the TIER bonus alone.
+  const hull = { playerHull: 100, enemyMaxHull: 100 };
+  let prevCoins = -1, prevInfamy = -1;
+  for (let tier = 1; tier <= 5; tier++) {
+    const r = spoils({ ...hull, tier });
+    assert.ok(r.coins > prevCoins, `coin reward must climb with tier (t${tier}: ${r.coins} !> ${prevCoins})`);
+    assert.ok(r.infamy > prevInfamy, `Infamy reward must climb with tier (t${tier}: ${r.infamy} !> ${prevInfamy})`);
+    prevCoins = r.coins; prevInfamy = r.infamy;
+  }
+  // A tier-5 man-o'-war pays MORE than a tier-1 prey — the high-risk hunt is worth it.
+  const prey = spoils({ ...hull, tier: 1 });
+  const terror = spoils({ ...hull, tier: 5 });
+  assert.ok(terror.coins > prey.coins && terror.infamy > prey.infamy, 'a man-o\'-war out-pays a sloop');
+  assert.ok(terror.coins <= 220, 'even the top prize stays earned, not free riches');
+  // Byte-identical for the legacy (no-tier) call — existing callers/tests unchanged.
+  assert.deepEqual(spoils(hull), spoils({ ...hull, tier: 0 }));
+});
+
 test('repairToll: a comic-but-real setback for limping home — small, positive', () => {
   const t = repairToll();
   assert.ok(t.coins > 0 && t.coins <= 25);

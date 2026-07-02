@@ -231,14 +231,23 @@ export function resolveBroadside({ quality, enemyHull, playerHull, gunnery = 1, 
   return { enemyHit, playerHit, enemyHull: newEnemyHull, playerHull: newPlayerHull, quality: q0, sunkEnemy, sunkPlayer, enemyMorale, yielded };
 }
 
+// Challenge-on-demand reward scaling (#167): a real purse per FOE TIER on top of the base spoils, so
+// beating a warship frigate / man-o'-war out in the deep pays what the risk is worth — the symmetric
+// mirror of #164's tier-scaled loss sting (high risk, high reward, both legible).
+export const SPOILS_TIER_COIN = 15; // + this much coin per foe threat tier (a tier-5 man-o'-war = +75c)
+
 /**
  * Spoils for sinking a foe. The pirate road's reward: a tidy purse and a teeth-y chunk
  * of **Infamy** (more than a duel pays, befitting the risk). Scales with how tough the
- * foe was and how much hull you kept. Modest by design — never free riches.
+ * foe was, how much hull you kept, AND — challenge on demand (#167) — the foe's THREAT TIER,
+ * so a man-o'-war hunted down in the deep pays real fame. Modest by design — never free riches.
+ * `tier` defaults to 0 (no bonus) so every legacy caller/test is byte-identical.
+ * @param {{playerHull?:number, enemyMaxHull?:number, tier?:number}} [args]
  * @returns {{coins:number, infamy:number}}
  */
-export function spoils({ playerHull = 0, enemyMaxHull = MAX_HULL } = {}) {
-  const coins = Math.round(45 + enemyMaxHull * 0.25 + playerHull * 0.15);
+export function spoils({ playerHull = 0, enemyMaxHull = MAX_HULL, tier = 0 } = {}) {
+  const t = Math.max(0, Math.min(5, Math.round(Number(tier) || 0)));
+  const coins = Math.round(45 + enemyMaxHull * 0.25 + playerHull * 0.15 + t * SPOILS_TIER_COIN);
   const infamy = Math.round(coins * 2.3);
   return { coins, infamy };
 }
@@ -443,7 +452,8 @@ export function createCannons({ npcs, getShipPos, getColours, applyReward, apply
       if (npcs && npcs.respawn) npcs.respawn(state.foeIndex);
     } else if (result === 'win') {
       state.lastLine = defeatLine(rng);
-      reward_ = spoils({ playerHull: state.playerHull, enemyMaxHull: state.maxHull });
+      // Reward scales by foe TIER (#167): a warship man-o'-war pays real coin + Infamy.
+      reward_ = spoils({ playerHull: state.playerHull, enemyMaxHull: state.maxHull, tier: (foe && Number.isFinite(foe.tier)) ? foe.tier : 0 });
       // Treachery payoff (#79): a kill under false colours pays a perfidy bonus to Infamy.
       if (state.treachery) {
         const bonus = treacheryBonus(reward_.infamy, engagedColours);
