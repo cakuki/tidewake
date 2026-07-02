@@ -17,7 +17,7 @@ export const MAX_EVENTS = 60;
 
 // The deeds the balladeer knows how to sing. A future slice can add more (best trade,
 // rank climbed, ports visited) by extending NARRATORS + sanitizeEvent below.
-export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter', 'harbour', 'governorship', 'morale', 'bounty'];
+export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter', 'harbour', 'governorship', 'morale', 'bounty', 'rank', 'ship', 'gun'];
 
 export const BALLAD_TITLE = 'The Ballad of Your Voyage';
 
@@ -112,6 +112,28 @@ export function sanitizeEvent(ev) {
       if (!isStr(ev.foe)) return null;
       return { type: 'bounty', foe: String(ev.foe).trim(), coins: nonNegInt(ev.coins), infamy: nonNegInt(ev.infamy) };
     }
+    case 'rank':
+      // A renown RUNG climbed (#169, THE RISE): the ladder title the player just crossed into
+      // ("rose to Corsair"). Recorded live from the rank-up crossing — the top rung of a committed
+      // pole is the grander `legend` crown and is NOT sent here, so `rank` sings only the climb
+      // between. `pole` shades the verse (feared / respected / neither); `title` is the new rung.
+      return (ev.pole === 'pirate' || ev.pole === 'governor' || ev.pole === 'neutral') && isStr(ev.title)
+        ? { type: 'rank', pole: ev.pole, title: String(ev.title).trim() }
+        : null;
+    case 'ship':
+      // A bigger hull bought at the shipwright (#171, THE RISE): you traded UP a class ("the sloop
+      // for a frigate"). `from`/`to` are the class names the ladder moved between — both sung so the
+      // upgrade reads as a trade, not just an acquisition. Recorded live from the purchase.
+      return isStr(ev.from) && isStr(ev.to)
+        ? { type: 'ship', from: String(ev.from).trim(), to: String(ev.to).trim() }
+        : null;
+    case 'gun': {
+      // A fresh cannon fitted at the gunsmith (#170, THE RISE): the deck's gun count rose. `guns` is
+      // the new TOTAL run out to a side (base + fitted). Recorded live from the purchase; a 0-gun
+      // "purchase" is nonsense and rejected.
+      const guns = nonNegInt(ev.guns);
+      return guns > 0 ? { type: 'gun', guns } : null;
+    }
     default:
       return null;
   }
@@ -127,6 +149,10 @@ function dedupKey(ev) {
   if (ev.type === 'harbour') return `harbour:${ev.deed}:${ev.port}:${ev.level}`;
   // Governorship (#119): the named home-isle crown is sung once per isle — never twice on a reload.
   if (ev.type === 'governorship') return `governorship:${ev.port}`;
+  // THE RISE (#90): each rung/hull/gun-total is a milestone crossed once — never twice on a reload.
+  if (ev.type === 'rank') return `rank:${ev.title}`;
+  if (ev.type === 'ship') return `ship:${ev.to}`;
+  if (ev.type === 'gun') return `gun:${ev.guns}`;
   return null;
 }
 
@@ -225,6 +251,40 @@ const NARRATORS = {
     (e) => `And the isles laid down their ledgers to make it law: ${e.title}. You did not seize the place — you raised it from a bare berth, and ${e.port} crowned you for the building.`,
     (e) => `${e.port} put it to a vote it could not lose and named you ${e.title} — a pirate-turned-patron, the wharf still half-amazed it had wagered right.`,
     (e) => `They struck a seal and a sash and a deal of speeches, and made you ${e.title} of ${e.port} — the rarest legend at sea: the one who stayed to govern what he found.`,
+  ],
+  // THE RISE (#169): a renown rung climbed — the intermediate ladder title crossed. Pole-shaded:
+  // the pirate rung a warning, the governor rung a grudging honour, the neutral rung a quiet growing.
+  // The far top rung is the `legend` crown's verse; this sings the climb beneath it.
+  rank: [
+    (e) => (e.pole === 'pirate'
+      ? `Your infamy climbed a rung and the calm ports climbed down a peg: they call you ${e.title} now, and mean it for a warning.`
+      : e.pole === 'governor'
+      ? `Your good name rose another storey, and the harbour ledgers were amended to read ${e.title} — earned, they grudgingly own, and not bought.`
+      : `The sea took your measure afresh and found you grown: ${e.title}, the roads agree, and the title fits you like a well-worn coat.`),
+    (e) => (e.pole === 'pirate'
+      ? `You rose to ${e.title} — one more rung up the black ladder, and one more reason for honest captains to check their horizon twice.`
+      : e.pole === 'governor'
+      ? `You rose to ${e.title}, and the wharf-clerks who once looked clean through you now stand as you pass — progress, of the respectable sort.`
+      : `You rose to ${e.title} — neither wholly feared nor wholly toasted, but unmistakably someone the sea has learned to reckon with.`),
+    (e) => (e.pole === 'pirate'
+      ? `They struck your old rank from the tavern talk and fitted you a fiercer one: ${e.title}, murmured now where your name was once merely muttered.`
+      : e.pole === 'governor'
+      ? `A quiet promotion, sealed and stamped: ${e.title}. You'd not have believed it, that first bilge-scrubbing morning.`
+      : `Another rung, another name — ${e.title} — and a growing suspicion, at the rail of a night, that you're making something of yourself.`),
+  ],
+  // THE RISE (#171): a bigger hull bought at the shipwright — you traded UP a class. Both hulls named
+  // so it reads as a trade, warm with the joy of a captain going up in the world.
+  ship: [
+    (e) => `You paid off the shipwright and traded the ${e.from} for a ${e.to} — more keel, more canvas, more guns to argue with, and a deck that no longer flinches at a fair fight.`,
+    (e) => `Out went the ${e.from}, in came the ${e.to}: you stepped aboard a bigger hull and felt the sea grant you a little more room, the way it does a captain going up in the world.`,
+    (e) => `You set a ${e.to} under your flag where a ${e.from} used to ride — and the first time she leaned into the wind you laughed aloud, for the climb had become a thing you could stand on.`,
+  ],
+  // THE RISE (#170): a fresh cannon fitted at the gunsmith — the broadside grew. `guns` is the new
+  // total run out to a side; the deck sits heavier and prouder for it.
+  gun: [
+    (e) => `You fitted another cannon at the gunsmith's — ${e.guns} guns run out to a side now, and the next fool to cross you will hear the difference before ever he sees it.`,
+    (e) => `A fresh gun bolted to the deck, still warm from the forge: ${e.guns} on the broadside, and your ship spoke a good measure louder for it.`,
+    (e) => `You added iron to your argument — ${e.guns} guns where lately there were fewer — and the deck rode that bit heavier, and that bit prouder, beneath your boots.`,
   ],
 };
 
@@ -411,7 +471,10 @@ function poleLean(events) {
       case 'governorship': governor += 2; break;
       case 'legend': if (e.pole === 'pirate') pirate += 2; else governor += 2; break;
       case 'bounty': pirate += 1; break; // running down a wanted vessel for coin is a hunter's (pirate) deed (#173)
-      default: break; // landfall, rumour, morale — neutral
+      case 'rank': // a rung climbed leans with its pole (#169) — less than the legend crown's +2
+        if (e.pole === 'pirate') pirate += 1; else if (e.pole === 'governor') governor += 1;
+        break;
+      default: break; // landfall, rumour, morale, ship, gun — neutral (both roads buy hulls + guns)
     }
   }
   return { pirate, governor };
@@ -448,7 +511,7 @@ export function composeBallad(events, opts = {}) {
     lines = [EMPTY_LINE];
   } else {
     lines = [OPENING];
-    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0, harbour: 0, governorship: 0, morale: 0, bounty: 0 };
+    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0, harbour: 0, governorship: 0, morale: 0, bounty: 0, rank: 0, ship: 0, gun: 0 };
     for (const e of log) {
       // An at-sea encounter sings a rescue/plunder verse by the choice made; a morale crossing sings
       // its tier verse; a treacherous fight a false-colours verse; a lawful pirate-hunt the privateer

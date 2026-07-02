@@ -1465,6 +1465,51 @@ try {
   if (process.exitCode !== 1) console.log(`  ✓ buy a bigger ship (#171, THE RISE): steps class sloop→brig→frigate, deducts coin (−${shipBuy.buy1cost}c) + VISIBLY grows the hull (scale ×${shipBuy.startScale}→×${shipBuy.scale2.toFixed(2)}) + hits harder & soaks more (bite ${shipBuy.sloopCombat.enemyHit}→${shipBuy.frigateCombat.enemyHit}, fire taken ${shipBuy.sloopCombat.playerHit}→${shipBuy.frigateCombat.playerHit}); capped at frigate; SURVIVES a reload (v18 shipClass round-trip, NO new bump)`);
   await page.evaluate(() => window.__tidewake.newVoyage());
 
+  // 2b7b-ballad) THE BALLAD SINGS YOUR RISE (#90, epic #168 follow-up) — the fun beat: your climb reads
+  // back as a STORY, not just numbers. The RISE events already narrated as HUD beats now also drop a deed
+  // into the live voyage log, so the end-of-voyage Ballad weaves them into its verses (and thus the #149
+  // share-card, which composes the same lines). Prove each live RISE event contributes its deed + verse,
+  // and that the surrounding composition (opening / superlative / closing tally / footer) still holds.
+  // Text-only, driven through the QA hooks — 0 draw calls. NO save bump (deeds fail open; stays v18).
+  const riseBallad = await page.evaluate(() => {
+    const tw = window.__tidewake;
+    tw.newVoyage();                       // a blank page — the Ballad starts unwritten
+    tw.qaResetRankBaseline();             // rank-up summit back to rung 0 so a fresh climb re-fires
+    tw.qaSetLedger({ coins: 5000, infamy: 0, standing: 0 });
+    tw.step(1 / 60);                       // one frame seeds the rank baseline silently (no deed)
+    // (1) Fit a cannon → a `gun` deed sings the new broadside total.
+    tw.buyCannon();
+    const gunDeed = tw.voyageLog.find((e) => e.type === 'gun') || null;
+    // (2) Trade up a hull → a `ship` deed names from→to ("the sloop for a brig").
+    tw.buyShipClass();
+    const shipDeed = tw.voyageLog.find((e) => e.type === 'ship') || null;
+    // (3) Cross a renown rung → a `rank` deed names the new title. Infamy 300 → a pirate rung (not the top).
+    tw.setInfamy(300);
+    tw.step(1 / 60);                       // the rankup system detects the crossing → logs the deed
+    const rankDeed = tw.voyageLog.find((e) => e.type === 'rank') || null;
+    const text = tw.ballad;               // the composed Ballad the panel + share-card both render
+    return {
+      gunDeed, shipDeed, rankDeed, text,
+      // composition still intact around the new verses:
+      hasOpening: /Gather round/.test(text),
+      hasClosing: /worth the telling/.test(text),
+      hasFooter: /sung at the rail/.test(text),
+      deedCount: tw.voyageLog.length,
+    };
+  });
+  if (!riseBallad.gunDeed) fail('ballad-rise (#90): fitting a cannon did not drop a `gun` deed into the voyage log (#170 wiring)');
+  else if (!riseBallad.text.includes(`${riseBallad.gunDeed.guns} guns`)) fail(`ballad-rise (#90): the Ballad does not sing the new gun total (${riseBallad.gunDeed.guns} guns)`);
+  if (!riseBallad.shipDeed) fail('ballad-rise (#90): buying a bigger ship did not drop a `ship` deed into the voyage log (#171 wiring)');
+  else {
+    if (riseBallad.shipDeed.from !== 'sloop' || riseBallad.shipDeed.to !== 'brig') fail(`ballad-rise (#90): the ship deed did not record the trade sloop→brig (from=${riseBallad.shipDeed.from}, to=${riseBallad.shipDeed.to})`);
+    if (!riseBallad.text.includes('sloop') || !riseBallad.text.includes('brig')) fail('ballad-rise (#90): the Ballad does not name both hulls of the trade (sloop→brig)');
+  }
+  if (!riseBallad.rankDeed) fail('ballad-rise (#90): crossing a renown rung did not drop a `rank` deed into the voyage log (#169 wiring)');
+  else if (!riseBallad.text.includes(riseBallad.rankDeed.title)) fail(`ballad-rise (#90): the Ballad does not name the new rank title "${riseBallad.rankDeed.title}"`);
+  if (!riseBallad.hasOpening || !riseBallad.hasClosing || !riseBallad.hasFooter) fail(`ballad-rise (#90): the RISE deeds broke the surrounding composition (opening=${riseBallad.hasOpening}, closing=${riseBallad.hasClosing}, footer=${riseBallad.hasFooter})`);
+  if (process.exitCode !== 1) console.log(`  ✓ the Ballad sings your RISE (#90): live rank-up→"${riseBallad.rankDeed?.title}", gun→"${riseBallad.gunDeed?.guns} guns", ship→"${riseBallad.shipDeed?.from}→${riseBallad.shipDeed?.to}" all woven into the composed Ballad (${riseBallad.deedCount} deeds; opening+superlative+closing intact); text-only, NO save bump`);
+  await page.evaluate(() => window.__tidewake.newVoyage());
+
   // 2b7c) Governor-pole symmetry — invest spoils to grow your HOME PORT VISIBLY (#174, epic #168 "The Rise",
   // the FINALE). The mirror of buying a bigger ship: pour coin into your home port and SEE it PROSPER — new
   // warehouses, more boats at anchor, more masts at the quay — in tiers off the persisted harbour.level (NO

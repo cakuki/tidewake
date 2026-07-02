@@ -1401,7 +1401,7 @@ function buyDeckCannon() {
     state.extraCannons = sanitizeExtraCannons(res.extra);
     deckGuns.setCount(state.extraCannons);          // SEE: the new gun appears on your deck this instant
     try { audio.playDuelHit('challenge'); } catch { /* a boom must never break the buy */ } // HEAR: gunports bang, she's run out
-    logDeed({ type: 'cannon', deed: 'buy', guns: totalGuns(state.extraCannons) }); // a milestone the Ballad remembers (#78)
+    logDeed({ type: 'gun', guns: totalGuns(state.extraCannons) }); // a milestone the Ballad sings (#170/#90)
     persistence.write();                             // lock the purchase the instant it's made — survives a reload
     hud.flashBanner('⚒ A new cannon bolted to your deck!',
       `${totalGuns(state.extraCannons)} guns now — your next broadside barks heavier, and she'll sink foes faster. (−${res.cost}c)`);
@@ -1430,7 +1430,7 @@ function buyShipClass() {
     state.shipClass = sanitizeShipClass(res.shipClass);
     applyShipClassScale();                            // SEE: the hull grows to her new class this instant
     try { audio.playDuelHit('win'); } catch { /* a sting must never break the buy */ } // HEAR: a deep triumphant note as she's launched
-    logDeed({ type: 'ship', deed: 'buy-class', shipClass: state.shipClass }); // a milestone the Ballad remembers (#78)
+    logDeed({ type: 'ship', from: before, to: state.shipClass }); // she traded up — a milestone the Ballad sings (#171/#90)
     persistence.write();                             // lock the new hull the instant she's bought — survives a reload
     hud.flashBanner(`⚓ A ${classLabel(state.shipClass)} is yours!`,
       `Your new hull dwarfs the sloop you started in — a heavier broadside, and timbers that shrug off more fire. (−${res.cost}c)`);
@@ -2476,6 +2476,7 @@ function checkRankUp() {
   rankHighest = m.index; // record the summit so it never re-announces
   if (m.index === TOP_RANK && (m.pole === 'pirate' || m.pole === 'governor')) return; // legend crown owns it
   hud.showRankUp(m);
+  logDeed({ type: 'rank', title: m.title, pole: m.pole }); // the climb the Ballad sings back (#169/#90)
   try { audio.playDuelHit('win'); } catch { /* a sting must never break the loop */ }
 }
 

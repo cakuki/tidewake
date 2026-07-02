@@ -527,3 +527,118 @@ test('the coin tally is omitted when no coin was ever won', () => {
   const closing = b.lines.find((l) => /worth the telling/.test(l));
   assert.ok(!/coins? won/.test(closing), 'a coinless voyage brags no coin figure');
 });
+
+// ---- THE RISE deed types (#90 · #169/#171/#170): the Ballad sings your climb ------------------
+// The progression the player just lived — a rank crossed, a bigger hull bought, a fresh gun fitted
+// — recorded from the LIVE events (no new persisted field, save stays v18) and woven into the
+// Ballad so the voyage reads its own rise back.
+
+test('rank deed: a renown rung climbed records and names the new title, pole-aware', () => {
+  const log = recordEvent([], { type: 'rank', title: 'Corsair', pole: 'pirate' });
+  assert.equal(log.length, 1);
+  assert.equal(log[0].type, 'rank');
+  assert.equal(log[0].title, 'Corsair');
+  assert.equal(log[0].pole, 'pirate');
+  const text = composeBallad(log).text;
+  assert.match(text, /Corsair/); // the new rung is sung by name
+});
+
+test('rank deed: pole shades the verse (pirate feared vs governor respected vs neutral)', () => {
+  const pirate = composeBallad([{ type: 'rank', title: 'Corsair', pole: 'pirate' }]).text;
+  const gov = composeBallad([{ type: 'rank', title: 'Magistrate', pole: 'governor' }]).text;
+  const neutral = composeBallad([{ type: 'rank', title: 'Free Captain', pole: 'neutral' }]).text;
+  assert.notEqual(pirate, gov);
+  assert.notEqual(gov, neutral);
+  assert.match(pirate, /Corsair/);
+  assert.match(gov, /Magistrate/);
+  assert.match(neutral, /Free Captain/);
+});
+
+test('rank deed: each rung is sung once (dedup by title) but distinct rungs all sing', () => {
+  let log = [];
+  log = recordEvent(log, { type: 'rank', title: 'Corsair', pole: 'pirate' });
+  log = recordEvent(log, { type: 'rank', title: 'Corsair', pole: 'pirate' }); // same rung → ignored
+  assert.equal(log.filter((e) => e.type === 'rank').length, 1);
+  log = recordEvent(log, { type: 'rank', title: 'Reaver', pole: 'pirate' });   // a fresh rung → sung
+  assert.equal(log.filter((e) => e.type === 'rank').length, 2);
+});
+
+test('rank deed: a pirate rung tugs the closing couplet toward the black flag', () => {
+  // Two pirate rungs alone tip the dominant-pole couplet to the pirate close.
+  const b = composeBallad([
+    { type: 'rank', title: 'Reaver', pole: 'pirate' },
+    { type: 'rank', title: 'Corsair', pole: 'pirate' },
+  ]);
+  assert.match(b.lines.at(-2), /black flag/);
+});
+
+test('rank deed: junk (missing title / bad pole) is rejected', () => {
+  assert.equal(sanitizeEvent({ type: 'rank', pole: 'pirate' }), null);       // no title
+  assert.equal(sanitizeEvent({ type: 'rank', title: 'Corsair', pole: 'x' }), null); // bad pole
+});
+
+test('ship deed: trading up a class records from→to and names both hulls', () => {
+  const log = recordEvent([], { type: 'ship', from: 'sloop', to: 'frigate' });
+  assert.equal(log.length, 1);
+  assert.equal(log[0].from, 'sloop');
+  assert.equal(log[0].to, 'frigate');
+  const text = composeBallad(log).text;
+  assert.match(text, /sloop/);
+  assert.match(text, /frigate/);
+});
+
+test('ship deed: reaching a given class is sung once (dedup by to-class)', () => {
+  let log = [];
+  log = recordEvent(log, { type: 'ship', from: 'sloop', to: 'brig' });
+  log = recordEvent(log, { type: 'ship', from: 'sloop', to: 'brig' });   // same class reached → ignored
+  assert.equal(log.filter((e) => e.type === 'ship').length, 1);
+  log = recordEvent(log, { type: 'ship', from: 'brig', to: 'frigate' }); // a further class → sung
+  assert.equal(log.filter((e) => e.type === 'ship').length, 2);
+});
+
+test('ship deed: junk (missing from/to) is rejected', () => {
+  assert.equal(sanitizeEvent({ type: 'ship', from: 'sloop' }), null);
+  assert.equal(sanitizeEvent({ type: 'ship', to: 'frigate' }), null);
+});
+
+test('gun deed: fitting a cannon records the new gun total and sings the count', () => {
+  const log = recordEvent([], { type: 'gun', guns: 5 });
+  assert.equal(log.length, 1);
+  assert.equal(log[0].guns, 5);
+  assert.match(composeBallad(log).text, /5 guns/);
+});
+
+test('gun deed: each gun total is sung once (dedup by count); zero/junk rejected', () => {
+  let log = [];
+  log = recordEvent(log, { type: 'gun', guns: 5 });
+  log = recordEvent(log, { type: 'gun', guns: 5 }); // same total → ignored
+  assert.equal(log.filter((e) => e.type === 'gun').length, 1);
+  log = recordEvent(log, { type: 'gun', guns: 6 }); // a heavier broadside → sung
+  assert.equal(log.filter((e) => e.type === 'gun').length, 2);
+  assert.equal(sanitizeEvent({ type: 'gun', guns: 0 }), null); // no such thing as a 0-gun purchase
+});
+
+test('RISE deeds weave into a whole ballad WITHOUT breaking the superlative or closing tally', () => {
+  const b = composeBallad([
+    { type: 'rank', title: 'Corsair', pole: 'pirate' },
+    { type: 'bounty', foe: 'the Bloody Meridian', coins: 400, infamy: 60 },
+    { type: 'ship', from: 'sloop', to: 'frigate' },
+    { type: 'harbour', deed: 'grow', port: 'Saltmarket', level: 2 },
+    { type: 'cannon', foe: 'the Bloody Meridian', infamy: 60, coins: 400 },
+  ]);
+  // the whole climb reads back as a story: rank + prize + new hull + grown harbour all sung
+  assert.match(b.text, /Corsair/);
+  assert.match(b.text, /Bloody Meridian/);
+  assert.match(b.text, /frigate/);
+  assert.match(b.text, /Saltmarket/);
+  // the superlative toast still crowns the peak, and the closing tally still totals coins
+  const peak = b.lines.find((l) => /towers over the voyage|crew still toast/.test(l));
+  assert.ok(peak, 'the "best of voyage" superlative still composes alongside the RISE deeds');
+  assert.match(b.lines.find((l) => /worth the telling/.test(l)), /coins? won/);
+  assert.equal(composeBallad([{ type: 'rank', title: 'Corsair', pole: 'pirate' }]).text,
+    composeBallad([{ type: 'rank', title: 'Corsair', pole: 'pirate' }]).text); // deterministic
+});
+
+test('the RISE deed types are declared in EVENT_TYPES', () => {
+  for (const t of ['rank', 'ship', 'gun']) assert.ok(EVENT_TYPES.includes(t), `${t} in EVENT_TYPES`);
+});
