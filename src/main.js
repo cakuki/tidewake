@@ -63,6 +63,7 @@ import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat, renownTier, defeatContext, defeatLedger } from './renown.js';
 import { detectRankUp, TOP_RANK } from './systems/rank-milestone.js';
+import { pickFearfulHail } from './systems/fearful-hail.js';
 import { recallLine, rememberArrival, sanitizePortMemory, recordDeed, deedPhrase, homePort } from './systems/port-memory.js';
 import {
   sanitizeHarbour, claim as claimHome, invest as investHome, canClaim, canInvest, harbourLevelName,
@@ -499,6 +500,32 @@ const cannons = createCannons({
 let debutActive = false;
 let debutPhaseShown = null;
 
+// Dread's HEAR half (#175): when a #172 dread reaction fires (a foe FLEES on sight or STRIKES her
+// colours early), the world NAMES you — a fearful hail sized to your notoriety, drawn anti-repeat from
+// the pure pool (systems/fearful-hail.js) and surfaced on the EXISTING hail banner + the EXISTING
+// reputation-sting audio bus (tier-aware). `lastFearfulHailIdx` feeds the anti-repeat picker so no line
+// runs twice; `lastFearfulHail` is the read-only QA surface; `dreadFleeSeen` tracks which ships are
+// already dread-fleeing so the flee cry fires ONCE on the rising edge, never per-frame.
+let lastFearfulHailIdx = -1;
+let lastFearfulHail = null;
+const dreadFleeSeen = new Set();
+function fireFearfulHail(kind) {
+  const pick = pickFearfulHail({
+    infamy: state.infamy ?? 0, standing: state.standing ?? 0,
+    rng: Math.random, avoid: lastFearfulHailIdx,
+  });
+  if (!pick) return null;
+  lastFearfulHailIdx = pick.index;
+  lastFearfulHail = { text: pick.text, tier: pick.tier, title: pick.title, pole: pick.pole, kind };
+  // A flee has no banner of its own (the SEE half is silent on the water) → give the cry its own hail
+  // banner. An early-strike already opens the surrender banner → main.js folds the cry into that body,
+  // so we only ring the audio here and let onSurrender paint the words (no double banner).
+  if (kind === 'flee') hud.flashBanner('📣 They know your name', pick.text);
+  try { audio.playRepSting(pick.pole === 'governor' ? 'governor' : 'pirate', pick.tier); }
+  catch { /* a cry must never sink the sim */ }
+  return pick;
+}
+
 // Pure lifecycle + quarter-view geometry live in src/systems/battle.js; here we only drive it.
 const battle = createBattle({
   npcs,
@@ -544,8 +571,15 @@ const battle = createBattle({
   // player answer. 1 = ACCEPT (a quick capture: ransom + Standing) · 2 = PRESS the attack (no quarter).
   // Accepting routes through onResolve('capture') below (the existing capture banner + deed); pressing
   // just narrates the refusal — the fight simply resumes.
-  onSurrender: ({ foeName }) => hud.flashBanner('🏳️ She strikes her colours — quarter?',
-    `${foeName} hauls down her flag and offers to yield. Press 1 to ACCEPT her surrender (a ransom + Standing, quick) — or 2 to PRESS the attack (no quarter: sink or board her).`),
+  onSurrender: ({ foeName, dread }) => {
+    // Dread's HEAR half (#175): if it was YOUR notoriety that broke her early, her crew cries your NAME
+    // in terror — folded into the SAME surrender banner (reuse the hail surface; the quarter prompt still
+    // shows). A peer/apex (~0 dread pressure) sets no `dread`, so an even fight strikes in silence.
+    let cry = '';
+    if (dread) { const p = fireFearfulHail('strike'); if (p) cry = `“${p.text}” `; }
+    hud.flashBanner('🏳️ She strikes her colours — quarter?',
+      `${cry}${foeName} hauls down her flag and offers to yield. Press 1 to ACCEPT her surrender (a ransom + Standing, quick) — or 2 to PRESS the attack (no quarter: sink or board her).`);
+  },
   onPressAttack: ({ foeName }) => hud.flashBanner('🏴 No quarter!',
     `You refuse ${foeName}'s surrender — the guns run back out. She fights to the bitter end now: sink her or board her.`),
   sfx: (kind) => audio.playDuelHit(kind),
@@ -1950,6 +1984,24 @@ systems.register({ name: 'npcs', order: 70, update: (f) => {
     moraleFrac: bs.maxMorale > 0 ? bs.enemyMorale / bs.maxMorale : 1,
   } : null;
   npcs.update(f.dt, f.t, { playerPos: [f.state.pos.x, f.state.pos.z], flee, dread, arena });
+  // Dread's HEAR half (#175): when a foe TURNS TAIL from your NAME, her crew cries it aloud. Fire the
+  // fearful hail ONCE on the rising edge of each ship's DREAD flee (not the #79 colours-flee, not an
+  // arena-helm break-off), at most one cry per frame. Withheld under a disguise for FREE — `dread` is
+  // null above while the bluff holds, so no ship dread-flees and this whole block is skipped.
+  if (dread) {
+    const snap = npcs.snapshot();
+    let cried = false;
+    for (let i = 0; i < snap.length; i++) {
+      const df = !!(snap[i] && snap[i].dreadFleeing);
+      if (df) {
+        if (!dreadFleeSeen.has(i)) { dreadFleeSeen.add(i); if (!cried) { fireFearfulHail('flee'); cried = true; } }
+      } else if (dreadFleeSeen.has(i)) {
+        dreadFleeSeen.delete(i);
+      }
+    }
+  } else if (dreadFleeSeen.size) {
+    dreadFleeSeen.clear(); // disguise up / notoriety gone → forget who was fleeing (they'll re-cry later)
+  }
 } });
 // — emergent at-sea encounter (#125): seeded spawn (only while under sail, helm free); pose the
 //   founderer low + heeled when live, hide her otherwise (~1 draw call exactly when on screen).
@@ -3051,6 +3103,12 @@ window.__tidewake = {
   // from the CURRENT ledger — lets a headless test pin a known starting rung after other blocks have
   // moved the ledger. Same effect a fresh voyage has; never used in play.
   qaResetRankBaseline() { rankHighest = undefined; return true; },
+  // Dread's HEAR half (#175): the last fearful hail a dreaded foe cried at you (or null) — its text,
+  // notoriety `tier`, the `title` it named, the `pole` flavour, and the `kind` of reaction ('flee' from
+  // a bolt-on-sight / 'strike' from an early colours-strike). So the headless gate can assert a dread
+  // reaction NAMED you (text matches title/tier, drawn anti-repeat) and a peer/apex reaction did NOT.
+  get fearfulHail() { return lastFearfulHail ? { ...lastFearfulHail } : null; },
+  qaClearFearfulHail() { lastFearfulHail = null; dreadFleeSeen.clear(); return true; },
   get loadout() { return (state.loadout || []).slice(); },
   get ammoCatalogue() { return AMMO_TYPES.map((id) => ({ id, ...AMMO[id] })); },
   fitAmmoType(id) { state.loadout = fitAmmo(state.loadout, id); town.render(); return state.loadout.slice(); },

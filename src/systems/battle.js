@@ -418,7 +418,7 @@ export function createBattle({
     // quick prize or refuse quarter (below). Refuse once and she never strikes again (offersSurrender
     // gates on quarterRefused), so this can't loop; she fights on to a sinking or a boarding.
     if (offersSurrender({ yielded: r.yielded || earlyYield, boarded: state.boarded, quarterRefused: state.quarterRefused })) {
-      return openSurrender();
+      return openSurrender(earlyYield);
     }
     // The quip reads from the LOADED shot's flavour — chain shreds rigging, the rest pound the hull.
     state.lastLine = a.inArc ? fireQuip(profile.shock === 'rigging' ? 'rigging' : 'broadside', rng) : WIDE_LINE;
@@ -446,12 +446,15 @@ export function createBattle({
   // player must answer (accept the quick capture, or refuse quarter). Called from fire() the volley she
   // breaks. The engagement stays ACTIVE and PAUSED on the offer; main.js wires `onSurrender` to the
   // prompt banner + the 1/2 keys. Returns a small marker so a caller/QA can tell a volley opened a flag.
-  function openSurrender() {
+  function openSurrender(byDread = false) {
     state.surrenderPending = true;
     state.lastLine = strikeLine(rng); // her cry as the colours come down (#72, reused)
     ping('win'); // a beaten foe strikes — a soft, hopeful sting
     if (onSurrender) {
-      try { onSurrender({ foeName: state.foeName, foeIndex: state.foeIndex }); }
+      // `dread` (#175, the HEAR half): true when it was YOUR notoriety that broke her early — main.js
+      // then folds a fearful hail that NAMES you into the surrender banner. A peer/apex (~0 dread
+      // pressure) never sets it, so the cry only ever lands on genuine dread. Never a new UI/path.
+      try { onSurrender({ foeName: state.foeName, foeIndex: state.foeIndex, dread: !!byDread }); }
       catch { /* a flourish must never break the offer */ }
     }
     return { surrendered: true, foeName: state.foeName };

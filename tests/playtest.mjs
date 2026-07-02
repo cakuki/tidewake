@@ -16,6 +16,7 @@ import { battleLayer, nextTransition, DRIVE_SCALE, MENACE_SCALE, EDGE_SCALE } fr
 import { SAVE_VERSION } from '../src/save.js'; // #167 owner-decision: regional danger is positional — NO save bump (stays v17)
 import { dreadPressure, fleesOnSight, strikesEarly } from '../src/systems/dread.js'; // #172: the world FEARS you — the pure gap→flee/early-strike model
 import { offersSurrender } from '../src/systems/board.js'; // #172: prove the dread early-strike feeds the EXISTING white-flag path
+import { fearTier, pickFearfulHail } from '../src/systems/fearful-hail.js'; // #175: dread's HEAR half — the pure notoriety→fearful-hail line picker
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
@@ -3622,6 +3623,156 @@ try {
       if (o.player) tw.qaTeleport(o.player[0], o.player[1]);
     }, orig);
     if (process.exitCode !== 1) console.log(`  ✓ the world fears you (#172): weak prey flees a notorious/big captain on sight + strikes early (foeDread ${compose.preyDread?.toFixed?.(2)}); a peer/apex holds and fights (apex foeDread ${compose.apexDread?.toFixed?.(2)}); the dread strike reuses the surrender flag and ACCEPT ends it cleanly`);
+  }
+
+  // 2z-hail) DREAD'S HEAR HALF — A FEARFUL HAIL NAMES YOU (#175, post-RISE polish; completes #172). #172
+  // shipped dread's SEE + FEEL (a weak foe FLEES / STRIKES early) but left the HEAR half silent. Now when a
+  // dreaded foe reacts, the world NAMES you: a fearful hail sized to your notoriety, drawn anti-repeat from
+  // the pure pool, on the EXISTING hail banner + reputation-sting bus. Proofs: (A) PURE tier + pole + anti-
+  // repeat; (B) LIVE flee → a cry that MATCHES your title/tier, drawn anti-repeat across two bolts; (C) LIVE
+  // an apex reaction is SILENT (no cry); (D) LIVE a dread early-strike cries your name while a PEER's vanilla
+  // strike is silent. Text + audio = 0 draws. Reuses #172's dread gate — no new mechanic, no save bump.
+  {
+    // (A) PURE — the line picker itself (deterministic/headless)
+    if (fearTier(1600) !== 2) fail('fearful hail (#175): a Terror (infamy 1600) did not read the terror tier');
+    if (!(fearTier(150) < fearTier(1600))) fail('fearful hail (#175): the fear tier does not climb with notoriety');
+    const pTerror = pickFearfulHail({ infamy: 1600, standing: 0, rng: () => 0 });
+    if (pTerror.pole !== 'pirate') fail('fearful hail (#175): a notorious captain drew a non-pirate pole');
+    if (pTerror.text.includes('{title}')) fail('fearful hail (#175): the {title} token was not substituted');
+    if (!pTerror.text.includes(pTerror.title)) fail('fearful hail (#175): the hail does not NAME you');
+    const pGov = pickFearfulHail({ infamy: 40, standing: 2000, rng: () => 0 });
+    if (pGov.pole !== 'governor') fail('fearful hail (#175): a standing-led captain did not read the governor pole');
+    // anti-repeat: sweep rng across the pool so a naive picker would repeat; the guard must never return `avoid`
+    let av = -1;
+    for (let n = 0; n < 9; n++) {
+      const p = pickFearfulHail({ infamy: 1600, standing: 0, rng: () => (n % 3) / 3, avoid: av });
+      if (n > 0 && p.index === av) fail(`fearful hail (#175): the anti-repeat picker repeated line ${av} at n=${n}`);
+      av = p.index;
+    }
+
+    // (B–D) LIVE. Same remote-patch discipline as #172: a SHARED fleet, so work far from origin, reclass only
+    // MERCHANT-kind slots (0, 2 — no false #116 rival sting), and RESTORE the sea pristine afterwards.
+    const HX = 32000, HZ = 32000; // an empty patch far from the fleet AND from the #172 block's patch
+    const origH = await page.evaluate((slots) => {
+      const tw = window.__tidewake;
+      const p = tw.state.pos;
+      return {
+        player: [p[0], p[2]],
+        positions: tw.npcs.map((n) => (n.pos ? [n.pos[0], n.pos[1]] : null)),
+        classes: slots.map((i) => { const n = tw.npcs[i]; return { i, cls: n?.shipClass?.cls, role: n?.shipClass?.role }; }),
+      };
+    }, [0, 2]);
+
+    // Honest black colours + infamy 150 sits BELOW the #79 colours-flee menace (200), so a bolt here is
+    // the #172 DREAD flee (class-aware) — exactly the reaction the HEAR half answers, not the old blanket
+    // menace-flee. A big frigate over a weak sloop is the class half of the gap.
+    const FLEE_INF = 150;
+    const hail = await page.evaluate(async (P) => {
+      const tw = window.__tidewake;
+      if (tw.npcs.length < 3) return { skipped: true };
+      tw.newVoyage(); tw.setColours('black'); tw.setInfamy(P.INF); tw.setStanding(0); tw.qaSetPlayerClass('frigate');
+      tw.qaTeleport(P.HX, P.HZ);
+      tw.qaClearFearfulHail();
+
+      // (B) a weak merchant sloop sights you and BOLTS → her crew cries your name.
+      tw.qaSetNpcClass(0, 'sloop', 'merchant');
+      tw.qaPlaceShip(0, P.HX + 120, P.HZ + 120);
+      for (let i = 0; i < 20; i++) tw.step(1 / 60);
+      const cry1 = tw.fearfulHail;
+      const title = tw.state.title;
+      // (B-anti-repeat) a SECOND weak sloop bolts → a second cry, never the same line running.
+      tw.qaSetNpcClass(2, 'sloop', 'merchant');
+      tw.qaPlaceShip(2, P.HX - 120, P.HZ + 120);
+      for (let i = 0; i < 20; i++) tw.step(1 / 60);
+      const cry2 = tw.fearfulHail;
+
+      // (C) an APEX reaction is SILENT: reclass both nearby hulls to a warship man-o'-war (she holds), clear,
+      // and step — nothing dread-flees, so no cry.
+      tw.qaClearFearfulHail();
+      tw.qaSetNpcClass(0, 'manowar', 'warship');
+      tw.qaSetNpcClass(2, 'manowar', 'warship');
+      tw.qaPlaceShip(0, P.HX + 120, P.HZ + 120);
+      tw.qaPlaceShip(2, P.HX + 160, P.HZ + 120);
+      for (let i = 0; i < 20; i++) tw.step(1 / 60);
+      const apexCry = tw.fearfulHail;
+
+      return { skipped: false, cry1, cry2, title, apexCry };
+    }, { HX, HZ, INF: FLEE_INF });
+
+    if (!hail.skipped) {
+      if (!hail.cry1) fail('fearful hail (#175): a weak merchant bolting from a feared captain cried NOTHING — the HEAR half is silent');
+      if (hail.cry1.kind !== 'flee') fail(`fearful hail (#175): the flee cry was mis-tagged (kind=${hail.cry1.kind})`);
+      if (!hail.cry1.text.includes(hail.title)) fail(`fearful hail (#175): the flee cry did not NAME you ("${hail.cry1.text}" ∌ "${hail.title}")`);
+      if (hail.cry1.tier !== fearTier(FLEE_INF)) fail(`fearful hail (#175): the flee cry's tier (${hail.cry1.tier}) ≠ your notoriety tier (${fearTier(FLEE_INF)})`);
+      if (!hail.cry2) fail('fearful hail (#175): a second bolting merchant cried nothing');
+      if (hail.cry2.text === hail.cry1.text) fail('fearful hail (#175): two consecutive cries repeated the SAME line (anti-repeat broken)');
+      if (hail.apexCry) fail(`fearful hail (#175): an APEX (non-dread) reaction cried "${hail.apexCry.text}" — a peer/apex must stay SILENT`);
+    }
+
+    // (D) a dread EARLY-STRIKE cries your name; a PEER's vanilla strike is silent. A Terror in a SLOOP
+    // (a gentle broadside — sink-safe) keeps notoriety-driven dread high (pressure ~0.32 vs a sloop
+    // merchant) while never drowning a battered prey before she can strike; her hull is set below the
+    // early-strike ceiling (≤0.6) and her nerve broken, so the volley trips a genuine dread early-strike.
+    const STRIKE_INF = 1600;
+    const strike = await page.evaluate(async (P) => {
+      const tw = window.__tidewake;
+      function engageAt(cls, role) {
+        tw.newVoyage(); tw.setColours('black'); tw.setInfamy(P.INF); tw.setStanding(0); tw.qaSetPlayerClass('sloop');
+        tw.qaSetNpcClass(0, cls, role);
+        tw.qaSetNpcClass(2, 'manowar', 'warship');       // keep the spare from bolting into our patch
+        tw.qaPlaceShip(2, P.HX + 6000, P.HZ);            // …and shove her clear of sight
+        tw.qaTeleport(P.HX, P.HZ);
+        tw.qaPlaceShip(0, P.HX + 30, P.HZ + 30);         // right alongside → nearest in engage range
+        tw.step(1 / 60);
+        const ok = tw.engageBattle();
+        tw.qaClearFearfulHail();                          // clear any flee cry from the approach — isolate the STRIKE
+        return ok ? tw.battle : null;
+      }
+      // dreaded prey (a bigger-hulled brig merchant → generous sink margin): a dread early-strike CRIES your name
+      const preyB = engageAt('brig', 'merchant');
+      let preyStrikeCry = null, struck = false;
+      if (preyB && preyB.active) {
+        tw.battleBreakFoe();          // break her nerve (morale → the yield band)
+        tw.battleWeaken(0.55);        // …and wound her hull below the early-strike ceiling (0.6), well clear of sinking
+        tw.battleFire();
+        struck = !!tw.battle.surrenderPending;
+        preyStrikeCry = tw.fearfulHail;
+        tw.acceptSurrender();
+      }
+      // a PEER (warship frigate) strikes by VANILLA morale — no dread → SILENT
+      const peerB = engageAt('frigate', 'warship');
+      let peerStruck = false, peerCry = null;
+      if (peerB && peerB.active) {
+        tw.battleBreakFoe(); tw.battleWeaken(0.55); tw.battleFire();
+        peerStruck = !!tw.battle.surrenderPending;
+        peerCry = tw.fearfulHail;
+        if (tw.battle.active) tw.fleeBattle();
+      }
+      return { preyEngaged: !!(preyB && preyB.active), struck, preyStrikeCry,
+               peerEngaged: !!(peerB && peerB.active), peerStruck, peerCry };
+    }, { HX, HZ, INF: STRIKE_INF });
+
+    if (strike.preyEngaged) {
+      if (!strike.struck) fail('fearful hail (#175): a broken, dreaded prey never struck (surrender flag never opened)');
+      if (!strike.preyStrikeCry) fail('fearful hail (#175): a dread EARLY-STRIKE cried nothing — the HEAR half is silent on the strike path');
+      else {
+        if (strike.preyStrikeCry.kind !== 'strike') fail(`fearful hail (#175): the strike cry was mis-tagged (kind=${strike.preyStrikeCry.kind})`);
+        if (!strike.preyStrikeCry.text.includes(strike.preyStrikeCry.title)) fail(`fearful hail (#175): the strike cry did not NAME you ("${strike.preyStrikeCry.text}")`);
+        if (strike.preyStrikeCry.tier !== fearTier(STRIKE_INF)) fail(`fearful hail (#175): the strike cry's tier (${strike.preyStrikeCry.tier}) ≠ your notoriety tier (${fearTier(STRIKE_INF)})`);
+      }
+    }
+    if (strike.peerEngaged && strike.peerStruck && strike.peerCry) fail(`fearful hail (#175): a PEER's vanilla strike cried "${strike.peerCry.text}" — only DREAD names you`);
+
+    // Restore the sea PRISTINE (classes + positions + player + a clean ledger/colours), no trailing step.
+    await page.evaluate((o) => {
+      const tw = window.__tidewake;
+      o.classes.forEach((c) => { if (c && c.cls) tw.qaSetNpcClass(c.i, c.cls, c.role); });
+      o.positions.forEach((p, i) => { if (p) tw.qaPlaceShip(i, p[0], p[1]); });
+      tw.newVoyage(); tw.setInfamy(0); tw.setStanding(0); tw.setColours('black'); tw.qaClearFearfulHail();
+      if (o.player) tw.qaTeleport(o.player[0], o.player[1]);
+    }, origH);
+
+    if (process.exitCode !== 1) console.log(`  ✓ fearful hail (#175): a bolting merchant cries your NAME ("${hail.cry1 ? hail.cry1.text : 'n/a'}", tier ${hail.cry1 ? hail.cry1.tier : '?'}), a second bolt draws a DIFFERENT line (anti-repeat), an apex reaction is SILENT; a dread early-strike names you while a peer's vanilla strike is silent — reuses the hail banner + rep-sting bus, 0 draws, no save bump`);
   }
 
   // 2b8) THE BOUNTY BOARD (#173, epic #168 "THE RISE" slice 5) — the "one more voyage" hook. A port

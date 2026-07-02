@@ -256,6 +256,7 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
         });
         s.arenaState = helm.state;
         s.fleeing = helm.state === 'flee';
+        s.dreadFleeing = false; // an arena foe maneuvers by helm, not dread — never a fearful-hail flee (#175)
         const target = avoidObstacles(s.x, s.z, helm.desiredHeading, islands, 220);
         s.heading = steerToward(s.heading, target, ARENA_TURN_RATE, dt);
         const sp = ARENA_SPEED * helm.throttle;
@@ -279,14 +280,19 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
       }
       // The world fears you (#172): a much-outclassed, notorious captain scatters WEAK prey on sight —
       // per ship (her class tier vs yours), so a merchant sloop bolts while a peer/apex holds and fights.
+      // `dreadFleeing` flags THIS bolt as a DREAD flee (not the #79 colours-flee), so main.js can cry the
+      // fearful hail (#175, the HEAR half) only when the sea runs from your NAME — never on a bluff.
+      let dreadFleeing = false;
       if (!fleeing && dread && s.shipClass) {
         const dpx = s.x - playerPos[0], dpz = s.z - playerPos[1];
         if (dpx * dpx + dpz * dpz < DREAD_SIGHT_RADIUS * DREAD_SIGHT_RADIUS &&
             fleesOnSight({ playerInfamy: dread.infamy, playerTier: dread.tier, foeTier: s.shipClass.tier, foeRole: s.shipClass.role })) {
           fleeing = true;
+          dreadFleeing = true;
         }
       }
       s.fleeing = fleeing;
+      s.dreadFleeing = dreadFleeing;
 
       let want;
       if (fleeing) {
@@ -333,7 +339,7 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   }
 
   function snapshot() {
-    return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading, fleeing: !!s.fleeing, kind: s.kind, helm: s.arenaState || null, shipClass: s.shipClass || null }));
+    return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading, fleeing: !!s.fleeing, dreadFleeing: !!s.dreadFleeing, kind: s.kind, helm: s.arenaState || null, shipClass: s.shipClass || null }));
   }
 
   // QA/gallery hook (#163): drop ship `i` at a world XZ so a headless gallery frame can pose a big
