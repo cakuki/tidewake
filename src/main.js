@@ -27,6 +27,7 @@ import { createSettings } from './ui/settings.js';
 import { createBallad } from './ui/ballad.js';
 import { recordEvent } from './voyage-log.js';
 import { createDayNight } from './daynight.js';
+import { createWeather } from './weather.js';
 import { createMinimap } from './minimap.js';
 import { createBigMap } from './bigmap.js';
 import { createIslandNamer } from './islands.js';
@@ -127,6 +128,17 @@ scene.add(ocean.mesh);
 const daynight = createDayNight({
   scene, sun, hemi, ocean, sky: world.sky,
   onDusk: () => { try { hud.flashBanner('🌅 The sun dips toward the yardarm…', 'Golden light spills across the swell — the watch lights the stern lantern.'); } catch { /* a flourish must never break the loop */ } },
+});
+// Optional weather (#88) — the sky comes ALIVE. OFF by default (behind its own #73-panel toggle),
+// so today's clear Caribbean weather stays the default and is restored byte-for-byte when off.
+// When ON, a slow seeded cycle plays: clouds gather, a rain squall greys the sea and dims the
+// light (a distant flash cracks over the swell), then it clears. It COMPOSES on top of day-night
+// — reads its live palette and darkens it — and adds at most two CHEAP draws (one instanced cloud
+// ceiling + one GPU rain particle system), only while a front is overhead. CREATIVE SPARK: the
+// first time a front breaks into a squall, the watch calls the weather down.
+const weather = createWeather({
+  THREE, scene, camera, sun, hemi, ocean, sky: world.sky, daynight,
+  onSquall: () => { try { hud.flashBanner('🌧️ Weather comes on the wind…', 'The glass is falling — a squall greys the sea and the watch takes in sail.'); } catch { /* a flourish must never break the loop */ } },
 });
 const ship = await loadShip(); // CC0 glTF sloop (#32); falls back to procedural hull on error
 scene.add(ship);
@@ -917,7 +929,7 @@ function applyReputationGrade() {
   if (lean === 0) {
     // Neutral = the sunny default. If a tint lingers and day-night isn't the one owning the base,
     // restore the default exactly so nothing leaks; under day-night the cycle already rewrote it.
-    if (repTinted && !daynight.enabled) {
+    if (repTinted && !daynight.enabled && !weather.enabled) {
       scene.background.setHex(repGradeDefaults.haze);
       if (scene.fog && repGradeDefaults.fog != null) scene.fog.color.setHex(repGradeDefaults.fog);
       sun.color.setHex(repGradeDefaults.sunColor);
@@ -930,7 +942,7 @@ function applyReputationGrade() {
   }
   // Ease FROM the clean base: day-night's live palette when the cycle owns the look (it just wrote
   // it this frame), else the captured sunny default (re-sourced each frame, so it never compounds).
-  const base = daynight.enabled
+  const base = (daynight.enabled || weather.enabled)
     ? {
         haze: scene.background.getHex(),
         fog: scene.fog ? scene.fog.color.getHex() : null,
@@ -1346,6 +1358,13 @@ settings.register({
 settings.register({
   id: 'daynight', label: 'Day & night', hint: 'a gentle dawn-to-dusk cycle — sunny by default',
   default: false, apply: (on) => daynight.setEnabled(on),
+});
+// Weather (#88) — STORED, default OFF so the clear Caribbean look stays the default. `apply` flips
+// the seeded weather cycle on/off; OFF hides the visuals and restores the clear default exactly.
+// Composes on top of day-night when both are on (a squall at golden hour hits different).
+settings.register({
+  id: 'weather', label: 'Weather', hint: 'drifting clouds & passing rain squalls — clear by default',
+  default: false, apply: (on) => weather.setEnabled(on),
 });
 // Combat feel (#80) — STORED, default ON: the screen-shake, camera kick + hit-stop that make a hit
 // LAND. Toggling it OFF (or a prefers-reduced-motion preference) leaves the game fully playable with
@@ -2049,6 +2068,10 @@ systems.register({ name: 'ocean', order: 100, update: (f) => {
 } });
 // — optional day-night cycle (#58): no-op while OFF.
 systems.register({ name: 'daynight', order: 110, update: (f) => daynight.update(f.dt) });
+// Weather (#88) runs right AFTER day-night and BEFORE reputation-grade: it darkens day-night's live
+// base palette, and reputation-grade then eases from the weathered look (composes cleanly, never
+// compounds — see the composition note above). OFF is a true no-op (early return, visuals hidden).
+systems.register({ name: 'weather', order: 115, update: (f) => weather.update(f.dt) });
 // — scene grade composition (CRITICAL ORDER): reputation cast (#126) over day-night (#58), warm
 //   "golden harbour" glow (#102) over the top — exactly the old applyReputationGrade→applyLandfallGrade order.
 systems.register({ name: 'reputation-grade', order: 120, update: () => applyReputationGrade() });
@@ -2648,6 +2671,25 @@ window.__tidewake = {
     };
   },
   setDayPhase(t) { daynight.phase = t; return daynight.phase; },
+  // Weather (#88) QA surface: whether it's running, the seeded phase + readable state, the live
+  // darken, the live haze/sun (so the gate can assert a squall greys the sea + dims the light and
+  // that OFF restores the clear default byte-for-byte), and the live weather DRAW cost (0 when
+  // clear/off — the true-no-op guard). setWeatherPhase jumps the cycle for a deterministic shot.
+  get weather() {
+    const s = weather.state();
+    return {
+      enabled: weather.enabled,
+      phase: weather.phase,
+      key: s.key,
+      darken: s.darken,
+      cloud: s.cloud,
+      rain: s.rain,
+      haze: scene.background.getHex(),
+      sunIntensity: sun.intensity,
+      draws: weather.activeDraws,
+    };
+  },
+  setWeatherPhase(t) { weather.phase = t; return weather.phase; },
   // Reputation-reactive world grade (#126, DL #4) QA surface: the live signed lean off the
   // Infamy↔Standing pole (>0 pirate / <0 governor / 0 neutral), its categorical pole, whether a
   // tint is currently laid on the scene, and the live graded haze — so a headless playtest can

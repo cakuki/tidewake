@@ -3119,6 +3119,53 @@ try {
   if (!(daynight.restored.haze === daynight.offDefault.haze)) fail(`day-night: OFF did not restore the sunny haze exactly (${daynight.restored.haze} != ${daynight.offDefault.haze})`);
   if (!(daynight.restored.sunIntensity === daynight.offDefault.sunIntensity)) fail('day-night: OFF did not restore the sunny sun intensity exactly');
 
+  // 2j-w) Optional weather (#88): OFF by default (clear look, ZERO weather draws). Flipping the
+  // toggle ON and jumping to a squall must SHIFT the sky/sea toward grey + dim the sun AND draw the
+  // cheap visuals (clouds + rain); the seeded cycle must progress deterministically through its
+  // states; it must COMPOSE on top of day-night (a squall greys the golden-hour look further) without
+  // breaking it; and flipping OFF must restore the clear default EXACTLY with zero weather draws.
+  const weather = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);
+    const offDefault = { ...tw.weather };                   // the clear default (toggle OFF)
+    // Deterministic state progression (the seeded cycle passes clear→clouds→squall→clearing).
+    tw.setOption('weather', true);
+    const progression = ['clear', 'clouds', 'squall', 'clearing'].map((_, i) => {
+      tw.setWeatherPhase([0.0, 0.30, 0.50, 0.72][i]); tw.step(0.05); return tw.weather.key;
+    });
+    // Determinism: re-jumping to the same phase yields the same state, twice.
+    tw.setWeatherPhase(0.50); tw.step(0.05); const squallA = { ...tw.weather };
+    tw.setWeatherPhase(0.10); tw.step(0.05);
+    tw.setWeatherPhase(0.50); tw.step(0.05); const squallB = { ...tw.weather };
+    // COMPOSE with day-night: golden hour alone, then a squall laid over it.
+    tw.setOption('weather', false); tw.setOption('daynight', true); tw.setDayPhase(0.70); tw.step(0.2);
+    const goldenClear = { ...tw.weather };                  // day-night only (weather off)
+    tw.setOption('weather', true); tw.setWeatherPhase(0.50); tw.step(0.2);
+    const goldenSquall = { ...tw.weather };                 // squall composed over golden hour
+    const daynightStillOn = tw.daynight.enabled;
+    // Flip BOTH off → back to the clear default, byte-for-byte, zero weather draws.
+    tw.setOption('daynight', false); tw.setOption('weather', false); tw.step(0.1);
+    const restored = { ...tw.weather };
+    return { offDefault, progression, squallA, squallB, goldenClear, goldenSquall, daynightStillOn, restored };
+  });
+  if (!('enabled' in weather.offDefault)) fail('weather: QA surface (tw.weather) missing');
+  if (weather.offDefault.enabled) fail('weather: should be OFF by default (clear stays default)');
+  if (!(weather.offDefault.draws === 0)) fail(`weather: OFF/clear must draw ZERO weather objects (draws=${weather.offDefault.draws})`);
+  if (JSON.stringify(weather.progression) !== JSON.stringify(['clear', 'clouds', 'squall', 'clearing'])) fail(`weather: cycle did not progress deterministically through its states (got ${JSON.stringify(weather.progression)})`);
+  if (!(weather.squallA.key === 'squall' && weather.squallA.darken > 0.35)) fail('weather: the squall did not become the heaviest, greyest state');
+  if (!(weather.squallA.darken === weather.squallB.darken && weather.squallA.key === weather.squallB.key)) fail('weather: the seeded cycle is not deterministic (same phase gave different weather)');
+  if (!(weather.squallA.draws >= 1)) fail(`weather: the squall drew NO visuals (clouds/rain) (draws=${weather.squallA.draws})`);
+  if (!(weather.squallA.haze !== weather.offDefault.haze)) fail('weather: the squall did not grey the sky/sea haze');
+  if (!(weather.squallA.sunIntensity < weather.offDefault.sunIntensity)) fail('weather: the squall did not dim the light');
+  // Composition: the squall greys the golden-hour look further, and day-night stays alive under it.
+  if (!weather.daynightStillOn) fail('weather: composing a squall broke the day-night cycle');
+  if (!(weather.goldenSquall.haze !== weather.goldenClear.haze)) fail('weather: a squall did not compose on top of day-night (golden hour unchanged)');
+  // OFF restores the clear default exactly, with zero weather draws.
+  if (weather.restored.enabled) fail('weather: cycle did not disable when toggled off');
+  if (!(weather.restored.haze === weather.offDefault.haze)) fail(`weather: OFF did not restore the clear haze exactly (${weather.restored.haze} != ${weather.offDefault.haze})`);
+  if (!(weather.restored.sunIntensity === weather.offDefault.sunIntensity)) fail('weather: OFF did not restore the clear sun intensity exactly');
+  if (!(weather.restored.draws === 0)) fail(`weather: OFF still drew weather objects — not a true no-op (draws=${weather.restored.draws})`);
+
   // 2j-2) Reputation-reactive world grade (#126, DL #4): the WORLD reflects who you're becoming.
   // A fresh captain sees the sunny default. Drive the ledger infamous → the cast turns colder and
   // lower-key (darker haze, dimmer sun); drive it lawful → warmer and brighter (warmer haze, lifted
@@ -4335,7 +4382,7 @@ try {
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
   console.log(`leak-invariant (#121): ${leak.N}× mode cycles · geom ${leak.baseline.geometries}→${leak.final.geometries} (+${leak.geomGrowth}) · tex ${leak.baseline.textures}→${leak.final.textures} (+${leak.texGrowth}) · worst transition ${leak.worstTransition.drawCalls} draws/${leak.worstTransition.triangles} tris`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, curios, curiosLive, props, islandStyle, leak, broadside, cballs, juicePass, ammoCycle, boarding, gun, gunPersist, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, weather, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, curios, curiosLive, props, islandStyle, leak, broadside, cballs, juicePass, ammoCycle, boarding, gun, gunPersist, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));
