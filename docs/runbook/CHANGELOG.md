@@ -4,6 +4,27 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #167 Challenge on demand shipped — epic #162 COMPLETE (Loop 121, v0.0.20260702014146).**
+  The payoff of the whole difficulty/stakes/variety lane: a player who WANTS a hard fight can now SEEK one
+  and get it. Danger is **FIXED BY REGION** (owner decision #162 — NO rubber-band): the safe home coast
+  breeds gentle prey; the deep sea breeds frigates and — out past the points — the withheld **WARSHIP
+  man-o'-war** (tier 5), now reachable if you sail out to meet her. A kill out there pays real fame:
+  **spoils scale by foe TIER**, the symmetric mirror of #164's tier-scaled loss sting (high risk, high
+  reward, both legible). The pure brain is new **`src/systems/danger.js`** (`regionDanger` maps a world
+  position → the region's danger cap; `regionalSpec` picks a region-appropriate class×role — deep = the
+  apex man-o'-war; DOM/THREE-free, unit-tested). `npc.js` now fixes each hull's class by its **spawn
+  region** and guarantees one deep-water man-o'-war hunter that patrols the deep (so the coasts stay
+  gentle); `spoils({…, tier})` in `cannons.js` adds a per-tier purse (`+15c/tier`, Infamy follows), with
+  `tier` defaulting to 0 so every legacy caller/test is byte-identical. **No new meshes** (the man-o'-war
+  reuses the #163 scaled mesh — perf 29/130 draws · ~93k/150k tris). Transient/positional — **NO save
+  bump (stays v17)**. +9 danger unit tests + a spoils tier-scaling test (1200 total); a playtest
+  §1b-challenge gate proves the FIXED rule out-classes the deep vs the coast, the warship man-o'-war roams
+  the tier-5 deep (reachable), reward climbs monotonically with tier, no rubber-band, save v17. Gallery
+  `challenge-on-demand-167.png`. **This CLOSES epic #162 — all 5 slices shipped: #163 ship classes →
+  #164 loss stings → #165 threat labels → #166 legible odds → #167 challenge on demand.** FUN: point the
+  bow at deadly water and FEEL the stakes rise (a bigger silhouette, redder skulls, a dire odds read) —
+  a tier-5 terror worth real Infamy; mastery finally has somewhere to aim.
+
 - **2026-07-02 — #166 Legible odds shipped — epic #162 "read whether you're favoured" (Loop 120, v0.0.20260702004439; salvaged after a 529).**
   The owner's fair-fight contract, made READABLE: "fair = clear, consistent rules WITH a bounded luck
   element — SKILL shifts the odds, LUCK swings the margin, and luck can't flip a strongly-favoured fight."
