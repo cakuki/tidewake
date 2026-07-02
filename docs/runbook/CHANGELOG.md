@@ -4,6 +4,28 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #88 Weather: the sky comes alive — clouds gather, a squall greys the sea, the
+  light dims (Loop 137, v0.0.PENDING; extends the #58 day-night system, behind its own #73-panel
+  toggle, DEFAULT OFF; #88 stays OPEN for heavier storm/wind follow-ups).** Ships the weather half of
+  #88 as the smallest high-charm increment: a seeded, deterministic weather cycle (clear → clouds →
+  squall → clearing) that composes ON TOP of day-night. Toggle ON and sail long enough and a front
+  comes on the wind — a distant cloud bank gathers on the horizon, a rain squall greys the sea and dims
+  the light, an occasional distant flash cracks over the swell — then it clears. PURE, TDD'd-first
+  `weather(phase)` + `applyWeather(base,w)` in `src/weather.js` (no three.js — THREE injected so it
+  stays node-testable; `darken=0` is a byte-for-byte no-op so clear === today's sky); a thin
+  `createWeather(refs)` factory composes on day-night's live palette each frame and owns the CHEAP
+  visuals — one instanced cloud ceiling (1 draw) + one GPU-shader rain particle system (1 draw,
+  `uTime`-animated, zero per-frame alloc). Wired at systems order 115 (after daynight 110, before
+  reputation-grade 120 — reputation eases from the weathered base, composes not compounds); new
+  `weather` toggle in the #73 panel (default OFF); QA surface `tw.weather` + `tw.setWeatherPhase`.
+  1369 unit tests (+9 new) + playtest green (new §2j-w gate: OFF = clear + ZERO weather draws / true
+  no-op, deterministic state progression, a squall greys+dims and draws 2, composes with day-night,
+  OFF restores byte-for-byte). Perf 29/130 draws · 92,780/150k tris with weather OFF (the default);
+  weather ON at squall adds only +2 draws; leak-invariant +0 (visuals built once, visibility-toggled).
+  **NO save change — stays v18.** Day-night (#58) / reputation-grade (#126) / battle stack / mobile
+  (#146) / mode-aware music all untouched. Gallery `studio/qa/gallery/weather-squall-88.png`.
+  **Remains (#88 OPEN):** heavier storm FX (bigger squall swell, forked lightning + thunder SFX,
+  wind-streaked rain) and GAMEPLAY weather (wind on the sails, reduced visibility) — the storm/wind follow-up.
 - **2026-07-02 — #129 Each harbour greets you with its own docked flourish (Loop 136,
   v0.0.20260702081147; the #69 per-town-music follow-up; #129 stays OPEN for the deeper follow-ups).**
   Deepen the shipped #69 per-town identity (a re-voiced drone) into a felt AUDIBLE beat: making landfall
