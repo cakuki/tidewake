@@ -769,7 +769,16 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
    per-mode disposal PARKED — blocked on #100 battle meshes.)_
 5. ~~**#110 — Living fauna phase 2: jumping dolphins**~~ **SHIPPED + CLOSED Loop 75 (v0.0.20260628094945)** — instanced pod arcs alongside the moving ship, deterministic + distance-culled, ≤1 extra draw. _#97 stays OPEN for phase 3 (other animals)._
 6. **#101 — props phase 3: loose props** (lanterns/market stalls **feed the town mode** #96/#103).
-   P2 from-owner. _(island dressing shipped via #71; texture-embed + extra variety PARKED.)_
+   P2 from-owner. _**LOOSE-PROPS SLICE SHIPPED (Loop 138, v0.0.20260702090316):** every port now
+   dresses its quay with glowing **lanterns** striding down the jetty + a little cluster of market
+   **stalls** at its foot — seeded per-town (the #129 identity gives its LOOK, not just its sound),
+   byte-stable per voyage, ONE instanced mesh per kind per port (≤2 extra draws), distance-culled
+   wholesale (0 at open sea), NO save change (v18). PURE `src/systems/town-props.js` + thin
+   `src/town-props-view.js`; composes with #101 dock cargo (barrels/crates/palms) + #174 growing quay.
+   Gallery `studio/qa/gallery/loose-props-101.png`._ **#101 STAYS OPEN** — deferred prop kinds:
+   hanging nets, rope coils, quayside flags/bunting, fish barrels/market goods; GLB lantern/stall
+   assets (currently procedural); count-scales-with-#174-growth-tier. _(island dressing shipped via
+   #71; texture-embed + extra variety PARKED.)_
 7. **#129 — Per-town music, richer** (the #69 full follow-up). P3 audio. _**DOCKED-CUE SLICE SHIPPED
    (Loop 136, v0.0.20260702081147):** making landfall now rings a dedicated per-town **docked cue** —
    voiced in the town's own key/mode with a per-town motif **shape** (rise/peal/call/lilt) + its

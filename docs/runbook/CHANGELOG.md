@@ -4,6 +4,19 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #101 Loose town props: the quay feels LIVED-IN — glowing lanterns + market stalls
+  (Loop 138, v0.0.20260702090316; props phase 3, #101 stays OPEN for more prop kinds).** Make landfall
+  and the port has warm **lanterns glowing** down the jetty and a little cluster of market **stalls** at
+  its foot — a port reads as a PLACE people live, not a bare marker. Seeded PER-TOWN off the port name
+  (the same FNV identity #129 gives its music, so a town LOOKS like itself and is byte-stable every
+  voyage). PURE, TDD'd-first `src/systems/town-props.js` (deterministic lantern/stall placement + cull,
+  reusing props.js `localToWorld` + `clusterVisible`/`PROP_CULL_RADIUS`); thin `src/town-props-view.js`
+  reveal — ONE merged instanced mesh per kind per port (lantern glows via emissive amber; stall is a red
+  canopy over a timber counter, two-tone via vertex colours), distance-culled wholesale. Cheap: ≤2 extra
+  draws only near a port, 0 at open sea; composes with the #101 dock cargo + #174 growing quay. NO save
+  change (v18). 1381 unit tests (+12 new) + playtest green (new §2p′: props placed, lantern/stall kinds,
+  culled to 0 at sea, drawn near a port, deterministic across a reload). Perf 31/130 draws · 93k/150k
+  tris. Gallery `studio/qa/gallery/loose-props-101.png`.
 - **2026-07-02 — #88 Weather: the sky comes alive — clouds gather, a squall greys the sea, the
   light dims (Loop 137, v0.0.20260702084748; extends the #58 day-night system, behind its own #73-panel
   toggle, DEFAULT OFF; #88 stays OPEN for heavier storm/wind follow-ups).** Ships the weather half of
