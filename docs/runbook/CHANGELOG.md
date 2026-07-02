@@ -4,6 +4,22 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #90 The Ballad sings your RISE — rank/hull/guns as deeds (Loop 133,
+  v0.0.20260702071856; post-RISE polish lane slice 2/4; #90 stays OPEN as the Ballad umbrella).**
+  THE RISE created rich progression the end-of-voyage Ballad couldn't yet narrate. Added three
+  live-recorded deed types to `src/voyage-log.js` so the voyage reads its own climb back as a story,
+  not just numbers: **rank** climbed (#169, pole-shaded "rose to Corsair"), **ship** bought (#171,
+  named as a trade "the sloop for a frigate"), **gun** fitted (#170, singing the new broadside total).
+  Each fires from the LIVE RISE event (rank-up crossing / shipwright / gunsmith purchase) into the
+  existing deed stream, woven into the composition + the #149 share-card for free; **bounty** (#173)
+  and **harbour-grow** (#174) were already wired and singing. Deeds fail open in `sanitizeLog`, so NO
+  persisted-field / schema change — **save stays v18**. Pure logic TDD'd (record / dedupe-per-milestone
+  / pole-lean / compose; +10 unit tests, 1340 total); playtest §2b7b-ballad drives the live hooks and
+  asserts each RISE event contributes its verse (rank→"Reaver", gun→"5 guns", ship→"sloop→brig") and the
+  surrounding composition (opening · superlative · closing tally · footer) still holds; text-only, 0
+  draws. **Remains (#90 open):** the seeded "daily voyage" tie-in, PNG share via the mobile Web Share
+  API, further mood/length variation, and deed types that would need a new tracked field / #122 migration
+  (best profitable trade, coin milestones as their own verse, ports charted). #80 climax-juice next.
 - **2026-07-02 — #175 Dread's HEAR half shipped — a fearful hail NAMES you when the sea blinks
   (Loop 132, v0.0.20260702070249; post-RISE polish lane slice 1/4).** #172 shipped dread's SEE + FEEL
   (a weak, outclassed ship flees on sight / strikes her colours early to a feared, bigger captain) but

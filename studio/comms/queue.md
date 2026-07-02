@@ -48,12 +48,19 @@ Brief [`docs/briefs/2026-07-02-post-rise-polish.md`](https://github.com/cakuki/t
   cry (text matches title/tier), anti-repeat, apex→silent, early-strike→named, peer strike→silent; text+audio = 0
   draws; **NO save bump (v18).** Your Infamy is now something you HEAR.
 
-- **#90 — The Ballad sings your RISE (S · software-developer + writer). BUILD NEXT. Reuse #90.** The voyage-log recorder is
-  pure + extensible (add a `sanitizeEvent` case + a narrator line), and THE RISE just created rich new deed material
-  it can't yet narrate. Add deed types for the arc the player just lived — **rank climbed** (#169), **a bounty
-  claimed** (#173), **a bigger ship bought** (#171), **a port grown** (#174) — so the end-of-voyage Ballad reads
-  the rise back to you. **FUN:** SEE your climb narrated as a story ("…rose to Corsair, ran down the Grey Gull, and
-  set a frigate under her flag"). Builds on `src/voyage-log.js` — **NO save bump.**
+- **✅ #90 — The Ballad sings your RISE — SHIPPED (this loop, v0.0.20260702… below). Umbrella STAYS OPEN.**
+  Added THREE live-recorded deed types so the end-of-voyage Ballad narrates the arc the player just lived:
+  **rank** climbed (#169, pole-shaded "rose to Corsair") · **ship** bought (#171, named as a trade "the sloop for
+  a frigate") · **gun** fitted (#170, sings the new broadside total). Each fires from the LIVE RISE event
+  (rank-up crossing / shipwright / gunsmith) into the existing deed stream, woven into the composition + the #149
+  share-card for free. **bounty** (#173) and **harbour-grow** (#174) were ALREADY wired and singing — no change
+  needed. Deeds fail open in `sanitizeLog` so **NO save bump (stays v18)**; pure logic TDD'd, playtest asserts each
+  live RISE event contributes its verse and the surrounding composition (opening · superlative · closing · footer)
+  holds; text-only, 0 draws. **FUN delivered:** SEE your climb read back as a story.
+  **Remains (why #90 stays OPEN):** the seeded "daily voyage" shareable-ballad tie-in; PNG share via the mobile
+  Web Share API (beyond download); further mood/length variation; deed types that would need a NEW tracked field /
+  #122 migration (best profitable trade, coin milestones as their own verse, ports/waters charted) — deliberately
+  NOT built here to hold the save at v18.
 
 - **#80 — Climax juice: the kill & the surrender LAND (S · game-designer + software-developer). Reuse #80
   (deferred events).** #80's juice pass shipped the broadside; its deferred events (kill time-dilation · the
