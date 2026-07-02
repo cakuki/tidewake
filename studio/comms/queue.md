@@ -62,13 +62,17 @@ Brief [`docs/briefs/2026-07-02-post-rise-polish.md`](https://github.com/cakuki/t
   #122 migration (best profitable trade, coin milestones as their own verse, ports/waters charted) — deliberately
   NOT built here to hold the save at v18.
 
-- **#80 — Climax juice: the kill & the surrender LAND (S · game-designer + software-developer). Reuse #80
-  (deferred events).** #80's juice pass shipped the broadside; its deferred events (kill time-dilation · the
-  surrender beat · harbour settle) are the RISE's climaxes going unjuiced. Add a beat of **hit-stop + light
-  time-dilation on a bounty-target sinking/capture** (#173) and a **camera settle on "she strikes her colours"**
-  (#172) — each short, event-tied, and **toggle-able via the #73 settings panel** (juice echoes the mechanic,
-  never masks it). **FUN:** FEEL the notorious kill land with weight; the surrender beat gets its exhale. Reuses
-  the shipped juice rig — **NO save bump.**
+- **✅ #80 — Climax juice: the kill & the surrender LAND — SHIPPED (Loop 134, v0.0.20260702074006). #80 STAYS OPEN.**
+  Built the two deferred climax events on the SAME `juice.js` rig (the shake stack + the real-time hit-stop drain),
+  NOT a new system: a **NOTORIOUS-kill** beat — sinking a wanted **bounty vessel** (#173) lands the full (capped)
+  hit-stop THEN a **bounded beat of SLOW-MO** (time-dilation) before the world snaps back (an ordinary kill still
+  just `sink()`s); and a **camera SETTLE** — "she strikes her colours" (#135/#172 surrender) eases the camera to a
+  HUSH (a smooth sin-breath, never a shake, camera-only). Slow-mo drains on REAL time inside `consumeHitStop`
+  (bounded [min,1], never 0), so it always auto-resumes and can never stall the loop / desync the sim clock; the
+  deterministic `tw.step()` path never calls it (#121 pristine). Both fully suppressed by the "Combat feel" toggle +
+  `prefers-reduced-motion`. Pure curves (`timeScale`/`settleEnvelope`) TDD'd; **NO save bump (v18).**
+  **Remains (why #80 stays OPEN):** the **harbour docking ease/settle** juice, the boarding rail-clash screenshake —
+  both still-deferred #80 follow-ups, not blockers. **#70 curio next.**
 
 - **#70 — One new sea curio (S · game-designer + software-developer). [STANDING-RULE] — the 1–2-per-loop drip.**
   Honour the standing #70 rule with one fresh ocean micro-detail that keeps the world alive between the big beats —
@@ -78,8 +82,8 @@ Brief [`docs/briefs/2026-07-02-post-rise-polish.md`](https://github.com/cakuki/t
   **NO save bump.**
 
 **Sequencing note:** the remaining slices are unblocked, buildable now, original, in-vision, and carry **NO save bump** —
-**3 READY build slices → the loop stays in DELIVERY.** #175 shipped (Loop 132); **#90 leads next** (the Ballad weaves
-the arc), then the climax juice (#80), then the curio (#70) keeps the drip alive. This is a
+**1 READY build slice left → the loop stays in DELIVERY.** #175 (Loop 132), #90 (Loop 133), #80 climax juice (Loop 134)
+all shipped; **#70 curio is the last slice of this lane** and keeps the sea-delight drip alive. This is a
 **deliberate consolidation lane** — small, cheap, low-risk — chosen over a third big epic while the owner reacts to
 THE RISE. The owner-decision items below are **questions to surface, NOT build blockers.**
 

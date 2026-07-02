@@ -4,6 +4,20 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #80 Climax juice — a notorious kill slow-mos, a surrender hushes the camera (Loop 134,
+  v0.0.20260702074006; post-RISE polish lane slice 3/4; #80 stays OPEN for the deferred harbour-settle beat).**
+  Built #80's two deferred climax events on the SAME `src/systems/juice.js` rig (the shake stack + the
+  real-time hit-stop drain), NOT a new system: `bountyKill()` — sinking a wanted **bounty vessel** (#173)
+  lands the full (capped) hit-stop THEN a **bounded beat of slow-mo** (time-dilation) before the world
+  snaps back, so a notorious kill FEELS like a moment (an ordinary kill still `sink()`s); and
+  `cameraSettle()` — "she strikes her colours" (#135/#172) eases the camera to a HUSH (a smooth sin-breath,
+  never a shake, camera-only). Safety: the slow-mo drains on REAL wall-clock time inside `consumeHitStop`
+  (the only place it falls), bounded to [min,1] and never 0, so it always auto-resumes and can never stall
+  the loop or desync the sim clock; the deterministic `tw.step()` path never calls it, so the fixed sim /
+  #121 mesh-conservation gate stays pristine. Both beats fully suppressed by the "Combat feel" toggle +
+  `prefers-reduced-motion`. Pure curves TDD'd (`timeScale`, `settleEnvelope`); 1349 unit tests + playtest
+  (real bounty-kill → slow-mo, real surrender → settle, decay-to-zero, no-stall, toggle-off) green; 0 extra
+  draws (camera/time only). **NO save-schema change — stays v18.** Remains: the harbour docking ease/settle.
 - **2026-07-02 — #90 The Ballad sings your RISE — rank/hull/guns as deeds (Loop 133,
   v0.0.20260702071856; post-RISE polish lane slice 2/4; #90 stays OPEN as the Ballad umbrella).**
   THE RISE created rich progression the end-of-voyage Ballad couldn't yet narrate. Added three
