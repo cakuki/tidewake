@@ -4,6 +4,18 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #94 phase 2: rotating sea themes — the open sea evolves over a long voyage
+  (Loop 141, v0.0.20260702100127; audio/fun, #94 STAYS OPEN for phases 4/5).** The once-static open-sea
+  bed now rotates through 4 pairwise-distinct AIRS — a mode + transposition RECOLOUR of the SAME
+  procedural bed (no percussive bed, no `loadTrack`; the #132/#158 discipline): home Ionian hornpipe →
+  salty Mixolydian trade-wind roll → wistful Dorian deep-water air (a fourth down) → airy Lydian
+  fair-horizon lift (a step up). A new air cross-fades in ON a bar downbeat every 8 bars (~18s, one
+  melodic pass), seeded and deterministic (PURE `src/systems/sea-themes.js`, TDD'd first). The rotation
+  yields cleanly to town (#129) and battle (#158) music (sea-clock freezes, resumes on the same air
+  under sail); a fresh voyage opens on home. NO save change (v18). Gates: npm test 1412/1412 green;
+  playtest PASSED (rotation deterministic + distinct + yields/resumes vs town+battle); perf 31/130
+  draws · 93188/150000 tris (audio = 0 draws).
+
 - **2026-07-02 — #21 Cleaner persistent status HUD: read who you are + what you have at a glance
   (Loop 140, v0.0.20260702093932; polish/legibility, #21 CLOSED).** THE RISE (#168) had piled coins,
   rank/title, the ⚔/⚖ reputation ledger, the needle and the legend crown onto the always-on corner HUD

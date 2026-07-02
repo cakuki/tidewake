@@ -810,9 +810,18 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
 
 ## #94 remaining phases (P1 OPEN — but phase-1 headline acceptance is MET; not top-of-queue)
 
-10. **#94 — rotating sea themes** (phase 2) + **real battle cue** (phase 4, rides #100) + **real audio
-    files behind `loadTrack`** (phase 5 — **PARKED on an asset/owner decision**). #69 (phase 3, per-town)
-    is promoted to the top trio above. _Proximity crossfade + mode-aware bed already shipped (Loop 50)._
+10. **#94 — phase 2 ✅ ROTATING SEA THEMES SHIPPED (Loop 141, v0.0.20260702100127). #94 STAYS OPEN for
+    phases 4/5.** The open sea now EVOLVES over a long voyage — it rotates through 4 pairwise-distinct
+    sea AIRS (a mode + transposition RECOLOUR of the SAME procedural bed — no percussive bed, no
+    `loadTrack`, the #132/#158 discipline): the home Ionian hornpipe you cast off in, a salty MIXOLYDIAN
+    trade-wind roll, a wistful DORIAN deep-water air a fourth down, an airy LYDIAN fair-horizon lift a
+    step up. A new air cross-fades in ON a bar downbeat every 8 bars (~18s, one melodic pass), seeded &
+    deterministic (`src/systems/sea-themes.js`, PURE TDD'd first). The rotation YIELDS cleanly to town
+    (#129) and battle (#158) music — the sea-clock freezes while they own the mix and resumes on the
+    same air under sail (no double-bed). A fresh voyage always opens on home. **NO save bump (v18).**
+    **Remains (phase 4):** real battle cue rides #100. **Remains (phase 5 — PARKED on an asset/owner
+    decision):** real audio files behind `loadTrack`. #69 (phase 3, per-town) shipped (#129).
+    _Proximity crossfade + mode-aware bed shipped Loop 50; rotating themes this loop._
 11. **#109 — mode-aware audio craft** (constant-power crossfade · bar-clock transitions · procedural
     per-mode reverb · modal recolour). P3 audio. _Rides #94._
 12. **#108 — per-mode perf budget + throttle world work in town** (gate ocean/wake + DPR by mode).
