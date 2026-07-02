@@ -5,7 +5,7 @@ files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — th
 `LOOP.md` itself stays lean.
 
 - **2026-07-02 — #88 Weather: the sky comes alive — clouds gather, a squall greys the sea, the
-  light dims (Loop 137, v0.0.PENDING; extends the #58 day-night system, behind its own #73-panel
+  light dims (Loop 137, v0.0.20260702084748; extends the #58 day-night system, behind its own #73-panel
   toggle, DEFAULT OFF; #88 stays OPEN for heavier storm/wind follow-ups).** Ships the weather half of
   #88 as the smallest high-charm increment: a seeded, deterministic weather cycle (clear → clouds →
   squall → clearing) that composes ON TOP of day-night. Toggle ON and sail long enough and a front

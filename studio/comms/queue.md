@@ -838,7 +838,7 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
 17. **#15 — comedic loading-tip line pool.** — _humour surface, near-zero cost._
 18. **#21 — HUD coins placeholder + cleaner layout.** — _legibility; sets up future HUD work._
 19. **#88 — full weather (rain/storm/clouds), optional behind the #73 toggle.** — _extends day-night._
-    **SHIPPED (Loop 137, v0.0.PENDING, #88 STAYS OPEN):** a seeded, deterministic weather cycle
+    **SHIPPED (Loop 137, v0.0.20260702084748, #88 STAYS OPEN):** a seeded, deterministic weather cycle
     (clear → clouds → squall → clearing) behind its OWN `weather` toggle in the #73 panel (default
     OFF), composing on top of day-night — a cloud bank gathers on the horizon, a rain squall greys the
     sea + dims the light, a distant flash cracks over the swell, then it clears. PURE `weather()` +
