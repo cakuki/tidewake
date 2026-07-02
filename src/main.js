@@ -42,6 +42,7 @@ import { softenDebutFoe, debutPending, debutPhase, debutCue } from './systems/de
 import { brawlMoraleDent, brawlCasualties, duelConfidenceDent, prizeFork } from './systems/board.js';
 import { AMMO, AMMO_TYPES, ammoProfile, defaultLoadout, fitAmmo } from './systems/ammo.js';
 import { createJuice, ammoWeight } from './systems/juice.js';
+import { createCoinsPulse } from './systems/coins-pulse.js';
 import { createNegativeSpace, SWELL_SECONDS } from './systems/negative-space.js';
 import { createProjectiles, classifyShot, BALL_POOL, FX_POOL, FX_SIZE } from './systems/projectiles.js';
 import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
@@ -776,6 +777,16 @@ function prefersReducedMotion() {
 }
 const juice = createJuice({ reducedMotion: prefersReducedMotion() });
 
+// Coins-delta pulse (#181): the small visible+audible feedback beat on every coin change — the #21 HUD
+// coins readout POPS (scale + colour: green on a gain, red on a spend/loss), a small delta floats + fades
+// ("+400" / "−250"), and a soft coin chime rings (bright on a gain, a duller tick on a spend). PURELY
+// presentation off the existing state.coins value — no economy/save change (stays v18). Fires ONLY on a
+// real change (never every frame). The visual pop rides the SAME prefers-reduced-motion + Combat-feel
+// toggle as the juice; the chime is separate audio (audio.js owns its mute), so a reduced-motion player
+// still HEARS the transaction land. Pure controller lives in src/systems/coins-pulse.js; a system below
+// feeds it state.coins each frame + plays the chime, and loop() paints the readout from its read-outs.
+const coinsPulse = createCoinsPulse({ reducedMotion: prefersReducedMotion() });
+
 // Negative space (#179): the held breath before the payoff. A short anticipatory HUSH (the combat bus
 // ducks to near-silence) BEFORE a surrender sting, and a charged SWELL + warm colour-grade PULSE that
 // hold the rank-up crown until the build releases on a bass thunk — so ALREADY-SHIPPED climaxes land
@@ -1485,9 +1496,10 @@ settings.register({
 // zero screen motion; setEnabled clears any live effect so there's no residual jolt.
 settings.register({
   id: 'combatfeel', label: 'Combat feel', hint: 'screen-shake & hit-stop on a solid hit — motion',
-  // The SAME switch governs the #179 negative-space beats (hush/swell/pulse): off → the payoff still
-  // fires (never lost), just instantly, with no held breath, duck, swell or grade flare.
-  default: true, apply: (on) => { juice.setEnabled(on); negspace.setEnabled(on); },
+  // The SAME switch governs the #179 negative-space beats (hush/swell/pulse) AND the #181 coins-delta
+  // POP: off → the payoff still fires (never lost), just instantly, with no held breath, duck, swell,
+  // grade flare or coin swell. (The coin CHIME still rings on a change — audio.js owns its own mute.)
+  default: true, apply: (on) => { juice.setEnabled(on); negspace.setEnabled(on); coinsPulse.setEnabled(on); },
 });
 settings.init(); // builds the panel, wires the O / Esc keys, applies the saved/default toggles
 
@@ -2084,6 +2096,43 @@ systems.register({ name: 'battle-camera', order: 52, when: () => battle.state.ac
 //   headless-safe). loop() reads juice.cameraOffset()/flashLevel() and applies the 0-draw shake +
 //   flash AFTER the camera systems have set the base pose, so the kick rides on top of the framing.
 systems.register({ name: 'juice', order: 56, update: (f) => juice.update(f.dt) });
+// — coins-delta pulse (#181): observe the live purse each frame; on a REAL change classify it, ring the
+//   coin chime (bright on a gain, a duller tick on a spend) and arm the visual pop, age it out on the sim
+//   clock, then PAINT the #21 HUD readout (the number POPS + tints green/red, a small delta floats up +
+//   fades). Presentation-only: it reads state.coins, never writes it, so the economy + save schema are
+//   untouched. The paint lives in this system (like the hud-* renderers below) — 0-draw (a CSS transform
+//   + one span's opacity) — so it updates deterministically under tw.step() too, not only in the rAF loop.
+const coinsNumEl = document.getElementById('coins');
+const coinsDeltaEl = document.getElementById('coins-delta');
+const COIN_GAIN_COLOUR = '#4ade80', COIN_SPEND_COLOUR = '#f87171';
+let coinsPulseWasActive = false; // touch the DOM only while it pops, then rest it once (no per-frame churn)
+function paintCoinsPulse() {
+  if (!coinsNumEl) return;
+  const cp = coinsPulse.snapshot();
+  if (cp.active) {
+    coinsNumEl.style.transform = `scale(${cp.scale.toFixed(3)})`;
+    coinsNumEl.style.color = cp.kind === 'spend' ? COIN_SPEND_COLOUR : COIN_GAIN_COLOUR;
+    if (coinsDeltaEl) {
+      coinsDeltaEl.textContent = cp.deltaText;
+      coinsDeltaEl.classList.toggle('gain', cp.kind === 'gain');
+      coinsDeltaEl.classList.toggle('spend', cp.kind === 'spend');
+      coinsDeltaEl.style.opacity = cp.level.toFixed(3);
+      coinsDeltaEl.style.transform = `translateY(${(-6 * (1 - cp.level)).toFixed(1)}px)`; // drift up as it fades
+    }
+    coinsPulseWasActive = true;
+  } else if (coinsPulseWasActive) {
+    coinsNumEl.style.transform = '';
+    coinsNumEl.style.color = '';
+    if (coinsDeltaEl) { coinsDeltaEl.style.opacity = '0'; coinsDeltaEl.textContent = ''; }
+    coinsPulseWasActive = false;
+  }
+}
+systems.register({ name: 'coins-pulse', order: 59, update: (f) => {
+  const r = coinsPulse.observe(f.state.coins ?? 0);
+  if (r.changed && r.kind) { try { audio.playCoin(r.kind); } catch { /* a coin cue must never break the frame */ } }
+  coinsPulse.update(f.dt);
+  paintCoinsPulse();
+} });
 // — negative space (#179): drain the hush/swell/pulse beats on the SAME clock the juice ages on, so a
 //   deferred surrender sting / rank-up crown releases deterministically (testable under tw.step) and in
 //   real play. Audio/visual only — it owns NO sim freeze, so tw.step() and the #121 mesh gate stay
@@ -3240,6 +3289,13 @@ window.__tidewake = {
   negspaceCharge() { negspace.charge(() => { nsQa.thunk += 1; }); return negspace.snapshot(); },
   negspaceConsume(dt = 1 / 60) { negspace.consume(dt); return negspace.snapshot(); },
   negspaceSetEnabled(on) { negspace.setEnabled(on); return negspace.snapshot(); },
+  // Coins-delta pulse (#181) — read the live pop for the headless gate (gain/spend/no-change/delta-shown),
+  // and drive the pure controller deterministically. observe() feeds it a coin total exactly as the live
+  // system does; the toggle proves the reduced-motion/Combat-feel suppression path.
+  get coinsPulse() { return coinsPulse.snapshot(); },
+  coinsPulseObserve(coins) { return coinsPulse.observe(coins); },
+  coinsPulseUpdate(dt = 1 / 60) { coinsPulse.update(dt); return coinsPulse.snapshot(); },
+  coinsPulseSetEnabled(on) { coinsPulse.setEnabled(on); return coinsPulse.snapshot(); },
   engageBattle() { return battle.engage(); },
   fleeBattle() { return battle.flee(); },
   battleFire() { return battleFireJuiced(); },

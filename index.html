@@ -183,6 +183,17 @@
     #hud .hud-sep { opacity: .4; }
     /* Phone portrait (#146): trim the label column so the grouped rows never crowd a small screen. */
     @media (max-width: 560px) { #hud .hud-row .hud-k { min-width: 54px; } #hud { font-size: 12.5px; } }
+    /* Coins-delta pulse (#181): the coins number pops (scale + colour) and a small delta floats up +
+       fades on every real coin change — main.js drives the transform/opacity from the pure
+       src/systems/coins-pulse.js read-outs. The delta is position:absolute (out of flow), so it can
+       never reflow the row or grow the #21 HUD group's measured rect (the safe-zone gate is unaffected). */
+    #hud .coins-wrap { position: relative; display: inline-block; }
+    #hud #coins { display: inline-block; transform-origin: left center; will-change: transform; }
+    #hud .coins-delta { position: absolute; left: calc(100% + 4px); bottom: 100%; font-size: 11px;
+      font-weight: 700; line-height: 1; white-space: nowrap; pointer-events: none; opacity: 0;
+      text-shadow: 0 1px 2px rgba(0,0,0,.65); will-change: opacity, transform; }
+    #hud .coins-delta.gain { color: #4ade80; }
+    #hud .coins-delta.spend { color: #f87171; }
     #ledger #rank { color: #ffcf6e; }
     #ledger #infamy { color: #ff9a8a; }
     #ledger #standing { color: #87e0a4; }
@@ -1052,7 +1063,7 @@
     </div>
     <div class="hud-group hud-status">
       <div class="hud-cap">Captain</div>
-      <div class="hud-row"><span class="hud-k">Coins</span><b><span id="coins">100</span></b> <span class="hud-sep">·</span> Hold <b><span id="cargo">0/12</span></b></div>
+      <div class="hud-row"><span class="hud-k">Coins</span><b class="coins-wrap"><span id="coins">100</span><span id="coins-delta" class="coins-delta" aria-hidden="true"></span></b> <span class="hud-sep">·</span> Hold <b><span id="cargo">0/12</span></b></div>
       <div id="ledger" title="⚔ Infamy (pirate path) · ⚖ Standing (governor path)">⚔ <b><span id="infamy">0</span></b> · ⚖ <b><span id="standing">0</span></b> · <b><span id="rank">Bilge-rat</span></b><span id="rankprog"></span></div>
       <!-- Reputation needle (#132): the gauge swings toward your pole — ⚖ Standing (left) ↔ ⚔ Infamy
            (right) — and strikes on every felt shift. The pointer pivots about (32,30). -->

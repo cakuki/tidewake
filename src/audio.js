@@ -793,6 +793,51 @@ export function createAudio(opts = {}) {
     }
   }
 
+  // ---- Coins-delta chime (#181) --------------------------------------------
+  //
+  // The audible half of the coins-delta pulse: a soft one-shot the moment the purse CHANGES, coloured
+  // by direction so earning and spending FEEL different (Sound Engineer: proportionate, a grace note,
+  // never a fanfare — the RISE loop's earn→spend made audible). A GAIN rings a bright little coin
+  // shimmer that lifts; a SPEND ticks a duller, damped fall. Both hang off sfxGain (under the master),
+  // so the existing mute silences them, and every voice is guarded — a coin cue must never break the loop.
+
+  // GAIN: a bright two-note coin ring up + an octave sparkle — coins clinking into the purse.
+  function sfxCoinGain(t0, dest) {
+    const f1 = semitoneToFreq(12); // A5
+    const f2 = semitoneToFreq(19); // E6 — a rising perfect fifth, bright + glad
+    tone(t0, 0.16, 0.085, 'triangle', f1, f1, dest, 0.005);
+    tone(t0 + 0.045, 0.20, 0.075, 'triangle', f2, f2, dest, 0.005);
+    tone(t0 + 0.045, 0.16, 0.03, 'sine', f2 * 2, f2 * 2, dest, 0.01); // a high shimmer crowning it
+  }
+
+  // SPEND: a duller, damped tick that falls — coin leaving the purse. Softer + shorter than the gain.
+  function sfxCoinSpend(t0, dest) {
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 1200; // damp the brightness so a spend reads heavier than a gain
+    lp.Q.value = 0.6;
+    lp.connect(dest);
+    tone(t0, 0.12, 0.08, 'triangle', semitoneToFreq(-1), semitoneToFreq(-8), lp, 0.004); // G#4 → C4, a short fall
+    noiseTick(t0, 0.05, 0.03, 480, 0.7, dest); // a soft dull tick under it
+  }
+
+  /**
+   * Play the coin chime for a purse change. No-op until a real gesture has the engine running, so a
+   * headless run (no context) is silent and never throws.
+   * @param {'gain'|'spend'} kind  which way the coins moved
+   */
+  function playCoin(kind) {
+    if (!ctx || ctx.state !== 'running' || !master) return;
+    try {
+      const dest = sfxGain || master;
+      const t0 = ctx.currentTime + 0.005;
+      if (kind === 'gain') sfxCoinGain(t0, dest);
+      else if (kind === 'spend') sfxCoinSpend(t0, dest);
+    } catch {
+      /* a coin cue must never break the loop */
+    }
+  }
+
   function refreshButton() {
     try {
       const btn = globalThis.document?.getElementById('audio-toggle');
@@ -912,5 +957,5 @@ export function createAudio(opts = {}) {
     onGesture();
   }
 
-  return { init, setMute, isMuted, update, attachMusic, playDuelHit, playRepSting, playCurio, setDuck, playStrike, playSwell, unlock };
+  return { init, setMute, isMuted, update, attachMusic, playDuelHit, playRepSting, playCurio, setDuck, playStrike, playSwell, playCoin, unlock };
 }

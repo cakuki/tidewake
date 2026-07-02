@@ -22,6 +22,7 @@ import { BOOT_TIPS, pickTip } from '../src/boot-tips.js'; // #15: the wry boot-t
 import { fearRigging, TROPHY1_AT, TROPHY2_AT, SAIL_BLACK_AT } from '../src/systems/fear-rigging.js'; // #177: fear you can SEE — the pure Infamy→fear-features map
 import { defeatLedger } from '../src/renown.js'; // #177: prove a REAL #164 defeat dent strips a trophy off the LIVE rigging
 import { windFactor, sailSpeed } from '../src/physics.js'; // #178: the weather gage — the ONE bounded point-of-sail rule BOTH hulls obey
+import { createCoinsPulse, classifyDelta, formatDelta } from '../src/systems/coins-pulse.js'; // #181: the coins-delta pulse — earn→spend made responsive (change-detect + gain/spend classify + delta format)
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
@@ -150,6 +151,37 @@ try {
     // schema is v18 as of THE RISE's gun upgrade (#170, the lane's one bump); #167 contributes nothing to it.
     if (SAVE_VERSION !== 18) fail(`save schema pin: expected v18 (THE RISE gun upgrade #170), got v${SAVE_VERSION} — regional danger (#167) still adds no persisted field`);
     if (process.exitCode !== 1) console.log(`  ✓ challenge on demand (#167): the FIXED rule out-classes the deep (tier ${deepRuleTier}) vs the coast (tier ${coastRuleTier}); the warship man-o'-war (tier 5) roams the deep (r ${manowar ? manowar.r.toFixed(0) : '?'} ≥ ${DEEP_R}) above the tamest hull (region ${coast.region}/tier ${coast.tier}) — reachable by sailing to danger; reward scales (t1 ${prey.coins}c → t5 ${terror.coins}c); fixed-by-region, no rubber-band, save v${SAVE_VERSION}`);
+  }
+
+  // 1e-coinpulse-pure) COINS-DELTA PULSE (#181) — the PURE gate: the change-detector, the gain/spend
+  // classification, the delta formatting and the reduced-motion suppression, driven deterministically
+  // off a fresh controller (no rAF race). The LIVE end-to-end wiring (the #21 HUD number pops + tints,
+  // the delta span reads, the coin chime rings) is proven page-side in 2b3-coinpulse below.
+  {
+    // classify + format: a gain rings bright green "+N", a spend ticks dull red "−N", no change is silent.
+    if (classifyDelta(400) !== 'gain' || classifyDelta(-250) !== 'spend' || classifyDelta(0) !== 'none') {
+      fail(`coins-delta pulse (#181): classifyDelta is wrong (+400 ${classifyDelta(400)} / −250 ${classifyDelta(-250)} / 0 ${classifyDelta(0)})`);
+    }
+    if (formatDelta(400) !== '+400' || formatDelta(-250) !== '−250') fail(`coins-delta pulse (#181): formatDelta is wrong (+400→${formatDelta(400)} / −250→${formatDelta(-250)})`);
+    if (formatDelta(-250).charCodeAt(0) !== 0x2212) fail('coins-delta pulse (#181): a spend delta must use a real U+2212 minus sign, not a hyphen');
+    // change-detector: seed silent, GAIN pops "gain"+delta, SPEND pops "spend"+delta, NO-CHANGE silent.
+    const cp = createCoinsPulse();
+    if (cp.observe(100).changed) fail('coins-delta pulse (#181): the first observe (initial purse) must NOT pop');
+    const g = cp.observe(500); // +400
+    if (!(g.changed && g.kind === 'gain' && g.delta === 400 && cp.active() && cp.deltaText() === '+400')) fail(`coins-delta pulse (#181): a GAIN did not pop gain/+400 (${JSON.stringify(g)}, active ${cp.active()}, delta "${cp.deltaText()}")`);
+    if (!(cp.scale() > 1)) fail('coins-delta pulse (#181): the coins number must swell on a pop');
+    const s = cp.observe(250); // −250
+    if (!(s.changed && s.kind === 'spend' && s.delta === -250 && cp.tint() === 'spend' && cp.deltaText() === '−250')) fail(`coins-delta pulse (#181): a SPEND did not pop spend/−250 (${JSON.stringify(s)}, tint ${cp.tint()}, delta "${cp.deltaText()}")`);
+    for (let i = 0; i < 8; i++) { const n = cp.observe(250); if (n.changed) fail('coins-delta pulse (#181): a STEADY purse fired again — the pop must not re-trigger every frame'); }
+    cp.update(1); // drain past the window
+    if (cp.active()) fail('coins-delta pulse (#181): the pop did not age out');
+    // reduced-motion: a change still CLASSIFIES (so the gentle chime can play) but the VISUAL pop is off.
+    const rm = createCoinsPulse({ reducedMotion: true });
+    rm.observe(100);
+    const rg = rm.observe(700); // +600 while reduced-motion
+    if (!(rg.changed && rg.kind === 'gain')) fail('coins-delta pulse (#181): reduced-motion must still detect + classify a change (for the chime)');
+    if (rm.active() || rm.scale() !== 1 || rm.deltaText() !== '') fail('coins-delta pulse (#181): the VISUAL pop must be suppressed under reduced-motion');
+    if (process.exitCode !== 1) console.log('  ✓ coins-delta pulse (#181) [pure]: change-detected once per real change, gain→green +N / spend→red −N (U+2212), no-change silent, reduced-motion suppresses the pop but still classifies for the chime');
   }
 
   // 2) it sails: throttle up and confirm speed climbs and position changes
@@ -917,6 +949,53 @@ try {
       await page.evaluate(() => { window.__tidewake.fleeBattle(); window.__tidewake.step(0.05); });
     }
     if (process.exitCode !== 1) console.log(`  ✓ cleaner status HUD (#21): grouped into SAILING + CAPTAIN, every RISE field kept (coins/⚔/⚖/rank/needle/crown), fits desktop + phone-portrait, anchored top-left clear of the framed hull${hudBattle.engaged ? `, no overlap with the fight stack (${hudBattle.battleShown.join(',')})` : ''} — status reads at a glance`);
+  }
+
+  // 2b3-coinpulse) COINS-DELTA PULSE (#181): the RISE loop earn→spend made RESPONSIVE — every coin change
+  // now gives feedback you can SEE (the #21 coins readout pops + tints, a "+400"/"−250" delta floats) and
+  // HEAR (a coin chime, bright on a gain / a duller tick on a spend). Prove the LIVE end-to-end wiring off
+  // the real system + DOM: a GAIN pops "gain" with the "+" delta in the live #coins-delta span; a SPEND
+  // pops "spend" with the "−" delta; a held-steady purse ages the pop out and NEVER re-pops (not every
+  // frame); the Combat-feel toggle OFF suppresses the visual pop. Presentation-only — assert the save
+  // schema is untouched (stays v18). (Perf ≤130 draws + zero console errors are the global gates.)
+  {
+    const r = await page.evaluate(() => {
+      const tw = window.__tidewake;
+      tw.coinsPulseSetEnabled(true);
+      const dom = () => document.getElementById('coins-delta');
+      const num = () => document.getElementById('coins');
+      // GAIN — claim a bounty: seed the observer at 100, then jump to 500 (+400).
+      tw.qaSetLedger({ coins: 100 }); tw.step(1 / 60);
+      tw.qaSetLedger({ coins: 500 }); tw.step(1 / 60);
+      const gain = tw.coinsPulse;
+      const gainDom = { text: dom()?.textContent || '', gainCls: !!dom()?.classList.contains('gain'), opacity: dom()?.style.opacity || '', numColour: num()?.style.color || '' };
+      // SPEND — buy a cannon: drop to 250 (−250).
+      tw.qaSetLedger({ coins: 250 }); tw.step(1 / 60);
+      const spend = tw.coinsPulse;
+      const spendDom = { text: dom()?.textContent || '', spendCls: !!dom()?.classList.contains('spend') };
+      // NO-CHANGE — hold steady ~1s: the pop must age out and stay silent (never re-fire).
+      for (let i = 0; i < 90; i++) tw.step(1 / 60);
+      const restedActive = tw.coinsPulse.active;
+      let rePopped = false;
+      for (let i = 0; i < 60; i++) { tw.step(1 / 60); if (tw.coinsPulse.active) rePopped = true; }
+      const restedDomOpacity = dom()?.style.opacity || '';
+      // TOGGLE OFF (rides Combat-feel / reduced-motion): a real change makes NO visual pop.
+      tw.coinsPulseSetEnabled(false);
+      tw.qaSetLedger({ coins: 900 }); tw.step(1 / 60); // +650 while suppressed
+      const offActive = tw.coinsPulse.active;
+      tw.coinsPulseSetEnabled(true);
+      return { gain, gainDom, spend, spendDom, restedActive, rePopped, restedDomOpacity, offActive };
+    });
+    if (!(r.gain.active && r.gain.kind === 'gain' && r.gain.delta === 400 && r.gain.deltaText === '+400')) fail(`coins-delta pulse (#181): a live GAIN did not pop gain/+400 (${JSON.stringify(r.gain)})`);
+    if (r.gainDom.text !== '+400' || !r.gainDom.gainCls) fail(`coins-delta pulse (#181): the live #coins-delta span did not SHOW +400 in green on a gain (${JSON.stringify(r.gainDom)})`);
+    if (!(Number(r.gainDom.opacity) > 0)) fail(`coins-delta pulse (#181): the gain delta must be visible (opacity ${r.gainDom.opacity})`);
+    if (!(r.spend.active && r.spend.kind === 'spend' && r.spend.delta === -250 && r.spend.deltaText === '−250')) fail(`coins-delta pulse (#181): a live SPEND did not pop spend/−250 (${JSON.stringify(r.spend)})`);
+    if (r.spendDom.text !== '−250' || !r.spendDom.spendCls) fail(`coins-delta pulse (#181): the live #coins-delta span did not SHOW −250 in red on a spend (${JSON.stringify(r.spendDom)})`);
+    if (r.restedActive) fail('coins-delta pulse (#181): the pop did not age out on a held-steady purse');
+    if (r.rePopped) fail('coins-delta pulse (#181): a STEADY purse re-popped — the feedback must fire only on a real change, not every frame');
+    if (r.offActive) fail('coins-delta pulse (#181): the Combat-feel toggle OFF must suppress the visual coin pop');
+    if (SAVE_VERSION !== 18) fail(`coins-delta pulse (#181): presentation-only slice must NOT bump the save schema — expected v18, got v${SAVE_VERSION}`);
+    if (process.exitCode !== 1) console.log('  ✓ coins-delta pulse (#181) [live]: a bounty GAIN pops green with a "+400" chime, a cannon SPEND ticks red with a "−250", a steady purse goes silent (never every frame), the Combat-feel toggle suppresses the pop — earn→spend feels responsive; save v18 untouched');
   }
 
   // 2b3-land) LANDSCAPE PHONE + SAFE-AREA (#75): the mobile MVP (#63) verified PORTRAIT; this proves
