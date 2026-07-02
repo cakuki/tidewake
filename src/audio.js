@@ -175,6 +175,7 @@ export function createAudio(opts = {}) {
   let coastProx = 0; // #68: live 0..1 coastal-ness (from distance-to-coast) — drives gull gain + rate
   let last = { speed: 0, maxSpeed: 55 };
   let music = null; // optional Musician layer sharing this context + master + mute
+  let duckMult = 1; // #179 negative-space HUSH: 0..1 multiplier on the master bus (1 = full, dips on a hush)
 
   function readMutePref() {
     try {
@@ -711,16 +712,84 @@ export function createAudio(opts = {}) {
     }
   }
 
-  function applyMuteRamp() {
+  // The live master-bus target: mute wins (near-silence), otherwise full × the #179 hush duck.
+  function masterTarget() { return (muted ? 0.0001 : 1) * clamp01(duckMult); }
+  function applyMuteRamp(tc = 0.04) {
     if (!ctx || !master) return;
     try {
-      master.gain.setTargetAtTime(muted ? 0.0001 : 1, ctx.currentTime, 0.04);
+      master.gain.setTargetAtTime(masterTarget(), ctx.currentTime, tc);
     } catch {
       try {
-        master.gain.value = muted ? 0.0001 : 1;
+        master.gain.value = masterTarget();
       } catch {
         /* ignore */
       }
+    }
+  }
+
+  // #179 negative space — the anticipatory HUSH: duck the WHOLE combat/ambience bus toward near-silence
+  // (never a dead mute; the controller floors it), then release so the surrender sting cracks into
+  // re-opened air. `mult` is the pure controller's audioDuck() this frame; a fast ramp keeps it smooth
+  // without zippering. No-op (harmless) in headless / before unlock. Mute still overrides everything.
+  function setDuck(mult) {
+    const m = clamp01(typeof mult === 'number' ? mult : 1);
+    if (Math.abs(m - duckMult) < 1e-4) return; // steady state — skip needless ramps
+    duckMult = m;
+    applyMuteRamp(0.03);
+  }
+
+  // #179 SURRENDER STING — "she strikes her colours": a soft, filtered descending fall (the flag
+  // coming down) over a whisper of cloth-rustle noise. Kept quiet + brief so it lands as a hush-cracking
+  // punctuation, not a fanfare. Hangs off sfxGain (mute covers it); guarded — a sting must never break
+  // the surrender. No-op in headless (no ctx).
+  function playStrike() {
+    if (!ctx || ctx.state !== 'running' || !master) return;
+    try {
+      const dest = sfxGain || master;
+      const t0 = ctx.currentTime + 0.005;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 1400;
+      lp.Q.value = 0.6;
+      lp.connect(dest);
+      // A perfect-fifth fall (A4 → D4) easing down — colours hauled down the halyard.
+      tone(t0, 0.42, 0.12, 'triangle', semitoneToFreq(0), semitoneToFreq(-7), lp, 0.02);   // A4 → D4
+      tone(t0 + 0.09, 0.34, 0.06, 'sine', semitoneToFreq(12), semitoneToFreq(5), lp, 0.02); // an octave shimmer, sinking
+      noiseTick(t0, 0.22, 0.03, 640, 0.5, dest); // the soft rustle of cloth off the mast
+    } catch {
+      /* a sting must never break the surrender */
+    }
+  }
+
+  // #179 RANK-UP SWELL — a rising, charged build over `seconds` that loads tension before the crown
+  // SNAPS (the bass thunk = the deferred sfxWin, fired by main.js on the release). A low sawtooth swept
+  // UP through an opening lowpass, its gain rising then cut clean at the peak — a held breath drawing in.
+  // Quiet + bounded; hangs off sfxGain (mute covers it); guarded. No-op in headless.
+  function playSwell(seconds = 0.8) {
+    if (!ctx || ctx.state !== 'running' || !master) return;
+    try {
+      const dest = sfxGain || master;
+      const dur = Math.max(0.15, Math.min(2, seconds));
+      const t0 = ctx.currentTime + 0.005;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.setValueAtTime(240, t0);
+      lp.frequency.exponentialRampToValueAtTime(2200, t0 + dur); // the filter opens as it builds
+      lp.Q.value = 0.8;
+      lp.connect(dest);
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(semitoneToFreq(-24), t0);        // low root
+      osc.frequency.exponentialRampToValueAtTime(semitoneToFreq(-5), t0 + dur); // sweeping up toward the thunk
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, t0);
+      env.gain.exponentialRampToValueAtTime(0.11, t0 + dur * 0.92); // load…
+      env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);      // …then cut clean for the thunk
+      osc.connect(env).connect(lp);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.03);
+    } catch {
+      /* the swell must never break the rise */
     }
   }
 
@@ -843,5 +912,5 @@ export function createAudio(opts = {}) {
     onGesture();
   }
 
-  return { init, setMute, isMuted, update, attachMusic, playDuelHit, playRepSting, playCurio, unlock };
+  return { init, setMute, isMuted, update, attachMusic, playDuelHit, playRepSting, playCurio, setDuck, playStrike, playSwell, unlock };
 }

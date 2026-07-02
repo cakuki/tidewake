@@ -32,6 +32,13 @@
        driven by opacity/background from the render loop (~0 GPU cost). Sits above the 3D canvas but
        BELOW every HUD readout/prompt (z-index 10+) so the verb-teaching cues stay fully legible. */
     #juice-flash { position: fixed; inset: 0; z-index: 9; opacity: 0; pointer-events: none; will-change: opacity; }
+    /* Negative space (#179): the colour-grade PULSE — one warm full-screen pass on a big win (rank-up /
+       notorious kill), driven by opacity from the render loop (~0 GPU cost). A soft warm glow that lifts
+       saturation for a beat; screen blend so it warms the scene rather than washing it. Below the hit-
+       flash + all HUD, above the canvas. Fully suppressed with the Combat-feel toggle / reduced-motion. */
+    #negspace-grade { position: fixed; inset: 0; z-index: 8; opacity: 0; pointer-events: none; will-change: opacity;
+      mix-blend-mode: screen;
+      background: radial-gradient(ellipse at center, rgba(255,232,180,0.55) 0%, rgba(255,186,96,0.22) 60%, rgba(255,150,60,0) 100%); }
 
     /* Target lock (#161 slice 3): the reusable OVER-SHIP BILLBOARD — a world-anchored marker projected
        from src/ui/over-ship-billboard.js onto the engaged foe. `left`/`top` are set to screen px each
@@ -1016,6 +1023,7 @@
 <body>
   <div id="app"></div>
   <div id="juice-flash" aria-hidden="true"></div>
+  <div id="negspace-grade" aria-hidden="true"></div>
   <div id="title">⚓ T I D E W A K E</div>
   <div id="hud">
     <!-- Persistent status HUD (#21): grouped into two legible clusters so THE RISE (#168) reads at a

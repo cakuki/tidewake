@@ -42,6 +42,7 @@ import { softenDebutFoe, debutPending, debutPhase, debutCue } from './systems/de
 import { brawlMoraleDent, brawlCasualties, duelConfidenceDent, prizeFork } from './systems/board.js';
 import { AMMO, AMMO_TYPES, ammoProfile, defaultLoadout, fitAmmo } from './systems/ammo.js';
 import { createJuice, ammoWeight } from './systems/juice.js';
+import { createNegativeSpace, SWELL_SECONDS } from './systems/negative-space.js';
 import { createProjectiles, classifyShot, BALL_POOL, FX_POOL, FX_SIZE } from './systems/projectiles.js';
 import { createModeManager, SAILING, TOWN, BATTLE } from './mode.js';
 import { createTown } from './ui/town.js';
@@ -664,6 +665,11 @@ const battle = createBattle({
     // #80 CLIMAX — she strikes her colours: ease the camera to a HUSH (a smooth settle, not a shake) to
     // mark the moment the guns fall quiet. Toggle-/reduced-motion-safe (cameraSettle no-ops when off).
     try { juice.cameraSettle(); } catch { /* the feel must never break the surrender */ }
+    // #179 NEGATIVE SPACE — a beat of anticipatory HUSH: the combat bus ducks to near-silence for ~0.6s,
+    // THEN the surrender sting cracks into the re-opened air. Suppressed → the sting fires at once (never
+    // lost). Audio-only, bounded, auto-resuming: it can never stall the loop or touch the sim clock.
+    try { negspace.anticipate(() => { try { audio.playStrike(); } catch { /* a sting must never break the surrender */ } }); }
+    catch { /* the feel must never break the surrender */ }
     // Dread's HEAR half (#175): if it was YOUR notoriety that broke her early, her crew cries your NAME
     // in terror — folded into the SAME surrender banner (reuse the hail surface; the quarter prompt still
     // shows). A peer/apex (~0 dread pressure) sets no `dread`, so an even fight strikes in silence.
@@ -770,6 +776,17 @@ function prefersReducedMotion() {
 }
 const juice = createJuice({ reducedMotion: prefersReducedMotion() });
 
+// Negative space (#179): the held breath before the payoff. A short anticipatory HUSH (the combat bus
+// ducks to near-silence) BEFORE a surrender sting, and a charged SWELL + warm colour-grade PULSE that
+// hold the rank-up crown until the build releases on a bass thunk — so ALREADY-SHIPPED climaxes land
+// bigger for ~0 draws. Built on the #80 juice DOCTRINE (bounded, always auto-resuming, audio/visual
+// only — it owns NO sim freeze, so the deterministic tw.step() path stays pristine). Suppressed by the
+// SAME prefers-reduced-motion + Combat-feel toggle as the juice. Pure controller lives in
+// src/systems/negative-space.js; it ages on the sim clock via its own system below, and loop() applies
+// the audio duck + the grade overlay each frame. QA counter for the headless deferral proof:
+const negspace = createNegativeSpace({ reducedMotion: prefersReducedMotion() });
+const nsQa = { sting: 0, thunk: 0 }; // monotonic payoff counts fired via the QA hooks (never in play)
+
 // RENDERED CANNONBALLS (#161 slice 4): the marquee "see the shot" win — a fired broadside now SPAWNS a
 // spread of round-shot that arcs from your guns to the foe, a muzzle PUFF barks at the gunports, and each
 // ball CRACKS into a spark on a clean hit or SPLASHES pale in open water on a wide miss, so a good angle
@@ -841,7 +858,7 @@ function battleFireJuiced() {
     // r.result==='win' is the sink verdict from battle.finish(). A NOTORIOUS kill (a wanted bounty vessel,
     // #173 — claimBounty set the flag inside onResolve) lands the #80 CLIMAX: the full freeze + a bounded
     // beat of slow-mo, so the kill FEELS like a moment. An ordinary kill still punctuates with a sink().
-    if (r.result === 'win') { if (lastResolveClaimedBounty) juice.bountyKill(); else juice.sink(); }
+    if (r.result === 'win') { if (lastResolveClaimedBounty) { juice.bountyKill(); try { negspace.flare(); } catch { /* the grade pulse must never break the kill */ } } else juice.sink(); }
     if (r.playerHit > 0) {
       juice.hit({ damage: r.playerHit, tint: 'red' });                          // her reply raked your hull…
       juice.impact({ damage: r.playerHit });                                    // …and it ROCKS your view
@@ -1460,7 +1477,9 @@ settings.register({
 // zero screen motion; setEnabled clears any live effect so there's no residual jolt.
 settings.register({
   id: 'combatfeel', label: 'Combat feel', hint: 'screen-shake & hit-stop on a solid hit — motion',
-  default: true, apply: (on) => juice.setEnabled(on),
+  // The SAME switch governs the #179 negative-space beats (hush/swell/pulse): off → the payoff still
+  // fires (never lost), just instantly, with no held breath, duck, swell or grade flare.
+  default: true, apply: (on) => { juice.setEnabled(on); negspace.setEnabled(on); },
 });
 settings.init(); // builds the panel, wires the O / Esc keys, applies the saved/default toggles
 
@@ -2057,6 +2076,11 @@ systems.register({ name: 'battle-camera', order: 52, when: () => battle.state.ac
 //   headless-safe). loop() reads juice.cameraOffset()/flashLevel() and applies the 0-draw shake +
 //   flash AFTER the camera systems have set the base pose, so the kick rides on top of the framing.
 systems.register({ name: 'juice', order: 56, update: (f) => juice.update(f.dt) });
+// — negative space (#179): drain the hush/swell/pulse beats on the SAME clock the juice ages on, so a
+//   deferred surrender sting / rank-up crown releases deterministically (testable under tw.step) and in
+//   real play. Audio/visual only — it owns NO sim freeze, so tw.step() and the #121 mesh gate stay
+//   pristine; loop() reads audioDuck()/gradeLevel() below and applies the duck + grade overlay.
+systems.register({ name: 'negative-space', order: 58, update: (f) => negspace.consume(f.dt) });
 // RENDERED CANNONBALLS (#161 slice 4): age the pooled shots + puffs, then write the two InstancedMeshes —
 // but only while anything is live (+ the one frame it goes quiet, to zero the last instances), so a calm
 // sea pays nothing beyond the two idle batch draws. Runs every frame (transient VFX outlive the volley).
@@ -2610,9 +2634,16 @@ function checkRankUp() {
   if (!m) return;
   rankHighest = m.index; // record the summit so it never re-announces
   if (m.index === TOP_RANK && (m.pole === 'pirate' || m.pole === 'governor')) return; // legend crown owns it
-  hud.showRankUp(m);
   logDeed({ type: 'rank', title: m.title, pole: m.pole }); // the climb the Ballad sings back (#169/#90)
-  try { audio.playDuelHit('win'); } catch { /* a sting must never break the loop */ }
+  // #179 NEGATIVE SPACE — the CHARGED rank-up: a rising swell + a warm colour-grade pulse HOLD the crown
+  // for ~0.8s, then the card SNAPS on the bass thunk (vs the old instant card). Suppressed → it fires at
+  // once (never lost). The build is audio/visual only; the ledger/Ballad already updated above.
+  const ns = negspace.snapshot();
+  if (ns.enabled && !ns.reducedMotion) { try { audio.playSwell(SWELL_SECONDS); } catch { /* the swell must never break the rise */ } }
+  negspace.charge(() => {
+    hud.showRankUp(m);
+    try { audio.playDuelHit('win'); } catch { /* a sting must never break the loop */ } // the bass thunk on the snap
+  });
 }
 
 let simT = 0;
@@ -2623,6 +2654,9 @@ let qaCamera = null; // lazily-built top-down inspection camera (#65 visual DoD)
 const juiceFlashEl = document.getElementById('juice-flash');
 const JUICE_FLASH_RED = 'radial-gradient(ellipse at center, rgba(0,0,0,0) 42%, rgba(196,26,26,0.95) 100%)';
 const JUICE_FLASH_GOLD = 'radial-gradient(ellipse at center, rgba(255,240,205,0.9) 0%, rgba(255,224,150,0) 68%)';
+// #179 negative-space colour-grade PULSE overlay: one warm full-screen pass on a big win (rank-up /
+// notorious kill), driven by negspace.gradeLevel() each frame. A missing element just no-ops.
+const negspaceGradeEl = document.getElementById('negspace-grade');
 function loop() {
   const rawDt = Math.min(clock.getDelta(), 0.05);
   simT = clock.elapsedTime;
@@ -2680,6 +2714,15 @@ function loop() {
     } else if (juiceFlashEl.style.opacity !== '0' && juiceFlashEl.style.opacity !== '') {
       juiceFlashEl.style.opacity = '0';
     }
+  }
+  // #179 negative space: duck the combat/ambience bus during a hush (0-cost audio-graph gain ramp) and
+  // drive the warm colour-grade PULSE overlay on a big win. Both are read-outs of the pure controller
+  // aged by its system above — the sim clock is untouched.
+  try { audio.setDuck(negspace.audioDuck()); } catch { /* the duck must never break the frame */ }
+  if (negspaceGradeEl) {
+    const g = negspace.gradeLevel();
+    if (g > 0) negspaceGradeEl.style.opacity = g.toFixed(3);
+    else if (negspaceGradeEl.style.opacity !== '0' && negspaceGradeEl.style.opacity !== '') negspaceGradeEl.style.opacity = '0';
   }
   renderer.render(scene, renderCam);
   if (juiceRestore) camera.position.copy(juiceRestore); // un-shake: keep the kick purely visual
@@ -3171,6 +3214,18 @@ window.__tidewake = {
   // surrender). Never used in play. bountyKill = the notorious-kill slow-mo; cameraSettle = the hush.
   juiceBountyKill() { juice.bountyKill(); return juice.snapshot(); },
   juiceCameraSettle() { juice.cameraSettle(); return juice.snapshot(); },
+  // #179 NEGATIVE-SPACE QA surface: fire the hush/swell/pulse beats DIRECTLY (with a monotonic payoff
+  // counter) and drain them on a chosen dt, so a headless test can prove the deferral (the sting/thunk
+  // is HELD until the window elapses, then fires exactly once), the bounded auto-resume (a monster dt
+  // releases in one step, never a hang), that the beat owes NO sim freeze (it never stalls tw.step), and
+  // that the toggle/reduced-motion fully suppresses it. The REAL wiring is proven separately (the
+  // rank-up swell block + a strike-colours surrender). Never used in play.
+  get negspace() { return negspace.snapshot(); },
+  get negspaceCounts() { return { ...nsQa }; },
+  negspaceAnticipate() { negspace.anticipate(() => { nsQa.sting += 1; }); return negspace.snapshot(); },
+  negspaceCharge() { negspace.charge(() => { nsQa.thunk += 1; }); return negspace.snapshot(); },
+  negspaceConsume(dt = 1 / 60) { negspace.consume(dt); return negspace.snapshot(); },
+  negspaceSetEnabled(on) { negspace.setEnabled(on); return negspace.snapshot(); },
   engageBattle() { return battle.engage(); },
   fleeBattle() { return battle.flee(); },
   battleFire() { return battleFireJuiced(); },

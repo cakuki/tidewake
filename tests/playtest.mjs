@@ -644,12 +644,20 @@ try {
     tw.qaSetLedger({ coins: 0, infamy: 0, standing: 0 });
     tw.qaResetRankBaseline();
     tw.step(0.05);                 // re-seed the baseline silently at rung 0
+    // #179: a throttled headless rAF can leave a swell from a prior block's rank-up pending (never
+    // drained); flush+clear it so this block starts from a clean negative-space slate. (Real play drains
+    // swells at 60fps, so this staleness is a headless-only artefact.)
+    tw.negspaceSetEnabled(false); tw.negspaceSetEnabled(true);
     const base = tw.rankUp;        // whatever card (if any) predates this block
     const baseCount = base ? base.count : 0;
 
-    // (1) forward crossing, pirate-led → Corsair (rung 5), "feared" tone
+    // (1) forward crossing, pirate-led → Corsair (rung 5), "feared" tone.
+    // #179 negative space: the crown is now CHARGED — a swell HOLDS the card, then it snaps on the thunk.
     tw.qaSetLedger({ infamy: 1001, standing: 0 }); // total 1001 → rung 5 (Sea Captain threshold 1000)
-    tw.step(0.05);
+    tw.step(0.05);                 // the crossing fires → a swell opens and HOLDS the card…
+    const swellWrapped = tw.negspace.swell;       // …a swell is building the instant the rung is crossed
+    const heldCount = tw.rankUp ? tw.rankUp.count : 0; // …and the card has NOT snapped yet (still baseline)
+    tw.step(1.0);                  // drain the swell past its ~0.8s window → the crown snaps on the thunk
     const cross1 = tw.rankUp;
 
     // (2) non-crossing rep change, still rung 5 → no new card
@@ -667,9 +675,10 @@ try {
     // (4) a genuinely higher rung on the governor pole → Magistrate (rung 6), "respect" tone
     tw.qaSetLedger({ infamy: 0, standing: 1601 }); // total 1601 → rung 6 (Dread Captain threshold 1600)
     tw.step(0.05);
+    tw.step(1.0);                  // #179: drain the swell → the crown snaps
     const cross2 = tw.rankUp;
 
-    return { baseCount, cross1, noCross, reCross, cross2 };
+    return { baseCount, cross1, noCross, reCross, cross2, swellWrapped, heldCount };
   });
   // (1) the crossing fired exactly once, naming the pirate rung with dread tone:
   if (!rank.cross1) fail('rank-up (#169): crossing into a new rung fired NO card');
@@ -685,7 +694,99 @@ try {
   if (rank.cross2.count !== rank.cross1.count + 1) fail(`rank-up (#169): a new higher rung did not fire exactly once (count ${rank.cross1.count}→${rank.cross2.count})`);
   if (rank.cross2.pole !== 'governor') fail(`rank-up (#169): a standing-led crossing wore the wrong pole (${rank.cross2.pole}, expected governor)`);
   if (rank.cross2.title !== 'Magistrate') fail(`rank-up (#169): the card named the wrong civic title (${rank.cross2.title}, expected Magistrate)`);
+  // #179 negative space — the CHARGED rank-up: a swell HELD the crown, then it snapped on the thunk.
+  if (!rank.swellWrapped) fail('negative space (#179): crossing a rung opened NO swell — the rank-up is not charged');
+  if (rank.heldCount !== rank.baseCount) fail(`negative space (#179): the rank-up card snapped INSTANTLY (count ${rank.baseCount}→${rank.heldCount}) — the swell must HOLD it until the release`);
   if (process.exitCode !== 1) console.log('  ✓ rank-up milestone (#169): crossing a rung fires ONE title card with the right pole tone (feared Corsair / respected Magistrate); a non-crossing rep change is silent; a rung dropped then re-climbed does NOT re-announce (save-free "highest rung seen" guard)');
+  if (process.exitCode !== 1) console.log('  ✓ negative space (#179): the rank-up is CHARGED — a swell holds the crown the instant the rung is crossed, then the card SNAPS on the bass thunk when the ~0.8s build releases (vs the old instant card)');
+
+  // 1c) NEGATIVE SPACE (#179): the held breath before the payoff — the controller wiring, proven
+  // deterministically via the QA hooks (fully synchronous, immune to the throttled headless rAF). We
+  // assert (a) the HUSH ducks the audio bus and DEFERS the surrender sting until the ~0.6s window
+  // elapses, then it fires exactly once and the duck releases; (b) the SWELL + colour-grade PULSE HOLD
+  // the rank-up thunk, the grade flares then decays; (c) it is BOUNDED + auto-resuming (a monster dt
+  // releases in one step, never a hang); (d) it owes NO sim freeze (the world clock never stalls); and
+  // (e) the Combat-feel toggle OFF fully suppresses it — the payoff still fires, instantly, with no
+  // duck / swell / grade.
+  const ns = await page.evaluate(() => {
+    const tw = window.__tidewake;
+    tw.negspaceSetEnabled(false); tw.negspaceSetEnabled(true); // flush+clear any stale beat, known-on baseline
+    const base = tw.negspaceCounts;
+    // (a) HUSH — opens a duck, DEFERS the surrender sting.
+    const openH = tw.negspaceAnticipate();          // hush live, sting held
+    const stingHeldAtOpen = tw.negspaceCounts.sting; // must still be base
+    const duckOneFrame = tw.negspaceConsume(1 / 60).audioDuck; // one frame in — the bus has begun to duck
+    const midHush = tw.negspaceConsume(0.3);         // deep in the hold — still ducked, still held
+    const stingHeldMid = tw.negspaceCounts.sting;
+    // The sim owes NOTHING to a negative-space beat — a hush never freezes the world.
+    const simUnfrozenDuringHush = tw.juiceConsumeHitStop(1 / 60); // must be 1
+    const relH = tw.negspaceConsume(0.6);            // drain past the window → the sting cracks in
+    const stingFired = tw.negspaceCounts.sting;
+    const duckReleased = relH.audioDuck;
+    const hushGone = relH.hush;
+    // (b) SWELL + PULSE — HOLD the rank-up thunk; the grade flares then decays.
+    const openS = tw.negspaceCharge();               // swell + pulse live, thunk held
+    const thunkHeldAtOpen = tw.negspaceCounts.thunk;
+    tw.negspaceConsume(0.2);
+    const gradeFlared = tw.negspace.gradeLevel;      // the colour-grade pulse is lit
+    const swellRising = tw.negspace.swellLevel;      // the build is rising
+    const relS = tw.negspaceConsume(1.0);            // past the swell window → the thunk releases
+    const thunkFired = tw.negspaceCounts.thunk;
+    tw.negspaceConsume(1.0);                          // let the pulse decay out
+    const gradeDecayed = tw.negspace.gradeLevel;
+    // (c) BOUNDED + auto-resume — a monster frame gap releases in ONE step, never a hang, never twice.
+    tw.negspaceAnticipate();
+    const monster = tw.negspaceConsume(999);
+    const afterMonster = tw.negspaceCounts.sting;
+    const monsterActive = monster.active;
+    // (e) TOGGLE OFF — the payoff still fires, at once, with zero duck / swell / grade.
+    tw.negspaceSetEnabled(false);
+    const offBefore = tw.negspaceCounts;
+    const offH = tw.negspaceAnticipate();
+    const offC = tw.negspaceCharge();
+    const offAfter = tw.negspaceCounts;
+    const offActive = tw.negspace.active;
+    const offDuck = offH.audioDuck, offSwell = offC.swellLevel, offGrade = offC.gradeLevel;
+    tw.negspaceSetEnabled(true); // restore
+    return {
+      baseSting: base.sting, baseThunk: base.thunk,
+      hush: openH.hush, stingHeldAtOpen, duckOneFrame, midDuck: midHush.audioDuck, stingHeldMid,
+      simUnfrozenDuringHush, stingFired, duckReleased, hushGone,
+      swell: openS.swell, pulse: openS.pulse, thunkHeldAtOpen, gradeFlared, swellRising,
+      thunkFired, gradeDecayed,
+      afterMonster, monsterActive,
+      offFiredSting: offAfter.sting - offBefore.sting, offFiredThunk: offAfter.thunk - offBefore.thunk,
+      offActive, offDuck, offSwell, offGrade,
+    };
+  });
+  // (a) the HUSH: a duck opens, the sting is HELD, then it cracks in once and the duck releases.
+  if (!ns.hush) fail('negative space (#179): anticipate did not open a hush');
+  if (ns.stingHeldAtOpen !== ns.baseSting) fail('negative space (#179): the surrender sting fired IMMEDIATELY — the hush must hold it');
+  if (!(ns.duckOneFrame < 1)) fail(`negative space (#179): the combat bus did not duck during the hush (audioDuck=${ns.duckOneFrame})`);
+  if (!(ns.midDuck < 1)) fail(`negative space (#179): the bus did not stay ducked mid-hush (audioDuck=${ns.midDuck})`);
+  if (!(ns.midDuck > 0)) fail(`negative space (#179): the hush floored to a DEAD MUTE (audioDuck=${ns.midDuck}) — it must be near-silence, not silence`);
+  if (ns.stingHeldMid !== ns.baseSting) fail('negative space (#179): the sting fired mid-hush — it must wait for the release');
+  if (ns.simUnfrozenDuringHush !== 1) fail(`negative space (#179): a hush FROZE the sim (scale=${ns.simUnfrozenDuringHush}) — a negative-space beat owes NO sim freeze`);
+  if (ns.stingFired !== ns.baseSting + 1) fail(`negative space (#179): the surrender sting did not fire exactly once at the release (${ns.baseSting}→${ns.stingFired})`);
+  if (ns.duckReleased !== 1) fail(`negative space (#179): the bus did not fully un-duck after the hush (audioDuck=${ns.duckReleased})`);
+  if (ns.hushGone) fail('negative space (#179): the hush did not clear after releasing');
+  // (b) the SWELL + PULSE: hold the thunk, flare the grade, then release + decay.
+  if (!ns.swell) fail('negative space (#179): charge did not open a swell');
+  if (!ns.pulse) fail('negative space (#179): charge did not open the colour-grade pulse');
+  if (ns.thunkHeldAtOpen !== ns.baseThunk) fail('negative space (#179): the rank-up thunk fired IMMEDIATELY — the swell must hold it');
+  if (!(ns.gradeFlared > 0)) fail(`negative space (#179): the colour-grade pulse never flared (gradeLevel=${ns.gradeFlared})`);
+  if (!(ns.swellRising > 0)) fail(`negative space (#179): the swell never rose (swellLevel=${ns.swellRising})`);
+  if (ns.thunkFired !== ns.baseThunk + 1) fail(`negative space (#179): the rank-up thunk did not fire exactly once at the release (${ns.baseThunk}→${ns.thunkFired})`);
+  if (ns.gradeDecayed !== 0) fail(`negative space (#179): the colour-grade pulse did not decay back to 0 (gradeLevel=${ns.gradeDecayed})`);
+  // (c) BOUNDED + auto-resume: a monster dt releases the held sting once, and nothing stays live (no hang).
+  if (ns.afterMonster !== ns.baseSting + 2) fail(`negative space (#179): a monster dt did not release the held sting exactly once (sting count ${ns.afterMonster}, expected ${ns.baseSting + 2})`);
+  if (ns.monsterActive) fail('negative space (#179): a beat stayed live after a monster dt — it must auto-resume, never hang');
+  // (e) TOGGLE OFF: the payoff still fires, instantly, with zero duck / swell / grade.
+  if (ns.offFiredSting !== 1) fail('negative space (#179): toggle-off must still fire the surrender sting immediately (payoff never lost)');
+  if (ns.offFiredThunk !== 1) fail('negative space (#179): toggle-off must still fire the rank-up thunk immediately (payoff never lost)');
+  if (ns.offActive) fail('negative space (#179): a beat was live with the toggle OFF — it must be fully suppressed');
+  if (ns.offDuck !== 1 || ns.offSwell !== 0 || ns.offGrade !== 0) fail(`negative space (#179): toggle-off left residual feel (duck=${ns.offDuck}, swell=${ns.offSwell}, grade=${ns.offGrade})`);
+  if (process.exitCode !== 1) console.log('  ✓ negative space (#179): a HUSH ducks the combat bus & DEFERS the surrender sting until the ~0.6s window releases (then it cracks in once, the duck lifts); a SWELL + warm colour-grade PULSE HOLD the rank-up thunk, flare, then decay; BOUNDED + auto-resuming (a monster dt releases in one step, never a hang); owes NO sim freeze; and the Combat-feel toggle OFF fully suppresses it (payoff still fires, instantly)');
 
   // 2b3-ui) NON-OCCLUDING battle UI (#161 slice 2): the marquee complaint — "the popup covers my
   // ship and I cannot see my ship in action." The fight prompts (#battle/#cannons/#duel) are now
