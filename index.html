@@ -111,6 +111,33 @@
     @keyframes hover-spin { to { transform: rotate(360deg); } }
     @media (prefers-reduced-motion: reduce) { .hover-affordance .osm-ring { animation: none; } }
 
+    /* Over-ship THREAT LABELS (#165, epic #162 slice 3): a floating class + threat read above EVERY ship,
+       from the SAME reusable billboard as the target ring (src/ui/over-ship-billboard.js) — its .osm-label
+       slot, no ring drawn. "Merchant Sloop ·" (green prey) up to "Warship Man-o'-War ☠☠☠☠" (red deadly),
+       so danger reads at a glance and you pick your fight. Below the foe ring (z 12) so the engaged foe's
+       label + ring stack cleanly; per-hull opacity is set in JS (distance fade / declutter). Diegetic —
+       pointer-events:none. #165 pools one element per hull (0 DOM churn, 0 draws). */
+    .threat-label { position: fixed; z-index: 11; pointer-events: none; transform: translate(-50%, -50%);
+      display: none; will-change: left, top, opacity; transition: opacity .2s linear; }
+    .threat-label .osm-ring { display: none; } /* a threat label never draws a ring — the words are the read */
+    .threat-label .osm-label {
+      position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
+      white-space: nowrap; font-size: 11px; font-weight: 700; letter-spacing: .02em;
+      color: #dfe7ef; text-shadow: 0 1px 3px rgba(0,0,0,.9);
+      background: rgba(9, 15, 23, .62); border: 1px solid rgba(255,255,255,.14);
+      border-radius: 5px; padding: 1px 7px;
+    }
+    /* Danger colour scale — green prey → red deadly, so threat reads before you even parse the words. */
+    .threat-label.lvl-prey   .osm-label { color: #93e6ab; border-color: rgba(120,224,150,.5); }
+    .threat-label.lvl-easy   .osm-label { color: #cfe98d; border-color: rgba(190,224,120,.5); }
+    .threat-label.lvl-even   .osm-label { color: #ffd98a; border-color: rgba(255,200,110,.5); }
+    .threat-label.lvl-hard   .osm-label { color: #ffb072; border-color: rgba(255,150,80,.55); }
+    .threat-label.lvl-deadly .osm-label { color: #ff8a7a; border-color: rgba(255,110,90,.7);
+      font-weight: 800; text-shadow: 0 1px 4px rgba(90,0,0,.9); }
+    /* Phone-portrait declutter (#146): trimmer labels so a small screen is never smothered (the JS caps
+       the COUNT via maxLabelsForViewport; this trims each label's footprint too). */
+    @media (max-width: 560px) { .threat-label .osm-label { font-size: 10px; padding: 1px 5px; letter-spacing: 0; } }
+
     #hud {
       /* Safe-area (#75): pad the top-left corner clear of the notch / status bar in
          standalone PWA. The inset is 0 on desktop & non-notch devices, so it collapses. */

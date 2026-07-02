@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import { BUDGET, checkBudget } from '../src/perf.js';
 import { KEYS } from '../src/keymap.js'; // the keymap source-of-truth: the FTUE gate (#156) auto-covers every verb
+import { threatLabelFor } from '../src/systems/threat-label.js'; // #165: assert the live label matches the pure class→label read
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
@@ -540,6 +541,114 @@ try {
     if (lock.off.markerShown) fail('target lock (#161 slice 3): the target marker lingered after fleeing');
     if (lock.off.dimmed.length !== 0) fail('target lock (#161 slice 3): traffic stayed dimmed after the fight ended — the sea never came back');
     if (process.exitCode !== 1) console.log(`  ✓ target lock (#161 slice 3): the engaged foe is ring-marked + the only un-dimmed hull (${lock.on.dimmed.length} receded); clears on flee`);
+  }
+
+  // 2b3-labels) OVER-SHIP THREAT LABELS (#165, epic #162 slice 3): the owner's #7 note — "over-the-ship
+  // displays telling/hinting what ships are, so a player can CHOOSE fights and read danger at a glance."
+  // Every classed hull now floats a class + threat label ("Merchant Sloop ·" → "Warship Man-o'-War
+  // ☠☠☠☠"), reusing the SAME billboard as the #161-s3 target ring (one module, two consumers — 0 draws).
+  // Proofs, all deterministic + headless: (A) each shown label's text + glyph MATCH the ship's class/tier
+  // (tied to the pure threatLabelFor); (B) the deadliest hull reads STRICTLY more dangerous (more skulls)
+  // than the tamest; (C) declutter — a hull sent over the horizon is culled, and a phone caps the count
+  // BELOW desktop (#146 guard); (D) coexistence — the engaged foe carries the ring AND a threat label on
+  // the SAME anchor, while the traffic's labels recede so the duel reads clean.
+  const skulls = (g) => (String(g || '').match(/☠/g) || []).length;
+  const tlab = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);
+    tw.qaTeleport(0, -40);
+    for (let k = 0; k < 22; k++) tw.step(0.05);   // ease off the dock so the chase cam settles ahead
+    const fleet = tw.npcs.map((n, i) => ({ i, tier: n.shipClass ? n.shipClass.tier : 0, label: n.shipClass ? n.shipClass.label : null }));
+    const withClass = fleet.filter((f) => f.tier > 0).sort((a, b) => a.tier - b.tier);
+    if (withClass.length < 2) return { ok: false, reason: `need >=2 classed hulls (have ${withClass.length})` };
+    const low = withClass[0].i;                          // the tamest (a sloopish prize)
+    const high = withClass[withClass.length - 1].i;      // the deadliest afloat in this fleet
+    const spare = withClass.length >= 3 ? withClass[1].i : -1; // a spare hull to send over the horizon
+    // Pose the two we read just ahead of the bow (inside the natural over-the-bow chase frame), and the
+    // spare WAY off so it must declutter (culled beyond FAR).
+    const P = tw.state.pos, px = P[0], pz = P[2], h = tw.state.heading; // state.pos is [x,y,z]
+    const fwd = [Math.sin(h), Math.cos(h)], right = [Math.cos(h), -Math.sin(h)];
+    const put = (idx, ahead, side) => { if (idx >= 0) tw.qaPlaceShip(idx, px + fwd[0] * ahead + right[0] * side, pz + fwd[1] * ahead + right[1] * side); };
+    put(low, 130, -70);
+    put(high, 150, 70);
+    if (spare >= 0) put(spare, 3200, 0);                 // over the horizon → decluttered
+    tw.step(0.03);
+    const desk = tw.qaSyncThreatLabels();                // desktop viewport read
+    const byIdx = (i) => desk.labels.find((l) => l.index === i) || null;
+    return {
+      ok: true, low, high, spare,
+      lowTier: fleet[low].tier, lowClassLabel: fleet[low].label,
+      highTier: fleet[high].tier, highClassLabel: fleet[high].label,
+      deskMax: desk.maxLabels,
+      lowLabel: byIdx(low), highLabel: byIdx(high),
+      spareLabel: spare >= 0 ? byIdx(spare) : null,
+    };
+  });
+  if (!tlab.ok) fail(`over-ship threat labels (#165): ${tlab.reason}`);
+  else {
+    // (A) each shown label MATCHES its class/tier (tied to the pure class→label read):
+    if (!tlab.lowLabel || !tlab.lowLabel.shown) fail('over-ship threat labels (#165): the near tame hull shows NO label — you cannot read her');
+    if (!tlab.highLabel || !tlab.highLabel.shown) fail('over-ship threat labels (#165): the near deadly hull shows NO label — you cannot read her');
+    const expLow = threatLabelFor({ label: tlab.lowClassLabel, tier: tlab.lowTier });
+    const expHigh = threatLabelFor({ label: tlab.highClassLabel, tier: tlab.highTier });
+    if (tlab.lowLabel.text !== expLow.text) fail(`over-ship threat labels (#165): the tame hull's label "${tlab.lowLabel.text}" ≠ her class read "${expLow.text}"`);
+    if (tlab.highLabel.text !== expHigh.text) fail(`over-ship threat labels (#165): the deadly hull's label "${tlab.highLabel.text}" ≠ her class read "${expHigh.text}"`);
+    // (B) the deadlier hull reads STRICTLY more dangerous — more skulls (a man-o'-war ≫ a sloop):
+    if (!(tlab.highTier > tlab.lowTier)) fail(`over-ship threat labels (#165): the fleet lost tier spread (low=${tlab.lowTier}, high=${tlab.highTier}) — cannot prove threat ordering`);
+    if (!(skulls(tlab.highLabel.glyphs) > skulls(tlab.lowLabel.glyphs))) fail(`over-ship threat labels (#165): the deadly hull did not read more dangerous than the tame one (${tlab.highLabel.glyphs} vs ${tlab.lowLabel.glyphs})`);
+    // (C-i) declutter: the hull sent over the horizon is CULLED (no smothering the far sea):
+    if (tlab.spare >= 0 && tlab.spareLabel && tlab.spareLabel.shown) fail('over-ship threat labels (#165): a hull far over the horizon still rendered a label — the far sea is not decluttered');
+    // (C-ii) mobile guard (#146): a phone caps the label COUNT below desktop:
+    await page.setViewport({ width: 400, height: 860 });
+    const phoneMax = await page.evaluate(() => window.__tidewake.qaSyncThreatLabels().maxLabels);
+    await page.setViewport({ width: 1280, height: 800 });
+    if (!(phoneMax < tlab.deskMax)) fail(`over-ship threat labels (#165): a phone did not cap labels below desktop (phone=${phoneMax}, desk=${tlab.deskMax}) — a small screen could be smothered`);
+    if (process.exitCode !== 1) console.log(`  ✓ over-ship threat labels (#165): "${tlab.lowLabel.text}" (prey) vs "${tlab.highLabel.text}" (deadly) — text+glyph match class/tier, threat reads STRICTLY higher, far hull culled, phone caps ${phoneMax}<${tlab.deskMax}`);
+  }
+
+  // 2b3-labels-coexist) THREAT LABEL ↔ TARGET RING coexistence (#165 × #161 s3): the two consumers of the
+  // over-ship billboard must share one anchor cleanly. Engage a foe deterministically, then assert she
+  // carries BOTH the target RING (markerShown) AND a threat LABEL on the SAME screen column, while the
+  // non-combatant traffic's labels RECEDE (declutter) so the duel reads clean.
+  const coexist = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    }
+    tw.newVoyage(); tw.step(0.1);
+    const bi = nearest();
+    if (bi === -1) return { engaged: false };
+    const fp = tw.npcs[bi].pos;
+    tw.qaTeleport(fp[0], fp[1] - 120);
+    tw.step(0.05);
+    const engaged = tw.engageBattle();
+    if (!engaged) return { engaged: false };
+    for (let i = 0; i < 16; i++) tw.step(0.05);          // let the quarter-view camera swing settle
+    const ring = tw.qaSyncTargetMarker();                // ring aligned to the current camera
+    const labels = tw.qaSyncThreatLabels();              // labels aligned to the SAME camera frame
+    const foeIdx = tw.battle.foeIndex;
+    const foeLabel = labels.labels.find((l) => l.index === foeIdx) || null;
+    const trafficShown = labels.labels.filter((l) => l.index !== foeIdx && l.shown).length;
+    tw.fleeBattle(); tw.step(0.05);
+    return { engaged, foeIdx, ringShown: ring.markerShown, ringScreen: ring.screen,
+      foeLabelShown: !!(foeLabel && foeLabel.shown), foeLabelScreen: foeLabel ? foeLabel.screen : null,
+      foeLabelText: foeLabel ? foeLabel.text : '', trafficShown, npcCount: tw.npcs.length };
+  });
+  if (!coexist.engaged) {
+    console.warn('  (#165 coexistence: no foe to engage — skipped, like the other battle steps)');
+  } else {
+    if (!coexist.ringShown) fail('over-ship threat labels (#165): the engaged foe carries no target ring — cannot verify ring+label coexistence');
+    if (!coexist.foeLabelShown) fail('over-ship threat labels (#165): the engaged foe carries no threat label alongside her ring');
+    if (coexist.ringScreen && coexist.foeLabelScreen && Math.abs(coexist.ringScreen[0] - coexist.foeLabelScreen[0]) > 2) {
+      fail(`over-ship threat labels (#165): the foe's ring + label are NOT on the same anchor (Δx=${Math.abs(coexist.ringScreen[0] - coexist.foeLabelScreen[0]).toFixed(1)}px)`);
+    }
+    if (coexist.npcCount > 1 && coexist.trafficShown !== 0) fail(`over-ship threat labels (#165): non-combatant labels did not recede in a fight (${coexist.trafficShown} still shown) — the duel is cluttered`);
+    if (process.exitCode !== 1) console.log(`  ✓ threat label ↔ target ring coexist (#165 × #161 s3): the foe shows ring + "${coexist.foeLabelText}" on one anchor; traffic labels recede — the duel reads clean`);
   }
 
   // 2b4) Real-time broadside (#135 slice 2): re-engage, then STEER to bring the foe abeam and

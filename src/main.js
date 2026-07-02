@@ -39,6 +39,7 @@ import { createSystemsRegistry } from './systems/registry.js';
 import { interactionsSuppressed, ambientInteractionsAllowed } from './systems/battle-isolation.js';
 import { centreSafeZone, clearsCentre } from './ui/safe-zone.js';
 import { createOverShipBillboard, projectToScreen } from './ui/over-ship-billboard.js';
+import { threatLabelFor, selectLabels, maxLabelsForViewport } from './systems/threat-label.js';
 import { createAimIndicator, aimReadout } from './ui/aim-indicator.js';
 import { pickShipAction, shipIndexFromObject, actionLabel } from './systems/ship-picker.js';
 import { reputationLean, leanPole, gradeHaze, gradeSun, gradeSunKey } from './systems/reputation-grade.js';
@@ -201,6 +202,25 @@ const picker = { raycaster: new THREE.Raycaster(), ndc: new THREE.Vector2() }; /
 let hoveredShip = -1;                      // the ship index the cursor is over (raycast on pointermove), or -1
 let pointerDown = null;                    // {x,y,t} of the last pointerdown, to tell a CLICK from a camera drag
 let lastHover = { index: -1, action: null, onScreen: false, screen: null };
+// Over-ship THREAT LABELS (#165, epic #162 slice 3, "pick your fight"): a floating class + threat label
+// above EVERY ship — "Merchant Sloop ·" (easy prize) up to "Warship Man-o'-War ☠☠☠☠" (deadly) — so you
+// glance across the sea and instantly read who to hunt vs who to flee, and CHOOSE your fight before
+// committing. Reuses the SAME over-ship-billboard module as the #161-s3 target ring (one module, two
+// consumers) via its setLabel() slot — NO second billboard system. POOLED: one billboard per hull,
+// created once + reused every frame (0 DOM churn, 0 draws — DOM/CSS). The pure brain (class→label+glyph,
+// the distance/count/mobile declutter) lives in src/systems/threat-label.js. During a fight the traffic's
+// labels recede (eligibility) so the engaged foe's label + ring read clean together on the same anchor.
+const threatVP = new THREE.Matrix4();               // reused view-projection for the per-ship world→screen
+const THREAT_LABEL_HEIGHT = MARKER_HEIGHT;          // share the ring's anchor height so label + ring stack
+const THREAT_NEAR = 360, THREAT_FAR = 1650;         // fully legible within NEAR, faded to nothing by FAR
+const THREAT_LEVEL_CLASSES = ['lvl-prey', 'lvl-easy', 'lvl-even', 'lvl-hard', 'lvl-deadly'];
+const threatPool = npcs.snapshot().map(() => createOverShipBillboard({ className: 'threat-label' }));
+let lastThreatLabels = [];
+function setThreatLevelClass(el, level) {
+  if (!el) return;
+  const want = `lvl-${level}`;
+  for (const c of THREAT_LEVEL_CLASSES) el.classList.toggle(c, c === want);
+}
 // Living sea fauna (#97): a small instanced flock of gulls that keeps the ship company —
 // wheeling overhead at sea, drifting to hang over the shore as you raise an island. One
 // InstancedMesh (one draw call), hidden wholesale beyond the cull radius, so the sky lives
@@ -1779,6 +1799,53 @@ function syncTargetLock(t) {
   lastAim = { active: true, onScreen: aimVisible, level: readout.level, onTarget: readout.onTarget, quality: readout.quality, spreadDeg: readout.spreadDeg, side: readout.side };
 }
 systems.register({ name: 'target-lock', order: 278, update: (f) => syncTargetLock(f.t) });
+// — OVER-SHIP THREAT LABELS (#165): the fun beat — glance across the sea and instantly read a fat
+//   merchant prize ("Merchant Sloop ·") from a deadly warship ("Warship Man-o'-War ☠☠☠☠"), so you CHOOSE
+//   your fight before committing. Projects each classed hull's world anchor to screen (the SAME 0-draw
+//   billboard + VP projection as the target ring), sets its threat LABEL + colour band, and lets the pure
+//   declutter rule (nearest-first, fade with distance, cap by viewport) decide what renders. During a
+//   fight the traffic's labels recede (ineligible) so the foe's label + ring read clean on one anchor.
+function syncThreatLabels(t) {
+  if (!threatPool.length) return;
+  const snap = npcs.snapshot();
+  const bs = battle.state;
+  const battleActive = bs.active && bs.foeIndex >= 0;
+  camera.updateMatrixWorld();
+  threatVP.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const cam = camera.position;
+  const W = window.innerWidth, H = window.innerHeight;
+  const entries = [];
+  for (let i = 0; i < threatPool.length; i++) {
+    const s = snap[i];
+    if (!s || !s.shipClass) { entries.push({ index: i, onScreen: false, distance: Infinity, eligible: false, info: null, screen: null }); continue; }
+    const [x, z] = s.pos;
+    const y = ocean.sampleHeight(x, z, t) + THREAT_LABEL_HEIGHT;
+    const p = projectToScreen([x, y, z], threatVP.elements, W, H);
+    const distance = Math.hypot(x - cam.x, y - cam.y, z - cam.z);
+    // In a fight only the engaged foe keeps her label (the traffic recedes) so the foe's label + ring
+    // read clean together; at sea every hull is eligible so you can survey the whole board.
+    const eligible = !battleActive || i === bs.foeIndex;
+    entries.push({ index: i, onScreen: p.onScreen, distance, eligible, info: threatLabelFor(s.shipClass), screen: [p.x, p.y] });
+  }
+  const decision = selectLabels(entries, { near: THREAT_NEAR, far: THREAT_FAR, maxLabels: maxLabelsForViewport(W) });
+  const shot = [];
+  for (let i = 0; i < threatPool.length; i++) {
+    const bb = threatPool[i], e = entries[i];
+    const opacity = decision[i];
+    if (opacity == null || !e || !e.info) {
+      bb.hide(); bb.setLabel('');
+      shot.push({ index: i, shown: false, text: '', tier: e && e.info ? e.info.tier : 0, level: e && e.info ? e.info.level : '', glyphs: e && e.info ? e.info.glyphs : '', opacity: 0, onScreen: !!(e && e.onScreen), screen: e ? e.screen : null });
+      continue;
+    }
+    bb.setLabel(e.info.text);
+    setThreatLevelClass(bb.el, e.info.level);
+    if (bb.el) bb.el.style.opacity = opacity.toFixed(3);
+    bb.place({ x: e.screen[0], y: e.screen[1], visible: true });
+    shot.push({ index: i, shown: true, text: e.info.text, tier: e.info.tier, level: e.info.level, glyphs: e.info.glyphs, opacity, onScreen: e.onScreen, screen: e.screen });
+  }
+  lastThreatLabels = shot;
+}
+systems.register({ name: 'threat-labels', order: 277, update: (f) => syncThreatLabels(f.t) });
 // — HOVER-TO-INTERACT (#161 slice 6, the FINAL lane slice): the fun beat — point at a ship and it lights
 //   up with what you can DO to it (a projected ring + a "Give battle / Hail / Board" label above her mast),
 //   so the sea is directly manipulable, not a hidden keymap. The raycast (which hull) happens on
@@ -2600,6 +2667,15 @@ window.__tidewake = {
   // Re-project the foe's target marker against the CURRENT camera without stepping the sim — so a
   // gallery capture can swing to a wide framing (qaFrameShip) and still have the ring aligned (#161 s3).
   qaSyncTargetMarker() { syncTargetLock(simT); return this.targetLock(); },
+  // Re-project the over-ship threat labels against the CURRENT camera without stepping the sim — so a
+  // gallery capture (or the deterministic playtest) can pose ships + swing the framing and read the
+  // labels aligned. Returns the same shape as threatLabels() (#165).
+  qaSyncThreatLabels() { syncThreatLabels(simT); return this.threatLabels(); },
+  // OVER-SHIP THREAT LABELS gate (#165): prove you can read danger at a glance — each visible ship shows
+  // a floating label whose text + threat glyph MATCH its class/tier, a man-o'-war reads deadlier than a
+  // merchant sloop, distant/over-cap hulls declutter (fade/cull), and the mobile guard caps the count.
+  // Reads the live billboard truth latched by the last threat-labels frame + the current mobile cap.
+  threatLabels() { return { labels: lastThreatLabels.slice(), maxLabels: maxLabelsForViewport(window.innerWidth) }; },
   // TARGET LOCK gate (#161 slice 3): prove the engaged foe is unmistakably marked and the traffic
   // recedes. Reads the live over-ship billboard DOM (is the ring shown?) + npc.js's material-opacity
   // emphasis snapshot (foe full, non-combatants dimmed). The playtest asserts markerShown + the foe is
