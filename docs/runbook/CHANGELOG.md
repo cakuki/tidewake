@@ -4,6 +4,25 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #165 Over-ship threat labels shipped — epic #162 "pick your fight" (Loop 119, v0.0.20260702001553).**
+  The owner's #7 note for the difficulty/variety epic: "over-the-ship displays telling/hinting what ships
+  are, so a player can CHOOSE fights and read danger at a glance." Every classed NPC hull now floats a
+  class + threat label above her — **"Merchant Sloop ·"** (a green easy prize) up to **"Warship Man-o'-War
+  ☠☠☠☠"** (a red deadly foe) — so you glance across the sea and instantly read who to hunt vs who to flee
+  **before committing**. **One module, two consumers (the whole point of building it reusable):** reuses the
+  SAME `src/ui/over-ship-billboard.js` from #161 slice 3 (the target ring) via its `setLabel()` slot — **no
+  second billboard system**; the labels are **pooled** (one element per hull, created once + reused every
+  frame → 0 DOM churn) and DOM/CSS → **0 draw calls** (perf within budget, DOM labels add +0 draws/tris).
+  The pure brain is new **`src/systems/threat-label.js`** (three.js-free, DOM-free, unit-tested): `threatLabelFor`
+  (class→text+glyph), `threatGlyphs` (skulls escalate strictly with tier so a man-o'-war reads deadlier than
+  a sloop), `dangerLevel` (green prey→red deadly colour band), and the declutter rule `labelFade`/`selectLabels`/
+  `maxLabelsForViewport` (fade with distance, cap the count, **a lower cap on a phone = the #146 guard** so
+  labels never smother a small screen). In a fight the traffic's labels **recede** (eligibility) so the engaged
+  foe's label + ring read clean together on the **same anchor**. **NO save-schema change** — pure presentation,
+  stays **v17**. +16 unit tests (1171 total); a playtest gate asserts each live label's text+glyph match its
+  class/tier, a man-o'-war reads STRICTLY deadlier than a merchant sloop, a far hull is culled, a phone caps
+  labels 3<6, and the foe's ring+label coexist on one anchor while traffic recedes. Gallery `threat-labels-165.png`.
+  #165 CLOSED; epic #162 kept OPEN (remaining: #166 legible odds, #167 challenge on demand).
 - **2026-07-02 — #164 Loss stings shipped — epic #162 stakes layer (Loop 118, v0.0.20260701235745).**
   The owner's #1 note for the difficulty/stakes epic: "games are too easy — the player must be able to
   LOSE when playing badly, and a loss should COST points + fame." Two things now hold. (1) **You can
