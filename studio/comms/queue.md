@@ -39,15 +39,16 @@ follow-ups** of the big run — it completes half-finished beats (a dread that f
 can't yet sing the rise), juices the RISE's climaxes, and keeps the sea alive. **Every slice is NO save bump.**
 Brief [`docs/briefs/2026-07-02-post-rise-polish.md`](https://github.com/cakuki/tidewake/blob/main/docs/briefs/2026-07-02-post-rise-polish.md)._
 
-- **#175 — Dread's HEAR half: a fearful hail names you (S · game-designer + software-developer). BUILD FIRST.**
-  #172 shipped the SEE + FEEL of dread (a weak ship flees / strikes early to a notorious captain) but left the
-  **HEAR** half unbuilt (noted on #172, now filed as #175). When the sea blinks, the world **names you** — a short
-  fearful hail / watch murmur sized to your dread (*"God ha' mercy — it's the [rank] herself!"*), via the EXISTING
-  hail banner + voice path; pole-aware, anti-repeat, withheld under a false-colours disguise (#79). **FUN:** HEAR the
-  crew name your Infamy aloud — the payoff of being feared, now audible. Reuses #172's dread gate — **no new
-  mechanic, NO save bump.** _Completes the freshest just-shipped beat → highest-fun cheapest win, leads the lane._
+- **✅ #175 — Dread's HEAR half: a fearful hail names you — SHIPPED (Loop 132, v0.0.20260702070249).**
+  When a #172 dread reaction fires (a weak foe flees on sight OR strikes her colours early) the world now **NAMES
+  you** — a short fearful hail sized to your notoriety, drawn anti-repeat from a pure pool, spoken on the EXISTING
+  hail banner + the tier-aware reputation-sting audio bus; pole-aware (feared vs deferential), withheld under a
+  false-colours disguise for free, and SILENT for a peer/apex (~0 dread pressure). PURE TDD'd picker
+  `src/systems/fearful-hail.js`; wiring reuses #172 end-to-end (no new mechanic/UI/combat path). Gate: flee→named
+  cry (text matches title/tier), anti-repeat, apex→silent, early-strike→named, peer strike→silent; text+audio = 0
+  draws; **NO save bump (v18).** Your Infamy is now something you HEAR.
 
-- **#90 — The Ballad sings your RISE (S · software-developer + writer). Reuse #90.** The voyage-log recorder is
+- **#90 — The Ballad sings your RISE (S · software-developer + writer). BUILD NEXT. Reuse #90.** The voyage-log recorder is
   pure + extensible (add a `sanitizeEvent` case + a narrator line), and THE RISE just created rich new deed material
   it can't yet narrate. Add deed types for the arc the player just lived — **rank climbed** (#169), **a bounty
   claimed** (#173), **a bigger ship bought** (#171), **a port grown** (#174) — so the end-of-voyage Ballad reads
@@ -69,9 +70,9 @@ Brief [`docs/briefs/2026-07-02-post-rise-polish.md`](https://github.com/cakuki/t
   on the shipped `src/sealife.js` pattern. **FUN:** SEE a small surprise reward attention; a smile between fights.
   **NO save bump.**
 
-**Sequencing note:** all four slices are unblocked, buildable now, original, in-vision, and carry **NO save bump** —
-**4 READY build slices → the loop stays in DELIVERY.** #175 leads (completes the freshest shipped beat, cheapest,
-highest-fun), then the Ballad weaves the arc, then the climax juice, then the curio keeps the drip alive. This is a
+**Sequencing note:** the remaining slices are unblocked, buildable now, original, in-vision, and carry **NO save bump** —
+**3 READY build slices → the loop stays in DELIVERY.** #175 shipped (Loop 132); **#90 leads next** (the Ballad weaves
+the arc), then the climax juice (#80), then the curio (#70) keeps the drip alive. This is a
 **deliberate consolidation lane** — small, cheap, low-risk — chosen over a third big epic while the owner reacts to
 THE RISE. The owner-decision items below are **questions to surface, NOT build blockers.**
 

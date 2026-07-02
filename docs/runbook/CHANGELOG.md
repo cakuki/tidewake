@@ -4,6 +4,22 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #175 Dread's HEAR half shipped — a fearful hail NAMES you when the sea blinks
+  (Loop 132, v0.0.20260702070249; post-RISE polish lane slice 1/4).** #172 shipped dread's SEE + FEEL
+  (a weak, outclassed ship flees on sight / strikes her colours early to a feared, bigger captain) but
+  left the HEAR half silent. Now when a dreaded foe reacts, the world NAMES you: a short fearful hail
+  sized to your notoriety ("God ha' mercy — it's the Corsair!" / "Colours DOWN — no soul crosses Dread
+  Captain and swims!"), drawn anti-repeat from a small original pool and spoken on the EXISTING hail
+  banner + the tier-aware reputation-sting audio bus — your Infamy is now something you HEAR, not just a
+  number. PURE TDD'd picker `src/systems/fearful-hail.js` (fearTier off the same notoriety ramp #172
+  flees against; pole-aware pools — pirate feared / governor deferential; {title} substituted;
+  anti-repeat). Wiring reuses #172 end-to-end (no new mechanic/UI/combat path): npc.js flags a DREAD
+  flee distinct from the #79 colours-flee; main.js fires the cry ONCE on the rising edge (flee) / folds
+  it into the surrender banner (early strike); withheld under a false-colours disguise for free; a
+  peer/apex (~0 dread pressure) stays SILENT. Playtest asserts flee→named cry (text matches title/tier),
+  anti-repeat across two bolts, apex→silent, early-strike→named, peer's vanilla strike→silent. Text +
+  audio = 0 draws (perf 29/130 · 92.8k tris). **NO save change (presentation only, stays v18).** Next
+  in the polish lane: **#90** (the Ballad sings your RISE).
 - **2026-07-02 — #174 Governor-pole symmetry shipped — invest spoils to grow your home port VISIBLY;
   EPIC #168 "THE RISE" COMPLETE + CLOSED (Loop 131, v0.0.20260702062846).** The RISE FINALE (slice 6/6) —
   the governor road's mirror of buying a bigger ship: pour your takings into your home port and SEE it PROSPER
