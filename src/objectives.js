@@ -16,10 +16,11 @@
 // listening is worth the visit without ever becoming a coin printer. This slice ships ONE rumour
 // type end-to-end (a trade tip → a port target); richer rewards + more target kinds are filed.
 
-// The world-target kinds the model knows. Only 'port' is chase-able END-TO-END this slice
-// (it names a real harbour with coords + a dock we already detect arrival at); the others are
-// reserved so battle/isle objectives slot into the same struct later without a reshape.
-export const TARGET_KINDS = new Set(['port', 'isle', 'sea']);
+// The world-target kinds the model knows. 'port' is chase-able on ARRIVAL (a rumour tip → a
+// harbour we detect docking at); 'ship' is a named WANTED VESSEL chase-able on DEFEAT (a bounty,
+// #173 — hunted down + sunk/captured); 'isle'/'sea' are reserved so future objectives slot into
+// the same struct without a reshape. All ride the ONE persisted `state.objective` slot.
+export const TARGET_KINDS = new Set(['port', 'isle', 'sea', 'ship']);
 
 // The deterministic bounty a chased trade rumour pays on arrival. Modest by design (~a tidy
 // trade-run's edge), so the tip rewards the detour without grinding. Trade tips only, for now.
@@ -148,6 +149,19 @@ export function sanitizeObjective(raw) {
   if (raw.status !== 'active') return null;
   const t = sanitizeTarget(raw.target);
   if (!t) return null;
+  // Bounty (#173): a named WANTED VESSEL riding the same slot. Preserves the ship target + the
+  // tier-scaled purse (coins + fame) + the foe spec (so the marker + the claim survive a reload).
+  // Rides the existing objective persistence — NO save-schema bump (stays v18). Fails open to null
+  // for a junk/mis-typed bounty (a bounty must name a 'ship' target).
+  if (raw.kind === 'bounty') {
+    if (t.kind !== 'ship') return null;
+    const coins = (raw.payoff && nonNegInt(raw.payoff.coins)) || 0;
+    const fame = (raw.payoff && nonNegInt(raw.payoff.fame)) || 0;
+    const out = { kind: 'bounty', target: t, payoff: { coins, fame }, status: 'active' };
+    const foe = sanitizeBountyFoe(raw.foe);
+    if (foe) out.foe = foe;
+    return out;
+  }
   const coins = (raw.payoff && nonNegInt(raw.payoff.coins)) || 0;
   const out = { kind: 'rumour', target: t, payoff: { coins }, status: 'active' };
   // Contested rumour (#133): preserve the rival + soft-clock state so a reload keeps the race
@@ -268,4 +282,132 @@ export function contestRemaining(objective) {
   if (!isContested(objective)) return null;
   const c = objective.contest;
   return Math.max(0, c.budget - c.elapsed);
+}
+
+// ---- Bounties (#173, DL — THE RISE slice 5) ---------------------------------------------------
+// The "one more voyage" hook: a port board posts a NAMED wanted vessel with a tier-scaled purse.
+// Accept it → the ship rides the SAME persisted objective slot as a NEW KIND ('bounty', not a new
+// system), so the existing marker (minimap/bigmap read state.objective.target) pins her heading for
+// free; hunt her down and DEFEAT her (sink or capture) → claim the purse ONCE (coin + fame), which
+// funds the Workshop/Shipwright upgrades (#170/#171) — the earn→spend loop closes and you want one
+// more. All pure + deterministic, so the model + claim-once guard unit-test under node.
+//
+// CREATIVE SPARK (Game Designer): the sandbox gets a REASON to sail — a face and a price on the
+// water. You read "Wanted: the frigate Grey Gull — 400 coin" on the board, a pin marks her lane,
+// you run her down, and the purse is EXACTLY what bolts the next cannon to your deck. A concrete
+// goal that feeds the rise, symmetric with #167's tier-scaled spoils. Original to Tidewake.
+
+// The bounty purse floor + the per-foe-TIER bonus. Tuned so a tier-4 warship frigate posts 400c
+// (the brief's headline), a tier-3 ~330c, a tier-2 ~260c — each a real "one voyage funds an
+// upgrade" purse against the #170 cannon curve (180/340/560). Mirrors #167's SPOILS_TIER_COIN idea.
+export const BOUNTY_BASE_COIN = 120;
+export const BOUNTY_TIER_COIN = 70;
+
+/**
+ * PURE — the tier-scaled bounty purse: a coin reward + fame (renown), banked ONCE on the target's
+ * defeat. Coin climbs strictly with the foe's threat tier (high risk, high reward — the symmetric
+ * mirror of #167 spoils / #164 loss sting). Tier is clamped to the sane [1,5] band. Never throws.
+ * @param {number} tier  the wanted vessel's threat tier (1..5)
+ * @returns {{coins:number, fame:number}}
+ */
+export function bountyReward(tier) {
+  const t = Math.max(1, Math.min(5, Math.round(Number(tier) || 1)));
+  const coins = BOUNTY_BASE_COIN + t * BOUNTY_TIER_COIN;
+  const fame = Math.round(coins * 1.4); // a hunted-down name pays real infamy — the pirate pole
+  return { coins, fame };
+}
+
+// The wanted-vessel name pool — DISJOINT from cannons.js FOE_NAMES on purpose, so a bounty target
+// never collides with an ordinary spawned foe (a random fight can NEVER accidentally claim a bounty).
+// Original to Tidewake, on-tone (menace with a wink).
+export const BOUNTY_NAMES = [
+  'the Grey Gull', 'the Gallows Wind', 'the Scarlet Maw', 'the Iron Widow',
+  'the Pale Reckoning', 'the Bloody Meridian', 'the Drowned Crown', 'the Vulture\'s Kiss',
+];
+
+// The vessel classes a board posts — a spread of real fights (warship-leaning: a bounty is worth the
+// risk), each with its DERIVED threat tier hardcoded (kept in step with ship-classes.js shipStats:
+// class.tier + warship pip) so this module stays dependency-free + pure. brig-war=3, frigate-war=4,
+// frigate-merch=3, sloop-war=2, manowar-merch=4.
+const BOUNTY_SPECS = [
+  { cls: 'brig', role: 'warship', tier: 3 },
+  { cls: 'frigate', role: 'warship', tier: 4 },
+  { cls: 'frigate', role: 'merchant', tier: 3 },
+  { cls: 'sloop', role: 'warship', tier: 2 },
+  { cls: 'manowar', role: 'merchant', tier: 4 },
+];
+
+/**
+ * PURE — post a bounty deterministically from a seed (the docked port + a nonce, say): a named
+ * wanted vessel, her class/role/tier, and the tier-scaled purse. The same seed always posts the
+ * same bounty (a stable board between visits; vital for the tests + the QA hook). Never throws.
+ * @param {string|number} seed
+ * @returns {{name:string, cls:string, role:string, tier:number, reward:{coins:number, fame:number}}}
+ */
+export function pickBounty(seed) {
+  const h = seedOf(seed);
+  const name = BOUNTY_NAMES[h % BOUNTY_NAMES.length];
+  const spec = BOUNTY_SPECS[Math.floor(h / BOUNTY_NAMES.length) % BOUNTY_SPECS.length];
+  return { name, cls: spec.cls, role: spec.role, tier: spec.tier, reward: bountyReward(spec.tier) };
+}
+
+/** PURE — clean a raw bounty foe-spec into `{ tier, cls?, role? }`, or null if junk. Never throws. */
+function sanitizeBountyFoe(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const tier = Math.max(1, Math.min(5, Math.round(Number(raw.tier) || 1)));
+  const foe = { tier };
+  if (isStr(raw.cls)) foe.cls = String(raw.cls).trim();
+  if (isStr(raw.role)) foe.role = String(raw.role).trim();
+  return foe;
+}
+
+/**
+ * PURE — build an ACTIVE bounty objective from a typed SHIP target (+ the posted tier/class/role).
+ * The purse is the tier-scaled reward (opts.coins/opts.fame override for tests). Returns null if the
+ * target isn't a clean ship target. Deterministic; never mutates inputs.
+ * @param {object} target  a typed ship target ({ kind:'ship', name, x?, z? })
+ * @param {{tier?:number, cls?:string, role?:string, coins?:number, fame?:number}} [opts]
+ * @returns {{kind:'bounty', target:object, foe:object, payoff:{coins:number,fame:number}, status:'active'}|null}
+ */
+export function makeBounty(target, opts = {}) {
+  const t = sanitizeTarget(target);
+  if (!t || t.kind !== 'ship') return null;
+  const tier = Math.max(1, Math.min(5, Math.round(Number(opts.tier) || 1)));
+  const base = bountyReward(tier);
+  const coins = finite(opts.coins) ? nonNegInt(opts.coins) : base.coins;
+  const fame = finite(opts.fame) ? nonNegInt(opts.fame) : base.fame;
+  const foe = { tier };
+  if (isStr(opts.cls)) foe.cls = String(opts.cls).trim();
+  if (isStr(opts.role)) foe.role = String(opts.role).trim();
+  return { kind: 'bounty', target: t, foe, payoff: { coins, fame }, status: 'active' };
+}
+
+/** PURE — is this objective a bounty (a named wanted vessel)? Null-safe. */
+export function isBounty(objective) {
+  return !!(objective && objective.kind === 'bounty' && objective.target && objective.target.kind === 'ship');
+}
+
+/**
+ * PURE — does DEFEATING a foe named `foeName` claim this bounty? Only an ACTIVE bounty whose target
+ * ship name matches EXACTLY resolves (the disjoint name pools guarantee a random foe can't). Once the
+ * objective is resolved/cleared this returns false — the claim-once guard. Never throws.
+ * @param {object|null} objective
+ * @param {string} foeName
+ * @returns {boolean}
+ */
+export function resolvesOnDefeat(objective, foeName) {
+  if (!isBounty(objective) || objective.status !== 'active') return false;
+  return isStr(foeName) && objective.target.name === foeName;
+}
+
+/**
+ * PURE — the purse banked for claiming this bounty: `{ coins, fame }`. Zero for a junk / non-active /
+ * non-bounty objective (so a double-claim can never double-pay). Never throws.
+ * @param {object|null} objective
+ * @returns {{coins:number, fame:number}}
+ */
+export function bountyPayoff(objective) {
+  if (!isBounty(objective) || objective.status !== 'active') return { coins: 0, fame: 0 };
+  const p = objective.payoff || {};
+  return { coins: nonNegInt(p.coins), fame: nonNegInt(p.fame) };
 }

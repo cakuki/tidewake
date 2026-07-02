@@ -14,6 +14,15 @@
 import { GOODS, PORTS, market, buy, sell, cargoUsed, HOLD_CAP } from '../economy.js';
 import { renownTier, dominantPole } from '../renown.js';
 import { composeRumours } from '../rumours.js';
+import { pickBounty, isBounty } from '../objectives.js';
+import { SHIP_CLASSES, ROLES } from '../ship-classes.js';
+
+// A readable name for the wanted vessel's class × role (e.g. "warship frigate"), for the board line.
+function bountyClassLabel(cls, role) {
+  const c = SHIP_CLASSES[cls]?.label || 'Ship';
+  const r = ROLES[role]?.label || '';
+  return `${r} ${c}`.trim().toLowerCase();
+}
 import {
   isHome, canClaim, canInvest, investCost, investStanding, harbourGreeting, harbourLevelName,
   governorTitle, CLAIM_STANDING, MAX_LEVEL,
@@ -54,6 +63,9 @@ export function createTown(opts = {}) {
   // hits harder, takes more punishment). main.js owns coin + the mesh rescale + persistence; here we
   // route the tap and paint the board. No-op if unwired.
   const onBuyShipClass = typeof opts.onBuyShipClass === 'function' ? opts.onBuyShipClass : () => {};
+  // The bounty board (#173): accept the posted wanted vessel — main.js sets it as the active objective
+  // (a chart marker to hunt her down + a tier-scaled purse on defeat). No-op if not wired.
+  const onAcceptBounty = typeof opts.onAcceptBounty === 'function' ? opts.onAcceptBounty : () => {};
   const root = opts.root ?? (typeof document !== 'undefined' ? document : null);
   // Touch parity (#17/#66): taps drive trades + the Leave plank when there's no keyboard.
   const TOUCH = !!(root && root.body && root.body.classList && root.body.classList.contains('touch'));
@@ -94,6 +106,20 @@ export function createTown(opts = {}) {
     lastSig = ''; // force a repaint so the "now chasing" state shows
     render();
     return r.target;
+  }
+
+  // The bounty board (#173): accept the posted wanted vessel. Routes to main.js (which sets the active
+  // objective + marker + purse), then re-renders so the board flips to "now hunting…".
+  function acceptBountyTap() {
+    onAcceptBounty(postedBountyFor(getState()));
+    lastSig = ''; // force a repaint so the accepted/hunting state shows
+    render();
+  }
+
+  // The bounty the docked port posts — deterministic off the port name (a stable board). Null at sea.
+  function postedBountyFor(state) {
+    if (!state || !state.port) return null;
+    try { return pickBounty(state.port); } catch { return null; }
   }
 
   const REFUSALS = {
@@ -137,6 +163,7 @@ export function createTown(opts = {}) {
         if (e.target.closest?.('#town-standfirm')) { e.preventDefault(); onStandFirm(); return; }
         if (e.target.closest?.('#town-buy-cannon')) { e.preventDefault(); buyCannonTap(); return; }
         if (e.target.closest?.('#town-buy-ship')) { e.preventDefault(); buyShipTap(); return; }
+        if (e.target.closest?.('#town-accept-bounty')) { e.preventDefault(); acceptBountyTap(); return; }
         const shotBtn = e.target.closest?.('.town-shot');
         if (shotBtn && shotBtn.dataset.ammo) { e.preventDefault(); fitShot(shotBtn.dataset.ammo); return; }
         const chaseBtn = e.target.closest?.('.town-chase');
@@ -189,6 +216,31 @@ export function createTown(opts = {}) {
       + `<div class="town-tavern-h">🍺 What you hear</div>`
       + `<div class="town-rumours">${lines}</div>`
       + `<button id="town-listen" class="town-listen town-listen-again" type="button">🍺 Listen again${TKEY}</button>`
+      + `</div>`;
+  }
+
+  // The Bounty Board (#173, epic #168 "THE RISE") — the quayside notices. Posts ONE named wanted
+  // vessel with a tier-scaled purse: read it, accept it, and it becomes the active chart marker you
+  // hunt down; defeating her pays the purse into your coin (which funds the workshop/shipwright). While
+  // a bounty is already active it reads back "on the hunt" so the choice is legible. The "one more
+  // voyage" hook — a concrete goal that feeds the rise.
+  function bountyHTML(state) {
+    const posted = postedBountyFor(state);
+    if (!posted) return '';
+    const hunting = isBounty(state.objective) ? state.objective : null;
+    const cls = bountyClassLabel(posted.cls, posted.role);
+    if (hunting) {
+      // A bounty is live — show the hunt (the posted board waits until you claim or abandon this one).
+      return `<div class="town-bounty town-bounty-live">`
+        + `<div class="town-bounty-h">⚑ The Bounty Board</div>`
+        + `<div class="town-bounty-hunt">You're on the hunt for <b>${esc(hunting.target.name)}</b> — <b>${hunting.payoff.coins} coin</b> on her defeat. Follow the marker, run her down, and come back richer.</div>`
+        + `</div>`;
+    }
+    return `<div class="town-bounty">`
+      + `<div class="town-bounty-h">⚑ The Bounty Board</div>`
+      + `<div class="town-bounty-sub">A wanted notice is nailed to the board, ink barely dry.</div>`
+      + `<div class="town-bounty-post">Wanted: <b>${esc(posted.name)}</b>, a ${esc(cls)} — <b>${posted.reward.coins} coin</b> to the captain who sinks or takes her.</div>`
+      + `<button id="town-accept-bounty" class="town-accept-bounty" type="button">⚑ Take the bounty — hunt ${esc(posted.name)}</button>`
       + `</div>`;
   }
 
@@ -413,6 +465,7 @@ export function createTown(opts = {}) {
       + `<div class="town-master${recall ? ' town-master-recall' : ''}">${esc(master)}</div>`
       + `<div class="town-barker">${esc(cry)}</div>`
       + tavernHTML()
+      + bountyHTML(state)
       + `<div class="town-purse">⛃ <b>${state.coins ?? 0}</b> coins · Hold <b>${used}/${HOLD_CAP}</b>${standingNote}</div>`
       + harbourHTML(state)
       + `<div class="town-market-h">⚖ The Market</div>`

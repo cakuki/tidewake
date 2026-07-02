@@ -68,7 +68,7 @@ import {
   sanitizeHarbour, claim as claimHome, invest as investHome, canClaim, canInvest, harbourLevelName,
   earnedGovernorship, governorTitle,
 } from './systems/home-port.js';
-import { makeObjective, resolvesAt, payoffFor, sanitizeObjective, makeContestedObjective, tickContest, isContested, isClaimed, rivalName, shouldContest } from './objectives.js';
+import { makeObjective, resolvesAt, payoffFor, sanitizeObjective, makeContestedObjective, tickContest, isContested, isClaimed, rivalName, shouldContest, makeBounty, resolvesOnDefeat, bountyPayoff, isBounty, pickBounty } from './objectives.js';
 import { payoffCueName, approachCrossed, APPROACH_RADIUS, listenCueName, coinChimes, sightingEdge, RIVAL_SIGHT_RADIUS, RIVAL_SAIL_CUE } from './systems/loop-cues.js';
 import { createEncounter, HAIL_LINES, RESCUE_LINES, PLUNDER_LINES } from './systems/encounter.js';
 import { signifiedVerbs } from './ui/key-prompts.js';
@@ -502,6 +502,11 @@ const battle = createBattle({
   // The world fears you (#172): your notoriety (Infamy) + hull class vs hers — a broken weak prey strikes
   // her colours EARLIER against a feared/bigger captain (a peer/apex has ~0 dread pressure and fights on).
   getDread: () => ({ infamy: state.infamy ?? 0, tier: classTier(state.shipClass) }),
+  // Bounty dressing (#173): when a bounty is active and you square up near the wanted vessel's marked
+  // lane (or under the QA force flag), re-cast the engaged foe as the named target — her name + her
+  // class stats (hull/gunnery/tier), so the ship at the pin IS the Grey Gull and beating her claims
+  // the board's purse. Out of range / no bounty → the foe is untouched (an ordinary fight). Pure guard.
+  bountyFoe: (foe) => dressBountyFoe(foe),
   // Soften a fresh captain's FIRST fight (#157): if the debut is still unspent, hand this engagement a
   // forgiving, already-battered foe and mark it the debut; a veteran fight passes through full-strength.
   softenFoe: (foe) => {
@@ -570,11 +575,13 @@ const battle = createBattle({
         `${foeName} slips beneath the waves — you haul ${reward.coins}c and your legend gains ${reward.infamy} infamy.`);
       const deed = { type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins };
       logDeed(deed); rememberPortDeed(deed);
+      claimBounty(foeName); // #173: if she was the wanted vessel, the board pays out (once) on top of the spoils
     } else if (result === 'capture') {
       hud.flashBanner('🏳️ She strikes her colours!',
         `${foeName} has had enough — you spare the crew and take a ${reward.coins}c ransom: +${reward.standing} standing for the mercy.`);
       const deed = { type: 'cannon', foe: foeName, infamy: reward.infamy, coins: reward.coins, captured: true };
       logDeed(deed); rememberPortDeed(deed);
+      claimBounty(foeName); // #173: hauling in the wanted vessel alive claims the board's purse too (once)
     } else {
       // Loss stings (#164): the red "Colours Struck" defeat card NAMES exactly what the loss cost —
       // the tier-scaled, context-based fame + coin just deducted. The player SEES their legend + purse
@@ -1321,6 +1328,10 @@ const town = createTown({
   // VISIBLY grows, hits harder, and takes more punishment. main.js owns the coin + mesh rescale +
   // persistence; here we just route the tap.
   onBuyShipClass: () => buyShipClass(),
+  // The Bounty Board (#173, THE RISE): accept the posted wanted vessel — sets her as the active
+  // objective (a chart marker to hunt her down + a tier-scaled purse claimed on her defeat). The
+  // "one more voyage" hook; the purse funds the workshop/shipwright (#170/#171).
+  onAcceptBounty: (posted) => acceptBounty(posted),
 });
 town.init();
 
@@ -1546,6 +1557,102 @@ function chaseObjective(target, opts = {}) {
     }
     return obj;
   } catch { return null; } // a flourish must never break the loop
+}
+
+// ---- Bounty board (#173, epic #168 "THE RISE") ---------------------------------------------
+// The "one more voyage" hook: a port board posts a NAMED wanted vessel with a tier-scaled purse.
+// Accepting sets her as the active objective (a NEW KIND riding the SAME persisted slot — no save
+// bump; the pure model is src/objectives.js) so the existing chart marker (minimap/bigmap) pins her
+// lane for free. Hunt her down + defeat her (sink or capture) → the board pays out ONCE (coin +
+// fame), which funds the Workshop/Shipwright upgrades (#170/#171). Here we own: posting the board
+// from the docked port, enriching the target with a sea heading, dressing the foe at the pin, and
+// banking the purse on defeat. Logic + reward stay deterministic + QA-exposed.
+const BOUNTY_HUNT_RADIUS = 900; // how near the marked lane you must square up for the foe to BE the target
+let bountyForce = false;        // QA-only: force the dressing regardless of range (engageBountyFoe)
+const BOUNTY_ACCEPT_LINES = [
+  'You tear the notice from the board — the hunt is on, and the chart carries her heading now.',
+  'A name, a price, a heading. You pocket the bounty and set your bow to find her.',
+  'The quartermaster nods as you take the posting — one wanted vessel, and a purse worth the chase.',
+];
+
+// The bounty the docked port currently posts — deterministic off the port name (a stable board
+// between visits). Null at sea / at an unknown port. The town board reads this to paint the notice.
+function postedBounty() {
+  const port = ports.docked || state.port; // the docked port (either source — kept in step with the town board)
+  if (!port) return null;
+  try { return pickBounty(port); } catch { return null; }
+}
+
+// Accept the posted bounty: enrich the wanted vessel with a sea heading off the docked port (so the
+// marker points OUT to her lane, a real hunt), build the bounty objective, bank it on the shared
+// state, and persist so a reload keeps the posting. A banner + a hopeful cue mark the acceptance.
+function acceptBounty(posted) {
+  try {
+    const b = posted || postedBounty();
+    if (!b) return null;
+    // A heading OUT from the docked port toward open water — seeded off her name so the same bounty
+    // always marks the same lane (deterministic marker), a good hunt's distance from the quay.
+    const port = ports.portInfo(ports.docked || state.port) || { x: state.pos?.x || 0, z: state.pos?.z || 0 };
+    let seed = 0; for (let i = 0; i < b.name.length; i++) seed = (seed * 31 + b.name.charCodeAt(i)) | 0;
+    const ang = (Math.abs(seed) % 360) * Math.PI / 180;
+    const dist = 1400 + (Math.abs(seed >> 4) % 900); // out past the harbour approach, a real crossing
+    const target = { kind: 'ship', name: b.name, x: port.x + Math.cos(ang) * dist, z: port.z + Math.sin(ang) * dist };
+    const obj = makeBounty(target, { tier: b.tier, cls: b.cls, role: b.role });
+    if (!obj) return null;
+    state.objective = obj;
+    persistence.write();                                 // lock the posting the instant it's taken
+    try { music.loopCue('approach'); } catch { /* the cue is a flourish */ }
+    hud.flashBanner(`⚑ Bounty: ${b.name} — ${obj.payoff.coins} coin`, pickLine(BOUNTY_ACCEPT_LINES));
+    return obj;
+  } catch { return null; } // a flourish must never break the loop
+}
+
+// Dress the engaged foe as the active bounty target when you square up in her marked lane (or under
+// the QA force flag). Re-casts her name + class stats (hull/gunnery/tier) from the posted spec, so
+// the ship at the pin IS the wanted vessel. Returns the SAME foe when there's no active bounty or
+// you're out of range — an ordinary fight. Pure guard; never throws.
+function dressBountyFoe(foe) {
+  try {
+    const obj = state.objective;
+    if (!isBounty(obj) || obj.status !== 'active') return foe;
+    const t = obj.target;
+    if (!bountyForce) {
+      if (!Number.isFinite(t.x) || !Number.isFinite(t.z)) return foe;
+      const d = Math.hypot((state.pos?.x || 0) - t.x, (state.pos?.z || 0) - t.z);
+      if (d > BOUNTY_HUNT_RADIUS) return foe; // not yet at her lane — this is some other sail
+    }
+    const spec = obj.foe || {};
+    const stats = (spec.cls) ? shipStats(spec.cls, spec.role || 'warship') : null;
+    // Re-cast her: the wanted name, and — if the posting named a class — her class combat stats, so
+    // the marked foe fights at the tier the purse was scaled to. A class-less bounty just gets the name.
+    return stats
+      ? { ...foe, name: t.name, hull: stats.maxHull, maxHull: stats.maxHull, gunnery: stats.gunnery,
+          cls: stats.cls, role: stats.role, tier: stats.tier, guns: stats.guns, crew: stats.crew }
+      : { ...foe, name: t.name };
+  } catch { return foe; } // dressing must never break the fight
+}
+
+// Claim the bounty when the named target is DEFEATED (sunk or captured). Pays the tier-scaled purse
+// ONCE — coin (spendable at the shops, closing the earn→spend loop) + fame (renown, the pirate pole)
+// — then clears the pin so it can never double-pay (the pure resolvesOnDefeat guard + the null-out).
+// Sings the claim into the Ballad (#78) and rings the coin chime. Guarded; a garnish, never a break.
+function claimBounty(foeName) {
+  try {
+    const obj = state.objective;
+    if (!resolvesOnDefeat(obj, foeName)) return false;
+    const { coins, fame } = bountyPayoff(obj);
+    initEconomy(state);
+    state.coins += coins;
+    state.infamy += fame;                                // a hunted-down name pays real infamy (#45)
+    syncRenown(state);
+    state.objective = null;                              // the hunt is done — clear the pin (claim-once)
+    logDeed({ type: 'bounty', foe: foeName, coins, infamy: fame }); // sing it into the Ballad (#78)
+    try { music.loopCue('payoff', coinChimes({ coins }) ? { under: 'coin' } : undefined); } catch { /* flourish */ }
+    hud.flashBanner('⚑ Bounty claimed!',
+      `${foeName} is run down and done — the board pays out ${coins} coins and your legend gains ${fame} renown. Now go bolt that next cannon to your deck.`);
+    persistence.write();
+    return true;
+  } catch { return false; } // the payoff is a garnish, never a dependency
 }
 
 // ---- Auto-harbour / Leave Harbour (#67 + #96) ----------------------------------------------
@@ -2616,6 +2723,28 @@ window.__tidewake = {
     if (isClaimed(state.objective)) persistence.write();
     return isClaimed(state.objective);
   },
+  // Bounty board (#173, epic #168 "THE RISE") QA surface. `bountyBoard` reads the bounty the docked
+  // port currently posts (name + tier + tier-scaled purse), or null at sea. acceptBounty() takes it
+  // → sets the active bounty objective (a ship target with a sea heading + purse; the marker pins her
+  // for free). engageBountyFoe() force-dresses the engaged foe as the wanted vessel regardless of
+  // range so a headless test can reach the DEFEAT→claim path deterministically (mirrors the other
+  // QA force hooks). abandonBounty() clears an active bounty. Together these let the gate assert:
+  // accept→marker, defeat-target→claim-once (into coin), wrong-target→no-claim.
+  get bountyBoard() { return postedBounty(); },
+  acceptBounty(posted) {
+    // Synthesize a deterministic posting when called at sea (a headless gate starts undocked) so the
+    // accept→marker→hunt→claim loop is drivable without first steering into a port.
+    let b = posted || postedBounty();
+    if (!b) { try { b = pickBounty('qa-bounty-board'); } catch { b = null; } }
+    return acceptBounty(b);
+  },
+  engageBountyFoe() {
+    if (!isBounty(state.objective)) return null;
+    bountyForce = true;
+    try { return battle.engage() ? battle.snapshot() : null; }
+    finally { bountyForce = false; }
+  },
+  abandonBounty() { if (isBounty(state.objective)) { state.objective = null; persistence.write(); return true; } return false; },
   get npcs() { return npcs.snapshot(); },
   // Ship classes (#163) QA surface. qaClassCombat() PROVES the class table scales the fight: it runs
   // the SAME clean beam broadside against the SAME target, once with a sloop-warship's gunnery and once

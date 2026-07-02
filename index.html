@@ -892,6 +892,23 @@
     #town .town-listen:hover { filter: brightness(1.07); }
     #town .town-listen:active { transform: translateY(1px); }
     #town .town-listen-again { font-size: 12px; background: linear-gradient(180deg, #d8bd93, #c4a368); }
+    /* The Bounty Board (#173, THE RISE) — a quayside "wanted poster": aged parchment + a blood-red seal. */
+    #town .town-bounty { margin: 8px 0 4px; padding: 9px 11px; border-radius: 9px;
+      background: linear-gradient(180deg, rgba(74,54,28,.42), rgba(48,34,16,.42));
+      border: 1px solid rgba(210,90,70,.42); box-shadow: inset 0 0 0 1px rgba(255,220,160,.06); }
+    #town .town-bounty-h { color: #ff9e86; font-weight: 800; font-size: 12.5px; letter-spacing: .05em; text-align: center; }
+    #town .town-bounty-sub { color: #c8b48f; font-size: 10.8px; font-style: italic; text-align: center; margin-top: 3px; }
+    #town .town-bounty-post { color: #f3e1c0; font-size: 12.5px; line-height: 1.45; margin: 7px 2px 8px; text-align: center; }
+    #town .town-bounty-post b { color: #ffd9a0; }
+    #town .town-bounty-hunt { color: #f1e2bd; font-size: 12px; font-style: italic; line-height: 1.45; margin: 6px 2px 2px; text-align: center; }
+    #town .town-bounty-hunt b { color: #ff9e86; font-style: normal; }
+    #town .town-accept-bounty { pointer-events: auto; cursor: pointer; font-family: inherit; display: block; width: 100%;
+      font-size: 12.5px; font-weight: 800; letter-spacing: .02em; color: #2a0f08;
+      background: linear-gradient(180deg, #f0a887, #d9694c); border: 1px solid rgba(255,190,160,.75);
+      border-radius: 9px; padding: 9px 12px; box-shadow: 0 3px 10px rgba(0,0,0,.35);
+      transition: filter .12s ease, transform .1s ease; }
+    #town .town-accept-bounty:hover { filter: brightness(1.07); }
+    #town .town-accept-bounty:active { transform: translateY(1px); }
     /* The Gunner's Workshop (#135 slice 3) — fit the shot you carry to sea, in a warm forge accent. */
     #town .town-workshop { margin: 12px 2px 2px; padding: 9px 10px; border: 1px solid rgba(255,170,90,.28);
       border-radius: 10px; background: linear-gradient(180deg, rgba(70,40,18,.34), rgba(40,24,10,.34)); }

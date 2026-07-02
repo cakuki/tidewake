@@ -3542,6 +3542,95 @@ try {
     if (process.exitCode !== 1) console.log(`  ✓ the world fears you (#172): weak prey flees a notorious/big captain on sight + strikes early (foeDread ${compose.preyDread?.toFixed?.(2)}); a peer/apex holds and fights (apex foeDread ${compose.apexDread?.toFixed?.(2)}); the dread strike reuses the surrender flag and ACCEPT ends it cleanly`);
   }
 
+  // 2b8) THE BOUNTY BOARD (#173, epic #168 "THE RISE" slice 5) — the "one more voyage" hook. A port
+  // board posts a NAMED wanted vessel with a tier-scaled purse; accepting sets her as the active
+  // objective (a chart marker to hunt her down) and DEFEATING the named target claims the purse ONCE
+  // into your coin (which funds the workshop/shipwright). It rides the EXISTING objective slot as a NEW
+  // KIND — no save bump (stays v18). Prove, all deterministic + headless: (A) accept → the bounty is the
+  // active objective with a finite marker heading + a real purse; (B) DEFEATING a WRONG (ordinary) foe
+  // does NOT claim it — the bounty stays active, no purse paid; (C) DEFEATING the named target claims the
+  // tier-scaled purse EXACTLY ONCE, and the reward lands in COIN (+ fame in renown); (D) claim-once — the
+  // pin clears so it can never re-pay.
+  {
+    const bounty = await page.evaluate(async () => {
+      const tw = window.__tidewake;
+      const out = {};
+      // (A) accept → marker. A fresh voyage starts undocked; the QA hook synthesizes a deterministic
+      // posting so the accept→hunt→claim loop is drivable without first steering into a port.
+      tw.newVoyage(); tw.step(1 / 60);
+      tw.qaSetLedger({ coins: 0, infamy: 0, standing: 0 });
+      tw.acceptBounty();
+      const obj = tw.objective;
+      out.accepted = !!(obj && obj.kind === 'bounty' && obj.status === 'active');
+      out.targetName = obj && obj.target && obj.target.name;
+      out.markerFinite = !!(obj && obj.target && Number.isFinite(obj.target.x) && Number.isFinite(obj.target.z));
+      out.purse = (obj && obj.payoff && obj.payoff.coins) || 0;
+      out.fame = (obj && obj.payoff && obj.payoff.fame) || 0;
+      const mx = obj.target.x, mz = obj.target.z;
+
+      // (B) WRONG target → no claim. Fight an ordinary foe FAR from the marked lane (so she is NOT
+      // dressed as the wanted vessel), sink/capture her, and the bounty must remain active + unpaid.
+      const fx = mx + 3000, fz = mz + 3000; // well outside the hunt radius
+      tw.qaTeleport(fx, fz); tw.qaPlaceShip(0, fx + 30, fz + 30); tw.step(1 / 60);
+      const wrongEngaged = tw.engageBattle();
+      out.wrongFoeName = tw.battle.foeName;
+      out.wrongIsOrdinary = tw.battle.foeName !== out.targetName;
+      const coinsBeforeWrong = tw.state.coins;
+      if (wrongEngaged) {
+        tw.battleBreakFoe(); tw.battleFire();
+        if (tw.battle.surrenderPending) tw.acceptSurrender();
+        else if (tw.battle.active) tw.fleeBattle();
+      }
+      out.wrongResolved = !tw.battle.active;
+      out.bountyStillActiveAfterWrong = !!(tw.objective && tw.objective.kind === 'bounty');
+      out.wrongPurseBled = tw.state.coins - coinsBeforeWrong; // capture spoils only, NOT the bounty purse
+
+      // (C) DEFEAT the named target → claim once, into coin. Force-dress the engaged foe as the wanted
+      // vessel (a QA force, like battleBreakFoe), then break + take her surrender → the board pays out.
+      tw.qaTeleport(fx, fz); tw.qaPlaceShip(0, fx + 30, fz + 30); tw.step(1 / 60);
+      const dressed = tw.engageBountyFoe();
+      out.dressedEngaged = !!dressed;
+      out.dressedName = tw.battle.foeName;
+      out.dressedIsTarget = tw.battle.foeName === out.targetName;
+      const coinsBeforeClaim = tw.state.coins;
+      const infamyBeforeClaim = tw.state.infamy;
+      if (dressed) {
+        tw.battleBreakFoe(); tw.battleFire();
+        out.struck = !!tw.battle.surrenderPending;
+        if (tw.battle.surrenderPending) tw.acceptSurrender();
+      }
+      out.coinDelta = tw.state.coins - coinsBeforeClaim;
+      out.infamyDelta = tw.state.infamy - infamyBeforeClaim;
+      out.claimedCleared = !tw.objective; // the pin cleared on claim (claim-once)
+
+      // (D) claim-once — no active bounty now, so a further defeat can't re-pay the purse.
+      out.reEngageAfterClaim = tw.engageBountyFoe(); // null: nothing left to hunt
+
+      tw.newVoyage(); tw.step(0.1); // restore a clean slate for the downstream sections
+      return out;
+    });
+    // (A)
+    if (!bounty.accepted) fail('bounty board (#173): accepting a posted bounty did not set the active bounty objective');
+    if (!bounty.targetName) fail('bounty board (#173): the accepted bounty has no named wanted vessel');
+    if (!bounty.markerFinite) fail('bounty board (#173): the bounty target carries no finite marker heading — the chart cannot pin the hunt');
+    if (!(bounty.purse > 0)) fail(`bounty board (#173): the bounty posted no real purse (coins=${bounty.purse})`);
+    // (B)
+    if (bounty.wrongEngaged === false) console.warn('  (#173: no ordinary foe to engage for the wrong-target check — skipped)');
+    if (!bounty.wrongIsOrdinary) fail(`bounty board (#173): an ordinary foe shared the wanted vessel's name (${bounty.wrongFoeName}) — the name pools must be disjoint`);
+    if (!bounty.bountyStillActiveAfterWrong) fail('bounty board (#173): defeating a WRONG foe wrongly cleared the bounty — only the named target may claim it');
+    if (bounty.wrongPurseBled >= bounty.purse) fail(`bounty board (#173): a wrong-target defeat paid out the bounty purse (Δ${bounty.wrongPurseBled} ≥ purse ${bounty.purse}) — no-claim broken`);
+    // (C)
+    if (!bounty.dressedEngaged) fail('bounty board (#173): could not engage the wanted vessel for the claim check');
+    if (!bounty.dressedIsTarget) fail(`bounty board (#173): the foe at the marker was not the named target (foe=${bounty.dressedName}, wanted=${bounty.targetName})`);
+    if (!bounty.struck) fail('bounty board (#173): the wanted vessel never struck her colours — could not reach the defeat→claim');
+    if (!bounty.claimedCleared) fail('bounty board (#173): claiming the bounty did not clear the pin (claim-once guard missing)');
+    if (!(bounty.coinDelta >= bounty.purse)) fail(`bounty board (#173): the tier-scaled purse did not land in COIN on defeat (Δ${bounty.coinDelta}c < purse ${bounty.purse}c)`);
+    if (!(bounty.infamyDelta >= bounty.fame)) fail(`bounty board (#173): the bounty fame did not land in renown (Δ${bounty.infamyDelta} < fame ${bounty.fame})`);
+    // (D)
+    if (bounty.reEngageAfterClaim) fail('bounty board (#173): a bounty could be re-hunted after being claimed — the purse could double-pay');
+    if (process.exitCode !== 1) console.log(`  ✓ bounty board (#173, THE RISE): accept posts "${bounty.targetName}" as a marked hunt (${bounty.purse}c purse); a WRONG foe (${bounty.wrongFoeName}) does NOT claim it (bounty stays active); running down the named target claims the purse ONCE into coin (+${bounty.coinDelta}c, +${bounty.infamyDelta} renown) and clears the pin — the earn→spend loop closes, no save bump (v${SAVE_VERSION})`);
+  }
+
   // 2p) CC0 Pirate Kit port dressing (#101): each port is dressed with instanced barrels,
   // crates & palms, and far clusters are distance-culled. Prove props were placed, that
   // teleporting just off a port draws its cluster, and that the far open sea culls to zero.

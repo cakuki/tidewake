@@ -17,7 +17,7 @@ export const MAX_EVENTS = 60;
 
 // The deeds the balladeer knows how to sing. A future slice can add more (best trade,
 // rank climbed, ports visited) by extending NARRATORS + sanitizeEvent below.
-export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter', 'harbour', 'governorship', 'morale'];
+export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter', 'harbour', 'governorship', 'morale', 'bounty'];
 
 export const BALLAD_TITLE = 'The Ballad of Your Voyage';
 
@@ -105,6 +105,13 @@ export function sanitizeEvent(ev) {
       return (ev.tier === 'low' || ev.tier === 'mutiny')
         ? { type: 'morale', tier: ev.tier }
         : null;
+    case 'bounty': {
+      // A posted bounty run down + claimed (#173): the named wanted vessel + the board's purse (coin)
+      // and the fame it paid. Its own anecdote (the CLAIM), distinct from the fight that sank her — the
+      // "one more voyage" hook, sung. Every claimed bounty is its own verse (no dedup).
+      if (!isStr(ev.foe)) return null;
+      return { type: 'bounty', foe: String(ev.foe).trim(), coins: nonNegInt(ev.coins), infamy: nonNegInt(ev.infamy) };
+    }
     default:
       return null;
   }
@@ -204,6 +211,13 @@ const NARRATORS = {
     (e) => (e.deed === 'claim'
       ? `You dropped anchor at ${e.port} and, for the first time, meant to stay — a home water at last, and the harbourmaster left the lamp lit just in case.`
       : `Coin in, ${e.port} out: another quay, another berth, another reason for the chandler to wave you in by name and not by bounty.`),
+  ],
+  // Bounty claimed (#173): the "one more voyage" hook, sung. You read a name on a board, ran her down,
+  // and cashed the purse — a hunter's brag, warm with a wink. Original to Tidewake.
+  bounty: [
+    (e) => `There was a price on ${e.foe}, posted on a quayside board — so you hunted her down, ran out the guns, and cashed the purse: ${e.coins} coins and ${e.infamy} infamy for a name the ports wanted gone.`,
+    (e) => `You took the bounty on ${e.foe} off the board on a whim and off the sea in earnest — ${e.coins} coins the richer, ${e.infamy} infamy the more feared, and one fewer terror on the lanes.`,
+    (e) => `${e.foe} was wanted, and you were willing: you chased her to her wake and claimed the board's ${e.coins}-coin purse, your legend swelling ${e.infamy} infamy for the hunt.`,
   ],
   // Governorship (#119): the lawful arc's NAMED capstone — the mirror of the legend crown, sung for
   // the very isle you raised. Warm grandeur with a wink.
@@ -396,6 +410,7 @@ function poleLean(events) {
       case 'harbour': governor += 1; break;
       case 'governorship': governor += 2; break;
       case 'legend': if (e.pole === 'pirate') pirate += 2; else governor += 2; break;
+      case 'bounty': pirate += 1; break; // running down a wanted vessel for coin is a hunter's (pirate) deed (#173)
       default: break; // landfall, rumour, morale — neutral
     }
   }
@@ -433,7 +448,7 @@ export function composeBallad(events, opts = {}) {
     lines = [EMPTY_LINE];
   } else {
     lines = [OPENING];
-    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0, harbour: 0, governorship: 0, morale: 0 };
+    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0, harbour: 0, governorship: 0, morale: 0, bounty: 0 };
     for (const e of log) {
       // An at-sea encounter sings a rescue/plunder verse by the choice made; a morale crossing sings
       // its tier verse; a treacherous fight a false-colours verse; a lawful pirate-hunt the privateer

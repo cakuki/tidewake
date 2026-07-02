@@ -166,6 +166,12 @@ export function broadsideAim([sx, sz], heading, [fx, fz], { arcThreshold = ARC_T
 export function createBattle({
   npcs, getShipPos, getShipHeading, getLoadout, getCrewMorale, getBroadsideMult, getPlayerArmor, onEnter, onFlee, onResolve, onCycleAmmo, onBoard,
   onSurrender, onPressAttack, softenFoe,
+  // Bounty board (#173, epic #168): the "one more voyage" hook. When a bounty is active and the
+  // captain squares up near the wanted vessel's marked lane, main.js's `bountyFoe` DRESSES the
+  // engaged foe as the named target (her name + class stats) — so the ship you fight at the pin IS
+  // the Grey Gull, and defeating her claims the board's tier-scaled purse. Returns a NEW foe, or the
+  // same one (no active bounty / out of range). Defaults safe (no bounty) so mocks fight as before.
+  bountyFoe,
   // The world fears you (#172): main.js hands a read of the captain's dread ({ infamy, tier }) so a
   // much-outclassed, notorious captain makes a broken foe strike her colours EARLY — fed straight into
   // the EXISTING offersSurrender white-flag path below (never a new combat system). Defaults safe (no
@@ -266,6 +272,10 @@ export function createBattle({
     // captain's FIRST fight a forgiving, already-battered foe (winnable + legible). It returns a NEW
     // foe (may carry a reduced `hull`/`gunnery` + a `debut` marker); a veteran fight passes through.
     if (softenFoe) { try { foe = softenFoe(foe) || foe; } catch { /* softening must never break the fight */ } }
+    // Bounty dressing (#173): if this engagement is the hunt for an active bounty, re-cast the foe as
+    // the named wanted vessel (name + class stats) so the ship at the marker IS the target. Runs AFTER
+    // softenFoe so a bounty is always a real fight (a bounty is never the scaffolded debut). Guarded.
+    if (bountyFoe) { try { foe = bountyFoe(foe) || foe; } catch { /* dressing must never break the fight */ } }
     state.active = true;
     state.foeIndex = idx;
     state.foeName = foe.name;

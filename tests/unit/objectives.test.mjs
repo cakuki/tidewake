@@ -10,6 +10,8 @@ import {
   RUMOUR_REWARD_COINS, TARGET_KINDS,
   makeContestedObjective, tickContest, isContested, isClaimed, rivalName, contestRemaining,
   pickRival, contestBudget, shouldContest, sanitizeContest, RIVAL_NAMES,
+  makeBounty, bountyReward, resolvesOnDefeat, bountyPayoff, isBounty, pickBounty,
+  BOUNTY_NAMES, BOUNTY_BASE_COIN, BOUNTY_TIER_COIN,
 } from '../../src/objectives.js';
 
 const PORT = 'Saltpurse Quay';
@@ -191,4 +193,100 @@ test('sanitizeContest / sanitizeObjective round-trip a contested objective (fail
   const plain = sanitizeObjective({ ...makeObjective({ kind: 'port', name: PORT }), contest: 'junk' });
   assert.equal(isContested(plain), false, 'a junk contest degrades to a normal chase');
   assert.ok(plain, 'and the objective itself still loads');
+});
+
+// ---- Bounties (#173): a named wanted vessel, claimed ONCE on defeat, tier-scaled purse ----------
+
+const SHIP = { kind: 'ship', name: 'the Grey Gull', x: 40, z: -80 };
+
+test("'ship' is a known target kind; sanitizeTarget keeps a clean ship target (+coords)", () => {
+  assert.ok(TARGET_KINDS.has('ship'));
+  assert.deepEqual(sanitizeTarget(SHIP), { kind: 'ship', name: 'the Grey Gull', x: 40, z: -80 });
+});
+
+test('bountyReward climbs strictly with tier and clamps to [1,5]', () => {
+  let prev = -1;
+  for (let t = 1; t <= 5; t++) {
+    const r = bountyReward(t);
+    assert.equal(r.coins, BOUNTY_BASE_COIN + t * BOUNTY_TIER_COIN);
+    assert.ok(r.coins > prev, 'coin climbs with tier'); prev = r.coins;
+    assert.ok(r.fame > 0, 'fame is a real renown reward');
+  }
+  assert.equal(bountyReward(4).coins, 400, 'a tier-4 warship frigate posts the headline 400c');
+  assert.equal(bountyReward(0).coins, bountyReward(1).coins, 'tier clamps up to 1');
+  assert.equal(bountyReward(99).coins, bountyReward(5).coins, 'tier clamps down to 5');
+});
+
+test('makeBounty builds an active bounty riding the ship slot, with the tier-scaled purse', () => {
+  const b = makeBounty(SHIP, { tier: 4, cls: 'frigate', role: 'warship' });
+  assert.equal(b.kind, 'bounty');
+  assert.equal(b.status, 'active');
+  assert.deepEqual(b.target, { kind: 'ship', name: 'the Grey Gull', x: 40, z: -80 });
+  assert.equal(b.foe.tier, 4);
+  assert.equal(b.foe.cls, 'frigate');
+  assert.equal(b.payoff.coins, 400);
+  assert.ok(b.payoff.fame > 0);
+  assert.ok(isBounty(b));
+  // a non-ship target (a port) is NOT a valid bounty
+  assert.equal(makeBounty({ kind: 'port', name: PORT }, { tier: 3 }), null);
+  assert.equal(makeBounty(null), null);
+});
+
+test('makeBounty does not mutate its input target', () => {
+  const input = { kind: 'ship', name: 'the Iron Widow', x: 1, z: 2 };
+  const snap = JSON.stringify(input);
+  makeBounty(input, { tier: 2 });
+  assert.equal(JSON.stringify(input), snap);
+});
+
+test('resolvesOnDefeat claims ONLY the exact named target while active — wrong target does not', () => {
+  const b = makeBounty(SHIP, { tier: 4 });
+  assert.equal(resolvesOnDefeat(b, 'the Grey Gull'), true);
+  assert.equal(resolvesOnDefeat(b, 'Sister Grapeshot'), false, 'a wrong (ordinary) foe never claims it');
+  assert.equal(resolvesOnDefeat(b, ''), false);
+  assert.equal(resolvesOnDefeat(b, null), false);
+  assert.equal(resolvesOnDefeat(null, 'the Grey Gull'), false);
+  // a rumour objective is never claimed by a defeat (coexisting kinds don't cross-claim)
+  assert.equal(resolvesOnDefeat(makeObjective({ kind: 'port', name: PORT }), PORT), false);
+});
+
+test('claim-once: a resolved bounty never claims again — no double-pay', () => {
+  const b = makeBounty(SHIP, { tier: 4 });
+  assert.equal(resolvesOnDefeat(b, 'the Grey Gull'), true);
+  assert.deepEqual(bountyPayoff(b), { coins: 400, fame: bountyReward(4).fame });
+  const done = resolveObjective(b);
+  assert.equal(done.status, 'done');
+  assert.equal(b.status, 'active', 'resolveObjective must not mutate the input');
+  assert.equal(resolvesOnDefeat(done, 'the Grey Gull'), false, 'a done bounty never re-claims');
+  assert.deepEqual(bountyPayoff(done), { coins: 0, fame: 0 }, 'a done bounty pays nothing');
+});
+
+test('bountyPayoff is zero for junk / non-bounty objectives', () => {
+  assert.deepEqual(bountyPayoff(null), { coins: 0, fame: 0 });
+  assert.deepEqual(bountyPayoff(makeObjective({ kind: 'port', name: PORT })), { coins: 0, fame: 0 });
+});
+
+test('pickBounty is deterministic in its seed and posts an on-tone named vessel', () => {
+  const a = pickBounty('Saltpurse Quay');
+  const b = pickBounty('Saltpurse Quay');
+  assert.deepEqual(a, b, 'same seed → same bounty (a stable board)');
+  assert.ok(BOUNTY_NAMES.includes(a.name));
+  assert.ok(a.tier >= 1 && a.tier <= 5);
+  assert.deepEqual(a.reward, bountyReward(a.tier));
+  // a different seed can post different word; over the pool at least two distinct names appear
+  const names = new Set([0, 1, 2, 3, 4, 5, 6, 7].map((i) => pickBounty(`port-${i}`).name));
+  assert.ok(names.size >= 2, 'the board varies by seed');
+});
+
+test('sanitizeObjective round-trips a bounty (persistence, no save bump) and rejects a mis-typed one', () => {
+  const b = makeBounty(SHIP, { tier: 4, cls: 'frigate', role: 'warship' });
+  assert.deepEqual(sanitizeObjective(b), b, 'a clean bounty round-trips intact through the save codec');
+  // a bounty naming a non-ship target fails open to null (a bounty must be a vessel)
+  assert.equal(sanitizeObjective({ ...b, target: { kind: 'port', name: PORT } }), null);
+  // a done bounty is not worth persisting (only active objectives ride the slot)
+  assert.equal(sanitizeObjective(resolveObjective(b)), null);
+  // a bounty read back without a foe spec still loads (foe is enriching, not required)
+  const noFoe = { kind: 'bounty', target: SHIP, payoff: { coins: 400, fame: 560 }, status: 'active' };
+  const loaded = sanitizeObjective(noFoe);
+  assert.ok(loaded && loaded.kind === 'bounty' && loaded.payoff.coins === 400);
 });
