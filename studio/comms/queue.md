@@ -81,10 +81,21 @@ Six original, vision-aligned, FUN-FIRST slices, sequenced value·complexity·dep
   **survives a v18 reload** + combat reflects. Gallery `buy-a-bigger-ship-171.png` (a frigate dwarfing a
   sloop at identical framing). **#172 BUILD NEXT** (no bump). Art follow-up #144 (a CC0 ship-class set) noted,
   NOT a blocker — the class scale is a real visible change now.
-- **#172 — The world fears you: weak ships flee / strike early (M · no bump). BUILD NEXT.** Infamy rank bends NPC
-  behaviour (bounded — only weak prey blinks; even/over-tier fights unchanged). _FUN: SEE a sloop run from
-  your notorious sails._ Derived from persisted renown; reuses strike-colours/`arenaHelm`. Relates #128/#136.
-- **#173 — The bounty board: a named target + scaled reward (M · reuses the persisted objective slot).** The
+- ✅ **#172 — The world fears you: weak ships flee / strike early — SHIPPED (Loop 129, v0.0.20260702052934, #172 CLOSED).**
+  Now that a captain can grow notorious (#169) and BIG (#171), the world NOTICES. A much-outclassed,
+  much-feared captain makes WEAK prey blink — a merchant sloop turns tail and **flees on sight** before you
+  engage (npc.js reuses its existing flee steering, per-hull by her class tier vs yours), and a broken foe
+  **strikes her colours EARLIER** (battle.js feeds a dread `yielded` reason into the EXISTING
+  `board.offersSurrender` white-flag path — no new combat system; accept/press/board/refuse compose
+  unchanged). Scaled by the GAP (notoriety + hull class vs hers): a peer holds, and the apex warship
+  man-o'-war NEVER breaks to dread (**protects #167** — real fights still exist); dread is WITHHELD under a
+  false-colours disguise (#79 bluff intact). New PURE core `src/systems/dread.js` (notoriety ramp + class
+  advantage + foe firmness → dread pressure → flee threshold + early-strike morale lift), TDD'd (15 cases).
+  **Derived from persisted infamy/class — NO save change (stays v18).** SEE the sea part as your notorious
+  sails crest · FEEL your reputation has weight. Playtest asserts big-gap→flee+early-strike, peer/apex→stand,
+  and the dread strike opens+ACCEPTs the surrender flag cleanly (no soft-lock). Gallery
+  `world-fears-you-172.png` (before/after of the rise). **#173 BUILD NEXT.**
+- **#173 — The bounty board: a named target + scaled reward (M · reuses the persisted objective slot). BUILD NEXT.** The
   "one more voyage" hook; the reward feeds the upgrade loop. _FUN: SEE a bounty → chase → claim → spend on
   your ship._ Prefer no bump (fail-open objective shape). Relates #128/#112/#127.
 - **#174 — Governor-pole symmetry: invest spoils to grow your port VISIBLY (S/M · no bump).** The Standing

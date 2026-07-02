@@ -4,6 +4,19 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #172 The world fears you shipped — weak ships flee / strike early to a feared captain
+  (Loop 129, v0.0.20260702052934).** Epic **#168 "The Rise"** slice 4/6 — the world reacts to your rise.
+  Now that a captain can grow notorious (#169 ranks) and BIG (#171 class), the world NOTICES: a
+  much-outclassed, much-feared captain makes WEAK prey blink — a merchant sloop **flees on sight** before
+  you engage, and a broken foe **strikes her colours EARLIER**. Scaled by the GAP (notoriety + hull class
+  vs hers): a peer holds and the apex warship man-o'-war never breaks to dread (**protects #167** — real
+  fights still exist); dread is withheld under a false-colours disguise (#79 intact). New PURE core
+  `src/systems/dread.js` (notoriety ramp + class advantage + foe firmness → dread pressure → flee threshold
+  + early-strike morale lift), TDD'd (15 cases). Reuses the EXISTING flee steering (npc.js) + strike-colours
+  path (`board.offersSurrender`) — no new combat system. **NO save change (derived; stays v18).** SEE the
+  sea part as your notorious sails crest · FEEL your reputation has weight. Gallery
+  `world-fears-you-172.png` (a green sloop captain vs a feared frigate Corsair — she runs). #172 closed;
+  epic #168 stays open (slices 5–6 remain; #173 the bounty board next).
 - **2026-07-02 — #171 Buy a bigger ship shipped — the hull VISIBLY grows (Loop 128,
   v0.0.20260702043931).** Epic **#168 "The Rise"** slice 3/6 — the biggest power fantasy. At the town ⚓
   Shipwright you now **spend coin to step UP a ship class** (sloop → brig → frigate; the warship man-o'-war
