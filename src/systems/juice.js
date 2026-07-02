@@ -47,6 +47,18 @@ export const TIME_DILATION_MIN = 0.3;     // slowest the sim runs in the beat (n
 export const SETTLE_SECONDS = 0.9;        // a surrender camera-settle: one slow smooth breath, not a jitter
 export const SETTLE_MAG = 2.0;            // how far the camera eases on a settle (world units; ceiling, not a target)
 
+// #80 REMAINING game-feel (the LAST two deferred events) — a BOARDING rail-clash and a HARBOUR
+// dock-settle, both on the SAME machinery (the shake stack + the settle envelope), NOT a new system.
+// (1) RAIL-CLASH: the crews meet at the rail (#135/#89 board→brawl) — hulls grind and grapples bite —
+// so the deck JOLTS: a sharp, SHORT shake (a firmer, snappier bite than a fire recoil), camera-only,
+// owes NO sim freeze. (2) DOCK-SETTLE: coming alongside a port (#102 landfall), the camera breathes
+// OUT and eases you gently in — a SOFT arrival (gentler + slower than the surrender hush), camera-only,
+// decays to nothing. Both are clean no-ops while suppressed (Combat-feel toggle + prefers-reduced-motion).
+export const RAIL_CLASH_MAG = 1.8;      // the clash jolt magnitude (world units; bounded by MAX_SHAKE) — a firm bite, not a heave
+export const RAIL_CLASH_SECONDS = 0.26; // a sharper/snappier shake than a fire recoil — a quick grind, gone fast
+export const DOCK_SETTLE_MAG = 1.4;     // how far the camera eases on a dock arrival (gentler than the surrender SETTLE_MAG)
+export const DOCK_SETTLE_SECONDS = 1.2; // one slow breath as you come alongside — longer + softer than a surrender hush
+
 // ---- PURE curves ------------------------------------------------------------
 
 /** Clamp helper (juice keeps its own — no shared dep). Pure. */
@@ -160,6 +172,12 @@ export function settleEnvelope(elapsed, duration) {
   return Math.sin(Math.PI * (elapsed / duration));
 }
 
+/**
+ * The boarding RAIL-CLASH shake magnitude — a firm, bounded jolt (grapples bite, hulls grind), never
+ * past MAX_SHAKE so it can't heave the camera. Deterministic + headless-testable (the whole point). Pure.
+ */
+export function railClashMag() { return Math.min(MAX_SHAKE, Math.max(0, RAIL_CLASH_MAG)); }
+
 // ---- Controller (wired into main.js) ---------------------------------------
 //
 // Owns the transient effect state (SAVE-free — it's pure game-feel, never persisted). main.js
@@ -189,9 +207,9 @@ export function createJuice({ reducedMotion = false, enabled = true } = {}) {
 
   // Push an impulse into the single shared shake stack (generalises the broadside kick — one effect,
   // never a second competing camera system), bounded so a fire/hit-spam can't stack to sea-sickness.
-  function pushShake(magnitude) {
+  function pushShake(magnitude, duration = SHAKE_SECONDS) {
     if (!(magnitude > 0)) return;
-    shakes.push({ age: 0, magnitude, duration: SHAKE_SECONDS });
+    shakes.push({ age: 0, magnitude, duration: duration > 0 ? duration : SHAKE_SECONDS });
     if (shakes.length > MAX_SHAKES) shakes.shift();
   }
 
@@ -262,6 +280,28 @@ export function createJuice({ reducedMotion = false, enabled = true } = {}) {
   function cameraSettle() {
     if (suppressed()) return;
     settle = { age: 0, magnitude: SETTLE_MAG, duration: SETTLE_SECONDS };
+  }
+
+  /**
+   * #80 REMAINING — a BOARDING rail-clash: the crews meet at the rail and the deck JOLTS as hulls
+   * grind and grapples bite — a sharp, SHORT shake on the SAME shake stack (no new camera effect),
+   * snappier + shorter than a fire recoil. Camera-only, owes NO sim freeze; a clean no-op while
+   * suppressed. Bounded by MAX_SHAKE + MAX_SHAKES exactly like every other shake source.
+   */
+  function railClash() {
+    if (suppressed()) return;
+    pushShake(railClashMag(), RAIL_CLASH_SECONDS);
+  }
+
+  /**
+   * #80 REMAINING — a HARBOUR dock-settle: coming alongside a port, the camera breathes OUT and eases
+   * you gently in — a SOFT arrival on the SAME settle machinery (settleEnvelope), gentler + slower than
+   * the surrender hush. Camera-only, owes NO sim freeze/slow-mo, decays to nothing, a clean no-op while
+   * suppressed. One settle at a time (shares the slot with cameraSettle — a fresh arrival re-settles).
+   */
+  function dockSettle() {
+    if (suppressed()) return;
+    settle = { age: 0, magnitude: DOCK_SETTLE_MAG, duration: DOCK_SETTLE_SECONDS };
   }
 
   /**
@@ -366,7 +406,7 @@ export function createJuice({ reducedMotion = false, enabled = true } = {}) {
   }
 
   return {
-    fire, hit, board, impact, sink, bountyKill, cameraSettle, update,
+    fire, hit, board, impact, sink, bountyKill, cameraSettle, railClash, dockSettle, update,
     cameraOffset, flashLevel, consumeHitStop, setEnabled, active, snapshot,
   };
 }

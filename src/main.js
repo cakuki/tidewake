@@ -885,10 +885,18 @@ function battleFireJuiced() {
   } catch { /* the picture must never break the fight */ }
   return r;
 }
-// Board AND feel the leap (#155): a forward camera lunge as the crew swarms the rail.
+// Board AND feel the leap (#155 + #80): a forward camera lunge as the crew swarms the rail, PLUS the
+// #80 remaining rail-clash — hulls grind and grapples bite, so the deck JOLTS (a sharp, short shake on
+// the juice shake stack) with a metallic clash cue (the existing cut sting, reused — no new sound).
+// Both ride the SAME toggle/reduced-motion suppression as the rest of the juice; guarded so the feel
+// can never break the boarding, and neither owes a sim freeze (the boarding→duel flow is untouched).
 function boardBattleJuiced() {
   const brawl = battle.board();
-  if (brawl) { try { juice.board(); } catch { /* feel must never break the boarding */ } }
+  if (brawl) {
+    try { juice.board(); } catch { /* feel must never break the boarding */ }
+    try { juice.railClash(); } catch { /* the jolt must never break the boarding */ }
+    try { audio.playDuelHit('cut'); } catch { /* the clash cue must never break the boarding */ } // grapples bite: a sharp metallic clash
+  }
   return brawl;
 }
 
@@ -956,7 +964,7 @@ const mode = createModeManager({
       // Landfall gesture (#102): a mode change isn't a snap — it's a crafted, eased moment. Entering
       // TOWN begins the "making port" gesture (camera eases to a moored framing, the light warms,
       // the town view takes the screen only once we're truly ashore); leaving it runs the mirror.
-      if (to === TOWN) { ashoreSnapshot = snapshotAshore(state); landfall.land(); music.stinger(); hud.flashBanner('🏘️ Making port…', 'The helm goes quiet — the ship glides to her moorings as the light turns gold.'); checkHarbourThreat(); } // a "made port" stinger lands on the next downbeat (#102 ph2); coming home under a hard pole lean draws a threat (#134)
+      if (to === TOWN) { ashoreSnapshot = snapshotAshore(state); landfall.land(); try { juice.dockSettle(); } catch { /* the arrival ease must never break making port */ } music.stinger(); hud.flashBanner('🏘️ Making port…', 'The helm goes quiet — the ship glides to her moorings as the light turns gold.'); checkHarbourThreat(); } // a "made port" stinger lands on the next downbeat (#102 ph2); the #80 dock-settle breathes the camera out gently as you come alongside; coming home under a hard pole lean draws a threat (#134)
       else if (from === TOWN) landfall.leave(); // Set Sail: the town falls astern, the open light returns
       // BATTLE keeps its own "Battle stations!" beat below; SAILING's return is signalled by control resuming.
     } catch { /* a flourish must never break the loop */ }
@@ -3214,6 +3222,12 @@ window.__tidewake = {
   // surrender). Never used in play. bountyKill = the notorious-kill slow-mo; cameraSettle = the hush.
   juiceBountyKill() { juice.bountyKill(); return juice.snapshot(); },
   juiceCameraSettle() { juice.cameraSettle(); return juice.snapshot(); },
+  // #80 REMAINING QA surface: fire the two LAST deferred beats DIRECTLY so a headless test can prove
+  // event→effect, decay, and toggle/reduced-motion suppression deterministically (mirrors the climax
+  // hooks). The REAL wiring is proven separately (a real boarding → railClash; a real landfall →
+  // dockSettle). Never used in play. railClash = the boarding rail-jolt; dockSettle = the harbour hush.
+  juiceRailClash() { juice.railClash(); return juice.snapshot(); },
+  juiceDockSettle() { juice.dockSettle(); return juice.snapshot(); },
   // #179 NEGATIVE-SPACE QA surface: fire the hush/swell/pulse beats DIRECTLY (with a monotonic payoff
   // counter) and drain them on a chosen dt, so a headless test can prove the deferral (the sting/thunk
   // is HELD until the window elapses, then fires exactly once), the bounded auto-resume (a monster dt

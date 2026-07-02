@@ -1716,8 +1716,23 @@ try {
     tw.battleWeaken();
     const boardableWeak = tw.battle.canBoard;
     const standingBefore = tw.state.standing;
+    // #80 REMAINING — the boarding RAIL-CLASH: the deck should JOLT as the crews meet at the rail
+    // (grapples bite, hulls grind). Capture the juice shake stack around the board to prove the clash
+    // FIRED (a new shake) + owed NO sim freeze (never stalls the loop), then that it DECAYS to zero,
+    // then that toggling the juice OFF fully suppresses a fresh clash (no residual motion).
+    const shakesBeforeBoard = tw.juice.shakes;
     // BOARD: resolves the comic crew brawl, then hands off to the verbal captain's duel.
     const brawl = tw.boardBattle();
+    const railClashFired = tw.juice.shakes > shakesBeforeBoard;          // the clash pushed a shake
+    const railClashNoFreeze = tw.juiceConsumeHitStop(1 / 60);            // must be 1 — the jolt never freezes the sim
+    tw.step(0.02);
+    const railClashOffset = tw.juice.offsetMag;                         // a hair later, the jolt rocks the view
+    for (let i = 0; i < 90 && tw.juice.active; i++) tw.step(1 / 60);    // drain the clash (+ the board lunge) fully
+    const railClashDecayedShakes = tw.juice.shakes;
+    const railClashDecayedOffset = tw.juice.offsetMag;
+    tw.juiceSetEnabled(false);                                          // "Combat feel" OFF
+    const railClashOff = tw.juiceRailClash();                          // a fresh clash while off → nothing
+    tw.juiceSetEnabled(true);                                          // restore the default
     const battleEndedOnBoard = !tw.battle.active;     // the broadside gives way to the boarding
     const duelOpened = tw.duel.active;                // the captain's verbal duel is the climax
     const duelIsBoarded = tw.duel.boarded;            // flagged a capture (Standing)
@@ -1745,6 +1760,9 @@ try {
     return {
       engaged, boardableFresh, boardableWeak,
       brawlLines: brawl && brawl.lines ? brawl.lines.length : 0,
+      shakesBeforeBoard, railClashFired, railClashNoFreeze, railClashOffset,
+      railClashDecayedShakes, railClashDecayedOffset,
+      railClashOffEnabled: railClashOff.enabled, railClashOffShakes: railClashOff.shakes, railClashOffOffset: railClashOff.offsetMag,
       battleEndedOnBoard, duelOpened, duelIsBoarded, result,
       duelOpenPlayerMorale, duelConfidenceDent,
       prizePending, prizeClearedAfter,
@@ -1776,8 +1794,61 @@ try {
     if (!(boarding.spareRansom > 0)) fail(`sink-or-spare: SPARE paid no ransom coin (got ${boarding.spareRansom}) (#135 Option 4 slice 1)`);
     if (boarding.infamyOnSpare !== 0) fail(`sink-or-spare: SPARE should add no infamy (added ${boarding.infamyOnSpare}) (#135 Option 4 slice 1)`);
     if (!(boarding.standingGained > 0)) fail(`sink-or-spare: SPARE paid no Standing (gained ${boarding.standingGained}) (#135 Option 4 slice 1)`);
+    // #80 REMAINING — the boarding RAIL-CLASH: a felt jolt as the crews meet, bounded + auto-resuming.
+    if (!boarding.railClashFired) fail(`#80 rail-clash: boarding did not fire the rail-clash shake (shakes ${boarding.shakesBeforeBoard}→unchanged) — the deck does not JOLT as the crews meet`);
+    if (boarding.railClashNoFreeze !== 1) fail(`#80 rail-clash: the boarding jolt owed a sim freeze (scale=${boarding.railClashNoFreeze}) — it must NEVER stall the loop`);
+    if (!(boarding.railClashOffset > 0)) fail(`#80 rail-clash: the clash did not rock the view (offsetMag=${boarding.railClashOffset}) — no felt jolt on boarding`);
+    if (!(boarding.railClashDecayedShakes <= boarding.shakesBeforeBoard)) fail(`#80 rail-clash: the clash shake did not decay (shakes settled at ${boarding.railClashDecayedShakes}, above the ${boarding.shakesBeforeBoard} baseline)`);
+    if (!(boarding.railClashDecayedOffset === 0)) fail(`#80 rail-clash: a residual camera offset lingered after the clash (offsetMag=${boarding.railClashDecayedOffset}) — the jolt must decay to zero`);
+    if (!(boarding.railClashOffEnabled === false && boarding.railClashOffShakes === 0 && boarding.railClashOffOffset === 0)) fail(`#80 rail-clash: firing the clash with the "Combat feel" toggle OFF still produced motion (shakes=${boarding.railClashOffShakes}, offset=${boarding.railClashOffOffset}) — it must be fully suppressed`);
+    if (process.exitCode !== 1) console.log(`  ✓ #80 rail-clash: boarding JOLTS the deck (offsetMag ${boarding.railClashOffset.toFixed(2)}), owes no sim freeze, decays to zero, and is fully OFF under the toggle — the boarding FEELS like a moment`);
   } else {
     console.warn('  (#135 slice 4 boarding: no foe came in range to engage — skipped, like slice 2/3)');
+  }
+
+  // 2b6b) #80 REMAINING — the HARBOUR DOCK-SETTLE (the LAST deferred #80 event): making landfall at a
+  // port should feel like ARRIVING — the camera breathes OUT and eases you gently alongside (a soft
+  // settle, never a jolt). Drive the REAL wiring (enter TOWN → the mode-change fires juice.dockSettle),
+  // then prove: the settle armed, owed NO sim freeze, EASED the camera (a bounded offset mid-arrival),
+  // DECAYED to zero, and is fully suppressed when the "Combat feel" toggle is OFF (no residual motion).
+  const dockSettle = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    // Guarantee we start UNDER SAIL (a prior fight may leave the mode in BATTLE, and BATTLE→TOWN is
+    // illegal): break off any fight, drop back to SAILING, and let the seam settle before landfall.
+    if (tw.battle.active) tw.fleeBattle();
+    if (tw.mode !== 'sailing') tw.leaveMode();
+    tw.step(0.05);
+    const settleBefore = tw.juice.settle;
+    const enteredTown = tw.enterMode('town');            // REAL landfall path → juice.dockSettle()
+    const settleArmed = tw.juice.settle;                 // the gentle arrival hush is live
+    const dockNoFreeze = tw.juiceConsumeHitStop(1 / 60); // must be 1 — a soft arrival never freezes the sim
+    tw.step(0.6);                                        // ease into the breath (~mid of the ~1.2s settle)
+    const dockEasedOffset = tw.juice.offsetMag;          // the camera genuinely breathes out
+    for (let i = 0; i < 120 && tw.juice.settle; i++) tw.step(1 / 60); // let the whole breath decay
+    const dockDecayedSettle = tw.juice.settle;
+    const dockDecayedOffset = tw.juice.offsetMag;
+    // Toggle OFF → a fresh dock-settle produces nothing (direct hook; the real landfall already fired).
+    tw.juiceSetEnabled(false);
+    const dockOff = tw.juiceDockSettle();
+    tw.juiceSetEnabled(true);
+    tw.leaveHarbour();                                   // back to sea — restore state for later steps
+    return {
+      settleBefore, enteredTown, settleArmed, dockNoFreeze, dockEasedOffset,
+      dockDecayedSettle, dockDecayedOffset,
+      dockOffEnabled: dockOff.enabled, dockOffSettle: dockOff.settle, dockOffOffset: dockOff.offsetMag,
+    };
+  });
+  if (!dockSettle.enteredTown) {
+    console.warn('  (#80 dock-settle: could not enter town mode headlessly — skipped)');
+  } else {
+    if (dockSettle.settleBefore) fail('#80 dock-settle: a settle was already live before landfall — the test state is dirty');
+    if (!dockSettle.settleArmed) fail('#80 dock-settle: making port did not arm the gentle camera settle — the arrival does not FEEL like a moment');
+    if (dockSettle.dockNoFreeze !== 1) fail(`#80 dock-settle: the arrival ease owed a sim freeze (scale=${dockSettle.dockNoFreeze}) — a soft settle must NEVER stall the loop`);
+    if (!(dockSettle.dockEasedOffset > 0)) fail(`#80 dock-settle: the camera did not ease out on arrival (offsetMag=${dockSettle.dockEasedOffset}) — no felt settle`);
+    if (dockSettle.dockDecayedSettle) fail('#80 dock-settle: the settle did not decay — it must be one bounded breath, not a lingering drift');
+    if (!(dockSettle.dockDecayedOffset === 0)) fail(`#80 dock-settle: a residual camera offset lingered after the arrival (offsetMag=${dockSettle.dockDecayedOffset}) — it must settle to zero`);
+    if (!(dockSettle.dockOffEnabled === false && dockSettle.dockOffSettle === false && dockSettle.dockOffOffset === 0)) fail(`#80 dock-settle: arming the settle with the "Combat feel" toggle OFF still produced motion (settle=${dockSettle.dockOffSettle}, offset=${dockSettle.dockOffOffset}) — it must be fully suppressed`);
+    if (process.exitCode !== 1) console.log(`  ✓ #80 dock-settle: making port breathes the camera out gently (offsetMag ${dockSettle.dockEasedOffset.toFixed(2)}), owes no sim freeze, decays to zero, and is fully OFF under the toggle — landfall FEELS like an arrival`);
   }
 
   // 2b7) Buy a cannon at the Gunner's Workshop (#170, epic #168 "The Rise") — the owner's canonical fun

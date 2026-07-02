@@ -2,10 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createJuice, decay, flashEnvelope, shakeOffset, recoilMagnitude, ammoWeight, flashPeak,
-  impact01, impactShakeMag, hitStopDuration, timeScale, settleEnvelope,
+  impact01, impactShakeMag, hitStopDuration, timeScale, settleEnvelope, railClashMag,
   MAX_SHAKE, MAX_FLASH, SHAKE_SECONDS, LUNGE_SECONDS, FLASH_SECONDS,
   MAX_HITSTOP, MIN_HITSTOP, HITSTOP_GRAZE, DAMAGE_REF,
   TIME_DILATION_SECONDS, TIME_DILATION_MIN, SETTLE_SECONDS,
+  RAIL_CLASH_MAG, RAIL_CLASH_SECONDS, DOCK_SETTLE_MAG, DOCK_SETTLE_SECONDS,
 } from '../../src/systems/juice.js';
 
 // ---- PURE curves ------------------------------------------------------------
@@ -359,4 +360,99 @@ test('simultaneous shakes are capped so a fire-spam cannot stack to sea-sickness
   const j = createJuice();
   for (let i = 0; i < 20; i++) j.fire({ quality: 1, weight: 1.5 });
   assert.ok(j.snapshot().shakes <= 4, 'stacked shakes are bounded');
+});
+
+// ---- #80 REMAINING events — the boarding rail-clash + the harbour dock-settle -----------------
+
+test('railClashMag: a firm, POSITIVE jolt, always bounded by MAX_SHAKE', () => {
+  const m = railClashMag();
+  assert.ok(m > 0, 'a boarding jolt is actually felt');
+  assert.ok(m <= MAX_SHAKE + 1e-9, 'never past the camera-shake cap (no heave)');
+  assert.equal(m, Math.min(MAX_SHAKE, RAIL_CLASH_MAG), 'the clamped clash magnitude');
+});
+
+test('rail-clash shake: strongest near impact, bounded, and DECAYS to zero by RAIL_CLASH_SECONDS', () => {
+  const opts = { duration: RAIL_CLASH_SECONDS, magnitude: railClashMag() };
+  assert.equal(shakeOffset(0, opts)[0], 0, 'the x axis starts at rest (sin 0) — a jolt that whips out');
+  assert.deepEqual(shakeOffset(RAIL_CLASH_SECONDS, opts), [0, 0], 'spent exactly at its (short) duration');
+  assert.deepEqual(shakeOffset(RAIL_CLASH_SECONDS + 0.1, opts), [0, 0], 'dead past its duration — no residual');
+  let sawLive = false;
+  for (let e = 0; e < RAIL_CLASH_SECONDS; e += 0.005) {
+    const [x, y] = shakeOffset(e, opts);
+    assert.ok(Math.abs(x) <= MAX_SHAKE + 1e-9 && Math.abs(y) <= MAX_SHAKE + 1e-9, 'both axes stay under the cap');
+    if (Math.abs(x) > 0 || Math.abs(y) > 0) sawLive = true;
+  }
+  assert.ok(sawLive, 'the clash is genuinely felt mid-window');
+  assert.ok(RAIL_CLASH_SECONDS < SHAKE_SECONDS, 'the clash is SHARPER (shorter) than a fire recoil');
+});
+
+test('dock-settle envelope: 0 at both ends, one smooth breath (peak mid), bounded [0,1], never negative', () => {
+  assert.equal(settleEnvelope(0, DOCK_SETTLE_SECONDS), 0, 'starts calm');
+  assert.equal(settleEnvelope(DOCK_SETTLE_SECONDS, DOCK_SETTLE_SECONDS), 0, 'settles to nothing at the end');
+  assert.equal(settleEnvelope(DOCK_SETTLE_SECONDS + 0.5, DOCK_SETTLE_SECONDS), 0, 'no residual past the end');
+  const peak = settleEnvelope(DOCK_SETTLE_SECONDS / 2, DOCK_SETTLE_SECONDS);
+  assert.ok(peak > 0.999, 'the breath peaks at the midpoint');
+  for (let e = 0; e <= DOCK_SETTLE_SECONDS; e += 0.02) {
+    const v = settleEnvelope(e, DOCK_SETTLE_SECONDS);
+    assert.ok(v >= 0 && v <= 1, 'a hush stays in [0,1] — smooth, never a jitter (no negative swing)');
+  }
+  assert.ok(DOCK_SETTLE_SECONDS > SETTLE_SECONDS, 'the dock arrival is a SLOWER breath than a surrender hush');
+  assert.ok(DOCK_SETTLE_MAG < SETTLE_MAG_REF(), 'the dock arrival eases GENTLER than a surrender');
+});
+function SETTLE_MAG_REF() { return 2.0; } // SETTLE_MAG (surrender) — kept local so the intent reads inline
+
+test('railClash(): pushes a bounded shake that ages and prunes to nothing — owes NO sim freeze', () => {
+  const j = createJuice();
+  assert.equal(j.snapshot().shakes, 0, 'no shake before the boarding');
+  j.railClash();
+  const s = j.snapshot();
+  assert.equal(s.shakes, 1, 'the rail-clash fires exactly one shake (the deck jolts)');
+  assert.equal(j.consumeHitStop(1 / 60), 1, 'a boarding jolt never freezes the sim (no stall)');
+  assert.equal(s.hitStop, 0, 'and owes no hit-stop');
+  j.update(RAIL_CLASH_SECONDS + 0.01); // age past its (short) window
+  assert.equal(j.snapshot().shakes, 0, 'the clash is pruned — decays to zero, no residual');
+  assert.equal(j.snapshot().offsetMag, 0, 'no lingering camera offset');
+});
+
+test('dockSettle(): a smooth camera hush that eases and decays to nothing — owes NO sim freeze', () => {
+  const j = createJuice();
+  assert.equal(j.snapshot().settle, false, 'no settle before landfall');
+  j.dockSettle();
+  assert.equal(j.snapshot().settle, true, 'arriving at port arms the gentle settle');
+  assert.equal(j.consumeHitStop(1 / 60), 1, 'a dock arrival never freezes the sim (no stall)');
+  j.update(DOCK_SETTLE_SECONDS / 2); // step to the middle of the breath
+  const mid = j.snapshot();
+  assert.ok(mid.offsetMag > 0, 'the camera genuinely eases out mid-arrival');
+  // Bounded by the dock-settle ceiling (the small vertical settle adds ~3% to the primary z-ease) — a
+  // soft ease, never a jolt. The primary z component itself never exceeds DOCK_SETTLE_MAG.
+  assert.ok(mid.offsetMag <= DOCK_SETTLE_MAG * 1.05, 'bounded by the dock-settle ceiling — a soft ease, never a jolt');
+  j.update(DOCK_SETTLE_SECONDS); // age past the window
+  assert.equal(j.snapshot().settle, false, 'the settle decays to nothing');
+  assert.equal(j.snapshot().offsetMag, 0, 'no residual camera offset');
+});
+
+test('#80 remaining events: fully suppressed by reduced-motion AND the runtime toggle', () => {
+  const rm = createJuice({ reducedMotion: true });
+  rm.railClash();
+  rm.dockSettle();
+  rm.update(0.1);
+  assert.equal(rm.active(), false, 'reduced-motion silences both new beats');
+  assert.equal(rm.snapshot().shakes, 0);
+  assert.equal(rm.snapshot().settle, false);
+
+  const j = createJuice({ enabled: false }); // "Combat feel" toggled off
+  j.railClash();
+  j.dockSettle();
+  j.update(0.1);
+  assert.equal(j.snapshot().shakes, 0, 'no rail-clash while off');
+  assert.equal(j.snapshot().settle, false, 'no dock-settle while off');
+  assert.equal(j.snapshot().offsetMag, 0, 'no residual motion while off');
+
+  // …and flipping the toggle OFF mid-effect clears them with no residual.
+  const k = createJuice();
+  k.railClash(); k.dockSettle();
+  k.setEnabled(false);
+  assert.equal(k.snapshot().shakes, 0);
+  assert.equal(k.snapshot().settle, false);
+  assert.equal(k.snapshot().offsetMag, 0);
 });
