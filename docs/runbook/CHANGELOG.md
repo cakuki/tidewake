@@ -4,6 +4,25 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #181 Coins-delta pulse: the economy feels responsive (Loop 151,
+  v0.0.20260702142750; #181 CLOSED).** The RISE loop is earn → spend, but a coin change was SILENT +
+  INVISIBLE — the #21 HUD coins readout just snapped to a new number, so the FEEDBACK arrow of the fun loop
+  (`docs/design/what-makes-it-fun.md`) leaked. Now every real change to `state.coins` lands a beat you can
+  **SEE + HEAR**: the coins number POPS (a capped scale + colour tick — **green on a gain, red on a
+  spend/loss**), a small delta **floats up + fades** (`+400` / `−250`, a real U+2212 minus), and a soft
+  **coin chime** rings (a bright two-note ring on a gain, a duller damped tick on a spend — `audio.js`,
+  hung off `sfxGain` so mute covers it). Fires **only on a real change** (never every frame); the visual pop
+  rides the SAME prefers-reduced-motion + **Combat-feel** toggle as the #155/#80 juice, while the gentle
+  chime still classifies (audio owns its own mute). **Purely presentation off the existing coin value — no
+  economy change, NO save bump (stays v18).** Reuses the #155 juice "snap-in, ease-out" `decay` curve, the
+  #21 coins readout, and the existing audio bus — no new systems. PURE change-detector + gain/spend
+  classification + delta formatting TDD'd first (`src/systems/coins-pulse.js`, 12 unit tests); the paint
+  lives in a system (like the `hud-*` renderers) so it updates deterministically under `tw.step()`. Gates:
+  `npm test` **1496/1496 green**; `node tests/playtest.mjs` **✓ PASSED zero console errors** (asserts
+  coin-gain→gain-pulse, coin-spend→spend-pulse, no-change→silent, delta-shown, reduced-motion suppression,
+  save v18; perf **31/130 draws · 93k/150k tris**). CI green + live HTTP 200 on the deployed tag. Gallery
+  `v0.0.20260702142750-coins-delta-pulse.png` (a bounty gain: coins glow green with a floating `+400`).
+  _(A first Pages deploy timed out — infra, not code; re-ran → green.)_
 - **2026-07-02 — #180 Perf-gate hardened against the swiftshader `drawCalls=0` flake (Loop 150,
   test-harness only; NO release, NO save bump).** The perf gate in `node tests/playtest.mjs` intermittently
   false-failed on the LOCAL swiftshader rasteriser with "perf counters unpopulated (drawCalls=0)" (~1/3 of

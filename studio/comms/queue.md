@@ -89,6 +89,15 @@ onto **parked owner-decision frontiers** and are surfaced as `[OWNER-DECISION]` 
   a strike sting + a rising swell. Playtest asserts hush-defers-sting, charged rank-up (swell holds the crown),
   bounded auto-resume, no sim freeze, and full toggle-off suppression. **NO save bump — stays v18.**
   **⚓ THE "ONE MORE VOYAGE" LANE (#176 → #177 → #178 → #179) IS NOW COMPLETE — all four slices shipped, all v18.**
+- ✅ **#181 — Coins-delta pulse: make the economy feel responsive** *(feature/polish off the #21 HUD, S — post-lane)* —
+  **SHIPPED Loop 151, v0.0.20260702142750, #181 CLOSED.** The small visible-feedback win flagged as optional
+  polish on the #21 status HUD. Every real change to `state.coins` now lands a beat you can **SEE + HEAR**: the
+  coins readout POPS (scale + colour — green on a gain, red on a spend/loss), a small delta floats up + fades
+  (`+400` / `−250`), and a soft coin chime rings (bright ring on a gain, duller tick on a spend). Fires ONLY on a
+  real change (never every frame); the visual pop rides the same reduced-motion + Combat-feel toggle as the juice
+  (the chime still classifies, audio owns its mute). Reuses the #155 juice `decay` curve + the #21 readout + the
+  audio bus — no new systems. PURE change-detector/classify/format TDD'd first (`src/systems/coins-pulse.js`); the
+  paint lives in a system so it drives under `tw.step()`. **Presentation-only — NO save bump (stays v18).**
 
 **Sequencing note.** Build in listed order: **#176** (highest-leverage — the actual retention hook) →
 **#177** (cheapest high-confidence identity win) → **#178** (combat depth) → **#179** (juice polish). All four
