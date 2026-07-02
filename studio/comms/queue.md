@@ -40,13 +40,16 @@ The *bigger* remembered-world ideas (a named Nemesis rival, ports that visibly r
 onto **parked owner-decision frontiers** and are surfaced as `[OWNER-DECISION]` options below — recommended,
 **not auto-adopted** (the owner hasn't reacted to the overnight run yet).
 
-- **#176 — Never close the tab empty-handed** *(feature/design, S/M — P1, the convergence).* A LOST voyage
-  STILL banks something visible (a scrap of Infamy / a plank on the home-port fund / a rumour) and the Ballad
-  records the defeat as a **chapter** — so you lean into "one more voyage" instead of closing the tab.
-  **Guardrail:** the loss must STILL STING (#164) — bank + sting coexist. **FUN:** you lose and STILL see a
-  needle tick. *Builds on THE RISE #168 + loss-stings #164 + Ballad #90 + home-fund #174 — existing persisted
-  fields only, NO save bump.*
-- **#177 — Fear you can SEE on your own ship** *(feature/art, S — P2).* Render Infamy on your OWN hull the
+- ✅ **#176 — Never close the tab empty-handed** *(feature/design, S/M — P1, the convergence)* — **SHIPPED
+  Loop 145, v0.0.20260702113400, #176 CLOSED.** A LOST fight now shows a needle tick without softening #164's
+  sting: **always** the defeat is sung into the Ballad as a **chapter** (a `defeat` deed, #90 — a rueful,
+  unbowed verse, never a blank page), and **when homed** a bounded salvage **plank** falls on the home-port
+  fund (`harbour.invested`, #174) — a **different axis** that never touches the dented Infamy/Standing/coin,
+  so the #164 deduction is never refunded (fame poles are off-limits — the #164 gate asserts a raid loss
+  leaves Standing untouched & vice-versa). Card names the sting FIRST then "the tale is sung / a plank for
+  your harbour / One more voyage?". PURE `salvagePlank`/`bankSalvage` + the defeat verse TDD'd first; NO save
+  bump (stays v18). **#177 is next.**
+- **#177 — Fear you can SEE on your own ship** *(feature/art, S — P2)* **← NEXT.** Render Infamy on your OWN hull the
   way #170 shows bought cannons: black sails / trophy flags / a fiercer figurehead as notoriety climbs, and a
   bad loss visibly strips a trophy. **FUN:** fame you can see — and lose. *Derived from the persisted infamy
   value; NO save bump.*

@@ -4,6 +4,25 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #176 Never close the tab empty-handed: a lost voyage still banks a scrap (Loop 145,
+  v0.0.20260702113400; the "one more voyage" retention hook — R2 deep-reading convergence, PRODUCT refill
+  lane slice 1/4, #176 CLOSED).** A LOST fight now shows a needle tick WITHOUT softening #164's sting. Two
+  honest ticks that coexist with the loss: (1) **always** the defeat is sung into the Ballad as a CHAPTER (a
+  new `defeat` deed in `voyage-log.js` — a rueful, unbowed verse beside the boasts, never a blank page), and
+  (2) **when you have a home port** a bounded salvage PLANK falls on the home-port fund (`harbour.invested`,
+  #174) — a DIFFERENT AXIS that never touches the dented Infamy/Standing/coin, so the #164 deduction is never
+  refunded. Fame poles are deliberately off-limits: the #164 gate asserts a raid loss leaves Standing
+  untouched and a governor loss leaves Infamy untouched, so the numeric scrap is the issue-suggested
+  home-port fund, provably keeping every stakes-on-loss test green. PURE logic TDD'd first — `salvagePlank`
+  (bounded 7..19, tier-scaled, always under the fame the loss cost) + `bankSalvage` (grows `invested` only,
+  never jumps a tier, null-safe) in `home-port.js`, plus the `defeat` verse. `hud.showDefeat` names the sting
+  FIRST, then a subdued "the tale is sung / a plank for your harbour / One more voyage?" tick (no triumphant
+  flourish; the existing loss earcon carries the cue). Self-QA "does a loss still sting BUT leave me wanting
+  one more voyage?" — YES: the pursued pole + coin still take a real floored hit (caution still matters; the
+  plank is a scrap on a different axis, never a wash), yet the card ends "One more voyage?" and the Ballad
+  carries the defeat as a chapter. **NO save bump — reuses `voyageLog` + `harbour.invested` (stays v18).** CI
+  green (Release run 28586821866), live HTTP 200 at v0.0.20260702113400. **Follow-up:** #177 (Fear you can SEE
+  on your own ship) is next in the PRODUCT refill lane.
 - **2026-07-02 — #75 Mobile polish: the game feels native turned sideways — landscape + safe-area
   (Loop 144, v0.0.20260702105824; mobile/playable, #75 STAYS OPEN).** Follow-up to #63's phone MVP
   (portrait-verified) and the shipped top-HUD safe-area sweep. Two highest-value fixes so the game plays
