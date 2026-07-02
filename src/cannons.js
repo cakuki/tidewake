@@ -157,11 +157,13 @@ export function strikesColours({ enemyHull, morale }) {
  *            outcome:'broadside'|'rigging', sunkEnemy:boolean, sunkPlayer:boolean,
  *            enemyMorale:number, yielded:boolean}}
  */
-export function resolveExchange({ aim, enemyHull, playerHull, gunnery = 1, morale = MORALE_MAX, broadsideMult = 1 }, rng = Math.random) {
+export function resolveExchange({ aim, enemyHull, playerHull, gunnery = 1, morale = MORALE_MAX, broadsideMult = 1, playerArmor = 1 }, rng = Math.random) {
   const jitter = () => 0.8 + rng() * 0.4; // ±20% fairness wobble (==1 when rng()==0.5)
   // Your OWN battery scales your volley (#170) — bought cannons bite through the turn-based cannonade
   // too. Defaults to 1 so every legacy caller/test stays byte-identical.
   const guns = Number.isFinite(broadsideMult) && broadsideMult > 0 ? broadsideMult : 1;
+  // Your HULL CLASS soaks the fire you take (#171) here too — a bigger hull divides the reply. Default 1.
+  const armor = Number.isFinite(playerArmor) && playerArmor > 0 ? playerArmor : 1;
   let enemyHit, returnScale, outcome;
   if (aim === 'chain') {
     enemyHit = Math.round(BASE * 0.85 * guns * jitter());
@@ -176,7 +178,7 @@ export function resolveExchange({ aim, enemyHull, playerHull, gunnery = 1, moral
   // A foe sunk by your volley never gets to fire back.
   const playerHit = isSunk(newEnemyHull)
     ? 0
-    : Math.round(BASE * 1.0 * gunnery * returnScale * jitter());
+    : Math.round(BASE * 1.0 * gunnery * returnScale * jitter() / armor);
   const newPlayerHull = clampHull(playerHull - playerHit, MAX_HULL);
   const sunkEnemy = isSunk(newEnemyHull);
   const sunkPlayer = isSunk(newPlayerHull);
@@ -216,7 +218,7 @@ export function resolveExchange({ aim, enemyHull, playerHull, gunnery = 1, moral
  * @returns {{enemyHit:number, playerHit:number, enemyHull:number, playerHull:number, quality:number,
  *            sunkEnemy:boolean, sunkPlayer:boolean, enemyMorale:number, yielded:boolean}}
  */
-export function resolveBroadside({ quality, enemyHull, playerHull, gunnery = 1, morale = MORALE_MAX, ammo = NEUTRAL_AMMO, broadsideMult = 1 }, rng = Math.random) {
+export function resolveBroadside({ quality, enemyHull, playerHull, gunnery = 1, morale = MORALE_MAX, ammo = NEUTRAL_AMMO, broadsideMult = 1, playerArmor = 1 }, rng = Math.random) {
   const q0 = Math.max(0, Math.min(1, quality));
   // A forgiving shot (light) lifts a glancing angle toward a clean one; round forgives nothing (q==q0).
   const q = q0 + (1 - q0) * (ammo.aimForgive || 0);
@@ -224,10 +226,13 @@ export function resolveBroadside({ quality, enemyHull, playerHull, gunnery = 1, 
   // The player's OWN battery scales the hull bite (#170): more cannons bought at the workshop → a
   // heavier volley. Defaults to 1 so every legacy caller (and the pre-#170 tests) stays byte-identical.
   const guns = Number.isFinite(broadsideMult) && broadsideMult > 0 ? broadsideMult : 1;
+  // Your HULL CLASS soaks the fire you take (#171): a bigger ship's timbers divide the reply she takes,
+  // so a frigate survives more volleys than the starting sloop. Defaults to 1 → byte-identical legacy.
+  const armor = Number.isFinite(playerArmor) && playerArmor > 0 ? playerArmor : 1;
   const enemyHit = Math.round(BASE * 1.5 * q * (ammo.hullMult ?? 1) * guns * jitter()); // a clean beam broadside hits harder than a turn-based volley
   const newEnemyHull = clampHull(enemyHull - enemyHit, MAX_HULL);
   // A foe sunk by your volley never gets to fire back; otherwise exposing your beam earns a reply.
-  const playerHit = isSunk(newEnemyHull) ? 0 : Math.round(BASE * 0.9 * gunnery * (ammo.returnMult ?? 1) * jitter());
+  const playerHit = isSunk(newEnemyHull) ? 0 : Math.round(BASE * 0.9 * gunnery * (ammo.returnMult ?? 1) * jitter() / armor);
   const newPlayerHull = clampHull(playerHull - playerHit, MAX_HULL);
   const sunkEnemy = isSunk(newEnemyHull);
   const sunkPlayer = isSunk(newPlayerHull);
@@ -341,7 +346,7 @@ export function fireQuip(outcome, rng = Math.random) {
 //   onEnd       : ({result, reward?, penalty?, foeName}) -> announce (toast)
 //   sfx         : (kind)    -> optional audio sting (reuses the duel bus kinds)
 
-export function createCannons({ npcs, getShipPos, getColours, getBroadsideMult, applyReward, applyPenalty, onEnd, sfx, rng = Math.random } = {}) {
+export function createCannons({ npcs, getShipPos, getColours, getBroadsideMult, getPlayerArmor, applyReward, applyPenalty, onEnd, sfx, rng = Math.random } = {}) {
   // A sting must never break the fight, so every audio call is swallowed.
   function ping(kind) {
     try { if (sfx) sfx(kind); } catch { /* a sting must never sink the duel */ }
@@ -428,8 +433,9 @@ export function createCannons({ npcs, getShipPos, getColours, getBroadsideMult, 
     const name = typeof aim === 'number' ? AIMS[aim] : aim;
     if (!AIMS.includes(name)) return null;
     const guns = (getBroadsideMult && Number(getBroadsideMult())) || 1; // bought cannons (#170) bite here too
+    const armor = (getPlayerArmor && Number(getPlayerArmor())) || 1;    // hull class soaks the reply (#171)
     const r = resolveExchange(
-      { aim: name, enemyHull: state.enemyHull, playerHull: state.playerHull, gunnery: foe.gunnery, morale: state.enemyMorale, broadsideMult: guns },
+      { aim: name, enemyHull: state.enemyHull, playerHull: state.playerHull, gunnery: foe.gunnery, morale: state.enemyMorale, broadsideMult: guns, playerArmor: armor },
       rng
     );
     state.enemyHull = r.enemyHull;

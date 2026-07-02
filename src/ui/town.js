@@ -23,6 +23,7 @@ import {
 } from '../systems/harbour-threat.js';
 import { AMMO, AMMO_TYPES } from '../systems/ammo.js';
 import { nextCannonCost, totalGuns, canBuyCannon, sanitizeExtraCannons, MAX_EXTRA_CANNONS } from '../systems/gun-upgrade.js';
+import { nextClass, nextClassCost, canBuyClass, classLabel, sanitizeShipClass } from '../systems/ship-class-upgrade.js';
 
 export function createTown(opts = {}) {
   const getState = typeof opts.getState === 'function' ? opts.getState : () => null;
@@ -49,6 +50,10 @@ export function createTown(opts = {}) {
   // hear a heavier boom, feel foes sink faster). main.js owns coin + the deck mesh + persistence; here
   // we route the tap and paint the board. No-op if unwired.
   const onBuyCannon = typeof opts.onBuyCannon === 'function' ? opts.onBuyCannon : () => {};
+  // Buy a bigger ship (#171): spend coin at the Shipwright to step UP a class (the hull visibly grows,
+  // hits harder, takes more punishment). main.js owns coin + the mesh rescale + persistence; here we
+  // route the tap and paint the board. No-op if unwired.
+  const onBuyShipClass = typeof opts.onBuyShipClass === 'function' ? opts.onBuyShipClass : () => {};
   const root = opts.root ?? (typeof document !== 'undefined' ? document : null);
   // Touch parity (#17/#66): taps drive trades + the Leave plank when there's no keyboard.
   const TOUCH = !!(root && root.body && root.body.classList && root.body.classList.contains('touch'));
@@ -131,6 +136,7 @@ export function createTown(opts = {}) {
         if (e.target.closest?.('#town-tribute')) { e.preventDefault(); onTribute(); return; }
         if (e.target.closest?.('#town-standfirm')) { e.preventDefault(); onStandFirm(); return; }
         if (e.target.closest?.('#town-buy-cannon')) { e.preventDefault(); buyCannonTap(); return; }
+        if (e.target.closest?.('#town-buy-ship')) { e.preventDefault(); buyShipTap(); return; }
         const shotBtn = e.target.closest?.('.town-shot');
         if (shotBtn && shotBtn.dataset.ammo) { e.preventDefault(); fitShot(shotBtn.dataset.ammo); return; }
         const chaseBtn = e.target.closest?.('.town-chase');
@@ -230,6 +236,39 @@ export function createTown(opts = {}) {
     render();
   }
 
+  // Buy a bigger ship (#171): route the tap to main.js (which spends coin, grows the hull mesh, and
+  // persists the class), then force a repaint so the new class + next cost + purse show at once.
+  function buyShipTap() {
+    onBuyShipClass();
+    lastSig = ''; // force a repaint so the new class + next step cost + purse update
+    render();
+  }
+
+  // The Shipwright plank (#171) — buy a BIGGER ship class, the epic's biggest power fantasy. Shows the
+  // hull you sail now and a warm "buy the next class" pull priced by the escalating curve: affordable →
+  // a live button; too dear → the price + your purse; at the top → a proud "the finest afloat" line.
+  // The SEE (the hull grows) / HEAR / FEEL (heavier broadside + tougher hull) land in main.js.
+  function shipwrightHTML(state) {
+    const cls = sanitizeShipClass(state.shipClass);
+    const coins = Number.isFinite(state.coins) ? state.coins : 0;
+    const nxt = nextClass(cls);
+    const cost = nextClassCost(cls);
+    let action;
+    if (!nxt || cost === null) {
+      action = `<div class="town-ship-max">⚓ You sail a ${esc(classLabel(cls))} — the finest hull the yard will lay for a captain of your standing.</div>`;
+    } else {
+      const gate = canBuyClass({ shipClass: cls, coins });
+      action = gate.ok
+        ? `<button id="town-buy-ship" class="town-buy-ship" type="button">⚓ Buy a ${esc(classLabel(nxt))} — ${cost}c <span class="town-ship-gain">(a bigger hull: heavier guns, tougher timbers)</span></button>`
+        : `<div class="town-ship-need">A ${esc(classLabel(nxt))} runs <b>${cost}c</b> — you have ${coins}c. Take a few more prizes and come back.</div>`;
+    }
+    return `<div class="town-ship">`
+      + `<div class="town-ship-h">⚓ The Shipwright <span class="town-ship-count">You sail a ${esc(classLabel(cls))}</span></div>`
+      + `<div class="town-ship-sub">Step up a class and the shipwright lays you a bigger hull — you'll see her dwarf the sloop you started in, land a heavier broadside, and shrug off more fire. She's yours to keep.</div>`
+      + action
+      + `</div>`;
+  }
+
   // The cannon plank at the head of the workshop (#170) — the persistent gun upgrade. Shows the guns you
   // own, and a warm "buy a cannon" pull priced by the escalating curve: affordable → a live button; too
   // dear → the price + your purse; maxed → a proud "fully gunned" line. The FEEL/HEAR/SEE land in main.js.
@@ -271,6 +310,7 @@ export function createTown(opts = {}) {
     }).join('');
     return `<div class="town-workshop">`
       + `<div class="town-workshop-h">⚒ The Gunner's Workshop</div>`
+      + shipwrightHTML(state)
       + cannonHTML(state)
       + `<div class="town-workshop-sub">Fit the shot you'll carry to sea. In a fight, press <b>X</b> to cycle the loaded shot — round to sink her, chain to cripple her, grape to scare her colours down.</div>`
       + rows
@@ -344,7 +384,7 @@ export function createTown(opts = {}) {
     const master = recall || info.harbourmaster || 'The harbourmaster nods you ashore.';
     // Cheap cache: only touch the DOM when something the player can see changes.
     const chasing = (state.objective && state.objective.target && state.objective.target.name) || '';
-    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing + '|' + JSON.stringify(state.harbour ?? null) + '|' + (state.standing ?? 0) + '|' + (state.governorship ? 1 : 0) + '|' + JSON.stringify(state.threat ?? null) + '|' + JSON.stringify(state.loadout ?? null) + '|' + (state.extraCannons ?? 0);
+    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing + '|' + JSON.stringify(state.harbour ?? null) + '|' + (state.standing ?? 0) + '|' + (state.governorship ? 1 : 0) + '|' + JSON.stringify(state.threat ?? null) + '|' + JSON.stringify(state.loadout ?? null) + '|' + (state.extraCannons ?? 0) + '|' + (state.shipClass ?? 'sloop');
     if (sig === lastSig) return;
     lastSig = sig;
 

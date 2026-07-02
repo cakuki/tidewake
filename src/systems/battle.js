@@ -163,7 +163,7 @@ export function broadsideAim([sx, sz], heading, [fx, fz], { arcThreshold = ARC_T
 //   reloadSeconds : how long the guns take to reload between volleys (slice 2)
 
 export function createBattle({
-  npcs, getShipPos, getShipHeading, getLoadout, getCrewMorale, getBroadsideMult, onEnter, onFlee, onResolve, onCycleAmmo, onBoard,
+  npcs, getShipPos, getShipHeading, getLoadout, getCrewMorale, getBroadsideMult, getPlayerArmor, onEnter, onFlee, onResolve, onCycleAmmo, onBoard,
   onSurrender, onPressAttack, softenFoe,
   // Loss stings (#164): the defeat ledger deducts from the captain's ALREADY-PERSISTED ledger, so
   // main.js provides a read of it (getLedger) and the context of the loss (getDefeatContext → 'raid'
@@ -377,8 +377,10 @@ export function createBattle({
     const profile = ammoProfile(state.ammo); // the LOADED shot shapes the volley (#135 slice 3)
     // Your bought cannons scale the bite (#170) — more guns → a heavier volley → she sinks faster.
     const guns = (getBroadsideMult && Number(getBroadsideMult())) || 1;
+    // Your hull CLASS soaks the fire she returns (#171) — a bigger ship takes more punishment.
+    const armor = (getPlayerArmor && Number(getPlayerArmor())) || 1;
     const r = resolveBroadside(
-      { quality: a.quality, enemyHull: state.enemyHull, playerHull: state.playerHull, gunnery: foe.gunnery, morale: state.enemyMorale, ammo: profile, broadsideMult: guns },
+      { quality: a.quality, enemyHull: state.enemyHull, playerHull: state.playerHull, gunnery: foe.gunnery, morale: state.enemyMorale, ammo: profile, broadsideMult: guns, playerArmor: armor },
       rng
     );
     state.enemyHull = r.enemyHull;

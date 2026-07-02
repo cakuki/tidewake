@@ -6,6 +6,10 @@ import {
   broadsideMult, buyCannon as buyCannonPure, canBuyCannon, nextCannonCost,
   totalGuns, sanitizeExtraCannons, sanitizeShipClass, MAX_EXTRA_CANNONS,
 } from './systems/gun-upgrade.js';
+import {
+  buyClass as buyClassPure, canBuyClass, nextClass, nextClassCost,
+  classScale, classBroadsideMult, classArmor, classLabel,
+} from './systems/ship-class-upgrade.js';
 import { createWorld } from './world.js';
 import { createWake } from './wake.js';
 import { createNpcs } from './npc.js';
@@ -128,6 +132,16 @@ scene.add(ship);
 // SEE beat of the purchase. Mesh-conserving (#121): one shared geometry per barrel/carriage, hidden guns
 // aren't drawn.
 const deckGuns = mountDeckGuns(ship);
+// Buy a bigger ship (#171, epic #168 "The Rise"): the player's owned CLASS scales the whole hull group
+// so a bigger class VISIBLY dwarfs the sloop you started in. We capture the ship's base (hull-
+// normalising) scale ONCE, then multiply the class factor onto it (sloop = ×1.0 → byte-identical). No
+// new geometry — the SAME mesh, just bigger (#121). Camera/wake/physics read ship.position + state.pos,
+// not scale, so a bigger hull never breaks the follow-cam, the wake, or the collision radius.
+const shipBaseScale = ship.scale.x || 1;
+function applyShipClassScale() {
+  try { ship.scale.setScalar(shipBaseScale * classScale(state.shipClass)); }
+  catch { /* a flourish must never break the loop */ }
+}
 // Your ship wears your legend (#132 Slice A, DL #5): clone the hero hull's sail + hull materials ONCE
 // (the GLB shares one colormap material across its meshes — clone so we can tint each independently
 // without touching the founderer or any other instance) and capture each base roughness. The per-frame
@@ -420,7 +434,8 @@ const cannons = createCannons({
   npcs,
   getShipPos: () => [state.pos.x, state.pos.z],
   getColours: () => state.colours, // False Colours (#79): opening fire under a disguise = ambush
-  getBroadsideMult: () => broadsideMult(state.extraCannons), // bought cannons (#170) bite in the #59 cannonade too
+  getBroadsideMult: () => broadsideMult(state.extraCannons) * classBroadsideMult(state.shipClass), // bought cannons (#170) + a bigger hull's heavier guns (#171) bite in the #59 cannonade too
+  getPlayerArmor: () => classArmor(state.shipClass), // a bigger hull class soaks the reply (#171)
   // #45/#79/#91: sinking pays Infamy; a LAWFUL kill (honest colours vs a pirate) also pays
   // Standing (the governor pole) — or fines it for sinking an innocent merchant. Clamped ≥ 0.
   applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.infamy; if (r.standing) state.standing = Math.max(0, (state.standing || 0) + r.standing); syncRenown(state); },
@@ -482,7 +497,8 @@ const battle = createBattle({
   getShipHeading: () => state.heading, // slice 2: the broadside arc needs your heading vs the foe
   getLoadout: () => state.loadout,     // slice 3: the shot you fit at the town workshop
   getCrewMorale: () => sanitizeMorale(state.morale), // slice 4: your crew's nerve feeds the boarding brawl (#124)
-  getBroadsideMult: () => broadsideMult(state.extraCannons), // buy a cannon (#170): more guns → a heavier volley → she sinks faster
+  getBroadsideMult: () => broadsideMult(state.extraCannons) * classBroadsideMult(state.shipClass), // buy a cannon (#170) + a bigger ship (#171): more/heavier guns → a heavier volley → she sinks faster
+  getPlayerArmor: () => classArmor(state.shipClass), // buy a bigger ship (#171): a bigger hull takes more punishment
   // Soften a fresh captain's FIRST fight (#157): if the debut is still unspent, hand this engagement a
   // forgiving, already-battered foe and mark it the debut; a veteran fight passes through full-strength.
   softenFoe: (foe) => {
@@ -945,6 +961,9 @@ state.extraCannons = sanitizeExtraCannons(state.extraCannons);
 state.shipClass = sanitizeShipClass(state.shipClass);
 // Reveal the bought cannons on the deck so a returning captain SEES the guns they own the moment they board.
 deckGuns.setCount(state.extraCannons);
+// Grow the hull to her owned class (#171) so a returning captain boards the bigger ship they bought —
+// the SEE beat survives the reload. A fresh voyage is a sloop → ×1.0, byte-identical to before.
+applyShipClassScale();
 
 // ---- False Colours (#79) -------------------------------------------------------------
 // The displayed flag: true black (honest pirate) vs false merchant (a disguise). A restored
@@ -1049,7 +1068,7 @@ function newVoyage() {
   state.debut = false; debutActive = false; debutPhaseShown = null; // ...and re-arm the Bosun's First Duel (#157)
   state.morale = freshMorale(); // ...and a fresh, willing crew at the START baseline (#124)
   state.objective = null; // a fresh voyage chases nothing yet — the chart starts unpinned (#111/#112)
-  state.extraCannons = 0; state.shipClass = sanitizeShipClass(null); deckGuns.setCount(0); // ...and the bare sloop battery again (#170/#171)
+  state.extraCannons = 0; state.shipClass = sanitizeShipClass(null); deckGuns.setCount(0); applyShipClassScale(); // ...and the bare sloop battery + starting hull again (#170/#171)
   state.colours = DEFAULT_COLOURS; // a fresh voyage flies honest black again (#79)
   applyColoursToShip();
   hud.renderColours(state.colours);
@@ -1295,6 +1314,10 @@ const town = createTown({
   // appears on your deck, barks a heavier broadside, and sinks foes faster. main.js owns the coin +
   // deck mesh + persistence; here we just route the tap.
   onBuyCannon: () => buyDeckCannon(),
+  // Buy a BIGGER SHIP (#171, THE RISE): spend coin at the Shipwright to step UP a class — the hull
+  // VISIBLY grows, hits harder, and takes more punishment. main.js owns the coin + mesh rescale +
+  // persistence; here we just route the tap.
+  onBuyShipClass: () => buyShipClass(),
 });
 town.init();
 
@@ -1321,6 +1344,35 @@ function buyDeckCannon() {
     persistence.write();                             // lock the purchase the instant it's made — survives a reload
     hud.flashBanner('⚒ A new cannon bolted to your deck!',
       `${totalGuns(state.extraCannons)} guns now — your next broadside barks heavier, and she'll sink foes faster. (−${res.cost}c)`);
+    town.render();
+    return res;
+  } catch { return { ok: false, reason: 'error' }; }
+}
+
+// Buy a BIGGER SHIP at the Shipwright (#171, epic #168 "The Rise") — the biggest power fantasy. Spend
+// coin to step UP a class (sloop → brig → frigate): the hull VISIBLY grows to dwarf the sloop you
+// started in (SEE), a deep triumphant sting sounds (HEAR), and her class combat stats now apply to YOU
+// — a heavier broadside and a tougher hull, so she hits harder and takes more punishment (FEEL). Pure
+// buy math + the cost curve + the class→stat map live in systems/ship-class-upgrade.js; here we apply
+// coin, rescale the mesh, celebrate, and persist the class in the reserved v18 `shipClass` field (NO
+// new save bump — #170 reserved it). Guarded — a flourish must never break the loop.
+function buyShipClass() {
+  try {
+    initEconomy(state);
+    const before = sanitizeShipClass(state.shipClass);
+    const res = buyClassPure({ shipClass: before, coins: state.coins ?? 0 });
+    if (!res.ok) {
+      if (res.reason === 'no-coins') hud.flashBanner('⚓ The shipwright folds his arms', `A ${classLabel(nextClass(before))} runs ${res.cost}c — take a few more prizes and come back, captain.`);
+      return res;
+    }
+    state.coins = Math.max(0, res.coins);
+    state.shipClass = sanitizeShipClass(res.shipClass);
+    applyShipClassScale();                            // SEE: the hull grows to her new class this instant
+    try { audio.playDuelHit('win'); } catch { /* a sting must never break the buy */ } // HEAR: a deep triumphant note as she's launched
+    logDeed({ type: 'ship', deed: 'buy-class', shipClass: state.shipClass }); // a milestone the Ballad remembers (#78)
+    persistence.write();                             // lock the new hull the instant she's bought — survives a reload
+    hud.flashBanner(`⚓ A ${classLabel(state.shipClass)} is yours!`,
+      `Your new hull dwarfs the sloop you started in — a heavier broadside, and timbers that shrug off more fire. (−${res.cost}c)`);
     town.render();
     return res;
   } catch { return { ok: false, reason: 'error' }; }
@@ -2708,6 +2760,35 @@ window.__tidewake = {
       base: resolveBroadside({ ...target, broadsideMult: broadsideMult(0) }, rng).enemyHit,
       full: resolveBroadside({ ...target, broadsideMult: broadsideMult(MAX_EXTRA_CANNONS) }, rng).enemyHit,
     };
+  },
+  // Buy a BIGGER SHIP at the Shipwright (#171, epic #168) QA surface. `shipUpgrade` reads the live
+  // owned class — the class id, its human label, the LIVE mesh scale factor actually applied to the
+  // hull group (the SEE beat — a bigger class = a bigger number), the next class + its cost, whether
+  // you can afford it, and the class combat mults (broadside FEEL + armour). buyShipClass() drives the
+  // real purchase (spend coin + rescale the mesh + persist the v18 class field). qaClassCombat()
+  // PROVES the FEEL: it runs the SAME clean beam broadside as the sloop vs the frigate and returns the
+  // hull bite YOU deal and the fire SHE returns for each — a bigger class must bite harder + soak more.
+  get shipUpgrade() {
+    const cls = sanitizeShipClass(state.shipClass);
+    return {
+      shipClass: cls,
+      label: classLabel(cls),
+      meshScale: ship.scale.x,               // SEE: the live scale of the hull group (bigger class → bigger)
+      classScale: classScale(cls),           // the class factor applied over the base (sloop = 1.0)
+      next: nextClass(cls),
+      cost: nextClassCost(cls),
+      canBuy: canBuyClass({ shipClass: cls, coins: state.coins ?? 0 }).ok,
+      broadsideMult: classBroadsideMult(cls),// FEEL: the offence your hull class earns
+      armor: classArmor(cls),                // FEEL: the fire divisor your hull class earns
+    };
+  },
+  buyShipClass() { return buyShipClass(); },
+  qaPlayerClassCombat(cls) {
+    const rng = () => 0.5; // jitter == 1 → deterministic
+    // a foe that survives your volley so she fires back (playerHit > 0) — proves both bite + armour
+    const target = { quality: 0.6, enemyHull: 100, playerHull: 100, gunnery: 1 };
+    const r = resolveBroadside({ ...target, broadsideMult: classBroadsideMult(cls), playerArmor: classArmor(cls) }, rng);
+    return { enemyHit: r.enemyHit, playerHit: r.playerHit };
   },
   // Boarding (#135 slice 4): boardBattle() sends the crew over the rail once she's beaten to ≤30% hull
   // (battle.snapshot().canBoard) — it resolves the comic crew brawl, then hands off to the verbal

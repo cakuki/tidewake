@@ -1406,6 +1406,62 @@ try {
   // Reset to a clean voyage so the later sections + the screenshot start from a known slate.
   await page.evaluate(() => window.__tidewake.newVoyage());
 
+  // 2b7b) Buy a BIGGER SHIP at the Shipwright (#171, epic #168 "The Rise") — the biggest power fantasy,
+  // riding #170's v18 save (NO further bump). Prove all payoffs in one deterministic pass: buying steps
+  // the class UP + deducts coin, VISIBLY grows the hull mesh (a bigger classScale/meshScale = SEE), lifts
+  // the class combat mults so a bigger hull hits harder AND soaks more (FEEL, proven through the real
+  // broadside math), and it PERSISTS across a reload (the reserved v18 shipClass field round-trips).
+  const shipBuy = await page.evaluate(() => {
+    const tw = window.__tidewake;
+    tw.qaSetLedger({ coins: 5000, infamy: 0, standing: 0 }); // a full purse so the whole ladder is reachable
+    const s0 = tw.shipUpgrade;
+    const sloopCombat = tw.qaPlayerClassCombat("sloop");
+    const buy1 = tw.buyShipClass();          // sloop → brig
+    const s1 = tw.shipUpgrade;
+    const coinsAfter1 = tw.state.coins;
+    const buy2 = tw.buyShipClass();          // brig → frigate
+    const s2 = tw.shipUpgrade;
+    const frigateCombat = tw.qaPlayerClassCombat("frigate");
+    const overCap = tw.buyShipClass();       // frigate is this slice's top → refused as 'maxed'
+    return {
+      startClass: s0.shipClass, startScale: s0.classScale, startMesh: s0.meshScale,
+      startBroadside: s0.broadsideMult, startArmor: s0.armor,
+      buy1ok: buy1.ok, buy1cost: buy1.cost, startCoins: 5000, coinsAfter1,
+      class1: s1.shipClass, scale1: s1.classScale, mesh1: s1.meshScale, broadside1: s1.broadsideMult, armor1: s1.armor,
+      buy2ok: buy2.ok, class2: s2.shipClass, scale2: s2.classScale, mesh2: s2.meshScale, broadside2: s2.broadsideMult, armor2: s2.armor,
+      overCapOk: overCap.ok, overCapReason: overCap.reason,
+      sloopCombat, frigateCombat,
+    };
+  });
+  if (shipBuy.startClass !== 'sloop') fail(`buy a bigger ship (#171): a fresh voyage should start on the sloop (got ${shipBuy.startClass})`);
+  if (shipBuy.startScale !== 1) fail(`buy a bigger ship (#171): the sloop must be the ×1.0 baseline scale (got ${shipBuy.startScale})`);
+  if (!shipBuy.buy1ok) fail('buy a bigger ship (#171): buying the brig failed with a full purse');
+  if (shipBuy.class1 !== 'brig') fail(`buy a bigger ship (#171): the class did not step up to brig (got ${shipBuy.class1})`);
+  if (shipBuy.coinsAfter1 !== shipBuy.startCoins - shipBuy.buy1cost) fail(`buy a bigger ship (#171): coin not deducted correctly (started ${shipBuy.startCoins}, cost ${shipBuy.buy1cost}, now ${shipBuy.coinsAfter1})`);
+  if (!(shipBuy.scale1 > shipBuy.startScale)) fail(`buy a bigger ship (#171): the hull did not VISIBLY grow — SEE beat missing (classScale ${shipBuy.startScale} → ${shipBuy.scale1})`);
+  if (!(shipBuy.mesh1 > shipBuy.startMesh)) fail(`buy a bigger ship (#171): the live mesh scale did not grow (${shipBuy.startMesh} → ${shipBuy.mesh1})`);
+  if (!(shipBuy.broadside1 > shipBuy.startBroadside)) fail(`buy a bigger ship (#171): the class broadside multiplier did not rise — FEEL beat missing (${shipBuy.startBroadside} → ${shipBuy.broadside1})`);
+  if (!(shipBuy.armor1 > shipBuy.startArmor)) fail(`buy a bigger ship (#171): the class armour did not rise — FEEL beat missing (${shipBuy.startArmor} → ${shipBuy.armor1})`);
+  if (!shipBuy.buy2ok || shipBuy.class2 !== 'frigate') fail(`buy a bigger ship (#171): the class did not step up to frigate (ok=${shipBuy.buy2ok}, class=${shipBuy.class2})`);
+  if (!(shipBuy.scale2 > shipBuy.scale1)) fail(`buy a bigger ship (#171): the frigate did not dwarf the brig (classScale ${shipBuy.scale1} → ${shipBuy.scale2})`);
+  if (shipBuy.overCapOk || shipBuy.overCapReason !== 'maxed') fail(`buy a bigger ship (#171): buying past the frigate should be refused as 'maxed' (ok=${shipBuy.overCapOk}, reason=${shipBuy.overCapReason})`);
+  // Combat REFLECTS the class: a frigate lands a heavier broadside AND takes less of her reply than a sloop.
+  if (!(shipBuy.frigateCombat.enemyHit > shipBuy.sloopCombat.enemyHit)) fail(`buy a bigger ship (#171): a frigate must bite harder in combat (sloop ${shipBuy.sloopCombat.enemyHit} vs frigate ${shipBuy.frigateCombat.enemyHit})`);
+  if (!(shipBuy.frigateCombat.playerHit < shipBuy.sloopCombat.playerHit)) fail(`buy a bigger ship (#171): a frigate must take LESS fire than a sloop (sloop ${shipBuy.sloopCombat.playerHit} vs frigate ${shipBuy.frigateCombat.playerHit})`);
+
+  // PERSISTS across a reload — the reserved v18 shipClass field round-trips (NO new bump).
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForFunction('window.__tidewake && window.__tidewake.ready === true', { timeout: 30000 });
+  const shipPersist = await page.evaluate(() => {
+    const tw = window.__tidewake;
+    const s = tw.shipUpgrade;
+    return { shipClass: s.shipClass, classScale: s.classScale, meshScale: s.meshScale, saveVersion: tw.version };
+  });
+  if (shipPersist.shipClass !== 'frigate') fail(`buy a bigger ship (#171): the bought class did NOT survive a reload (got ${shipPersist.shipClass}) — the v18 shipClass field must round-trip`);
+  if (!(shipPersist.classScale > 1)) fail(`buy a bigger ship (#171): the bigger hull was not re-grown on a restored voyage (classScale=${shipPersist.classScale}) — a returning captain must SEE the ship they own`);
+  if (process.exitCode !== 1) console.log(`  ✓ buy a bigger ship (#171, THE RISE): steps class sloop→brig→frigate, deducts coin (−${shipBuy.buy1cost}c) + VISIBLY grows the hull (scale ×${shipBuy.startScale}→×${shipBuy.scale2.toFixed(2)}) + hits harder & soaks more (bite ${shipBuy.sloopCombat.enemyHit}→${shipBuy.frigateCombat.enemyHit}, fire taken ${shipBuy.sloopCombat.playerHit}→${shipBuy.frigateCombat.playerHit}); capped at frigate; SURVIVES a reload (v18 shipClass round-trip, NO new bump)`);
+  await page.evaluate(() => window.__tidewake.newVoyage());
+
   // 2b6b) Dedicated BATTLE arena foe (#135, Option-4 final slice): squaring up now gives you a foe that
   // ACTIVELY SAILS TO FIGHT instead of drifting on her open-sea waypoint. Driven headlessly: engage,
   // then hold the helm still and STEP — the foe must run her dedicated duel brain (a valid helm stance),
