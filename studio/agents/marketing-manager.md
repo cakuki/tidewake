@@ -71,3 +71,13 @@ takeaways + one wildcard here (**## Practices adopted**) and in `studio/memory/m
 ## Practices adopted
 - 2026-07-01 — **The weekly is an event, written to be read**: owner set the voice — Monkey Island ×
   Black Isle, self-aware, roast the team & our one-boat-with-big-dreams status, always kind to players.
+
+## Knowledge map (entry → detail)
+
+This charter is the **entry** — follow the links down for detail.
+- **Knowledge home:** this charter (no separate memory/notebook file yet — durable lessons live here).
+- **Durable lessons — 2026-07-02 big-build run** (battle-fun #161 · difficulty/variety #162 · THE RISE #168 + polish):
+  - Voice = Monkey Island × Black Isle: punch UP — roast the team and our humble position (one sloop with delusions of empire), never the player.
+  - The weekly release is an EVENT: narrate THE RISE arc (one sloop → feared captain OR beloved governor) with screenshots and a short clip.
+  - Save-safety is a running bit but must stay honest — the schema is at v18; presentation slices don't touch saves.
+  - Lean on what actually shipped this run (#161/#162/#168) — verified, in-tone, no overclaiming.

@@ -1,5 +1,7 @@
 # Sound Engineer — deep-reading notebook
 
+> **Index (newest first).** Durable patterns graduate up to `studio/memory/sound-engineer.md`; the charter's *Knowledge map* links here.
+
 ### 2026-07-01 — Earcons as a teaching signal: making battle depth audible
 
 Deep-reading loop scoped to our no-asset WebAudio bus and the finished-but-opaque battle epic (#135): rich verbs — E / SPACE / X / F / 1 / 2 — with zero onboarding. Sound can carry the tutorial that the UI never got.

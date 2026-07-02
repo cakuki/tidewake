@@ -1,5 +1,7 @@
 # Software Developer — deep-reading notebook
 
+> **Index (newest first).** Durable patterns graduate up to `studio/memory/software-developer.md`; the charter's *Knowledge map* links here.
+
 ## 2026-07-01 — Making existing depth legible: just-in-time prompts & reactive juice
 
 Bounded study of game-feel legibility (Game UI Database contextual button prompts; "Juice it or Lose it"; diegetic-UI framework). Takeaways:

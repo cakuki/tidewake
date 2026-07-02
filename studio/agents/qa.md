@@ -196,3 +196,14 @@ sampled **state** matches a committed golden trace (state-diff, flake-free, no G
 deterministic end pose matches the golden **pixel** baseline (#37). One fixture catches both gameplay
 *and* visual regressions, and every future QA-reported bug ships as a tiny replay that reproduces it
 exactly — turning "I can't repro" into a permanent test.
+
+## Knowledge map (entry → detail)
+
+This charter is the **entry** — follow the links down for detail.
+- **Accumulated craft memory (deeper detail):** `studio/memory/qa.md`
+- **Deep-reading notebook (detail):** `studio/agents/notebooks/qa.md` (R2 — dated inspiration + cross-connections)
+- **Durable lessons — 2026-07-02 big-build run** (battle-fun #161 · difficulty/variety #162 · THE RISE #168 + polish):
+  - The playtest gate proves wiring end-to-end via `§` probes + `qaProbe`/`perKind`: event→effect, decay-to-zero, no-stall, toggle-off suppression, anti-repeat across bolts, and determinism — AudioContext-free.
+  - The determinism / #121 mesh-conservation gate + #123 golden-replay must stay green; assert real-time effects never leak into the deterministic `tw.step()` path.
+  - Rubric + gallery regression: score every shot against the previous release's gallery; a regression on any dimension blocks the release.
+  - Perf gate every slice: draws/tris budget (~29/130 draws · ~92.8k/150k tris) asserted, audio = +0 draws.

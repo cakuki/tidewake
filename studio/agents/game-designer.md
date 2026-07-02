@@ -223,3 +223,14 @@ raid indiscriminately or without papers and the same deeds build **Infamy** (you
 hunts you, merchants flee). One mechanic — *which flag, and is it a lie?* — turns every encounter into
 a moral/strategic choice that feeds *both* poles, adds delicious comedy (the smug reveal as the false
 flag drops), and gives the world a concrete reason to react to who you've decided to be.
+
+## Knowledge map (entry → detail)
+
+This charter is the **entry** — follow the links down for detail.
+- **Accumulated craft memory (deeper detail):** `studio/memory/game-designer.md`
+- **Deep-reading notebook (detail):** `studio/agents/notebooks/game-designer.md` (R2 — dated inspiration + cross-connections)
+- **Durable lessons — 2026-07-02 big-build run** (battle-fun #161 · difficulty/variety #162 · THE RISE #168 + polish):
+  - Dread model (`src/systems/dread.js`): a weak, outclassed foe SEEs you (flees on sight), FEELs you (strikes her colours early), and HEARs you (a fearful hail NAMES you) — sized to notoriety × class advantage. A peer holds and the apex never breaks (protects real fights #167); dread is withheld under a false-colours disguise (#79 intact).
+  - THE RISE (#168) is the reward→progression→mastery loop: rank-up title cards (#169), buy guns (#170) / ships (#171), the world reacts (#172/#175), a bounty board (#173), your harbour grows (#174) — and every deed is sung by the end-of-voyage Ballad (#90).
+  - Difficulty is **FIXED BY REGION — NO rubber-band** (owner #162): a safe home coast grading to a dangerous frontier, with challenge-on-demand (#167) so the player opts into harder fights.
+  - Fun-first: layer stakes (loss stings #164) and legible odds (#166) so a fight READS before it's picked.

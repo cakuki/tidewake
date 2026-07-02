@@ -1,5 +1,7 @@
 # QA notebook
 
+> **Index (newest first).** Durable patterns graduate up to `studio/memory/qa.md`; the charter's *Knowledge map* links here.
+
 ### 2026-07-01 — Cold-start discoverability: when the depth ships but the teaching doesn't
 
 Battle epic #135 is deep and complete — but a new player meets E/SPACE/X/F/1/2 with no

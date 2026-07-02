@@ -1,5 +1,7 @@
 # Tech Lead — deep-reading notebook
 
+> **Index (newest first).** Durable patterns graduate up to `studio/memory/tech-lead.md`; the charter's *Knowledge map* links here.
+
 ### 2026-07-01 — Contextual button prompts & progressive disclosure (making earned depth legible)
 
 Battle epic #135 shipped rich verbs (Maneuver→Board→Duel, keys E/Space/X/F/1/2) but teaches none of them. Grounding in our stack: Tidewake already has a `ui/` house standard (pure helpers + `create<Name>(root)` factory + tests, per `compass.js`/`raid-phases.js`), a pure `onboarding.js` decision machine, and a `codeForKey` helper — but the battle keys live as hand-written static HTML strings inside `hud.js` (e.g. the `duel-help` line), with no single source of truth and no just-in-time surfacing for a new player.

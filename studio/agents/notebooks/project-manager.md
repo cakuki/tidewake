@@ -1,5 +1,7 @@
 # Project Manager — deep-reading notebook
 
+> **Index (newest first).** Durable patterns graduate up to `studio/memory/project-manager.md`; the charter's *Knowledge map* links here.
+
 ## 2026-07-01 — Deep-reading: making shipped depth legible (flow-of-teaching)
 
 The battle epic (#135) is deep but silent — a wall of keys (E/SPACE/X/F/1/2) with no way in. Craft study on onboarding + slicing converges on one PM-relevant idea: **teaching is itself a flow problem, and it should be sliced vertically, not front-loaded.**

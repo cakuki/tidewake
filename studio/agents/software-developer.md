@@ -148,3 +148,14 @@ simultaneously enables: deterministic unit tests, a stable `--seed`-pinned galle
 the record/replay regression harness (DL#1 wildcard, #36), AND a *seeded daily voyage* the PM's
 "Ballad of Your Voyage" could share ("today's seed: …"). The smallest change that unlocks the most
 downstream craft — do it the next time movement/combat logic is touched.
+
+## Knowledge map (entry → detail)
+
+This charter is the **entry** — follow the links down for detail.
+- **Accumulated craft memory (deeper detail):** `studio/memory/software-developer.md`
+- **Deep-reading notebook (detail):** `studio/agents/notebooks/software-developer.md` (R2 — dated inspiration + cross-connections)
+- **Durable lessons — 2026-07-02 big-build run** (battle-fun #161 · difficulty/variety #162 · THE RISE #168 + polish):
+  - Reuse over rebuild: extend an existing system via a slot, don't add a parallel one — `src/ui/over-ship-billboard.js` `setLabel()` served #161 target rings AND #165 threat labels/#166 odds (pooled DOM, one element per hull, created once, reused every frame → 0 extra draws).
+  - Save discipline: schema is at **v18**; presentation/logic-only slices add NO persisted field → NO save-version bump. New fields go through the **#122 migration codec + frozen corpus** (which caught a real silent save-wipe).
+  - Juice/hit-stop safety: time-dilation/hit-stop drains on **real wall-clock** inside `consumeHitStop`, bounded to [min,1] never 0 (always auto-resumes, can't stall the loop); the deterministic `tw.step()` path never calls it, so the fixed sim / #121 mesh-conservation gate stays pristine. Fully suppressed by the "Combat feel" toggle + `prefers-reduced-motion`.
+  - TDD pure logic first (curves/pickers in `src/systems/*`), extend the headless playtest with `§` probes; UI/art/feel are QA's to judge.

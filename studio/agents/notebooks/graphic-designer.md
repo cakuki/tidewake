@@ -1,5 +1,7 @@
 # Graphic Designer — deep-reading notebook
 
+> **Index (newest first).** Durable patterns graduate up to `studio/memory/graphic-designer.md`; the charter's *Knowledge map* links here.
+
 ### 2026-07-01 — Deep-learning loop #4: just-in-time key-prompts, per-phase HUD legibility
 
 Grounded in the shipped battle epic (#135): deep per-phase naval combat with many keys (E/SPACE/X/F/1/2) and **no onboarding** — a new player faces depth they can't reach. Lens today: make existing depth *legible and discoverable* without new systems.

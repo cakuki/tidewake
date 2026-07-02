@@ -221,3 +221,14 @@ clarifying/decision questions back **over Telegram** (`scripts/owner-channel.sh 
 under `OWNER-CHANNEL.md` → ## Pending questions, and **never block the loop** while waiting. You also
 **report roadmap changes out** (accept/park/decline, re-prioritisation) — the owner reads them on his
 phone. `from-owner` P1s you file preempt `queue.md`.
+
+## Knowledge map (entry → detail)
+
+This charter is the **entry** — follow the links down for detail.
+- **Accumulated craft memory (deeper detail):** `studio/memory/product-manager.md`
+- **Deep-reading notebook:** none yet.
+- **Durable lessons — 2026-07-02 big-build run** (battle-fun #161 · difficulty/variety #162 · THE RISE #168 + polish):
+  - Lane-complete → refill, never idle: when a polish lane finishes (post-RISE #175/#90/#80/#70), the next cycle runs PRODUCT to refill the roadmap.
+  - THE RISE (#168) closed the reward→progression→mastery loop; BOTH reputation poles now have verbs — the pirate legend mirrored by the governor's claim-and-grow home port.
+  - Owner-decisions never auto-adopt: battle-mode #100 stayed HELD all session; surface a gentle nudge, never promote it yourself.
+  - Fun-first justification: every slice is justified by the fun it delivers, not by feature count.

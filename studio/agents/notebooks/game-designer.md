@@ -1,5 +1,7 @@
 # Game Designer — deep-reading notebook
 
+> **Index (newest first).** Durable patterns graduate up to `studio/memory/game-designer.md`; the charter's *Knowledge map* links here.
+
 ### 2026-07-01 — Deep-learning loop #4: teaching the depth we already built (diegetic, just-in-time onboarding)
 
 Battle #135 shipped real depth (per-phase HUD, E/SPACE/X/F/1/2) but a new captain meets it as a wall of unlabelled keys. Reading: diegetic-tutorial craft (Inscryption's rulebook/bell, Super Meat Boy teaching-by-playing) and just-in-time onboarding (NerdyTeachers; the Mario "first enemy is a Goomba" rule).

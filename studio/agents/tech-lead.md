@@ -208,3 +208,14 @@ relevant `src/` and return **effort (S/M/L) · risk · short approach**, same as
 Keep verdicts honest and fast — the owner is waiting on his phone. If an owner bug report names
 visible breakage, size the smallest always-working fix so a `from-owner` **P1** can preempt the queue
 and ship the *same* hour. You don't message the owner directly; you feed the PM, who reports out.
+
+## Knowledge map (entry → detail)
+
+This charter is the **entry** — follow the links down for detail.
+- **Accumulated craft memory (deeper detail):** `studio/memory/tech-lead.md`
+- **Deep-reading notebook (detail):** `studio/agents/notebooks/tech-lead.md` (R2 — dated inspiration + cross-connections)
+- **Durable lessons — 2026-07-02 big-build run** (battle-fun #161 · difficulty/variety #162 · THE RISE #168 + polish):
+  - One source of truth beats scattered strings (a keymap table vs hand-authored HUD HTML); prefer thin single-source registries (systems registry #120/#24), never a framework.
+  - Reuse-not-rebuild is an architecture rule: new beats ride existing rigs — climax juice (#80) on the SAME `src/systems/juice.js` shake/hit-stop stack; threat labels on the one over-ship billboard.
+  - The determinism gate is sacred: real-time/wall-clock effects stay OFF the `tw.step()` path; #121 mesh-conservation + #123 golden-replay guard it.
+  - Save migration is codified (#122 codec + frozen corpus); no ad-hoc schema edits — presentation-only slices stay at save v18.

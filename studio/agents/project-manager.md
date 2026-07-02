@@ -249,3 +249,14 @@ REGISTER → board → issue hygiene as a worktree-desk item, that **## Pending 
 steering latency — if his message sat unrouted for more than ~a cycle, fix the poll step. The owner
 must always see roadmap changes reported out; if a release or re-prioritisation shipped silently,
 that's a process gap to close.
+
+## Knowledge map (entry → detail)
+
+This charter is the **entry** — follow the links down for detail.
+- **Accumulated craft memory (deeper detail):** `studio/memory/project-manager.md`
+- **Deep-reading notebook (detail):** `studio/agents/notebooks/project-manager.md` (R2 — dated inspiration + cross-connections)
+- **Durable lessons — 2026-07-02 big-build run** (battle-fun #161 · difficulty/variety #162 · THE RISE #168 + polish):
+  - Ritual cadence is time-gated daily — R1 defrag, R2 reading, R3 harden, R4/R4w release, R5 retro, R6 brief, R7 plan (see `studio/comms/rituals.md`); run-late, don't skip.
+  - Race-safe commits: `git commit -o <paths>` (never `git add -A`) when agents share the working index, or separate worktrees.
+  - Queue-sync in the retro: verify every accepted PM-desk issue actually reached `queue.md` (grep `studio/comms/` for the #).
+  - Standing-open issues (#70 curios, #80 juice, #90 Ballad, #129 town-music) stay OPEN for deeper follow-ups after a lane ships.

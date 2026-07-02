@@ -1,5 +1,7 @@
 # Musician — deep-reading notebook
 
+> **Index (newest first).** Durable patterns graduate up to `studio/memory/musician.md`; the charter's *Knowledge map* links here.
+
 ## 2026-07-01 — Deep-reading #4: music that *teaches* the battle's shape (onboarding via score)
 
 Web research, new + classic. Sources: adaptive-music combat layering (thegameaudioco, Wikipedia, Splice), Dead Space 2's discrete "fear" layering, and — outside games — music-in-the-classroom "behavior cue" pedagogy (Edutopia). Dedup vs DL#1-3 (vertical layering / bar-clock / stingers / crew chorus).

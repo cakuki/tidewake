@@ -147,3 +147,14 @@ speed against the swell**, so it *moans* leaning into a hard turn, *groans* low 
 graphic side is already computing for buoyancy. The boat stops being a silent prop and starts sounding
 like tons of straining timber — believable realism underneath, with room for a comic over-creak on a
 run-aground (ties to the #76 "Scraaape…" beat).
+
+## Knowledge map (entry → detail)
+
+This charter is the **entry** — follow the links down for detail.
+- **Accumulated craft memory (deeper detail):** `studio/memory/sound-engineer.md`
+- **Deep-reading notebook (detail):** `studio/agents/notebooks/sound-engineer.md` (R2 — dated inspiration + cross-connections)
+- **Durable lessons — 2026-07-02 big-build run** (battle-fun #161 · difficulty/variety #162 · THE RISE #168 + polish):
+  - Earcons teach the rules: each verb gets a stable, distinct, self-describing confirmation cue, and an **availability** flourish signals *when* an action becomes legal — the hardest thing to read in a fast HUD.
+  - Duck teaching cues OVER the ballad via the existing music sub-bus sidechain (`setTargetAtTime`), or the lesson drowns.
+  - Reuse audio buses, don't add new ones: dread's fearful hail (#175) rode the tier-aware reputation-sting bus; open-sea curios are small additive one-shots (e.g. the spar's timber-groan `audio.sfxSpar`), AudioContext-free in the gate.
+  - Spatialise world sounds with `PannerNode`; music under SFX, UI over ambience — never clip.

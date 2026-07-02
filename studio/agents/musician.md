@@ -185,3 +185,14 @@ composed rather than switched.
   respecting the mute toggle, tiny file, attributed in `assets/`. Build it **adaptive-ready** —
   one layer now, but document the transition/duck rules so port/combat/calm layers crossfade in
   later (vertical layering). Charm-per-byte beats any visual slice this block.
+
+## Knowledge map (entry → detail)
+
+This charter is the **entry** — follow the links down for detail.
+- **Accumulated craft memory (deeper detail):** `studio/memory/musician.md`
+- **Deep-reading notebook (detail):** `studio/agents/notebooks/musician.md` (R2 — dated inspiration + cross-connections)
+- **Durable lessons — 2026-07-02 big-build run** (battle-fun #161 · difficulty/variety #162 · THE RISE #168 + polish):
+  - Per-town identity: landfall rings a dedicated **docked cue** voiced in the town's own key/mode, with a per-town motif **shape** (rise/peal/call/lilt) and **timbre** (leadType) — deterministic + seed-picked so every port sounds distinct (`townDockedCue()` / `TOWN_CUE_SHAPES` in `src/town-theme.js`).
+  - Stingers are **bar-quantised** (fire on the next downbeat), voiced by `voiceStinger`; the `setTownTheme` glide is unchanged; docked cues carry NO percussive bed.
+  - The adaptive bed is mode-aware (#94/#109) and harmonic-mood-aware (#132); one shared instrument palette so all cues feel like a single score.
+  - #129 stays OPEN: distinct per-town drone melodies, fuller instrument sets beyond leadType, and live per-town tempo (needs a re-timing scheduler).

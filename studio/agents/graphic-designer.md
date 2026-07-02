@@ -164,3 +164,14 @@ a thin in-focus band + gentle desaturation at the edges miniaturises the scene, 
 *passage* of sailing snaps into an intimate *place* the instant you dock. One fullscreen pass gated
 on `mode.is(TOWN)`, fading with `townBlend`; pair it with a quayside CSS skin (procedural woodgrain/
 parchment gradients, no images) on the `#town` panel so the DOM market reads as part of the same place.
+
+## Knowledge map (entry → detail)
+
+This charter is the **entry** — follow the links down for detail.
+- **Accumulated craft memory (deeper detail):** `studio/memory/graphic-designer.md`
+- **Deep-reading notebook (detail):** `studio/agents/notebooks/graphic-designer.md` (R2 — dated inspiration + cross-connections)
+- **Durable lessons — 2026-07-02 big-build run** (battle-fun #161 · difficulty/variety #162 · THE RISE #168 + polish):
+  - The over-ship billboard is a shared, pooled DOM overlay (one element per hull, reused) — target rings, threat labels, and legible odds all ride it; it respects the #161-slice-2 non-occlusion centre safe-zone → 0 extra draws.
+  - Draw budget holds at ~29/130 draws · ~92.8k/150k tris; additive open-sea curios reuse ONE low-poly mesh (≤1 extra draw).
+  - Gallery discipline: every visible slice drops a named shot in `studio/qa/gallery/` so QA can regression-compare release over release.
+  - Dread/RISE reads visually through existing channels (hail banner, rank title cards) — no new HUD system per beat.
