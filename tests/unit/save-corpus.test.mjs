@@ -103,6 +103,13 @@ const CORPUS = [
     blob: '{"v":16,"heading":1.2,"speed":8,"throttle":0.5,"pos":[120.5,0,-340.25],"coins":250,"cargo":{"rum":3},"infamy":300,"standing":200,"legends":{"pirate":true,"governor":false},"onboarding":{"goal":true,"firstDock":true,"firstTrade":true,"firstRank":false},"voyageLog":[],"colours":"merchant","portMemory":{},"objective":null,"harbour":{"name":"Gullet\'s Rest","level":4,"invested":900},"governorship":true,"morale":42,"threat":{"kind":"navy","pole":"infamy","port":"Gullet\'s Rest","tier":2,"demand":400}}',
     expect: { coins: 250, governorship: true, morale: 42, debut: true },
   },
+  {
+    v: 17, // Bosun's-First-Duel debut flag (#157) — a PRE-UPGRADE save: the v18 gun upgrade (#170) must
+    // migrate forward to NONE bought (extraCannons: 0) and the reserved ship-class (#171) to the starting
+    // sloop (shipClass: 'sloop'), never rejecting the otherwise-valid save. A spent debut rides along.
+    blob: '{"v":17,"heading":1.2,"speed":8,"throttle":0.5,"pos":[120.5,0,-340.25],"coins":250,"cargo":{"rum":3},"infamy":300,"standing":200,"legends":{"pirate":true,"governor":false},"onboarding":{"goal":true,"firstDock":true,"firstTrade":true,"firstRank":false},"voyageLog":[],"colours":"merchant","portMemory":{},"objective":null,"harbour":{"name":"Gullet\'s Rest","level":4,"invested":900},"governorship":true,"morale":42,"threat":{"kind":"navy","pole":"infamy","port":"Gullet\'s Rest","tier":2,"demand":400},"debut":true}',
+    expect: { coins: 250, governorship: true, morale: 42, debut: true, extraCannons: 0, shipClass: 'sloop' },
+  },
 ];
 
 // A subset-deep-equality assert: every key in `expect` matches in `actual` (deep), but `actual` may

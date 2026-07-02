@@ -110,8 +110,9 @@ try {
     if (!(terror.coins > prey.coins && terror.infamy > prey.infamy)) fail(`challenge on demand (#167): a man-o'-war kill did not out-pay a sloop's (t5 ${terror.coins}c/${terror.infamy}inf vs t1 ${prey.coins}c/${prey.infamy}inf)`);
     // (D) no rubber-band: the rule reads POSITION only (a fixed point always reads the same danger):
     if (!(regionDanger(0, 320) < regionDanger(0, DEEP_R + 100))) fail('challenge on demand (#167): regionDanger is not fixed-by-region (coast !< deep) — danger looks rubber-banded');
-    // (E) NO save bump — regional danger is positional/deterministic, not a persisted field (owner decision):
-    if (SAVE_VERSION !== 17) fail(`challenge on demand (#167): the save schema bumped to v${SAVE_VERSION} — regional danger must stay transient/positional (v17)`);
+    // (E) Regional danger adds NO field of its own — it's positional/deterministic (owner decision). The
+    // schema is v18 as of THE RISE's gun upgrade (#170, the lane's one bump); #167 contributes nothing to it.
+    if (SAVE_VERSION !== 18) fail(`save schema pin: expected v18 (THE RISE gun upgrade #170), got v${SAVE_VERSION} — regional danger (#167) still adds no persisted field`);
     if (process.exitCode !== 1) console.log(`  ✓ challenge on demand (#167): the FIXED rule out-classes the deep (tier ${deepRuleTier}) vs the coast (tier ${coastRuleTier}); the warship man-o'-war (tier 5) roams the deep (r ${manowar ? manowar.r.toFixed(0) : '?'} ≥ ${DEEP_R}) above the tamest hull (region ${coast.region}/tier ${coast.tier}) — reachable by sailing to danger; reward scales (t1 ${prey.coins}c → t5 ${terror.coins}c); fixed-by-region, no rubber-band, save v${SAVE_VERSION}`);
   }
 
@@ -1346,6 +1347,64 @@ try {
   } else {
     console.warn('  (#135 slice 4 boarding: no foe came in range to engage — skipped, like slice 2/3)');
   }
+
+  // 2b7) Buy a cannon at the Gunner's Workshop (#170, epic #168 "The Rise") — the owner's canonical fun
+  // beat, and the lane's ONE save bump (v17→v18). Prove all three payoffs: buying deducts coin + adds a
+  // cannon you SEE on the deck (the revealed gun mesh) + a heavier broadside you FEEL (more hull bite),
+  // and it PERSISTS across a reload (v18 round-trip). Deterministic — driven through the QA hooks.
+  const gun = await page.evaluate(() => {
+    const tw = window.__tidewake;
+    // Start from a clean, well-funded slate so the purchase math is legible.
+    tw.qaSetLedger({ coins: 5000, infamy: 0, standing: 0 });
+    const g0 = tw.gunUpgrade;
+    const bite = tw.qaBroadsideBite();               // FEEL: base battery vs a full one, same clean shot
+    const buy1 = tw.buyCannon();                     // spend coin → +1 cannon
+    const g1 = tw.gunUpgrade;
+    const coinsAfter = tw.state.coins;
+    const buy2 = tw.buyCannon();
+    const g2 = tw.gunUpgrade;
+    // Walk to the cap and confirm it refuses beyond it (smallest always-shippable increment).
+    let guard = tw.buyCannon(); let g = tw.gunUpgrade;
+    while (g.canBuy) { guard = tw.buyCannon(); g = tw.gunUpgrade; }
+    const overCap = tw.buyCannon();                  // one past the cap → refused
+    return {
+      startExtra: g0.extra, startShown: g0.deckGunsShown, startTotal: g0.total,
+      bite,
+      buy1ok: buy1.ok, buy1cost: buy1.cost, coinsAfter, startCoins: 5000,
+      afterExtra: g1.extra, afterShown: g1.deckGunsShown, afterTotal: g1.total, afterMult: g1.broadsideMult, startMult: g0.broadsideMult,
+      after2Extra: g2.extra, after2Shown: g2.deckGunsShown,
+      cappedExtra: g.extra, cappedShown: g.deckGunsShown, max: g.max,
+      overCapOk: overCap.ok, overCapReason: overCap.reason,
+      shipClass: g0.shipClass,
+    };
+  });
+  // SEE / HEAR / FEEL + the cap, all in one deterministic pass.
+  if (gun.startExtra !== 0 || gun.startShown !== 0) fail(`buy a cannon (#170): a fresh voyage should start with the bare battery (extra=${gun.startExtra}, shown=${gun.startShown})`);
+  if (!gun.buy1ok) fail('buy a cannon (#170): buying the first cannon failed with a full purse');
+  if (gun.coinsAfter !== gun.startCoins - gun.buy1cost) fail(`buy a cannon (#170): coin not deducted correctly (started ${gun.startCoins}, cost ${gun.buy1cost}, now ${gun.coinsAfter})`);
+  if (gun.afterExtra !== 1) fail(`buy a cannon (#170): owned-cannons did not increment (extra=${gun.afterExtra})`);
+  if (gun.afterShown !== 1) fail(`buy a cannon (#170): the new cannon did NOT appear on the deck — SEE beat missing (shown=${gun.afterShown})`);
+  if (gun.afterTotal !== gun.startTotal + 1) fail(`buy a cannon (#170): total guns did not climb (was ${gun.startTotal}, now ${gun.afterTotal})`);
+  if (!(gun.afterMult > gun.startMult)) fail(`buy a cannon (#170): broadside multiplier did not rise — FEEL beat missing (${gun.startMult} → ${gun.afterMult})`);
+  if (!(gun.bite.full > gun.bite.base)) fail(`buy a cannon (#170): more guns must bite harder (base ${gun.bite.base} vs full ${gun.bite.full}) — the broadside must land heavier`);
+  if (gun.after2Shown !== 2) fail(`buy a cannon (#170): a second bought cannon did not show on deck (shown=${gun.after2Shown})`);
+  if (gun.cappedExtra !== gun.max || gun.cappedShown !== gun.max) fail(`buy a cannon (#170): the deck-gun count did not track owned cannons up to the cap (extra=${gun.cappedExtra}, shown=${gun.cappedShown}, max=${gun.max})`);
+  if (gun.overCapOk || gun.overCapReason !== 'maxed') fail(`buy a cannon (#170): buying past the cap should be refused as 'maxed' (ok=${gun.overCapOk}, reason=${gun.overCapReason})`);
+  if (gun.shipClass !== 'sloop') fail(`buy a cannon (#170): the reserved owned ship-class (#171) should default to the sloop (got ${gun.shipClass})`);
+
+  // PERSISTS across a reload — the v18 round-trip. The full battery (at the cap) must survive.
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForFunction('window.__tidewake && window.__tidewake.ready === true', { timeout: 30000 });
+  const gunPersist = await page.evaluate(() => {
+    const tw = window.__tidewake;
+    return { extra: tw.gunUpgrade.extra, shown: tw.gunUpgrade.deckGunsShown, total: tw.gunUpgrade.total, shipClass: tw.gunUpgrade.shipClass, saveVersion: tw.version };
+  });
+  if (gunPersist.extra !== gun.max) fail(`buy a cannon (#170): the bought cannons did NOT survive a reload (extra=${gunPersist.extra}, expected ${gun.max}) — the v18 save must round-trip`);
+  if (gunPersist.shown !== gun.max) fail(`buy a cannon (#170): the deck guns were not re-mounted on a restored voyage (shown=${gunPersist.shown}) — a returning captain must SEE the guns they own`);
+  if (gunPersist.shipClass !== 'sloop') fail(`buy a cannon (#170): the reserved ship-class did not round-trip (got ${gunPersist.shipClass})`);
+  if (process.exitCode !== 1) console.log(`  ✓ buy a cannon (#170, THE RISE): purchase deducts coin (−${gun.buy1cost}c) + increments owned cannons + SHOWS the gun on deck (0→${gun.cappedShown}) + heavier broadside (bite ${gun.bite.base}→${gun.bite.full}, ×${gun.startMult}→×${gun.afterMult}); capped at ${gun.max}; SURVIVES a reload (v18 round-trip, ship-class reserved for #171)`);
+  // Reset to a clean voyage so the later sections + the screenshot start from a known slate.
+  await page.evaluate(() => window.__tidewake.newVoyage());
 
   // 2b6b) Dedicated BATTLE arena foe (#135, Option-4 final slice): squaring up now gives you a foe that
   // ACTIVELY SAILS TO FIGHT instead of drifting on her open-sea waypoint. Driven headlessly: engage,
@@ -3569,7 +3628,7 @@ try {
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
   console.log(`leak-invariant (#121): ${leak.N}× mode cycles · geom ${leak.baseline.geometries}→${leak.final.geometries} (+${leak.geomGrowth}) · tex ${leak.baseline.textures}→${leak.final.textures} (+${leak.texGrowth}) · worst transition ${leak.worstTransition.drawCalls} draws/${leak.worstTransition.triangles} tris`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, curios, curiosLive, props, islandStyle, leak, broadside, cballs, juicePass, ammoCycle, boarding, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, curios, curiosLive, props, islandStyle, leak, broadside, cballs, juicePass, ammoCycle, boarding, gun, gunPersist, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

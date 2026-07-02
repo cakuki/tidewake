@@ -22,6 +22,7 @@ import { sanitizeObjective } from './objectives.js';
 import { sanitizeHarbour } from './systems/home-port.js';
 import { sanitizeMorale } from './systems/morale.js';
 import { sanitizeThreat } from './systems/harbour-threat.js';
+import { sanitizeExtraCannons, sanitizeShipClass } from './systems/gun-upgrade.js';
 
 // The set of colours ids we'll accept back from storage (#79). Anything else loads as the
 // honest default rather than rejecting the whole save (flag choice is flavour, not physics).
@@ -63,8 +64,15 @@ export const SAVE_KEY = 'tidewake.save.v1';
 // value (a leaner/migrated save) is inferred from progress — a captain already underway has fought
 // before, so the debut reads as already spent (they're never re-scaffolded), while an untouched save
 // keeps it pending so a genuinely new captain gets the soft first fight.
+// v18 opened THE RISE's progression (#168): the persistent GUN UPGRADE (#170) — `extraCannons`, how
+// many cannons you've BOUGHT at the Gunner's Workshop on top of the fixed sloop battery (a small
+// capped integer; more guns → a visible deck gun + a heavier broadside) — AND it RESERVES the player's
+// owned SHIP-CLASS (`shipClass`, #171) so this lane bumps the schema ONCE: the field is defined + carried
+// now (defaulting to the starting 'sloop'), even though #171 wires the ship-class purchase later. Both are
+// reader-fail-open additive fields (absent extraCannons → 0; absent/junk shipClass → 'sloop'), so every
+// prior save migrates forward cleanly.
 // Older saves fail the version gate and fall back to a fresh voyage rather than crashing.
-export const SAVE_VERSION = 17;
+export const SAVE_VERSION = 18;
 
 // The set of canonical cargo keys we'll accept back from storage. Anything else is
 // treated as corrupt — cargo keys are a single source of truth in economy.js.
@@ -109,6 +117,7 @@ const migrations = {
   14: (s) => ({ ...s }), // crew morale (#124): reader fail-opens an absent meter to the START baseline
   15: (s) => ({ ...s }), // home-port threat (#134): reader fail-opens an absent threat to null (no threat)
   16: (s) => ({ ...s }), // Bosun's-First-Duel debut flag (#157): reader fail-opens an absent flag by inferring from progress
+  17: (s) => ({ ...s }), // gun upgrade + reserved ship-class (#170/#171): reader fail-opens extraCannons→0, shipClass→'sloop'
 };
 
 /**
@@ -210,6 +219,12 @@ export function serialize(state) {
   // Bosun's First Duel (#157): the one-shot debut flag — true once the scaffolded soft first fight has
   // been spent. A plain boolean, coerced; a pre-debut caller (no `debut`) records it unspent.
   const debut = !!state.debut;
+  // Gun upgrade (#170, save v18): how many cannons you've BOUGHT at the workshop on top of the base
+  // battery. Coerced + clamped to the cap; a pre-upgrade caller records none bought.
+  const extraCannons = sanitizeExtraCannons(state.extraCannons);
+  // Owned ship class (#171, reserved in v18 so the lane bumps once): the hull class you sail. Validated
+  // to a known class; a pre-slice caller records the starting sloop. #171 wires the purchase later.
+  const shipClass = sanitizeShipClass(state.shipClass);
   return JSON.stringify({
     v: SAVE_VERSION,
     heading: state.heading,
@@ -231,6 +246,8 @@ export function serialize(state) {
     morale,
     threat,
     debut,
+    extraCannons,
+    shipClass,
   });
 }
 
@@ -369,6 +386,14 @@ export function deserialize(raw) {
   // reads as spent (they're never re-scaffolded); an untouched save keeps it pending for a new captain.
   const debut = (obj.debut !== undefined) ? !!obj.debut : hasProgress;
 
+  // Gun upgrade (save v18, #170): the bought-cannons count. Like the other additive fields it fails
+  // open — junk/absent → 0 (no cannons bought), clamped to the cap — never rejecting an otherwise-valid
+  // save. It's load-bearing progression, but its ceiling makes an out-of-range value safe to coerce.
+  const extraCannons = sanitizeExtraCannons(obj.extraCannons);
+  // Owned ship class (save v18, #171 reserved): the hull class. Fails open to the starting sloop on a
+  // junk/absent/unknown id, so a migrated older save simply sails the sloop it always had.
+  const shipClass = sanitizeShipClass(obj.shipClass);
+
   return {
     heading,
     speed: Math.max(0, speed),
@@ -389,6 +414,8 @@ export function deserialize(raw) {
     morale,
     threat,
     debut,
+    extraCannons,
+    shipClass,
     renown: infamy + standing, // derived spine, for any caller that still reads it
   };
 }

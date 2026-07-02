@@ -107,6 +107,11 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     // Bosun's First Duel one-shot flag (persisted since save v17): a returning captain keeps whether
     // they have spent the scaffolded soft debut, so their first fight is never re-taught (#157).
     if (typeof saved.debut === 'boolean') state.debut = saved.debut;
+    // Buy a cannon (persisted since save v18, #170): a returning captain keeps the cannons they bought
+    // (deck guns + heavier broadside survive the reload). main.js sanitises + reveals them after restore.
+    if (typeof saved.extraCannons === 'number') state.extraCannons = saved.extraCannons;
+    // Owned ship class (persisted since save v18, #171 reserved): keep the hull class you sail.
+    if (saved.shipClass) state.shipClass = saved.shipClass;
   }
 
   // Respawn at the origin, dead in the water. Clear economy so initEconomy re-seeds defaults.
@@ -123,6 +128,8 @@ export function createSailing({ ship, ocean, camera, input, world, npcs, onRunAg
     delete state.voyageLog; // a new voyage is a blank page — the Ballad starts unwritten (#78)
     delete state.portMemory; // a new voyage = a clean slate; no port remembers you yet (#104)
     delete state.objective; // a new voyage chases nothing yet — the chart starts unpinned (#111/#112)
+    delete state.extraCannons; // a new voyage sails the bare sloop again — no bought cannons (#170)
+    delete state.shipClass; // ...and the starting hull class (#171 reserved)
     if (input && typeof input.resetView === 'function') input.resetView(); // reopen astern (#49)
   }
 

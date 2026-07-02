@@ -519,3 +519,37 @@ test('debut: an ABSENT flag on an untouched save stays pending (a genuinely new 
   const restored = deserialize(JSON.stringify(raw));
   assert.equal(restored.debut, false, 'no progress ⇒ still a new captain ⇒ the debut is still to come');
 });
+
+// ---- Gun upgrade + reserved ship class (save v18, #170/#171) --------------------------------------
+test('gun upgrade: bought cannons round-trip (the FEEL of the purchase persists)', () => {
+  const restored = deserialize(serialize({ ...sampleState(), extraCannons: 2 }));
+  assert.equal(restored.extraCannons, 2);
+});
+
+test('gun upgrade: an ABSENT count fails open to none bought (a migrated older save)', () => {
+  const raw = JSON.parse(serialize(sampleState()));
+  delete raw.extraCannons;
+  const restored = deserialize(JSON.stringify(raw));
+  assert.equal(restored.extraCannons, 0);
+});
+
+test('gun upgrade: a junk / out-of-range count fails open to a safe clamped value (never rejects)', () => {
+  const raw = JSON.parse(serialize(sampleState()));
+  const bad = deserialize(JSON.stringify({ ...raw, extraCannons: 999 }));
+  assert.ok(bad, 'a corrupt count must not reject the whole save');
+  assert.ok(bad.extraCannons >= 0 && bad.extraCannons <= 3, `clamped to the cap (got ${bad.extraCannons})`);
+  const negative = deserialize(JSON.stringify({ ...raw, extraCannons: -5 }));
+  assert.equal(negative.extraCannons, 0);
+  const nan = deserialize(JSON.stringify({ ...raw, extraCannons: 'lots' }));
+  assert.equal(nan.extraCannons, 0);
+});
+
+test('ship class (#171 reserved): a known class round-trips; junk/absent defaults to the sloop', () => {
+  const restored = deserialize(serialize({ ...sampleState(), shipClass: 'frigate' }));
+  assert.equal(restored.shipClass, 'frigate');
+  const dflt = deserialize(serialize(sampleState()));
+  assert.equal(dflt.shipClass, 'sloop', 'a caller with no owned class records the starting sloop');
+  const raw = JSON.parse(serialize(sampleState()));
+  assert.equal(deserialize(JSON.stringify({ ...raw, shipClass: 'galleon' })).shipClass, 'sloop');
+  assert.equal(deserialize(JSON.stringify({ ...raw, shipClass: 42 })).shipClass, 'sloop');
+});

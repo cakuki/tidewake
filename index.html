@@ -898,6 +898,23 @@
     #town .town-workshop-h { color: #ffbe7a; font-weight: 800; font-size: 13px; letter-spacing: .02em; }
     #town .town-workshop-sub { color: #c8b48f; font-size: 10.8px; font-style: italic; line-height: 1.45; margin: 3px 0 8px; }
     #town .town-workshop-sub b { color: #ffce7a; font-style: normal; }
+    /* Buy a cannon (#170) — the persistent gun upgrade plank at the head of the workshop. */
+    #town .town-cannon { margin: 2px 0 10px; padding: 8px 9px; border: 1px solid rgba(255,150,90,.32);
+      border-radius: 9px; background: linear-gradient(180deg, rgba(90,45,18,.40), rgba(48,26,10,.40)); }
+    #town .town-cannon-h { color: #ffcf8f; font-weight: 800; font-size: 12.5px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    #town .town-cannon-count { color: #ffb877; font-weight: 700; font-size: 11px; }
+    #town .town-cannon-sub { color: #c8b48f; font-size: 10.6px; font-style: italic; line-height: 1.42; margin: 3px 0 7px; }
+    #town .town-buy-cannon { pointer-events: auto; cursor: pointer; font-family: inherit; width: 100%;
+      font-size: 12px; font-weight: 800; letter-spacing: .01em; color: #2a1204;
+      background: linear-gradient(180deg, #ffc46e, #ef963f); border: 1px solid rgba(255,205,150,.75);
+      border-radius: 8px; padding: 8px 10px; box-shadow: 0 2px 8px rgba(0,0,0,.32);
+      transition: filter .12s ease, transform .1s ease; }
+    #town .town-buy-cannon:hover { filter: brightness(1.07); }
+    #town .town-buy-cannon:active { transform: translateY(1px); }
+    #town .town-cannon-gain { color: #6a3410; font-weight: 700; font-size: 10.5px; }
+    #town .town-cannon-need { color: #d8b48f; font-size: 10.8px; line-height: 1.4; }
+    #town .town-cannon-need b { color: #ffce7a; }
+    #town .town-cannon-max { color: #9af0b4; font-size: 11px; font-weight: 700; line-height: 1.4; }
     #town .town-shot-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px;
       padding: 6px 0; border-top: 1px solid rgba(255,210,150,.12); }
     #town .town-shot-row:first-of-type { border-top: none; }

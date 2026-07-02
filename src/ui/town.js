@@ -22,6 +22,7 @@ import {
   isActiveThreat, threatTitle, threatBlurb, canPayTribute, standFirmOdds,
 } from '../systems/harbour-threat.js';
 import { AMMO, AMMO_TYPES } from '../systems/ammo.js';
+import { nextCannonCost, totalGuns, canBuyCannon, sanitizeExtraCannons, MAX_EXTRA_CANNONS } from '../systems/gun-upgrade.js';
 
 export function createTown(opts = {}) {
   const getState = typeof opts.getState === 'function' ? opts.getState : () => null;
@@ -44,6 +45,10 @@ export function createTown(opts = {}) {
   // The Workshop (#135 slice 3): fit/unfit the shot you carry into a fight. main.js owns the
   // loadout (and toggling it via fitAmmo); here we route the tap and paint the board. No-op if unwired.
   const onFitAmmo = typeof opts.onFitAmmo === 'function' ? opts.onFitAmmo : () => {};
+  // Buy a cannon (#170): spend coin at the workshop for a PERSISTENT extra cannon (see it on your deck,
+  // hear a heavier boom, feel foes sink faster). main.js owns coin + the deck mesh + persistence; here
+  // we route the tap and paint the board. No-op if unwired.
+  const onBuyCannon = typeof opts.onBuyCannon === 'function' ? opts.onBuyCannon : () => {};
   const root = opts.root ?? (typeof document !== 'undefined' ? document : null);
   // Touch parity (#17/#66): taps drive trades + the Leave plank when there's no keyboard.
   const TOUCH = !!(root && root.body && root.body.classList && root.body.classList.contains('touch'));
@@ -125,6 +130,7 @@ export function createTown(opts = {}) {
         if (e.target.closest?.('#town-invest')) { e.preventDefault(); onInvest(); return; }
         if (e.target.closest?.('#town-tribute')) { e.preventDefault(); onTribute(); return; }
         if (e.target.closest?.('#town-standfirm')) { e.preventDefault(); onStandFirm(); return; }
+        if (e.target.closest?.('#town-buy-cannon')) { e.preventDefault(); buyCannonTap(); return; }
         const shotBtn = e.target.closest?.('.town-shot');
         if (shotBtn && shotBtn.dataset.ammo) { e.preventDefault(); fitShot(shotBtn.dataset.ammo); return; }
         const chaseBtn = e.target.closest?.('.town-chase');
@@ -216,6 +222,38 @@ export function createTown(opts = {}) {
     render();
   }
 
+  // Buy a cannon (#170): route the tap to main.js (which spends coin, bolts the gun to the deck, and
+  // persists), then force a repaint so the new owned-count + cost + purse show at once.
+  function buyCannonTap() {
+    onBuyCannon();
+    lastSig = ''; // force a repaint so the new gun count + next cost + purse update
+    render();
+  }
+
+  // The cannon plank at the head of the workshop (#170) — the persistent gun upgrade. Shows the guns you
+  // own, and a warm "buy a cannon" pull priced by the escalating curve: affordable → a live button; too
+  // dear → the price + your purse; maxed → a proud "fully gunned" line. The FEEL/HEAR/SEE land in main.js.
+  function cannonHTML(state) {
+    const extra = sanitizeExtraCannons(state.extraCannons);
+    const coins = Number.isFinite(state.coins) ? state.coins : 0;
+    const guns = totalGuns(extra);
+    const cost = nextCannonCost(extra);
+    let action;
+    if (cost === null) {
+      action = `<div class="town-cannon-max">⚓ Fully gunned — ${guns} cannons run out along your rail. A terror on the water.</div>`;
+    } else {
+      const gate = canBuyCannon({ extra, coins });
+      action = gate.ok
+        ? `<button id="town-buy-cannon" class="town-buy-cannon" type="button">⚙ Buy a cannon — ${cost}c <span class="town-cannon-gain">(→ ${guns + 1} guns, a heavier broadside)</span></button>`
+        : `<div class="town-cannon-need">A new cannon runs <b>${cost}c</b> — you have ${coins}c. Take a few more prizes and come back.</div>`;
+    }
+    return `<div class="town-cannon">`
+      + `<div class="town-cannon-h">⚙ Gun Deck <span class="town-cannon-count">${guns} guns${extra > 0 ? ` (+${extra} bought)` : ''}</span></div>`
+      + `<div class="town-cannon-sub">Buy a cannon and the gunsmith bolts it to your deck — you'll see it run out, hear a heavier broadside, and feel the next foe fold sooner. It stays with your ship.</div>`
+      + action
+      + `</div>`;
+  }
+
   function workshopHTML(state) {
     const loadout = Array.isArray(state.loadout) ? state.loadout : [];
     const rows = AMMO_TYPES.map((id) => {
@@ -233,6 +271,7 @@ export function createTown(opts = {}) {
     }).join('');
     return `<div class="town-workshop">`
       + `<div class="town-workshop-h">⚒ The Gunner's Workshop</div>`
+      + cannonHTML(state)
       + `<div class="town-workshop-sub">Fit the shot you'll carry to sea. In a fight, press <b>X</b> to cycle the loaded shot — round to sink her, chain to cripple her, grape to scare her colours down.</div>`
       + rows
       + `</div>`;
@@ -305,7 +344,7 @@ export function createTown(opts = {}) {
     const master = recall || info.harbourmaster || 'The harbourmaster nods you ashore.';
     // Cheap cache: only touch the DOM when something the player can see changes.
     const chasing = (state.objective && state.objective.target && state.objective.target.name) || '';
-    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing + '|' + JSON.stringify(state.harbour ?? null) + '|' + (state.standing ?? 0) + '|' + (state.governorship ? 1 : 0) + '|' + JSON.stringify(state.threat ?? null) + '|' + JSON.stringify(state.loadout ?? null);
+    const sig = port + '|' + state.coins + '|' + JSON.stringify(state.cargo) + '|' + tier.tier + '|' + pole + '|' + flash + '|' + cry + '|' + listening + '|' + rumourNonce + '|' + master + '|' + chasing + '|' + JSON.stringify(state.harbour ?? null) + '|' + (state.standing ?? 0) + '|' + (state.governorship ? 1 : 0) + '|' + JSON.stringify(state.threat ?? null) + '|' + JSON.stringify(state.loadout ?? null) + '|' + (state.extraCannons ?? 0);
     if (sig === lastSig) return;
     lastSig = sig;
 

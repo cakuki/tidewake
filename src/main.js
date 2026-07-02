@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { createOcean } from './ocean.js';
 import { loadShip } from './ship-loader.js';
+import { mountDeckGuns } from './deck-guns.js';
+import {
+  broadsideMult, buyCannon as buyCannonPure, canBuyCannon, nextCannonCost,
+  totalGuns, sanitizeExtraCannons, sanitizeShipClass, MAX_EXTRA_CANNONS,
+} from './systems/gun-upgrade.js';
 import { createWorld } from './world.js';
 import { createWake } from './wake.js';
 import { createNpcs } from './npc.js';
@@ -118,6 +123,11 @@ const daynight = createDayNight({
 });
 const ship = await loadShip(); // CC0 glTF sloop (#32); falls back to procedural hull on error
 scene.add(ship);
+// Buy a cannon (#170): the deck-gun pool bolted onto the hull. The count is revealed after the save
+// loads (below), and the instant you buy one at the workshop, so the new gun appears on your deck — the
+// SEE beat of the purchase. Mesh-conserving (#121): one shared geometry per barrel/carriage, hidden guns
+// aren't drawn.
+const deckGuns = mountDeckGuns(ship);
 // Your ship wears your legend (#132 Slice A, DL #5): clone the hero hull's sail + hull materials ONCE
 // (the GLB shares one colormap material across its meshes — clone so we can tint each independently
 // without touching the founderer or any other instance) and capture each base roughness. The per-frame
@@ -410,6 +420,7 @@ const cannons = createCannons({
   npcs,
   getShipPos: () => [state.pos.x, state.pos.z],
   getColours: () => state.colours, // False Colours (#79): opening fire under a disguise = ambush
+  getBroadsideMult: () => broadsideMult(state.extraCannons), // bought cannons (#170) bite in the #59 cannonade too
   // #45/#79/#91: sinking pays Infamy; a LAWFUL kill (honest colours vs a pirate) also pays
   // Standing (the governor pole) — or fines it for sinking an innocent merchant. Clamped ≥ 0.
   applyReward: (r) => { initEconomy(state); state.coins += r.coins; state.infamy += r.infamy; if (r.standing) state.standing = Math.max(0, (state.standing || 0) + r.standing); syncRenown(state); },
@@ -471,6 +482,7 @@ const battle = createBattle({
   getShipHeading: () => state.heading, // slice 2: the broadside arc needs your heading vs the foe
   getLoadout: () => state.loadout,     // slice 3: the shot you fit at the town workshop
   getCrewMorale: () => sanitizeMorale(state.morale), // slice 4: your crew's nerve feeds the boarding brawl (#124)
+  getBroadsideMult: () => broadsideMult(state.extraCannons), // buy a cannon (#170): more guns → a heavier volley → she sinks faster
   // Soften a fresh captain's FIRST fight (#157): if the debut is still unspent, hand this engagement a
   // forgiving, already-battered foe and mark it the debut; a veteran fight passes through full-strength.
   softenFoe: (foe) => {
@@ -926,6 +938,13 @@ state.threat = sanitizeThreat(state.threat);
 // (so a returning captain is never re-scaffolded); a genuinely fresh voyage (no save) starts pending, so
 // a brand-new captain's first fight is the forgiving, cued one. Coerced to a plain boolean.
 state.debut = !!state.debut;
+// Buy a cannon (#170, save v18): a restored voyage keeps the cannons it bought (so the deck guns +
+// heavier broadside persist across a reload); a fresh one starts with the base battery. The owned
+// ship-class (#171, reserved) defaults to the starting sloop. Sanitised so a junk save fails open.
+state.extraCannons = sanitizeExtraCannons(state.extraCannons);
+state.shipClass = sanitizeShipClass(state.shipClass);
+// Reveal the bought cannons on the deck so a returning captain SEES the guns they own the moment they board.
+deckGuns.setCount(state.extraCannons);
 
 // ---- False Colours (#79) -------------------------------------------------------------
 // The displayed flag: true black (honest pirate) vs false merchant (a disguise). A restored
@@ -1030,6 +1049,7 @@ function newVoyage() {
   state.debut = false; debutActive = false; debutPhaseShown = null; // ...and re-arm the Bosun's First Duel (#157)
   state.morale = freshMorale(); // ...and a fresh, willing crew at the START baseline (#124)
   state.objective = null; // a fresh voyage chases nothing yet — the chart starts unpinned (#111/#112)
+  state.extraCannons = 0; state.shipClass = sanitizeShipClass(null); deckGuns.setCount(0); // ...and the bare sloop battery again (#170/#171)
   state.colours = DEFAULT_COLOURS; // a fresh voyage flies honest black again (#79)
   applyColoursToShip();
   hud.renderColours(state.colours);
@@ -1271,8 +1291,40 @@ const town = createTown({
   // The Workshop (#135 slice 3, ties #96): fit/unfit the shot you carry into a fight. Session-scoped
   // (the loadout isn't persisted → save stays v16); the battle cycle key walks whatever's fitted.
   onFitAmmo: (id) => { state.loadout = fitAmmo(state.loadout, id); },
+  // Buy a cannon (#170, THE RISE): spend coin at the workshop for a PERSISTENT extra cannon — it
+  // appears on your deck, barks a heavier broadside, and sinks foes faster. main.js owns the coin +
+  // deck mesh + persistence; here we just route the tap.
+  onBuyCannon: () => buyDeckCannon(),
 });
 town.init();
+
+// Buy a cannon at the Gunner's Workshop (#170, epic #168 "The Rise") — the owner's canonical fun beat.
+// Spend coin on a PERSISTENT extra cannon: it's bolted to your deck (you SEE the new gun this instant),
+// a hearty boom barks as it's run out (you HEAR it), and your broadside output climbs so foes fold sooner
+// (you FEEL it) — and it's all still there after a reload. Pure buy math + clamp/cost curve live in
+// systems/gun-upgrade.js; here we apply coin, reveal the deck mesh, celebrate, and persist. Guarded — a
+// flourish must never break the loop. Returns the pure result {ok, reason?, extra, coins, cost}.
+function buyDeckCannon() {
+  try {
+    initEconomy(state);
+    const before = sanitizeExtraCannons(state.extraCannons);
+    const res = buyCannonPure({ extra: before, coins: state.coins ?? 0 });
+    if (!res.ok) {
+      if (res.reason === 'no-coins') hud.flashBanner('⚒ The gunsmith shakes his head', `A cannon runs ${res.cost}c — fill your purse and come back, captain.`);
+      return res;
+    }
+    state.coins = Math.max(0, res.coins);
+    state.extraCannons = sanitizeExtraCannons(res.extra);
+    deckGuns.setCount(state.extraCannons);          // SEE: the new gun appears on your deck this instant
+    try { audio.playDuelHit('challenge'); } catch { /* a boom must never break the buy */ } // HEAR: gunports bang, she's run out
+    logDeed({ type: 'cannon', deed: 'buy', guns: totalGuns(state.extraCannons) }); // a milestone the Ballad remembers (#78)
+    persistence.write();                             // lock the purchase the instant it's made — survives a reload
+    hud.flashBanner('⚒ A new cannon bolted to your deck!',
+      `${totalGuns(state.extraCannons)} guns now — your next broadside barks heavier, and she'll sink foes faster. (−${res.cost}c)`);
+    town.render();
+    return res;
+  } catch { return { ok: false, reason: 'error' }; }
+}
 
 // ---- Your Harbour (#118, DL #4) — the governor pole's first reactive verb -------------------
 // At your docked port: CLAIM it as your home harbour (at sufficient Standing), then SPEND coin to
@@ -2628,6 +2680,35 @@ window.__tidewake = {
   // fitted shot mid-fight; the battle snapshot carries `ammo`/`ammoProfile`/`loadout`. The fitted
   // locker (what you fit at the town workshop) is `loadout`; fitAmmoType(id) toggles a shot in it.
   battleCycleShot() { return battle.cycleShot(); },
+  // Buy a cannon at the Gunner's Workshop (#170, epic #168) QA surface. `gunUpgrade` reads the live
+  // owned-cannons state — how many extra you've bought, the total guns on deck, the deck-mesh count
+  // actually SHOWN (the SEE beat), the next cost, whether you can afford it, and the broadside
+  // multiplier your battery earns (the FEEL). buyCannon() drives the real purchase (spend coin +
+  // bolt the deck gun + persist). qaBroadsideBite() PROVES the FEEL: it runs the SAME clean beam
+  // broadside at the SAME target with the base battery vs a full one and returns the hull bite of
+  // each — more guns must bite harder. Deterministic (fixed rng → jitter 1).
+  get gunUpgrade() {
+    const extra = sanitizeExtraCannons(state.extraCannons);
+    return {
+      extra,
+      total: totalGuns(extra),
+      deckGunsShown: deckGuns.shownCount(),   // SEE: the meshes actually revealed on the deck
+      max: MAX_EXTRA_CANNONS,
+      cost: nextCannonCost(extra),
+      canBuy: canBuyCannon({ extra, coins: state.coins ?? 0 }).ok,
+      broadsideMult: broadsideMult(extra),    // FEEL: the hull-bite multiplier your battery earns
+      shipClass: sanitizeShipClass(state.shipClass), // #171 reserved
+    };
+  },
+  buyCannon() { return buyDeckCannon(); },
+  qaBroadsideBite() {
+    const rng = () => 0.5; // jitter == 1 → deterministic
+    const target = { quality: 1, enemyHull: 100, playerHull: 100 };
+    return {
+      base: resolveBroadside({ ...target, broadsideMult: broadsideMult(0) }, rng).enemyHit,
+      full: resolveBroadside({ ...target, broadsideMult: broadsideMult(MAX_EXTRA_CANNONS) }, rng).enemyHit,
+    };
+  },
   // Boarding (#135 slice 4): boardBattle() sends the crew over the rail once she's beaten to ≤30% hull
   // (battle.snapshot().canBoard) — it resolves the comic crew brawl, then hands off to the verbal
   // captain's duel (#33). After it, tw.battle.active is false and tw.duel.active is true (boarded=true).
