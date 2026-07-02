@@ -4,6 +4,28 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #166 Legible odds shipped — epic #162 "read whether you're favoured" (Loop 120, v0.0.20260702004439; salvaged after a 529).**
+  The owner's fair-fight contract, made READABLE: "fair = clear, consistent rules WITH a bounded luck
+  element — SKILL shifts the odds, LUCK swings the margin, and luck can't flip a strongly-favoured fight."
+  A read-only odds/matchup readout now docks into the aim indicator's reserved `.aim-odds` slot during an
+  engagement — a plain-language verdict ("You outclass her" / "An even match" / "She outguns you —
+  reckless"), a legible damage-per-volley + bounded ±20% margin sub-line, and a visual **margin BAND** (a
+  bar whose lit segment is the luck swing and whose side of the even-tick reads favoured-from-doomed;
+  straddling centre = "the margin decides"). The pure brain is new **`src/systems/odds.js`** (`combatOdds`/
+  `oddsReadout`, three.js-free, DOM-free, unit-tested): SKILL sets the deterministic edge from the class
+  matchup (`ship-classes.js` hull+gunnery) + live aim geometry + the loaded shot; LUCK is only the shown
+  ±20% band around it. The model MIRRORS `resolveBroadside`'s coefficients and is **cross-checked against
+  the real combat math in tests** so the shown band == the actual luck bound and can never silently drift;
+  a 'dominant' verdict is EXACTLY "even max-adverse luck still wins" (proven ≥99% over 2000 real sims), so
+  luck can't flip a favoured fight. `setOdds()` in `aim-indicator.js` grew from a bare string to a
+  structured `{text,sub,tier,bar}` (legacy string still works); `battle.snapshot()` gained `foeGunnery`+
+  `foeTier`; an optional stake hint reads #164's `defeatLedger` so the odds also name what a loss costs.
+  Coexists with the #161-s5 aim line, target lock, #165 threat labels, the #161-s2 non-occlusion safe-zone,
+  and the #146 mobile guard. **No combat-math / luck-bound change; NO save bump — stays v17.** +21 unit
+  tests (1191 total); a playtest §2b3-odds gate proves the matchup reads right, the band == ±20%, luck can't
+  flip a strong verdict, and the read is docked + shown in the aim slot during a real fight (then clears on
+  flee). Perf within budget (DOM readout +0 draws). Salvaged after the prior runner died on a 529 with the
+  build uncommitted. #166 CLOSED; epic #162 kept OPEN (only #167 challenge-on-demand remains).
 - **2026-07-02 — #165 Over-ship threat labels shipped — epic #162 "pick your fight" (Loop 119, v0.0.20260702001553).**
   The owner's #7 note for the difficulty/variety epic: "over-the-ship displays telling/hinting what ships
   are, so a player can CHOOSE fights and read danger at a glance." Every classed NPC hull now floats a
