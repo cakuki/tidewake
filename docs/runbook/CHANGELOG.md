@@ -4,6 +4,26 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #182 Fiercer figurehead: your prow shows your dread (Loop 152,
+  v0.0.20260702150154; #182 CLOSED).** Follow-up on the shipped #177 ("fear you can SEE on your own
+  ship"). #177 dressed notoriety onto your OWN rigging — sails darken toward tarred black + captured
+  trophy pennants at Infamy milestones. This adds the **figurehead**: as Infamy climbs, the ship's
+  PROW grows fiercer — a plain prow → a carved beast → a **snarling beast rearing at the bow** near
+  Dread Captain. FUN beat (SEE): your notoriety carved into the ship itself, alongside the black
+  sails. Folded into the SAME pure `src/systems/fear-rigging.js` model — a `figurehead` tier
+  (milestones at Infamy 80 / 240) that is **monotonic, deterministic, junk-safe** and derived from
+  persisted Infamy ALONE (**NO save bump, stays v18**). Render (`main.js`): two small low-poly toggled
+  variants parented to the hull at the prow, only the earned tier ever visible → **≤1 extra draw,
+  hidden = not drawn** (#121, no per-toggle allocation, geom/tex leak +0). It **composes** with #177's
+  sails + trophies, #132's aura (still casting pirate), and rides #171's class scale (parented). A
+  #164 defeat that dents Infamy past a milestone **softens the prow a step** (bounded ≥0, reversible),
+  exactly like the trophy-strip; a governor-road (Standing) loss leaves it alone. PURE tier TDD'd
+  first (`tests/unit/fear-rigging.test.mjs`, +figurehead cases); the #177 playtest block extended to
+  assert figurehead monotonic + render-matches-derived-tier + ≤1 drawn + composes + steps-back-on-loss
+  + plain-prow-on-neutral. Gates: `npm test` **1499/1499 green**; `node tests/playtest.mjs` **✓ PASSED
+  zero console errors**; perf worst 47 draws / 93058 tris (≤130 / ≤150k). Gallery:
+  `studio/qa/gallery/2026-07-02-figurehead.png` — the snarling beast rearing at the prow of a
+  Dread-Captain ship under black sails + a trophy pennant.
 - **2026-07-02 — #181 Coins-delta pulse: the economy feels responsive (Loop 151,
   v0.0.20260702142750; #181 CLOSED).** The RISE loop is earn → spend, but a coin change was SILENT +
   INVISIBLE — the #21 HUD coins readout just snapped to a new number, so the FEEDBACK arrow of the fun loop

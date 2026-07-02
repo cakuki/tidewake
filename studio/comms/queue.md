@@ -58,6 +58,13 @@ onto **parked owner-decision frontiers** and are surfaced as `[OWNER-DECISION]` 
   the layers stack) and rides the #171 class scale (trophies parented to the hull); cheap (#121: shared
   geometry, hidden = not drawn, +2 draws at peak). Playtest asserts monotonic-with-Infamy + a real defeat
   strips a trophy (2→1) + composition. Gallery `feared-black-sails-177.png`. **#178 is next.**
+  - ✅ **follow-up #182 — Fiercer figurehead: your prow shows your dread** *(feature/polish, S — P2)* — **SHIPPED
+    Loop 152, v0.0.20260702150154, #182 CLOSED.** Extends the SAME `fear-rigging` model with a `figurehead` tier
+    (milestones at Infamy 80 / 240): a plain prow → a carved beast → a **snarling beast rearing at the bow** near
+    Dread Captain. Two small toggled prow meshes parented to the hull (rides #171 scale, composes with #177 sails/
+    trophies + #132 aura), only the earned tier drawn (≤1 extra draw, #121 leak +0). Monotonic + steps back a tier
+    on an Infamy-denting #164 loss (2→1, bounded/reversible), governor-road loss leaves it alone. Derived from
+    Infamy — NO save bump (v18). Gallery `2026-07-02-figurehead.png`.
 - ✅ **#178 — The weather gage: wind as a global rule** *(design/tech, S/M — P2)* — **SHIPPED Loop 147,
   v0.0.20260702121814, #178 CLOSED.** Promoted the shipped wind (the `state.windDir` the HUD windrose
   already shows) from decoration to a **rule BOTH hulls obey**: heading vs the wind modifies sailing speed
