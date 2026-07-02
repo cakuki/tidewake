@@ -642,3 +642,48 @@ test('RISE deeds weave into a whole ballad WITHOUT breaking the superlative or c
 test('the RISE deed types are declared in EVENT_TYPES', () => {
   for (const t of ['rank', 'ship', 'gun']) assert.ok(EVENT_TYPES.includes(t), `${t} in EVENT_TYPES`);
 });
+
+// ---- Never close the tab empty-handed (#176): the DEFEAT chapter --------------------------------
+// A LOST fight is sung into the Ballad as a CHAPTER, not a blank page — so even a defeat is part of
+// the saga and the player leans into "one more voyage". Rueful, never triumphant; each loss its own
+// verse (no dedup); a foe-less defeat is nonsense and rejected.
+
+test("'defeat' is a known event type", () => {
+  assert.ok(EVENT_TYPES.includes('defeat'));
+});
+
+test('recordEvent records a defeat as a chapter (foe + tier), rejects a foe-less one', () => {
+  const log = recordEvent([], { type: 'defeat', foe: 'HMS Ruin', tier: 3 });
+  assert.equal(log.length, 1);
+  assert.deepEqual(log[0], { type: 'defeat', foe: 'HMS Ruin', tier: 3 });
+  // a foe-less / junk defeat never poisons the ballad
+  assert.equal(recordEvent([], { type: 'defeat' }).length, 0);
+  assert.equal(recordEvent([], { type: 'defeat', foe: '   ' }).length, 0);
+  // tier coerces to a safe non-negative int (a missing tier reads as 0, still a valid chapter)
+  assert.equal(recordEvent([], { type: 'defeat', foe: 'X' })[0].tier, 0);
+  assert.equal(recordEvent([], { type: 'defeat', foe: 'X', tier: -4 })[0].tier, 0);
+});
+
+test('every defeat is its own chapter — no dedup (a run can be lost more than once)', () => {
+  let log = [];
+  log = recordEvent(log, { type: 'defeat', foe: 'Black Sal', tier: 2 });
+  log = recordEvent(log, { type: 'defeat', foe: 'Black Sal', tier: 2 }); // same foe, same tier
+  assert.equal(log.length, 2, 'two losses = two chapters');
+});
+
+test('composeBallad sings a defeat as a rueful (never triumphant) chapter naming the foe', () => {
+  const { text, lines } = composeBallad([{ type: 'defeat', foe: 'HMS Ruin', tier: 4 }]);
+  assert.ok(text.includes('HMS Ruin'), 'the verse names the foe who beat you');
+  const verse = lines.find((l) => l.includes('HMS Ruin'));
+  assert.ok(/struck|lost|beaten|raked|badly/i.test(verse), 'the tone is a loss, not a boast');
+  // it must NOT read like a won fight — no coin/infamy spoils crowed
+  assert.ok(!/coins the richer|the more feared|hauled/i.test(verse));
+});
+
+test('a defeat chapter does NOT tug the pole needle and is not counted as a rival bested', () => {
+  // a lone defeat: the closing tally must not claim a "rival bested" (you did not best them), and the
+  // dominant-pole couplet stays the balanced/neutral one (a scar doesn't decide who the voyage made you).
+  const { text } = composeBallad([{ type: 'defeat', foe: 'HMS Ruin', tier: 3 }]);
+  assert.ok(!/rival/i.test(text), 'a loss is not a rival BESTED in the tally');
+  assert.ok(/thoroughly both|never agree/i.test(text), 'a defeat leaves the pole lean neutral');
+});

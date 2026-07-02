@@ -198,6 +198,48 @@ export function demoteHarbour(harbour) {
   return { harbour: { name: h.name, level: h.level - 1, invested: Math.max(0, h.invested - coinLost) }, coinLost };
 }
 
+// ---- Never close the tab empty-handed (#176) — a defeat still banks a scrap ------------------
+// Deep-reading insight: a wholly-wasted voyage makes players quit; a scrap of banked progress makes
+// them sail again. When a fight is LOST, #164 dents the pole you were PURSUING (Infamy or Standing)
+// AND your coin — that sting STANDS. This is the small consolation on a DIFFERENT AXIS: a bounded
+// salvage PLANK sunk into your home-port fund (the already-persisted `harbour.invested`), so even a
+// defeat lays a plank toward the harbour you're raising. It NEVER touches Infamy/Standing/coins (so
+// the #164 deduction is never refunded and every stakes-on-loss test stays green) and NEVER jumps a
+// growth tier (only `invest()` climbs the level) — it is pure, honest forward progress you'd sail on
+// for. Only banks when you HAVE a home port; an un-homed defeat still becomes a Ballad chapter (#90).
+// Tier-scaled off the foe's threat (1..5, ship-classes) and bounded to a scrap — always a whisker of
+// what a real paid investment (150–700 coin) grows, so caution still plainly matters. NO save bump
+// (reuses `harbour.invested`, stays v18). PURE + deterministic + junk-safe.
+export const SALVAGE_BASE = 4;      // a plank even a sloop loss lays into the fund
+export const SALVAGE_PER_TIER = 3;  // + this much per foe tier (tier 1 → 7 … tier 5 → 19), a scrap either way
+
+/**
+ * The bounded salvage plank a defeat to a tier-`tier` foe lays on the home-port fund (#176). Monotonic
+ * non-decreasing in tier; junk / out-of-range tier reads as the gentlest (tier 1). PURE.
+ * @param {number} tier  the foe's threat tier (1..5, from src/ship-classes.js)
+ * @returns {number} a small positive plank of salvage (>= SALVAGE_BASE + SALVAGE_PER_TIER)
+ */
+export function salvagePlank(tier) {
+  const t = Number.isFinite(tier) ? Math.max(1, Math.min(5, Math.round(tier))) : 1;
+  return SALVAGE_BASE + t * SALVAGE_PER_TIER;
+}
+
+/**
+ * Bank a defeat's salvage plank onto the home-port fund (#176). Returns the NEW harbour with its
+ * `invested` grown by the bounded plank (name + growth LEVEL untouched — a plank never jumps a tier)
+ * plus the plank actually laid — or a null harbour + plank 0 when there's no home port to bank into.
+ * PURE — never mutates the input harbour, never touches any fame pole or coin, never throws.
+ * @param {{name:string,level:number,invested:number}|null} harbour
+ * @param {number} tier  the foe's threat tier
+ * @returns {{harbour:({name:string,level:number,invested:number}|null), plank:number}}
+ */
+export function bankSalvage(harbour, tier) {
+  const h = sanitizeHarbour(harbour);
+  if (!h) return { harbour: null, plank: 0 };
+  const plank = salvagePlank(tier);
+  return { harbour: { name: h.name, level: h.level, invested: h.invested + plank }, plank };
+}
+
 /**
  * The homecoming greeting for the captain's home harbour at `port` — warming a tier at a time — or
  * null if `port` isn't their claimed harbour. Pure; never throws.

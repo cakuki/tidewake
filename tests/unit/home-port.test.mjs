@@ -4,7 +4,9 @@ import {
   freshHarbour, sanitizeHarbour, isHome, harbourLevelName, investCost, investStanding,
   canClaim, claim, canInvest, invest, harbourGreeting,
   earnedGovernorship, governorTitle, governorshipBeat, demoteHarbour,
+  salvagePlank, bankSalvage,
   CLAIM_STANDING, CLAIM_REWARD, MAX_LEVEL, GOVERNOR_STANDING,
+  SALVAGE_BASE, SALVAGE_PER_TIER,
 } from '../../src/systems/home-port.js';
 
 // ---- freshHarbour / sanitizeHarbour (fail-open save round-trip) -----------------------------
@@ -201,4 +203,58 @@ test('demoteHarbour on no/junk harbour → null, never throws, never mutates', (
   const snap = JSON.stringify(h);
   demoteHarbour(h);
   assert.equal(JSON.stringify(h), snap, 'input untouched (pure)');
+});
+
+// ---- Never close the tab empty-handed (#176): the consolation salvage plank ------------------
+// A LOST voyage still banks a small, honest scrap on a DIFFERENT axis (the home-port fund) so the
+// player leans into "one more voyage" — WITHOUT ever refunding the #164 sting. The plank is bounded,
+// tier-scaled, never touches a fame pole or coin, and never jumps a growth tier.
+
+test('salvagePlank: a scrap, monotonic non-decreasing in foe tier, always positive', () => {
+  const p1 = salvagePlank(1), p3 = salvagePlank(3), p5 = salvagePlank(5);
+  assert.equal(p1, SALVAGE_BASE + 1 * SALVAGE_PER_TIER); // tier 1 → 7
+  assert.equal(p5, SALVAGE_BASE + 5 * SALVAGE_PER_TIER); // tier 5 → 19
+  assert.ok(p1 > 0 && p3 > p1 && p5 > p3, 'a deadlier foe lays a bigger plank, always positive');
+  // A plank is always a SCRAP — a whisker of a real paid investment (the cheapest grow is 150 coin).
+  assert.ok(p5 < 150, 'even the biggest plank is far under a paid investment (150c) — caution still matters');
+});
+
+test('salvagePlank: junk / out-of-range tier reads as the gentlest tier (1), never throws', () => {
+  for (const bad of [NaN, Infinity, -3, 0, undefined, null, 'x', 99]) {
+    const p = salvagePlank(bad);
+    assert.ok(Number.isFinite(p) && p >= salvagePlank(1) && p <= salvagePlank(5));
+  }
+});
+
+test('bankSalvage: grows the home-port fund by exactly the plank — LEVEL + name untouched', () => {
+  const before = { name: 'Rumhaven', level: 2, invested: 350 };
+  const { harbour, plank } = bankSalvage(before, 4);
+  assert.equal(plank, salvagePlank(4));
+  assert.equal(harbour.invested, 350 + plank, 'the fund grows by exactly the plank');
+  assert.equal(harbour.level, 2, 'a plank NEVER jumps a growth tier — only invest() climbs the level');
+  assert.equal(harbour.name, 'Rumhaven');
+});
+
+test('bankSalvage: no home port → null harbour + plank 0 (an un-homed defeat banks no plank)', () => {
+  assert.deepEqual(bankSalvage(null, 5), { harbour: null, plank: 0 });
+  assert.deepEqual(bankSalvage(undefined, 3), { harbour: null, plank: 0 });
+  assert.deepEqual(bankSalvage({ name: '' }, 3), { harbour: null, plank: 0 }); // junk sanitises to no-claim
+});
+
+test('bankSalvage: PURE — never mutates the input harbour', () => {
+  const h = { name: 'Home', level: 1, invested: 0 };
+  const snap = JSON.stringify(h);
+  bankSalvage(h, 5);
+  assert.equal(JSON.stringify(h), snap, 'input untouched');
+});
+
+test('bankSalvage: coexists with the #164 sting — a plank is NOT a refund (different axis)', () => {
+  // The plank only ever grows harbour.invested; it returns NO coin/infamy/standing, so the caller's
+  // #164 deduction on those poles can never be undone by banking a plank. Repeated losses only add
+  // scraps to the fund — a slow, honest climb, never a wash of the fame the losses cost.
+  let h = { name: 'Home', level: 1, invested: 0 };
+  let total = 0;
+  for (let i = 0; i < 5; i++) { const r = bankSalvage(h, 3); h = r.harbour; total += r.plank; }
+  assert.equal(h.invested, total, 'the fund is exactly the sum of the planks — no phantom fame/coin');
+  assert.equal(h.level, 1, 'five defeats still never climbed a tier');
 });

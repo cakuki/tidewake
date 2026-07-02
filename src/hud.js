@@ -267,12 +267,19 @@ export function createHud() {
   // the shared toast (already docked clear of the battle-camera safe-zone, #161 slice 2) so it never
   // occludes the framed ship. `lastDefeat` is exposed for the headless QA hook to assert the cost.
   let lastDefeat = null;
-  function showDefeat({ foeName = 'She', pole = 'infamy', fameLoss = 0, coinLoss = 0 } = {}) {
+  function showDefeat({ foeName = 'She', pole = 'infamy', fameLoss = 0, coinLoss = 0, plank = 0, homePort = null } = {}) {
     const poleLabel = pole === 'standing' ? 'Standing' : 'Infamy';
-    lastDefeat = { foeName, pole, poleLabel, fameLoss, coinLoss };
     const cost = `−${fameLoss} ${poleLabel}, −${coinLoss} coin`;
+    // Never close the tab empty-handed (#176): the sting is named FIRST (the loss still stung), then a
+    // subdued consolation tick — the voyage wasn't for NOTHING, so you lean into one more voyage. Always
+    // "the tale is sung" (a Ballad chapter); a homed captain also sees a plank fall on the harbour fund.
+    // This is deliberately quiet (no triumphant flourish) so it lifts the void without softening the loss.
+    const scrap = (plank > 0 && homePort)
+      ? `Still — the tale is sung, and a plank falls for ${homePort}: <b>+${plank}</b> to the harbour fund. One more voyage?`
+      : `Still — the tale is sung: this defeat, too, takes its verse in your Ballad. One more voyage?`;
+    lastDefeat = { foeName, pole, poleLabel, fameLoss, coinLoss, plank, homePort, scrap };
     flashBanner('⚑ Colours Struck',
-      `${foeName} rakes you under — you strike your colours and limp away. Plundered: <b>${cost}</b>.`);
+      `${foeName} rakes you under — you strike your colours and limp away. Plundered: <b>${cost}</b>. ${scrap}`);
     if ($toast) $toast.classList.add('defeat'); // re-add after flashBanner cleared it — the red sting
   }
   /** The last defeat card's named cost (or null) — for the headless QA gate. */

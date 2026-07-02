@@ -17,7 +17,7 @@ export const MAX_EVENTS = 60;
 
 // The deeds the balladeer knows how to sing. A future slice can add more (best trade,
 // rank climbed, ports visited) by extending NARRATORS + sanitizeEvent below.
-export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter', 'harbour', 'governorship', 'morale', 'bounty', 'rank', 'ship', 'gun'];
+export const EVENT_TYPES = ['landfall', 'duel', 'cannon', 'legend', 'rumour', 'encounter', 'harbour', 'governorship', 'morale', 'bounty', 'rank', 'ship', 'gun', 'defeat'];
 
 export const BALLAD_TITLE = 'The Ballad of Your Voyage';
 
@@ -134,6 +134,13 @@ export function sanitizeEvent(ev) {
       const guns = nonNegInt(ev.guns);
       return guns > 0 ? { type: 'gun', guns } : null;
     }
+    case 'defeat':
+      // Never close the tab empty-handed (#176): a LOST fight is recorded as a CHAPTER, not a blank —
+      // so even a defeat is part of the saga, and the player leans into "one more voyage". The verse is
+      // rueful, never triumphant (the loss still stung, #164); `foe` is the captain who rakes you under
+      // and `tier` her threat. Every defeat is its own chapter (no dedup) — a run can be lost more than
+      // once and each is worth the telling. A foe-less defeat is nonsense and rejected.
+      return isStr(ev.foe) ? { type: 'defeat', foe: String(ev.foe).trim(), tier: nonNegInt(ev.tier) } : null;
     default:
       return null;
   }
@@ -285,6 +292,14 @@ const NARRATORS = {
     (e) => `You fitted another cannon at the gunsmith's — ${e.guns} guns run out to a side now, and the next fool to cross you will hear the difference before ever he sees it.`,
     (e) => `A fresh gun bolted to the deck, still warm from the forge: ${e.guns} on the broadside, and your ship spoke a good measure louder for it.`,
     (e) => `You added iron to your argument — ${e.guns} guns where lately there were fewer — and the deck rode that bit heavier, and that bit prouder, beneath your boots.`,
+  ],
+  // Never close the tab empty-handed (#176): a LOST fight, sung as a scar rather than a boast — rueful,
+  // wry, and unbowed. The loss still stung (#164); the Ballad's job here is only to insist the voyage
+  // wasn't for NOTHING: the tale is sung, and a beaten captain who lived to be sung about sails again.
+  defeat: [
+    (e) => `${e.foe} raked you under and you struck your colours, limping off salt-stung and lighter of purse — but you lived, and a captain who lives is a captain who sails again, so the tale gets its bitter verse and no more.`,
+    (e) => `It went badly with ${e.foe}: the hull groaned, the colours came down, and you crawled home the poorer for it. Still — they'll sing this one too, the night you were beaten and did not stay beaten.`,
+    (e) => `You met ${e.foe} and lost — plainly, painfully, and with the whole crew watching the flag drop. But a loss survived is a story earned, and this scar takes its place in the ballad beside the boasts.`,
   ],
 };
 
@@ -511,7 +526,7 @@ export function composeBallad(events, opts = {}) {
     lines = [EMPTY_LINE];
   } else {
     lines = [OPENING];
-    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0, harbour: 0, governorship: 0, morale: 0, bounty: 0, rank: 0, ship: 0, gun: 0 };
+    const seen = { landfall: 0, duel: 0, cannon: 0, legend: 0, rumour: 0, encounter: 0, harbour: 0, governorship: 0, morale: 0, bounty: 0, rank: 0, ship: 0, gun: 0, defeat: 0 };
     for (const e of log) {
       // An at-sea encounter sings a rescue/plunder verse by the choice made; a morale crossing sings
       // its tier verse; a treacherous fight a false-colours verse; a lawful pirate-hunt the privateer

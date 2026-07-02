@@ -535,6 +535,98 @@ try {
   }
   if (process.exitCode !== 1) console.log('  ✓ loss stings (#164): you CAN lose (hull breaks → engagement lost) AND it STINGS — a raiding loss dents Infamy+coin, a governor-road loss dents Standing, the red "Colours Struck" card names the cost, floored at 0 (no death-spiral)');
 
+  // 2b3-scrap) NEVER CLOSE THE TAB EMPTY-HANDED (#176, the "one more voyage" hook): a LOST voyage must
+  // STILL bank a small, visible scrap of forward progress — so the player leans into one more voyage
+  // instead of closing the tab — WITHOUT ever softening the #164 sting. Two ticks must hold and COEXIST
+  // with the loss: (1) the defeat is sung into the Ballad as a CHAPTER (a `defeat` deed in the voyage
+  // log), always; (2) when the captain HAS a home port, a bounded salvage PLANK falls on the home-port
+  // fund (harbour.invested) — a DIFFERENT AXIS that never touches the dented fame/coin, so the #164
+  // deduction is never refunded. Drive a real defeat (battleForceDefeat) with a home port planted, then
+  // prove: the pursued pole + coin STILL dropped (sting stands), the plank banked (< the fame lost — a
+  // scrap, not a wash), a Ballad chapter was recorded, the "Colours Struck" card SHOWS the tick, and an
+  // UN-HOMED defeat still banks the chapter (plank 0). NO save bump (reuses voyageLog + harbour.invested).
+  const scrap = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    function engageNearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      if (bi === -1) return false;
+      const fp = tw.npcs[bi].pos;
+      tw.qaTeleport(fp[0], fp[1] - 120);
+      tw.step(0.05);
+      return tw.engageBattle();
+    }
+    const hasDefeat = () => tw.voyageLog.filter((e) => e.type === 'defeat').length;
+
+    // Clean slate: a fresh voyage starts un-homed with a blank Ballad (harbour null, voyageLog []).
+    tw.newVoyage(); tw.step(0.05);
+
+    // UN-HOMED captain first: no home port → still a Ballad chapter, but NO plank (graceful degrade).
+    const noHome = tw.harbour; // should be null after a fresh voyage
+    if (!engageNearest()) return { engaged: false };
+    tw.qaSetLedger({ coins: 500, infamy: 400, standing: 100 });
+    tw.battleForceDefeat();
+    const firedNH = tw.battleFire();
+    const cardNH = tw.defeatCard;
+    const defeatsNH = hasDefeat();
+
+    // HOMED raiding captain: plant a level-1 home port (empty fund), lose a fight → sting + a plank.
+    tw.qaSetHomePort('Rumhaven');
+    const investedBefore = tw.harbour ? tw.harbour.invested : null;
+    const defeatsBefore = hasDefeat();
+    if (!engageNearest()) return { engaged: false };
+    tw.qaSetLedger({ coins: 1000, infamy: 1000, standing: 200 }); // raid-leaning
+    const before = tw.state;
+    tw.battleForceDefeat();
+    const fired = tw.battleFire();
+    const after = tw.state;
+    const P = (fired && fired.penalty) || {};
+    const card = tw.defeatCard;
+    const investedAfter = tw.harbour ? tw.harbour.invested : null;
+    const defeatsAfter = hasDefeat();
+    const balladHasChapter = /rakes you under|struck your colours|met .* and lost|beaten and did not stay beaten|takes its place in the ballad/i.test(tw.ballad);
+
+    return {
+      engaged: true,
+      result: fired && fired.result,
+      pole: P.pole, fameLoss: P.fameLoss, coinLoss: P.coinLoss,
+      infBefore: before.infamy, infAfter: after.infamy,
+      coinBefore: before.coins, coinAfter: after.coins,
+      stBefore: before.standing, stAfter: after.standing,
+      investedBefore, investedAfter,
+      defeatsBefore, defeatsAfter,
+      plank: card && card.plank, cardHomePort: card && card.homePort, cardScrap: card && card.scrap,
+      balladHasChapter,
+      noHome, resultNH: firedNH && firedNH.result,
+      plankNH: cardNH && cardNH.plank, defeatsNH,
+    };
+  });
+  if (!scrap.engaged) fail('never empty-handed (#176): could not engage a foe to test the consolation scrap');
+  if (scrap.result !== 'lose') fail(`never empty-handed (#176): the staged defeat did not resolve to a LOSS (result=${scrap.result})`);
+  // (A) The #164 sting STILL STANDS — the pursued pole + coin dropped, and the plank did NOT refund them:
+  if (scrap.pole !== 'infamy') fail(`never empty-handed (#176): a raiding loss should dent Infamy (pole=${scrap.pole})`);
+  if (!(scrap.fameLoss > 0) || scrap.infAfter !== scrap.infBefore - scrap.fameLoss) fail(`never empty-handed (#176): the Infamy sting was softened (${scrap.infBefore}→${scrap.infAfter}, loss=${scrap.fameLoss})`);
+  if (!(scrap.coinAfter < scrap.coinBefore)) fail(`never empty-handed (#176): coin did not drop — the sting was refunded (${scrap.coinBefore}→${scrap.coinAfter})`);
+  if (scrap.stAfter !== scrap.stBefore) fail(`never empty-handed (#176): the consolation wrongly touched a fame pole (Standing ${scrap.stBefore}→${scrap.stAfter})`);
+  // (B) The plank banked onto the home-port fund — a DIFFERENT axis, bounded to a SCRAP (< the fame lost):
+  if (!(scrap.plank > 0)) fail(`never empty-handed (#176): a homed defeat banked NO plank (plank=${scrap.plank})`);
+  if (scrap.investedAfter !== scrap.investedBefore + scrap.plank) fail(`never empty-handed (#176): the home-port fund did not grow by the plank (${scrap.investedBefore}→${scrap.investedAfter}, plank=${scrap.plank})`);
+  if (!(scrap.plank < scrap.fameLoss)) fail(`never empty-handed (#176): the plank (${scrap.plank}) is not a SCRAP — it must be under the fame the loss cost (${scrap.fameLoss}), so a loss never pays like a win`);
+  if (scrap.cardHomePort !== 'Rumhaven') fail(`never empty-handed (#176): the defeat card did not name the home port the plank fell on (${scrap.cardHomePort})`);
+  if (!scrap.cardScrap || !/tale is sung|one more voyage/i.test(scrap.cardScrap)) fail(`never empty-handed (#176): the "Colours Struck" card does not SHOW the consolation tick (scrap="${scrap.cardScrap}")`);
+  // (C) The Ballad recorded the defeat as a CHAPTER (always):
+  if (scrap.defeatsAfter !== scrap.defeatsBefore + 1) fail(`never empty-handed (#176): the defeat was not sung into the Ballad as a chapter (${scrap.defeatsBefore}→${scrap.defeatsAfter})`);
+  if (!scrap.balladHasChapter) fail('never empty-handed (#176): the composed Ballad text has no defeat verse — the loss reads as a blank page');
+  // (D) An UN-HOMED defeat still banks the chapter, but no plank (the tick degrades gracefully):
+  if (scrap.noHome !== null) fail(`never empty-handed (#176): a fresh voyage should have no home port (harbour=${JSON.stringify(scrap.noHome)})`);
+  if (scrap.resultNH !== 'lose') fail(`never empty-handed (#176): the un-homed staged defeat did not resolve to a LOSS (result=${scrap.resultNH})`);
+  if (scrap.plankNH !== 0) fail(`never empty-handed (#176): an un-homed defeat wrongly banked a plank (plank=${scrap.plankNH})`);
+  if (!(scrap.defeatsNH >= 1)) fail('never empty-handed (#176): an un-homed defeat did not record a Ballad chapter');
+  if (process.exitCode !== 1) console.log('  ✓ never empty-handed (#176): a LOST voyage still banks a scrap — the #164 sting STANDS (Infamy+coin still drop, no refund) yet a bounded salvage plank falls on the home-port fund (a scrap under the fame lost) AND the defeat is sung as a Ballad chapter; an un-homed loss still banks the chapter; the "Colours Struck" card shows the "one more voyage" tick (NO save bump, v18)');
+
   // rank) RANK-UP MILESTONE (#169, epic #168 "The Rise"): the felt "you rose" beat. Crossing a
   // renown.js rung must fire ONE title card naming the new rank with pole-appropriate tone (dread on
   // the pirate road, respect on the governor road) + a triumphant sting. Prove it end-to-end,

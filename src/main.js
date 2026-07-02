@@ -72,7 +72,7 @@ import { pickFearfulHail } from './systems/fearful-hail.js';
 import { recallLine, rememberArrival, sanitizePortMemory, recordDeed, deedPhrase, homePort } from './systems/port-memory.js';
 import {
   sanitizeHarbour, claim as claimHome, invest as investHome, canClaim, canInvest, harbourLevelName,
-  earnedGovernorship, governorTitle,
+  earnedGovernorship, governorTitle, bankSalvage,
 } from './systems/home-port.js';
 import { createPortGrowth } from './port-growth-view.js';
 import { growthTier, revealCounts } from './systems/port-growth.js';
@@ -677,7 +677,23 @@ const battle = createBattle({
       // Loss stings (#164): the red "Colours Struck" defeat card NAMES exactly what the loss cost —
       // the tier-scaled, context-based fame + coin just deducted. The player SEES their legend + purse
       // drop and FEELS that reckless fights now carry real risk. `penalty` is the defeatLedger result.
-      hud.showDefeat({ foeName, pole: penalty.pole, fameLoss: penalty.fameLoss, coinLoss: penalty.coinLoss });
+      //
+      // Never close the tab empty-handed (#176): the sting STANDS, but the voyage wasn't for NOTHING —
+      // a defeat still banks a small, honest scrap on a DIFFERENT AXIS, so a loss shows a needle tick
+      // and you sail again. (1) ALWAYS: the defeat is sung into the Ballad as a CHAPTER (#90), not a
+      // blank page. (2) WHEN HOMED: a bounded salvage plank falls onto the home-port fund (#174,
+      // harbour.invested) — pure forward progress that never touches the dented fame/coin (so the #164
+      // deduction is never refunded). NO save bump — reuses voyageLog + harbour.invested (stays v18).
+      logDeed({ type: 'defeat', foe: foeName, tier: penalty.tier }); // the Ballad chapter — always
+      const salvage = bankSalvage(state.harbour, penalty.tier);      // the plank — only when you have a home port
+      if (salvage.plank > 0) {
+        state.harbour = salvage.harbour;
+        try { persistence.write(); } catch { /* the fund is a garnish on the sting, never a dependency */ }
+      }
+      hud.showDefeat({
+        foeName, pole: penalty.pole, fameLoss: penalty.fameLoss, coinLoss: penalty.coinLoss,
+        plank: salvage.plank, homePort: salvage.harbour ? salvage.harbour.name : null,
+      });
     }
     consumeDebut(); // a resolved first fight (won/captured/lost) spends the debut — it never repeats (#157)
   },
@@ -3236,6 +3252,13 @@ window.__tidewake = {
     if (typeof standing === 'number') state.standing = Math.max(0, standing);
     syncRenown(state);
     return { coins: state.coins, infamy: state.infamy, standing: state.standing };
+  },
+  // QA-only (#176): plant a claimed home harbour directly (level 1, empty fund), so a headless defeat
+  // test can assert the consolation plank banks onto the home-port fund without the town→sea claim
+  // dance. Never used in play — the real claim runs through claimHarbour() at a docked port.
+  qaSetHomePort(name = 'Testhaven') {
+    state.harbour = sanitizeHarbour({ name, level: 1, invested: 0 });
+    return sanitizeHarbour(state.harbour);
   },
   // The last "Colours Struck" defeat card's named cost (or null) — so the headless gate can assert a
   // lost fight surfaced a card that NAMES the fame + coin it deducted (#164).
