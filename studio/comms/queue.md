@@ -27,7 +27,15 @@ when its latest slice shipped.
 
 ---
 
-## 🧭 TOP OF QUEUE — PRODUCT REFILL (2026-07-02) — **THE RISE** (epic #168) — BUILD IN ORDER
+## ✅ THE RISE (epic #168) — LANE COMPLETE (all 6 slices shipped, #168 CLOSED 2026-07-02)
+
+_**🎉 THE RISE is DONE — all 6 slices shipped, epic #168 CLOSED (Loop 131, v0.0.20260702062846).** The
+reward→progression→mastery loop is now closed: rank-up milestone (#169) → buy a cannon (#170) → buy a
+bigger ship (#171) → the world fears you (#172) → the bounty board (#173) → governor-pole port growth
+(#174). Both poles now have a visible power fantasy — the pirate grows a bigger ship, the governor grows a
+prospering port. **Refill the roadmap (PRODUCT) before the next DELIVERY cycle** — the lane is drained._
+
+## 🧭 (was) TOP OF QUEUE — PRODUCT REFILL (2026-07-02) — **THE RISE** (epic #168) — BUILD IN ORDER
 
 _**UPDATE 2026-07-02 — PRODUCT cycle at an inflection point (roadmap change, report-worthy).** Battle is now
 rich/varied/fair/juicy (#161 + #162/#163–167 + #158/#159/#80/#70 all shipped tonight). Per
@@ -107,9 +115,19 @@ Six original, vision-aligned, FUN-FIRST slices, sequenced value·complexity·dep
   wanted poster · chase the marker · claim the purse → spend it on the next cannon. Playtest asserts
   accept→marker, defeat-target→claim-once (into coin +469c/+615 renown), wrong-target→no-claim,
   claim-once (no re-hunt). Gallery `bounty-board-173.png`. **#174 BUILD NEXT (last of the lane).**
-- **#174 — Governor-pole symmetry: invest spoils to grow your port VISIBLY (S/M · no bump). BUILD NEXT (last).** The Standing
-  road's equivalent of a bigger ship, so both paths feel complete. _FUN: SEE your port prosper as you invest._
-  Derived from persisted `harbour.level`; reuses #101 port props. Relates #118/#134.
+- ✅ **#174 — Governor-pole symmetry: invest spoils to grow your port VISIBLY — SHIPPED (Loop 131, v0.0.20260702062846, #174 CLOSED). THE RISE FINALE.**
+  The governor road's mirror of buying a bigger ship: pour your takings into your home port and SEE it PROSPER —
+  new warehouses rise on the shore, more boats ride at anchor, more masts crowd the quay — in tiers driven off
+  the already-persisted `harbour.level`. PURE tier→dressing model in `src/systems/port-growth.js` (`growthTier`/
+  `revealCounts`/`piecesOfKind`/`pieceWorldPlacement`), TDD'd (11 cases); MAX_TIER mirrors home-port MAX_LEVEL so
+  the visible tier DERIVES from state already persisted — **NO save change (stays v18)**. Three.js reveal in
+  `src/port-growth-view.js` (deck-guns.js pattern): ONE InstancedMesh per kind (warehouse · moored-boat hull ·
+  mast), placed once at the home port in tier order + revealed by `.count`, distance-culled wholesale when away
+  (#121) — at most three instanced draws, only near home, 0 at sea/unclaimed. main.js wires applyGrowth on
+  claim/invest/stand-firm-demote/load/newVoyage + a cull system + the `tw.portGrowth` QA surface. SEE the quay
+  grow · FEEL both poles complete. Playtest asserts invest→tier-up, port-view-reflects-tier, gated-by-spend,
+  capped, reload re-grows DERIVED from persisted harbour.level (v18, no bump). Perf 29/130 draws · 92780 tris;
+  leak +0. Gallery `port-growth-174.png` (a claimed berth beside a jewel of the lanes). **CLOSES epic #168.**
 
 **[OWNER-DECISION] — Lane sequencing: THE RISE (fun frontier) vs. the previously-queued #145 `/preview/`
 release-ops lane.** The owner earlier named #145 as next, but that's release infra, not game FUN; the
@@ -121,11 +139,11 @@ regardless (slices don't depend on this).
 player's. Recommend shipping the class-scaled *visible* change now (no new art) and queuing the CC0
 ship-class set as a parallel art follow-up — not a blocker.
 
-**Sequencing note:** #169 + #170 + #171 + #172 + #173 SHIPPED. **#174** is the last unblocked, non-owner-decision
-READY slice of THE RISE → the loop stays in DELIVERY; the two [OWNER-DECISION]s above are questions to surface,
-NOT build blockers and NOT counted toward the low-water-mark. **Build #174 next** — governor-pole symmetry
-(invest spoils to grow your port VISIBLY; derived from persisted `harbour.level`, reuses #101 port props, NO
-save bump). After #174 the epic #168 lane is complete — refill the roadmap (PRODUCT) before the next cycle.
+**Sequencing note:** #169 + #170 + #171 + #172 + #173 + #174 all SHIPPED — **THE RISE lane is COMPLETE and epic
+#168 is CLOSED.** The queue now has NO READY build slice for this lane → the next cycle runs **PRODUCT** to
+refill the roadmap from external inspiration (never idle — the low-water-mark is empty). The two [OWNER-DECISION]s
+above remain questions to surface, NOT build blockers. Also still standing: **#145 `/preview/` release-ops lane**
+(owner-named earlier; a candidate for the next lane alongside a fresh fun frontier from PRODUCT).
 
 ---
 

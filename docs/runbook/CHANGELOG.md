@@ -4,6 +4,20 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #174 Governor-pole symmetry shipped — invest spoils to grow your home port VISIBLY;
+  EPIC #168 "THE RISE" COMPLETE + CLOSED (Loop 131, v0.0.20260702062846).** The RISE FINALE (slice 6/6) —
+  the governor road's mirror of buying a bigger ship: pour your takings into your home port and SEE it PROSPER
+  (new warehouses on the shore, more boats at anchor, more masts crowding the quay), in tiers driven off the
+  already-persisted `harbour.level`. PURE tier→dressing model in `src/systems/port-growth.js` (TDD'd, 11 cases;
+  MAX_TIER mirrors home-port MAX_LEVEL) → the visible tier DERIVES from state already persisted, **NO save
+  change (stays v18)**. Three.js reveal in `src/port-growth-view.js` (deck-guns pattern): ONE InstancedMesh per
+  kind, revealed by tier + distance-culled wholesale (#121) — at most three instanced draws, only near home.
+  Playtest asserts invest→tier-up, port-view-reflects-tier, gated-by-spend, capped, reload re-grows DERIVED from
+  persisted state. Perf 29/130 draws · 92780 tris; leak +0. Gallery `port-growth-174.png` (claimed berth vs
+  jewel of the lanes). **Epic #168 is now COMPLETE across 6 slices** — the reward→progression→mastery loop is
+  closed: rank-up (#169) → buy-cannon (#170) → buy-ship (#171) → world-fears-you (#172) → bounty-board (#173) →
+  port-growth (#174). Both poles now have a visible power fantasy (pirate: a bigger ship · governor: a
+  prospering port). The loop next runs PRODUCT to refill the roadmap (lane drained).
 - **2026-07-02 — #173 The bounty board shipped — a named target + tier-scaled purse; the earn→spend loop
   CLOSED (Loop 130, v0.0.20260702055950).** Epic **#168 "The Rise"** slice 5/6 — the "one more voyage"
   hook. A port board posts a NAMED wanted vessel (`the Grey Gull`…) with a tier-scaled purse (#167-symmetric:
