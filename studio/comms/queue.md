@@ -915,7 +915,7 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
 22. **#37 — tolerance-based deterministic visual diff.** Open since cycle 10. — _automates the last
     manual visual-QA step._
 23. **#74 — PWA service worker (offline caching).** · **#75 — mobile safe-area/landscape/low-end
-    polish.** · **#84/#85 — WebGPU / OffscreenCanvas spikes** (DL #2 tech reservoir; #84 below #36).
+    polish** — _safe-area TOP sweep (v0.0.20260627133536) + **LANDSCAPE orientation + throttle side-inset shipped Loop 144 (v0.0.20260702105824)**: the game now lays out sanely + notch-safe turned sideways (top strips clear the battle-camera band on short screens; throttle carries `env(safe-area-inset-right)`); gated at 844×390. **#75 STAYS OPEN** — remains: **low-end adaptive perf throttle** (drop DPR / reduce ocean detail when measured fps stays low, per #52 metrics — the per-vertex Gerstner ocean is the prime low-end risk) + **optional gesture/tilt steering**._ · **#84/#85 — WebGPU / OffscreenCanvas spikes** (DL #2 tech reservoir; #84 below #36).
 
 ## Blocked / held
 - **#99 — sail zones** (invisible regions driving music; later hostility/weather) — P3, naturally

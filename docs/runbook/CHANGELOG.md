@@ -4,6 +4,24 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #75 Mobile polish: the game feels native turned sideways — landscape + safe-area
+  (Loop 144, v0.0.20260702105824; mobile/playable, #75 STAYS OPEN).** Follow-up to #63's phone MVP
+  (portrait-verified) and the shipped top-HUD safe-area sweep. Two highest-value fixes so the game plays
+  cleanly on a phone in EITHER orientation: (1) **LANDSCAPE** — the just-in-time key-prompts strip (#153)
+  dropped into the battle-camera keep-clear band on a SHORT landscape screen (16% of a 390px height dips
+  into the fixed top-strip region), reading as "occluding the ship"; the `centreSafeZone` top is now
+  floored at a top-strip reserve so the deliberate strips (raid tracker + key-prompts) always sit above
+  the band — tall screens (desktop / phone portrait) are UNCHANGED, so the #161/#146 guards hold; (2)
+  **SAFE-AREA** — the touch throttle cluster now carries `env(safe-area-inset-right)` so it clears the
+  side notch / rounded corner when the phone is turned (inset is 0 in portrait / on non-notch — nothing
+  moves there). New PURE `src/ui/safe-area.js` predicate (within the notch-reduced safe area), TDD'd with
+  NONZERO insets (the headless gate reports insets=0, so the pure test is the behavioural proof for a real
+  notched phone); a `safeAreaLayout()` QA hook feeds live rects + real device insets through it. The #146
+  playtest now asserts the status HUD, docked fight prompts and touch controls fit + clear the centre +
+  sit within the safe area at a landscape phone viewport (844×390), and Set Sail stays notch-safe,
+  alongside the existing portrait checks. No mechanics, save v18 unchanged. Deferred (#75 stays OPEN):
+  low-end adaptive perf throttle + gesture steering. Gallery `mobile-landscape-75.png`. 1435/1435 unit
+  tests + playtest PASSED zero console errors; perf 31/130 draws (CSS/layout = 0 draws).
 - **2026-07-02 — #97 Coastal gull VISUAL: the flock you HEAR is now the flock you SEE (Loop 143,
   v0.0.20260702103620; art/atmosphere, #97 STAYS OPEN).** #68 already made the gull CRIES coastal (swell
   near a port, silent at open sea), but the #97 flock still wheeled over the ship everywhere — so you heard
