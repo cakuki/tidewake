@@ -4,6 +4,19 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #21 Cleaner persistent status HUD: read who you are + what you have at a glance
+  (Loop 140, v0.0.20260702093932; polish/legibility, #21 CLOSED).** THE RISE (#168) had piled coins,
+  rank/title, the ⚔/⚖ reputation ledger, the needle and the legend crown onto the always-on corner HUD
+  until it read as one scattered run of text. Pure layout pass on the PERSISTENT status readout only: it
+  now splits into two named, hairline-divided groups — **SAILING** (heading/speed/wind + windrose) and
+  **CAPTAIN** (coins/hold, ledger, needle, crown) — with values aligned in a column, so a glance tells
+  you who you are and what you have on desktop AND phone. Scope kept tight — the battle-transient stack
+  was NOT touched; every read-out kept its span id; no new data/mechanics; NO save change (v18). New
+  PURE `src/ui/hud-status.js` (`HUD_GROUPS`/`HUD_FIELDS` grouping source-of-truth + `fitsViewport` #146
+  guard + `anchoredTopLeft` — the corner's non-occlusion rule, distinct from #161-s2's centre safe-zone
+  for battle modals). +13 unit tests (1399); new playtest §2b3-hud gate (grouped + every RISE field kept
+  + fits + anchored clear of the hull + no overlap with the fight stack, on desktop + phone). Perf
+  31/130 draws · 93k/150k tris (DOM = 0 draws). Gallery `cleaner-status-hud-21.png`.
 - **2026-07-02 — #68 Coastal seagulls: the coast comes ALIVE — gull cries swell near land, silent at sea
   (Loop 139, v0.0.20260702091911; #68 CLOSED — both audio + visual-flock slices met).** The gull SFX
   already existed but cried flat everywhere; now it's a COASTAL presence — cries swell as your bow turns

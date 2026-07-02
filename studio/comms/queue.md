@@ -855,6 +855,22 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
 
 17. **#15 — comedic loading-tip line pool.** — _humour surface, near-zero cost._
 18. **#21 — HUD coins placeholder + cleaner layout.** — _legibility; sets up future HUD work._
+    **SHIPPED & CLOSED (Loop 140, v0.0.20260702093932).** THE RISE (#168) had piled coins, rank/title
+    (#169), the ⚔ Infamy/⚖ Standing ledger, the reputation needle (#132) and the legend crown (#46)
+    onto the always-on top-left corner HUD until it read as one scattered run of text. Pure
+    layout/legibility pass on the PERSISTENT status readout only: it now splits into two named,
+    hairline-divided groups — **SAILING** (heading/speed/wind + windrose) and **CAPTAIN** (coins/hold,
+    the ledger, the needle, the legend crown) — each value aligned in a column, so a glance tells you
+    who you are and what you have on desktop AND phone. Scope kept TIGHT — the battle-transient stack
+    (battle/cannons/duel/encounter/aim/odds/threat labels/raid strip) was NOT touched; every read-out
+    kept its span id (coins placeholder already present since the economy landed); no new data,
+    mechanics or economy; **NO save change (v18)**. New PURE `src/ui/hud-status.js` (`HUD_GROUPS`/
+    `HUD_FIELDS` grouping source-of-truth + `fitsViewport` #146 guard + `anchoredTopLeft` — the corner's
+    non-occlusion rule, distinct from #161-s2's centre safe-zone for the battle MODALS). +13 unit tests
+    (1399 total); new playtest §2b3-hud gate (grouped + every RISE field kept + fits + anchored clear of
+    the hull + no overlap with the fight stack, on desktop + phone). Perf 31/130 draws · 93188/150000
+    tris (DOM = 0 draws). Gallery `cleaner-status-hud-21.png`. **REMAINS:** none owed — future HUD
+    polish (icons, a coins-delta pulse, collapsible groups) is optional, not part of this slice.
 19. **#88 — full weather (rain/storm/clouds), optional behind the #73 toggle.** — _extends day-night._
     **SHIPPED (Loop 137, v0.0.20260702084748, #88 STAYS OPEN):** a seeded, deterministic weather cycle
     (clear → clouds → squall → clearing) behind its OWN `weather` toggle in the #73 panel (default
