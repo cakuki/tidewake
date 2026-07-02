@@ -88,6 +88,7 @@ import { colourById, nextColours, isDeceptive, npcFlees, DEFAULT_COLOURS, HOIST_
 import { BUDGET, formatPerf, pixelRatioCap, isMeasuredFrame } from './perf.js';
 import { isTouchDevice } from './input.js';
 import { GOAL, applyEvent, shouldShowGoal, normalizeFlags, currentStep } from './onboarding.js';
+import { BOOT_TIPS, pickTip, tipAt } from './boot-tips.js';
 
 // main.js is a thin bootstrap: it builds the renderer/scene/camera/lights, spins up
 // the world + game systems (input, sailing, hud, ports, wake, audio, persistence),
@@ -95,6 +96,22 @@ import { GOAL, applyEvent, shouldShowGoal, normalizeFlags, currentStep } from '.
 // The per-system logic lives in its own module so future slices touch small files.
 
 const app = document.getElementById('app');
+
+// Boot tip (#15) — the game's VOICE before you sail: draw one wry line into the loading overlay
+// the instant we cast off. Anti-repeat across reloads via a DEDICATED localStorage key (NOT the
+// save schema — save stays v18); the pure pool + picker live in boot-tips.js. Wrapped so a storage
+// or DOM hiccup can never block the boot.
+let bootTip = '';
+try {
+  const KEY = 'tw:bootTipLast';
+  let last = -1;
+  try { last = parseInt(localStorage.getItem(KEY) ?? '-1', 10); if (!Number.isInteger(last)) last = -1; } catch { /* private mode: just skip anti-repeat memory */ }
+  const idx = pickTip(last);
+  bootTip = tipAt(idx);
+  const tipEl = document.getElementById('boot-tip');
+  if (tipEl) tipEl.textContent = bootTip;
+  try { localStorage.setItem(KEY, String(idx)); } catch { /* storage full/blocked — the tip still showed */ }
+} catch { /* a flourish must never break the boot */ }
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 // Heat-aware DPR cap (#63): full 3x retina cooks a phone rendering the per-vertex ocean, so
@@ -2620,6 +2637,10 @@ function loop() {
 window.__tidewake = {
   version: VERSION,
   ready: false,
+  // Boot tip (#15): the wry loading line actually drawn into the #boot overlay this cast-off —
+  // so the headless gate can assert a tip rendered and came from the pool (anti-repeat is proven
+  // in the pure unit tests + asserted against BOOT_TIPS in tests/playtest.mjs).
+  bootTip,
   get state() {
     const infamy = state.infamy ?? 0, standing = state.standing ?? 0;
     return {

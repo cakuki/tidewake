@@ -18,6 +18,7 @@ import { dreadPressure, fleesOnSight, strikesEarly } from '../src/systems/dread.
 import { offersSurrender } from '../src/systems/board.js'; // #172: prove the dread early-strike feeds the EXISTING white-flag path
 import { fearTier, pickFearfulHail } from '../src/systems/fearful-hail.js'; // #175: dread's HEAR half — the pure notoriety→fearful-hail line picker
 import { coastProximity, gullCoastGain } from '../src/audio.js'; // #68: the coast comes alive — gull-cry intensity vs distance-to-coast (audio-led, AudioContext-free curve)
+import { BOOT_TIPS, pickTip } from '../src/boot-tips.js'; // #15: the wry boot-tip pool + its anti-repeat picker — a laugh before you sail
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
@@ -58,6 +59,34 @@ try {
 
   // 1) game boots
   await page.waitForFunction('window.__tidewake && window.__tidewake.ready === true', { timeout: 30000 });
+
+  // 1a-boot-tip) A LAUGH BEFORE YOU SAIL (#15): the loading overlay speaks the game's voice — a wry,
+  // original one-liner drawn from a pool with a never-twice-in-a-row guarantee. Prove: (A) a tip
+  // actually rendered into the #boot overlay this cast-off; (B) it is a real member of the pool; and
+  // (C) the anti-repeat picker never yields the last-shown index yet still reaches every other line
+  // (the fun beat's determinism proven headless, off the same pure picker the boot uses).
+  const bootTipShown = await page.evaluate(() => window.__tidewake.bootTip);
+  if (!bootTipShown || typeof bootTipShown !== 'string' || bootTipShown.trim().length === 0) {
+    fail(`boot tip (#15): no tip rendered on the loading overlay (got ${JSON.stringify(bootTipShown)})`);
+  } else if (!BOOT_TIPS.includes(bootTipShown)) {
+    fail(`boot tip (#15): rendered tip is not from the pool — "${bootTipShown}"`);
+  } else {
+    // Anti-repeat: from every possible last-shown index, sweep the random range and confirm the
+    // picker never repeats it and reaches all other lines (matches the unit-test invariant).
+    let antiOk = true, reachOk = true;
+    for (let last = 0; last < BOOT_TIPS.length && antiOk && reachOk; last++) {
+      const reached = new Set();
+      for (let s = 0; s <= 400; s++) {
+        const idx = pickTip(last, s / 400);
+        if (idx === last) antiOk = false;
+        reached.add(idx);
+      }
+      if (reached.size !== BOOT_TIPS.length - 1) reachOk = false;
+    }
+    if (!antiOk) fail('boot tip (#15): anti-repeat broken — picker returned the last-shown index');
+    else if (!reachOk) fail('boot tip (#15): picker cannot reach every non-last line');
+    else if (process.exitCode !== 1) console.log(`  ✓ boot tip (#15): a wry line greets the cast-off — "${bootTipShown}" — drawn from ${BOOT_TIPS.length} original in-voice tips with a never-twice-in-a-row guarantee (a laugh before you sail)`);
+  }
 
   // 1b-challenge) CHALLENGE ON DEMAND (#167, epic #162 slice 5 — the PAYOFF of the whole difficulty lane):
   // the owner's #5 note — "a player who WANTS a hard fight can seek one out and get it." Danger is now

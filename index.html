@@ -722,9 +722,18 @@
     #boot {
       position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
       background: radial-gradient(circle at 50% 40%, #123249, #07131f 80%); color: #cfe8ff;
-      font-size: 13px; letter-spacing: .3em; transition: opacity .6s ease;
+      font-size: 13px; letter-spacing: .3em; transition: opacity .6s ease; text-align: center;
     }
     #boot.hidden { opacity: 0; pointer-events: none; }
+    /* Boot layout (#15): the CASTING OFF line, then a wry loading tip below it — the game's
+       voice before you even sail. The tip is soft, italic, wraps on small screens, and is padded
+       clear of the edges so it fits a phone (#146) without ever touching the play surface. */
+    #boot .boot-inner { display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 0 28px; max-width: 640px; }
+    #boot .boot-cast { font-size: 13px; letter-spacing: .3em; }
+    #boot .boot-tip { max-width: 34em; font-size: 15px; line-height: 1.5; letter-spacing: normal;
+      font-style: italic; color: #9fc4dc; opacity: .92; text-wrap: balance; }
+    #boot .boot-tip::before { content: "“"; } /* a quiet quotemark frame — a line the sea tells you */
+    #boot .boot-tip::after { content: "”"; }
 
     /* ---- Touch / mobile controls (#17) ----------------------------------- */
     /* No browser scroll/zoom on the play surface; the controls own their gestures. */
@@ -1149,7 +1158,8 @@
     </div>
   </div>
 
-  <div id="boot">CASTING OFF…</div>
+  <!-- Boot / loading overlay. The tip line (#15) is filled in by main.js on cast-off. -->
+  <div id="boot"><div class="boot-inner"><div class="boot-cast">CASTING OFF…</div><div id="boot-tip" class="boot-tip"></div></div></div>
 
   <script type="importmap">
   {
