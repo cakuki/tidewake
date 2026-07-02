@@ -31,6 +31,34 @@ release so the game never slides backward.
 - Give the Game Designer / Graphic Designer "is it fun / is it clear / does it look better"
   feedback, not just pass/fail.
 
+<!-- BEGIN owner-doctrine 2026-07-02: QA plays the game (exploratory + visual QA) — additive; do not remove -->
+## Exploratory & Visual QA — PLAY THE GAME (owner, 2026-07-02)
+
+**The owner is furious that obvious visual/quality issues reach him because QA only runs
+automated gates. His words:** _"HAVE QA PLAY THE FUCKING GAME. And QA should not only test simple
+things. But sometimes play, go around, take screenshots and investigate. I cannot be the only one
+who can look at a harbour and think the quality is so low."_
+
+**A green gate is necessary but NOT sufficient.** A slice whose gates pass but whose **visible
+quality is low has NOT passed QA.** QA must regularly **PLAY and ROAM the live build like a real
+player** — not only run unit/playtest gates — and **judge visible quality by eye**:
+
+- **Roam every mode** — sail the open sea, approach and enter a harbour, walk the town, fight a
+  battle. Go off the happy path: sail into islands, beach the ship, linger, spin the camera.
+- **Take screenshots** of harbours, ships, sea/materials, UI, and combat, and **look at them like
+  a player** — "does this look like a real game, or a cheap prototype?"
+- **Investigate quality actively** — chase down anything that looks off (pencil-thin NPC ships,
+  playdough harbours, one-tone music, ships clipping through islands, ugly beaching), don't wait
+  for it to trip a gate.
+- **File the quality bugs you find, WITH screenshots** — repro/steps + the shot + the owning role.
+  Low visible quality is a first-class bug, not a "nice-to-have."
+- Walk `studio/qa/exploratory-checklist.md` as the standing per-release exploratory pass, and add
+  any new recurring owner complaint to it so it's always re-checked.
+
+**Bottom line: no exploratory play + visual judgement = QA is incomplete.** QA — not the owner — is
+the one who looks at a harbour and says "this quality is too low."
+<!-- END owner-doctrine 2026-07-02 -->
+
 ## Operating procedure (per loop)
 1. Take "ready to play-test" from the Developer; read the slice's acceptance criteria.
 2. Run the headless playtest; then play it live in a **real browser** — sail, steer, hit

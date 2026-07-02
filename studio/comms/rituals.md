@@ -43,11 +43,21 @@ the **local loop only** — there are no cloud routines.
   arcade naval combat, progression feel, game feel/"juice", shallow-vs-deep). Findings feed
   `docs/design/what-makes-it-fun.md` and the day's design decisions — cite sources, no going lazy for speed.
 - **R3 Pre-release hardening** — run the full test + playtest gate so the 17:00 promote is clean.
+  <!-- BEGIN owner-doctrine 2026-07-02: EXPLORATORY PLAY pass (additive; do not remove) -->
+  **EXPLORATORY PLAY pass (owner, 2026-07-02) — a green gate is NOT enough:** before sign-off, QA
+  **plays and roams the build like a player** — sail the sea, enter a harbour, walk the town, fight a
+  battle — **takes screenshots of harbours/ships/sea/UI/combat, and judges visible quality by eye**
+  ("real game, or cheap prototype?"). Investigate anything that looks off and **file quality bugs with
+  screenshots** (walk `studio/qa/exploratory-checklist.md`). Additionally run a **periodic full
+  play-through** (not just the automated gate) so the whole experience is felt end-to-end, not only
+  spot-gated. A slice that passes gates but looks low-quality does **not** pass hardening.
+  <!-- END owner-doctrine 2026-07-02 -->
   **Friday is an INTENSE QA SESSION — the week's event — and runs EARLY (~14:00)** to leave a real fix
-  window before release. **Friday flow:** 🧪 QA ~14:00 → 🔧 **fix & stabilize ~14:00–16:30** (fix forward
-  where safe; **revert risky/unfinished work to the last known-good**; re-QA until green) → ✅ **go/no-go
-  ~16:30** (if not green, ship the last known-good to `/weekly/` or hold — never a shaky weekend build) →
-  🌟 release **17:00**. A rushed weekly is worse than no weekly.
+  window before release. **Friday flow:** 🧪 QA ~14:00 (incl. the exploratory play pass above) → 🔧 **fix
+  & stabilize ~14:00–16:30** (fix forward where safe; **revert risky/unfinished work to the last
+  known-good**; re-QA until green) → ✅ **go/no-go ~16:30** (if not green, ship the last known-good to
+  `/weekly/` or hold — never a shaky weekend build) → 🌟 release **17:00**. A rushed weekly is worse than
+  no weekly.
 - **R4 / R4w Release — three channels, stability `weekly > daily > preview`** (landing page at `/` routes
   to all three; see spec):
   - **Daily (R4)** → promote latest green preview to **`/daily/`** with **list** notes; record commit + date.

@@ -28,6 +28,21 @@ real gamer reviews/comments and design to it: [`docs/design/what-makes-it-fun.md
 No one goes lazy for speed. **WE ARE A GAME STUDIO.**
 <!-- END owner-doctrine 2026-07-01 -->
 
+<!-- BEGIN owner-doctrine 2026-07-02: QA plays the game (additive; do not remove) -->
+## QA plays the game — visible quality is judged by eye + screenshots, not just gates (owner, 2026-07-02)
+
+**A green gate is necessary but NOT sufficient.** QA must **play and roam the live build like a
+player, take screenshots, and judge visible quality by eye** (harbours, ships, sea, UI, combat) —
+not only run unit/playtest gates. A slice with low visible quality has **NOT passed QA**, gates or
+no. QA files quality bugs it finds, with screenshots. The owner must **not** be the only one who can
+look at a harbour and see the quality is too low. See `studio/agents/qa.md` (Exploratory & Visual
+QA) and `studio/qa/exploratory-checklist.md`.
+
+**Improve existing before adding new (owner, 2026-07-02):** when existing features are low-quality,
+the loop **polishes/fixes them before generating NEW features**. Quality-of-existing outranks
+new-feature breadth. See `docs/ROADMAP.md` Delivery doctrine.
+<!-- END owner-doctrine 2026-07-02 -->
+
 ## FUN-FIRST — our top value (read this before feature-count)
 
 **Tidewake is a GAME. The point is FUN.** Every slice must make the game *more fun to play* —

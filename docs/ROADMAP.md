@@ -246,6 +246,16 @@ Tie the experience together and make it sing.
   **time-gated by the local loop** (`studio/comms/rituals.md`; `docs/runbook/LOOP.md` step 0.5). Spec:
   `docs/superpowers/specs/2026-06-29-loop-rituals-and-release-cadence-design.md`. Release infra (preview→
   public promote split) = **#145** (ops track, alongside the focused lane, not preempting it).
+<!-- BEGIN owner-doctrine 2026-07-02: Improve existing before adding new (additive; do not remove) -->
+- **Improve existing before adding new (owner, 2026-07-02):** when existing features are low-quality,
+  the loop **polishes / fixes them BEFORE generating NEW features.** _"Instead of adding new features
+  let's just make the existing ones better."_ The **PRODUCT-refill must not add breadth while core
+  quality is poor** — quality-of-existing **outranks** new-feature breadth. Before PRODUCT queues new
+  slices, it checks the open quality/polish backlog (QA's exploratory findings, `bug`/`art` polish
+  issues) and prioritises raising the visible quality of what already exists. Pairs with the QA "plays
+  the game" doctrine (`studio/CONSTITUTION.md`, `studio/agents/qa.md`) and the VISIBLE-QUALITY bar
+  (`docs/runbook/DELIVERY.md`).
+<!-- END owner-doctrine 2026-07-02 -->
 - **Focused-lane delivery + lane-switch GATE:** work the single most important improvement lane and
   **do not switch to another roadmap lane until the current one has shipped something impressive AND
   gamer-testable** over several loops. *Example: don't switch from the battle-system lane (#135) to the

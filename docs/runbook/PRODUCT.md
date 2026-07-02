@@ -18,6 +18,19 @@ feature-count-for-its-own-sake** (breadth of new systems that doesn't move the f
 **Bias the batch toward** deepening / juicing / tightening what's *already* fun and toward
 **first-session fun** (the opening ~5 min feels good fast). More-features vs. more-fun → **fun.**
 
+<!-- BEGIN owner-doctrine 2026-07-02: Improve existing before adding new (additive; do not remove) -->
+## IMPROVE EXISTING BEFORE ADDING NEW (owner, 2026-07-02)
+
+_"Instead of adding new features let's just make the existing ones better."_ When existing features
+are low-quality, PRODUCT **queues polish/fix slices for them BEFORE generating NEW-feature breadth.**
+Quality-of-existing **outranks** new-feature breadth. So before synthesizing a new batch, PRODUCT
+**first drains the open quality backlog** — QA's exploratory/visual findings, `bug`/`art` polish
+issues, and anything the owner flagged as looking low-quality (pencil NPC ships, playdough harbours,
+one-tone music, ships through islands, beaching) — and only adds new breadth once core quality is
+solid. **Do not refill the queue with new systems while the harbour still looks like a prototype.**
+See `docs/ROADMAP.md` Delivery doctrine + `studio/CONSTITUTION.md` (QA plays the game).
+<!-- END owner-doctrine 2026-07-02 -->
+
 ## RUNS WHEN (the entry loop decides this — see LOOP.md step 1)
 - The queue has **no READY build slice**, OR
 - the **READY-slice count is below the LOW-WATER-MARK of 3**, OR

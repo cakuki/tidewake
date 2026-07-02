@@ -46,6 +46,15 @@ sub-subagents** for heavy sub-work (a TL feasibility pass, a QA visual pass).
    + perf ≤130 draws/150k tris; a *visible* change archives `studio/qa/gallery/<tag>.png`. QA asks
    **both** "does it work?" **and** "is it fun / does it feel good?" — a slice that only passes the
    first is not shippable.
+   <!-- BEGIN owner-doctrine 2026-07-02: VISIBLE-QUALITY bar (additive; do not remove) -->
+   **5a. VISIBLE-QUALITY bar (owner, 2026-07-02) — a green gate is necessary but NOT sufficient:** a
+   shipped slice must **look right in a screenshot judged by eye** like a player would, not merely pass
+   gates. QA **plays/roams the relevant mode, screenshots it, and asks "does this look like a real game
+   or a cheap prototype?"** — harbours, ships, sea/materials, UI, combat. If visible quality is low the
+   slice is **NOT Done** even with all gates green; QA files a quality bug (with the screenshot) and the
+   slice is reshaped. Judge against `docs/design/what-makes-it-fun.md` and walk
+   `studio/qa/exploratory-checklist.md`. The owner must not be the first to notice low quality.
+   <!-- END owner-doctrine 2026-07-02 -->
 6. **Commit named paths only** — `git add <paths>` then **`git commit -o <paths>`** (race-safe; NEVER
    `git add -A`); push (`git pull --rebase` on non-ff). Releases fire only on `src/**`/`index.html`.
 7. **CI green + live 200** — `gh run watch`; `curl -sI https://cakuki.github.io/tidewake/`. Fix-forward.
