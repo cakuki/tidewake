@@ -21,6 +21,7 @@ import { coastProximity, gullCoastGain } from '../src/audio.js'; // #68: the coa
 import { BOOT_TIPS, pickTip } from '../src/boot-tips.js'; // #15: the wry boot-tip pool + its anti-repeat picker — a laugh before you sail
 import { fearRigging, TROPHY1_AT, TROPHY2_AT, SAIL_BLACK_AT } from '../src/systems/fear-rigging.js'; // #177: fear you can SEE — the pure Infamy→fear-features map
 import { defeatLedger } from '../src/renown.js'; // #177: prove a REAL #164 defeat dent strips a trophy off the LIVE rigging
+import { windFactor, sailSpeed } from '../src/physics.js'; // #178: the weather gage — the ONE bounded point-of-sail rule BOTH hulls obey
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
@@ -1393,7 +1394,15 @@ try {
     const engaged = tw.engageBattle();
     if (!engaged) return { engaged: false };
     const foeIdx = tw.battle.foeIndex;             // LATCHED for the fight — position the ship against it
-    for (let i = 0; i < 16; i++) tw.step(0.05);    // let the quarter-view camera swing settle so she frames
+    // Hold the latched foe framed AHEAD (inside the follow-camera's FOV) through the camera settle so the
+    // aim LINE is genuinely on-screen regardless of where the weather gage (#178) has carried her during
+    // the maneuver — then read the drawn beam. (Tracking her each step keeps the shot framed as the
+    // follow-camera converges; a beam-on foe sits off the side of the frustum, so we frame her ahead.)
+    for (let i = 0; i < 20; i++) {
+      const Ff = tw.npcs[foeIdx].pos, hf = tw.state.heading;
+      tw.qaTeleport(Ff[0] - Math.sin(hf) * 110, Ff[1] - Math.cos(hf) * 110);
+      tw.step(0.05);
+    }
     const drawn = tw.aimIndicator();               // the beam should be DRAWN + active with a foe in frame
     // Convention (battle.js broadsideAim): forward=(sin h, cos h), right=(cos h, −sin h). Same-frame reads
     // (no step) so the latched foe stays put and the AI can't re-beam between placement and the readout.
@@ -4786,6 +4795,51 @@ try {
     if (!m.safeOk) fail(`${tag}: the Set Sail plank / town panel hides under a safe-area inset (#75, offenders: ${m.safeOffenders.join(',')})`);
     if (!m.reachedBottom) fail(`${tag}: could not scroll the port body to its end — content unreachable (#146)`);
   }
+  // 2k) THE WEATHER GAGE (#178): the wind is now a RULE both hulls obey — heading vs the wind
+  // modifies sailing speed (downwind faster, upwind slower) by the SAME bounded point-of-sail
+  // multiplier for the PLAYER and every NPC. This gate proves the rule is LIVE in the sim (not
+  // just the pure unit test), BOUNDED, FAIR (both hulls read the identical function), and that
+  // it genuinely varies with heading — so a chase becomes a fight for the wind. We read the live
+  // wind + the fleet's applied windMult straight off the running sim, and step the sim so the
+  // wandering hulls sweep through headings, collecting the range of the gage they actually feel.
+  const gage = await page.evaluate(() => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.2);
+    const windDir = tw.state.windDir;
+    const windName = tw.state.windName;
+    // Sweep the sim so every NPC turns through many points of sail; sample each hull's LIVE
+    // applied multiplier + heading each step, and track the extremes the fleet actually feels.
+    let matchMaxErr = 0;     // worst |liveWindMult − windFactor(heading, windDir)| across the run
+    let loBand = 2, hiBand = 0; // the min/max gage any hull actually sailed under (should span)
+    let outOfBand = null;    // first windMult seen outside [0.55, 1.0], if any
+    let samples = 0;
+    const wf = (h, w) => 0.55 + 0.45 * (Math.cos(h - w) * 0.5 + 0.5); // mirror physics.windFactor
+    for (let i = 0; i < 260; i++) {
+      tw.step(0.1);
+      for (const n of tw.npcs) {
+        const m = n.windMult;
+        samples++;
+        if (!(m >= 0.55 - 1e-6 && m <= 1.0 + 1e-6) && outOfBand === null) outOfBand = m;
+        const err = Math.abs(m - wf(n.heading, windDir));
+        if (err > matchMaxErr) matchMaxErr = err;
+        if (m < loBand) loBand = m;
+        if (m > hiBand) hiBand = m;
+      }
+    }
+    return { windDir, windName, matchMaxErr, loBand, hiBand, outOfBand, samples };
+  });
+  if (!(typeof gage.windDir === 'number' && Number.isFinite(gage.windDir))) fail(`weather gage (#178): the live wind direction is not exposed/finite (windDir=${gage.windDir})`);
+  if (!(gage.samples > 0)) fail('weather gage (#178): no NPC windMult samples were captured — the fleet is not obeying the wind');
+  if (gage.outOfBand !== null) fail(`weather gage (#178): an NPC's live point-of-sail multiplier left the [0.55,1.0] band (${gage.outOfBand}) — the gage must stay bounded so it shifts odds, never trivializes`);
+  if (!(gage.matchMaxErr < 1e-6)) fail(`weather gage (#178): a live NPC's applied windMult diverged from windFactor(heading, windDir) (maxErr=${gage.matchMaxErr}) — both hulls must obey the SAME rule (no asymmetry)`);
+  if (!(gage.loBand < 0.775 && gage.hiBand > 0.775)) fail(`weather gage (#178): the fleet never felt the wind change its speed (band ${gage.loBand.toFixed(2)}–${gage.hiBand.toFixed(2)}) — heading vs wind must actually matter (downwind faster, upwind slower)`);
+  // FAIR + composes: the same bounded multiplier scales any base (player throttle*max, an NPC's
+  // class/arena speed) identically — skill sets the base, the wind sets the margin (imported pure).
+  for (const [base, h] of [[0.8 * 55, gage.windDir], [26 * 0.75, gage.windDir + Math.PI], [19, gage.windDir + Math.PI / 2]]) {
+    const expect = base * windFactor(h, gage.windDir);
+    if (!(Math.abs(sailSpeed(base, h, gage.windDir) - expect) < 1e-9)) fail(`weather gage (#178): sailSpeed does not compose base*windFactor at base=${base} — the gage must ride cleanly on throttle/class`);
+  }
+
   // Restore the desktop viewport + a clean voyage for the screenshot artifact below.
   await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
   await page.evaluate(() => { const tw = window.__tidewake; tw.newVoyage(); tw.step(0.1); });

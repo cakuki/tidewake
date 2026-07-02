@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {
   wrapAngle, steerToward, headingTo, pickWaypoint, hasArrived, avoidObstacles, arenaHelm,
 } from './npc-ai.js';
+import { windFactor } from './physics.js';
 import { vesselKind, isOutlaw } from './colours.js';
 import { shipEmphasis, DIM_OPACITY } from './ui/over-ship-billboard.js';
 import { shipStats } from './ship-classes.js';
@@ -235,6 +236,13 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   //   pure arenaHelm brain (seek beam / hold range / flee), zero extra draws.
   function update(dt, t, ctx = {}) {
     if (dt <= 0) return;
+    // The weather gage (#178): the SAME point-of-sail rule the player obeys (physics.windFactor)
+    // now scales every NPC's speed by her heading vs the wind — downwind faster, upwind slower.
+    // main.js passes the live wind through ctx; when absent (a headless unit step) the gage is a
+    // no-op (multiplier 1) so nothing changes off-wind. FAIR by construction: one shared function,
+    // both hulls, so a chase is a fight for the wind, not an asymmetry.
+    const windDir = (ctx && typeof ctx.windDir === 'number') ? ctx.windDir : null;
+    const gage = (heading) => (windDir != null ? windFactor(heading, windDir) : 1);
     const playerPos = ctx && ctx.playerPos;
     const fleeOn = !!(ctx && ctx.flee) && Array.isArray(playerPos);
     // The world fears you (#172): a per-ship dread flee-on-sight, only when NOT hidden by a disguise
@@ -259,7 +267,10 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
         s.dreadFleeing = false; // an arena foe maneuvers by helm, not dread — never a fearful-hail flee (#175)
         const target = avoidObstacles(s.x, s.z, helm.desiredHeading, islands, 220);
         s.heading = steerToward(s.heading, target, ARENA_TURN_RATE, dt);
-        const sp = ARENA_SPEED * helm.throttle;
+        // The weather gage (#178): the duel foe obeys the wind exactly as the player does, so
+        // battle positioning is about the wind — claim the gage and you dictate the range.
+        s.windMult = gage(s.heading);
+        const sp = ARENA_SPEED * helm.throttle * s.windMult;
         s.x += Math.sin(s.heading) * sp * dt;
         s.z += Math.cos(s.heading) * sp * dt;
         const y = ocean.sampleHeight(s.x, s.z, t);
@@ -319,7 +330,10 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
       s.heading = steerToward(s.heading, target, s.turnRate, dt);
 
       // Advance along the (smoothly turning) heading — a panicked vessel claps on more sail.
-      const sp = fleeing ? s.speed * 1.35 : s.speed;
+      // The weather gage (#178): the SAME wind rule the player + arena foe obey scales the wander
+      // too, so a merchant running downwind is genuinely fleet while one clawing upwind lags.
+      s.windMult = gage(s.heading);
+      const sp = (fleeing ? s.speed * 1.35 : s.speed) * s.windMult;
       const fx = Math.sin(s.heading), fz = Math.cos(s.heading);
       s.x += fx * sp * dt;
       s.z += fz * sp * dt;
@@ -339,7 +353,7 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   }
 
   function snapshot() {
-    return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading, fleeing: !!s.fleeing, dreadFleeing: !!s.dreadFleeing, kind: s.kind, helm: s.arenaState || null, shipClass: s.shipClass || null }));
+    return ships.map(s => ({ pos: [s.x, s.z], heading: s.heading, fleeing: !!s.fleeing, dreadFleeing: !!s.dreadFleeing, kind: s.kind, helm: s.arenaState || null, shipClass: s.shipClass || null, windMult: (typeof s.windMult === 'number') ? s.windMult : 1 }));
   }
 
   // QA/gallery hook (#163): drop ship `i` at a world XZ so a headless gallery frame can pose a big

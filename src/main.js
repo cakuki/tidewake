@@ -2103,7 +2103,7 @@ systems.register({ name: 'npcs', order: 70, update: (f) => {
     playerHeading: f.state.heading,
     moraleFrac: bs.maxMorale > 0 ? bs.enemyMorale / bs.maxMorale : 1,
   } : null;
-  npcs.update(f.dt, f.t, { playerPos: [f.state.pos.x, f.state.pos.z], flee, dread, arena });
+  npcs.update(f.dt, f.t, { playerPos: [f.state.pos.x, f.state.pos.z], flee, dread, arena, windDir: f.state.windDir });
   // Dread's HEAR half (#175): when a foe TURNS TAIL from your NAME, her crew cries it aloud. Fire the
   // fearful hail ONCE on the rising edge of each ship's DREAD flee (not the #79 colours-flee, not an
   // arena-helm break-off), at most one cry per frame. Withheld under a disguise for FREE — `dread` is
@@ -2713,6 +2713,9 @@ window.__tidewake = {
     return {
       heading: state.heading, speed: state.speed, throttle: state.throttle,
       rudder: state.rudder ?? 0, // eased helm (#20): observable for QA / future input polish
+      // The weather gage (#178): the live wind BOTH hulls now obey — so a headless gate can read
+      // the wind and prove the player's + every NPC's point-of-sail speed follows the same rule.
+      windDir: state.windDir, windName: state.windName,
       pos: state.pos.toArray(), port: state.port ?? null,
       // Slow-to-stop (#76 c): true while the ship is easing to a near-stop for a fight or a
       // harbour approach — the playtest asserts speed drops near a port / at fight start.

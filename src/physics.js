@@ -16,6 +16,21 @@ export function windFactor(heading, windDir) {
 }
 
 /**
+ * The weather gage (#178) — the ONE bounded point-of-sail rule BOTH hulls obey. Scales any
+ * ready-made sailing speed `base` by the wind multiplier for its heading: downwind faster,
+ * upwind slower. The PLAYER routes through it via targetSpeed(); every NPC (npc.js) applies
+ * it to its own base speed with the SAME function, so a chase becomes a fight for the wind
+ * and stays FAIR — skill sets your base (throttle/class), the wind sets the margin. Pure.
+ * @param {number} base     the wind-free sailing speed (throttle*maxSpeed, or an NPC's speed)
+ * @param {number} heading  ship heading in radians (0 = +Z)
+ * @param {number} windDir  wind direction in radians
+ * @returns {number} the wind-modified speed, in [0.55*base, 1.0*base]
+ */
+export function sailSpeed(base, heading, windDir) {
+  return base * windFactor(heading, windDir);
+}
+
+/**
  * Steady-state speed the ship eases toward for a given throttle + wind angle.
  * @param {number} throttle  0..1
  * @param {number} maxSpeed  world units/sec at full throttle, perfect wind
@@ -24,7 +39,7 @@ export function windFactor(heading, windDir) {
  * @returns {number} target speed in world units/sec
  */
 export function targetSpeed(throttle, maxSpeed, heading, windDir) {
-  return throttle * maxSpeed * windFactor(heading, windDir);
+  return sailSpeed(throttle * maxSpeed, heading, windDir);
 }
 
 /**

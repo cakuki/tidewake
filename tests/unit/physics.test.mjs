@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   windFactor,
+  sailSpeed,
   targetSpeed,
   approach,
   steerRate,
@@ -171,6 +172,70 @@ test('pointOfSail: efficiency matches windFactor and is best running, worst in i
 test('pointOfSail: band degrades from good (running) to poor (in irons)', () => {
   assert.equal(pointOfSail(0, 0).band, 'good');
   assert.equal(pointOfSail(PI, 0).band, 'poor');
+});
+
+// ---- The weather gage (#178): ONE bounded point-of-sail rule BOTH hulls obey -------------
+// sailSpeed(base, heading, windDir) = base * windFactor — the single shared multiplier the
+// PLAYER (via targetSpeed) and every NPC (npc.js) both apply. The rule is fair only if the
+// SAME function scales any base identically: skill sets your base (throttle/class), the wind
+// sets the margin. These assert bounded, deterministic, monotonic, base-independent (fair),
+// and that it composes with throttle/class.
+
+test('sailSpeed: composes the wind multiplier onto any base (base * windFactor)', () => {
+  const w = PI * 0.25;
+  for (const base of [10, 26, 55, 55 * 0.75]) {
+    for (let h = -PI; h < PI; h += PI / 5) {
+      assert.ok(Math.abs(sailSpeed(base, h, w) - base * windFactor(h, w)) < 1e-9,
+        `sailSpeed != base*windFactor at base=${base}, h=${h}`);
+    }
+  }
+});
+
+test('sailSpeed: the multiplier is BASE-INDEPENDENT — both hulls get the same gage (fair)', () => {
+  // A player base (throttle*maxSpeed) and an NPC base (arena/wander speed) at the SAME heading
+  // must be scaled by the IDENTICAL factor. skill sets position, the wind sets the margin.
+  const w = 1.1;
+  const playerBase = 0.8 * 55;   // throttle 0.8 on the sloop
+  const npcBase = 26 * 0.75;     // an arena foe at beam throttle
+  for (let h = -PI; h < PI; h += PI / 7) {
+    const mPlayer = sailSpeed(playerBase, h, w) / playerBase;
+    const mNpc = sailSpeed(npcBase, h, w) / npcBase;
+    assert.ok(Math.abs(mPlayer - mNpc) < 1e-12, `asymmetric gage at h=${h}: ${mPlayer} vs ${mNpc}`);
+    assert.ok(Math.abs(mPlayer - windFactor(h, w)) < 1e-12, 'the shared rule is windFactor');
+  }
+});
+
+test('sailSpeed: bounded — never below 0.55*base nor above 1.0*base', () => {
+  const w = -0.7, base = 40;
+  for (let h = -3 * PI; h < 3 * PI; h += PI / 17) {
+    const s = sailSpeed(base, h, w);
+    assert.ok(s >= 0.55 * base - 1e-9 && s <= 1.0 * base + 1e-9, `out of band at h=${h}: ${s}`);
+  }
+});
+
+test('sailSpeed: the weather gage is downwind > beam > upwind (monotonic on the same base)', () => {
+  const w = 0.9, base = 30;
+  const downwind = sailSpeed(base, w, w);            // running
+  const beam = sailSpeed(base, w + PI / 2, w);       // reaching
+  const upwind = sailSpeed(base, w + PI, w);         // in irons
+  assert.ok(downwind > beam && beam > upwind, `not monotonic: ${downwind} > ${beam} > ${upwind}`);
+  // and the margin is modest (shifts odds, never trivializes): downwind is < 2x upwind
+  assert.ok(downwind / upwind < 2, `gage too strong: ${(downwind / upwind).toFixed(2)}x`);
+});
+
+test('sailSpeed: deterministic — identical inputs give byte-identical output', () => {
+  assert.equal(sailSpeed(26, 1.234, 0.5), sailSpeed(26, 1.234, 0.5));
+});
+
+test('sailSpeed: the player rule (targetSpeed) routes through the SAME gage', () => {
+  // targetSpeed IS sailSpeed(throttle*max, …) — so the player and NPCs share one rule literally.
+  const max = 55, w = PI * 0.25;
+  for (const thr of [0.4, 0.75, 1]) {
+    for (let h = -PI; h < PI; h += PI / 6) {
+      assert.ok(Math.abs(targetSpeed(thr, max, h, w) - sailSpeed(thr * max, h, w)) < 1e-9,
+        `targetSpeed diverges from sailSpeed at thr=${thr}, h=${h}`);
+    }
+  }
 });
 
 // ---- Arcade island collision (#76 a1) -------------------------------------
