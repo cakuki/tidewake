@@ -9,11 +9,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   GULL_COUNT, FLOCK_HEIGHT, ROOST_RANGE, CULL_RADIUS, FLAP_DEPTH, WHEEL_MIN_R,
-  gullParams, gullPosition, flapScale, roostTarget, easeTowards, shouldCull,
+  COAST_VISIBLE_RANGE,
+  gullParams, gullPosition, flapScale, roostTarget, easeTowards, shouldCull, coastPresence,
   DOLPHIN_COUNT, BREACH_HEIGHT, BREACH_FORWARD, BREACH_SPAN, POD_AHEAD, POD_BEAM,
   POD_SPAWN_MIN, POD_SPAWN_MAX, POD_SPACING,
   nextPodDelay, dolphinParams, breachArc, dolphinPosition, podSpawnOrigin,
 } from '../../src/fauna-math.js';
+import { COAST_AUDIO_RANGE, coastProximity } from '../../src/audio.js';
 
 test('gullParams: deterministic, and a loose (varied) flock', () => {
   const a = gullParams(2);
@@ -106,6 +108,35 @@ test('shouldCull: hidden only beyond the cull radius', () => {
   assert.equal(shouldCull({ x: 0, z: 0 }, focus), false, 'right on top → visible');
   assert.equal(shouldCull({ x: CULL_RADIUS - 1, z: 0 }, focus), false, 'just inside → visible');
   assert.equal(shouldCull({ x: CULL_RADIUS + 1, z: 0 }, focus), true, 'just outside → culled');
+});
+
+test('coastPresence: full at the coast, none at open sea (the #68 pairing — SEE what you HEAR)', () => {
+  // Right on the shore → the flock is fully present (opacity 1); the fun beat: gulls over the port.
+  assert.equal(coastPresence(0), 1, 'on the coast → full presence');
+  // At / beyond the range → 0 (empty sky, culled to 0 draws out at open sea).
+  assert.equal(coastPresence(COAST_VISIBLE_RANGE), 0, 'at the range edge → gone');
+  assert.equal(coastPresence(COAST_VISIBLE_RANGE + 5000), 0, 'far out at sea → gone (clamped, never negative)');
+  assert.equal(coastPresence(Infinity), 0, 'no land anywhere → empty sky');
+  assert.equal(coastPresence(-50), 1, 'inside the shoreline → clamped to full, never > 1');
+
+  // Monotonic: the nearer the coast, the more present the flock (fades in, never pops).
+  let prev = -1;
+  for (let d = COAST_VISIBLE_RANGE; d >= 0; d -= 20) {
+    const p = coastPresence(d);
+    assert.ok(p >= prev, 'presence rises monotonically as the coast nears');
+    assert.ok(p >= 0 && p <= 1, 'presence stays in [0,1]');
+    prev = p;
+  }
+
+  // The visual presence is driven off the SAME coastDist + range as the #68 coastal CRIES, so the
+  // birds you SEE and the cries you HEAR come alive over exactly the same coast (sight == sound).
+  assert.equal(COAST_VISIBLE_RANGE, COAST_AUDIO_RANGE, 'flock range == audio range (one coast for eye + ear)');
+  for (const d of [0, 120, 260, 400, COAST_VISIBLE_RANGE - 1]) {
+    assert.ok(Math.abs(coastPresence(d) - coastProximity(d)) < 1e-9, `presence tracks the cry gain curve at ${d}`);
+  }
+  // Visible exactly where the cries are audible: present inside the range, gone at/after it.
+  assert.ok(coastPresence(COAST_VISIBLE_RANGE - 1) > 0, 'just inside range → drawn (and audible)');
+  assert.equal(coastPresence(COAST_VISIBLE_RANGE), 0, 'at range → silent AND unseen together');
 });
 
 // ── Dolphins (#110, phase 2) ─────────────────────────────────────────────────

@@ -107,6 +107,29 @@ export function shouldCull(center, focus, radius = CULL_RADIUS) {
   return dx * dx + dz * dz > radius * radius;
 }
 
+// #68 pairing — the flock is a COASTAL creature. Its ON-SCREEN presence is driven off the SAME
+// distance-to-nearest-shoreline (`coastDist`) that the coastal gull CRIES (audio.js) use: the
+// birds you HEAR near a port are now the birds you SEE, and the open sea is EMPTY sky (0 draws).
+// This range matches audio's COAST_AUDIO_RANGE so sight and sound come alive over exactly the
+// same coast — the visual half of #68 that #97 phase 1 was missing.
+export const COAST_VISIBLE_RANGE = 520; // world units; mirror of audio.COAST_AUDIO_RANGE
+
+/**
+ * The flock's on-screen PRESENCE for a distance-to-shoreline: 1 right at the coast, easing to 0 at
+ * (or beyond) COAST_VISIBLE_RANGE out at open sea — so the gulls FADE in as you raise a coast
+ * rather than popping, and cull to nothing (0 draws, empty sky) at sea. Pure + monotonic; Infinity
+ * (no land anywhere) → 0. Deliberately the SAME curve/range as audio.js coastProximity, so the
+ * flock's opacity and the cries' gain rise together over the same coast.
+ *   coastPresence(coastDist, range?) -> number in [0,1]
+ */
+export function coastPresence(coastDist, range = COAST_VISIBLE_RANGE) {
+  if (!(range > 0)) return 0;
+  const d = Number(coastDist);
+  if (!isFinite(d)) return 0; // no land anywhere → open sea → empty sky
+  const p = 1 - Math.max(0, d) / range;
+  return p < 0 ? 0 : p > 1 ? 1 : p;
+}
+
 // ── Dolphins (#110, phase 2) ─────────────────────────────────────────────────
 // The second fauna beat: a small POD of dolphins that occasionally surfaces alongside the
 // MOVING ship and arcs through a breach (leap → dive) before slipping back under. Same

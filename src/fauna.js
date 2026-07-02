@@ -1,22 +1,24 @@
 import * as THREE from 'three';
 import {
   GULL_COUNT, FLOCK_HEIGHT, CULL_RADIUS,
-  gullParams, gullPosition, flapScale, roostTarget, easeTowards, shouldCull,
+  gullParams, gullPosition, flapScale, roostTarget, easeTowards, shouldCull, coastPresence,
   DOLPHIN_COUNT, BREACH_DURATION, BREACH_SPAN, POD_SWIM_SPEED, MIN_SAIL_SPEED,
   nextPodDelay, dolphinParams, dolphinPosition, podSpawnOrigin,
 } from './fauna-math.js';
 
-// Living sea fauna (#97) — the first beat: a small flock of GULLS that keeps the ship
-// company. The whole flock is ONE InstancedMesh (one draw call) of a tiny two-triangle gull
-// silhouette; each frame we rewrite the per-bird instance matrix (wheel position + facing +
-// a wing-beat squash) from the PURE model in fauna-math.js. The flock wheels over the ship
-// at sea and DRIFTS to hang over the shore as you raise an island — a reactive verb, the
-// world answering "where are you". When it drifts beyond the cull radius the mesh is hidden
-// wholesale (0 draw calls), so a living sky costs almost nothing.
+// Living sea fauna (#97) — the first beat: a small flock of GULLS, a COASTAL creature. The
+// whole flock is ONE InstancedMesh (one draw call) of a tiny two-triangle gull silhouette;
+// each frame we rewrite the per-bird instance matrix (wheel position + facing + a wing-beat
+// squash) from the PURE model in fauna-math.js. The flock DRIFTS to hang over the shore as
+// you raise an island and FADES in as the coast nears — driven off the SAME distance-to-
+// shoreline (`coastDist`) the coastal gull CRIES (#68, audio.js) swell on. Out at open sea it
+// culls to nothing (0 draw calls): empty sky. So the birds you HEAR near a port are now the
+// birds you SEE, and a living sky costs almost nothing.
 //
-// CREATIVE SPARK (Game Designer + Graphic Designer): gulls trail your wake hunting galley
-// scraps, then peel off to ride the updraughts over a raised island — company at sea, a
-// welcoming committee at the coast. Pairs with the existing gull SFX (#68).
+// CREATIVE SPARK (Game Designer + Graphic Designer): raise a coast and gulls wheel over the
+// shore, materialising with the swelling cries — a welcoming committee that reads the land is
+// near; out at sea, quiet water under an empty sky. This is the VISUAL half of #68: sight and
+// sound now come alive over exactly the same coast (the #97-phase-1 pairing completed).
 
 // A single gull silhouette: two triangles meeting at the body, wings swept up into a shallow
 // dihedral "M" so a Y-scale wing-beat reads as flapping. Local +Z is forward (flight
@@ -98,6 +100,8 @@ export function createFauna({ world, count = GULL_COUNT, podCount = DOLPHIN_COUN
   const center = { x: 0, y: FLOCK_HEIGHT, z: 0 };
   let nearLand = false;
   let visible = true;
+  let presence = 0; // #68: 0 at open sea (empty sky) → 1 right at the coast; drives the flock's fade
+  const baseOpacity = mat.opacity; // full-strength opacity we scale by coast presence
   // #68: distance (world units) from the ship to the nearest island SHORELINE — the coastal audio
   // (audio.js) drives the gull-cry gain/rate off this, so the wheeling flock and its cries swell
   // over the SAME coast. Infinity when there's no land in the world at all.
@@ -248,8 +252,13 @@ export function createFauna({ world, count = GULL_COUNT, podCount = DOLPHIN_COUN
     center.z = easeTowards(center.z, target.z, dt);
     center.y = FLOCK_HEIGHT;
 
-    // Distance-cull the WHOLE flock → 0 draw calls when off-stage. Cheap living sky.
-    visible = !shouldCull(center, focus, CULL_RADIUS);
+    // #68 pairing: the flock is a COASTAL creature. Its presence rides the SAME coastDist the
+    // gull cries swell on — full at the shore, fading out toward open sea. Beyond the coast range
+    // (presence 0) OR beyond the camera cull radius the WHOLE mesh is hidden → 0 draw calls, an
+    // empty sky at sea. So you SEE the gulls exactly where you HEAR them, and a living sky is free.
+    presence = coastPresence(coastDist);
+    mat.opacity = baseOpacity * presence; // gulls FADE in as the coast nears (no pop)
+    visible = presence > 0 && !shouldCull(center, focus, CULL_RADIUS);
     mesh.visible = visible;
     if (!visible) return;
 
@@ -268,7 +277,7 @@ export function createFauna({ world, count = GULL_COUNT, podCount = DOLPHIN_COUN
 
   function snapshot() {
     return {
-      count, visible, nearLand, coastDist, center: [center.x, center.z], height: center.y,
+      count, visible, nearLand, coastDist, presence, center: [center.x, center.z], height: center.y,
       // Dolphin pod (#110) QA surface: pod size, whether it's mid-breach + drawn, the running
       // breach tally (a pod fired on schedule), and whether any dolphin is above water now.
       dolphins: podCount,

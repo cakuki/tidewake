@@ -3828,11 +3828,11 @@ try {
     const isle = tw.islands && tw.islands[0];
     // NEAR THE COAST: drop the ship right onto an island → shoreline distance ~0, flock roosts over it.
     if (isle) { tw.qaTeleport(isle.x, isle.z); tw.step(0.5); }
-    const near = { coastDist: tw.fauna.coastDist, nearLand: tw.fauna.nearLand, visible: tw.fauna.visible };
-    // OPEN SEA: teleport far from every island → shoreline distance huge; the flock keeps you company
-    // but the cries go silent. Step so the coast read settles.
+    const near = { coastDist: tw.fauna.coastDist, nearLand: tw.fauna.nearLand, visible: tw.fauna.visible, presence: tw.fauna.presence };
+    // OPEN SEA: teleport far from every island → shoreline distance huge; the cries go SILENT and
+    // (the #68 visual half) the flock CULLS to nothing — an empty sky. Step so the coast read settles.
     tw.qaTeleport(80000, 80000); tw.step(0.5);
-    const sea = { coastDist: tw.fauna.coastDist, nearLand: tw.fauna.nearLand };
+    const sea = { coastDist: tw.fauna.coastDist, nearLand: tw.fauna.nearLand, visible: tw.fauna.visible, presence: tw.fauna.presence };
     tw.newVoyage(); tw.step(0.1);
     return { hasIsle: !!isle, near, sea };
   });
@@ -3843,11 +3843,19 @@ try {
   if (!(nearGain > 0.6)) fail(`coastal gulls (#68): cries do not swell near the coast (gain=${nearGain.toFixed(3)} at coastDist=${gulls.near.coastDist?.toFixed(0)})`);
   if (!(seaGain < 0.05)) fail(`coastal gulls (#68): gulls are not silent at open sea (gain=${seaGain.toFixed(3)} at coastDist=${gulls.sea.coastDist?.toFixed(0)})`);
   if (!(nearGain > seaGain + 0.5)) fail(`coastal gulls (#68): no audible swell coast→sea (near ${nearGain.toFixed(3)} vs sea ${seaGain.toFixed(3)})`);
-  // Visible tie-in to the #97 flock: near the coast the gulls actually wheel over the shore (roosting).
+  // VISUAL tie-in — the #68 pairing completed (#97): the gulls you HEAR near the coast are the
+  // gulls you SEE. Near land the flock roosts over the shore AND is DRAWN (present); out at open
+  // sea it culls to nothing — an empty sky — driven off the SAME coastDist as the cries.
   if (!gulls.near.nearLand) fail('coastal gulls (#68): the flock did not roost over the coast near land (no visual tie-in)');
-  if (!gulls.near.visible) fail('coastal gulls (#68): the flock was not drawn over the coast');
+  if (!gulls.near.visible) fail('coastal gulls (#68): the flock was not DRAWN over the coast — you cannot SEE the gulls you hear');
+  if (!(gulls.near.presence > 0.9)) fail(`coastal gulls (#68): the flock is not fully present at the shore (presence=${gulls.near.presence?.toFixed(2)})`);
   if (gulls.sea.nearLand) fail('coastal gulls (#68): the flock is still roosting on land out at open sea');
-  if (process.exitCode !== 1) console.log(`  ✓ coastal gulls (#68): the coast comes ALIVE — cries swell to gain ${nearGain.toFixed(2)} at the shore (coastDist ${gulls.near.coastDist.toFixed(0)}) beside the roosting flock, and fall to ${seaGain.toFixed(2)} (silent) out at open sea (coastDist ${gulls.sea.coastDist.toFixed(0)}); distance-driven, ambient, save-invariant`);
+  if (gulls.sea.visible) fail('coastal gulls (#68): the flock is STILL DRAWN at open sea — the sky should be EMPTY (culled to 0 draws, tied to coastDist)');
+  if (!(gulls.sea.presence < 0.05)) fail(`coastal gulls (#68): the flock did not fade out at open sea (presence=${gulls.sea.presence?.toFixed(2)})`);
+  // SEE == HEAR: the flock is drawn exactly where the cries are audible, and gone where they're silent.
+  if (!(gulls.near.visible && nearGain > 0.6) || (gulls.sea.visible || seaGain > 0.05))
+    fail('coastal gulls (#68): sight and sound do not agree (seen⇔heard near coast; unseen⇔silent at sea)');
+  if (process.exitCode !== 1) console.log(`  ✓ coastal gulls (#68 pairing): SEE what you HEAR — near the shore (coastDist ${gulls.near.coastDist.toFixed(0)}) gulls wheel over land (drawn, presence ${gulls.near.presence.toFixed(2)}) as cries swell to gain ${nearGain.toFixed(2)}; out at open sea (coastDist ${gulls.sea.coastDist.toFixed(0)}) the sky is EMPTY (culled, presence ${gulls.sea.presence.toFixed(2)}) and cries fall silent (${seaGain.toFixed(2)}); one coastDist for eye + ear, ambient, save v${SAVE_VERSION}`);
 
   // 2o') Living sea fauna phase 2 — jumping dolphins (#110): a small instanced pod that
   // occasionally surfaces and ARCS alongside the moving ship, then slips back under. Sail under
