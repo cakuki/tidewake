@@ -244,6 +244,37 @@ try {
     trophyMeshes.push(m);
   }
 } catch { /* the trophies are a flourish — never block a boot */ }
+// Fiercer figurehead (#182, follow-up on #177): the carved beast at the PROW grows fiercer as the
+// legend does. TWO small low-poly variants — a carved beast head (tier 1) and a bigger snarling
+// beast rearing at the bow (tier 2) — built ONCE and parented to the SHIP group (so #171's class
+// scale carries them with the hull and they compose with the #177 sails/trophies + #132 aura).
+// Only the EARNED tier is ever visible, so at most ONE extra draw; both hidden at the humble start
+// (#121: no per-toggle allocation, hidden = not drawn → 0 extra draws on a bare sloop). Positioned
+// at the bow (+Z, ~halfLen) so they read on both the GLB and the procedural hull. A bad build must
+// never block a boot.
+const figureheadMeshes = [];
+try {
+  // apex points forward (+Z) and tilts up a touch, so the beast juts/rears from the prow.
+  const forwardUp = -Math.PI / 2 * 0.82;
+  // tier 1 — a carved beast head: a modest, angular carved-wood snout.
+  const beastGeo = new THREE.ConeGeometry(0.55, 2.0, 5);
+  const beastMat = new THREE.MeshStandardMaterial({ color: 0x3a2416, roughness: 0.85 });
+  const beast = new THREE.Mesh(beastGeo, beastMat);
+  beast.position.set(0, 1.55, 7.0);
+  beast.rotation.x = forwardUp;
+  // tier 2 — a snarling beast rears: bigger, sharper (fang-like), menacing crimson-dark.
+  const snarlGeo = new THREE.ConeGeometry(0.78, 2.7, 4);
+  const snarlMat = new THREE.MeshStandardMaterial({ color: 0x5a1810, roughness: 0.8 });
+  const snarl = new THREE.Mesh(snarlGeo, snarlMat);
+  snarl.position.set(0, 1.7, 7.3);
+  snarl.rotation.x = forwardUp * 0.92; // rears a little higher
+  for (const m of [beast, snarl]) {
+    m.castShadow = true;
+    m.visible = false; // hidden until Infamy earns it → 0 extra draws at the humble start
+    ship.add(m);
+    figureheadMeshes.push(m);
+  }
+} catch { /* the figurehead is a flourish — never block a boot */ }
 let fearLive = fearRigging(0); // the live fear-features, for the QA surface (starts bare)
 // Compose the #177 fear layer ONTO the frame: darken the aura-cast SAILS further toward tarred black
 // (ONE extra multiply over #132's write — the two layers stack, never fight) and toggle the trophy
@@ -258,6 +289,9 @@ function applyFearRigging(infamy) {
     }
   }
   for (let i = 0; i < trophyMeshes.length; i++) trophyMeshes[i].visible = i < fear.trophies;
+  // Show ONLY the earned figurehead tier (variant index = tier - 1), so at most one is ever drawn;
+  // tier 0 = a plain prow (both hidden). A dented Infamy softens the prow a step for free.
+  for (let i = 0; i < figureheadMeshes.length; i++) figureheadMeshes[i].visible = (i === fear.figurehead - 1);
   return fear;
 }
 // Foundering-ship encounter (#125): reuse the hero hull for the stricken vessel — its OWN GLB
@@ -2934,11 +2968,18 @@ window.__tidewake = {
   get fear() {
     const f = fearRigging(state.infamy ?? 0);
     const sailPart = shipAuraParts.find((q) => q.role === 'sail');
+    // Which figurehead variant is CURRENTLY drawn → its tier (variant index + 1, or 0 = plain prow);
+    // asserts the render matches the Infamy-derived tier and that at most one is ever shown (≤1 draw).
+    const figShownIdx = figureheadMeshes.findIndex((m) => m.visible);
     return {
       infamy: state.infamy ?? 0,
       sailDarken: f.sailDarken,
       trophies: f.trophies,
       trophiesShown: trophyMeshes.filter((m) => m.visible).length,
+      figurehead: f.figurehead,
+      figureheadShown: figShownIdx < 0 ? 0 : figShownIdx + 1,
+      figureheadsVisible: figureheadMeshes.filter((m) => m.visible).length,
+      figureheadParentedToHull: figureheadMeshes.length > 0 && figureheadMeshes.every((m) => m.parent === ship),
       sailColor: sailPart ? sailPart.mat.color.getHex() : null,
       applied: shipAuraParts.length > 0,
       trophiesParentedToHull: trophyMeshes.length > 0 && trophyMeshes.every((m) => m.parent === ship),

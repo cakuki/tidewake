@@ -28,6 +28,15 @@ export const TROPHY1_AT = 120;       // first captured pennant
 export const TROPHY2_AT = 320;       // second captured pennant
 export const MAX_TROPHIES = 2;
 
+// Figurehead: the carved beast at the PROW grows fiercer as the legend does. A plain prow at the
+// honest start; a carved beast head emerges once a captain is making a name; a snarling beast rears
+// as she climbs toward Dread Captain. Kept to TWO tiers so the budget stays trivial (a couple of
+// small toggled meshes, only the earned one drawn — ≤1 extra draw, hidden = not drawn). A defeat
+// that dents Infamy past a milestone softens the prow a step, exactly like the trophy-strip.
+export const FIGUREHEAD1_AT = 80;    // a carved beast head emerges (just past the sail-dark floor)
+export const FIGUREHEAD2_AT = 240;   // a snarling beast rears — nearing Dread Captain
+export const MAX_FIGUREHEAD = 2;
+
 // The deep tarred black the sails multiply toward (a colour MULTIPLIER can only darken; near-black
 // leaves a whisper of timber so the canvas still reads as cloth, not a void).
 export const FEAR_SAIL_BLACK = 0x101014;
@@ -36,8 +45,9 @@ export const FEAR_SAIL_BLACK = 0x101014;
  * The fear-features a captain's Infamy dresses her ship in. PURE + deterministic + junk-safe.
  * Monotonic non-decreasing in infamy; infamy 0 (or junk/negative) → a bare, humble ship.
  * @param {number} infamy the persisted pirate-path score (junk / negative → 0)
- * @returns {{infamy:number, sailDarken:number, trophies:number}}
- *   sailDarken ∈ [0,1] (blend toward FEAR_SAIL_BLACK); trophies ∈ {0..MAX_TROPHIES}.
+ * @returns {{infamy:number, sailDarken:number, trophies:number, figurehead:number}}
+ *   sailDarken ∈ [0,1] (blend toward FEAR_SAIL_BLACK); trophies ∈ {0..MAX_TROPHIES};
+ *   figurehead ∈ {0..MAX_FIGUREHEAD} (the fierceness tier of the carved prow).
  */
 export function fearRigging(infamy) {
   const inf = Number.isFinite(infamy) && infamy > 0 ? infamy : 0;
@@ -46,5 +56,8 @@ export function fearRigging(infamy) {
   let trophies = 0;
   if (inf >= TROPHY1_AT) trophies = 1;
   if (inf >= TROPHY2_AT) trophies = 2;
-  return { infamy: inf, sailDarken, trophies };
+  let figurehead = 0;
+  if (inf >= FIGUREHEAD1_AT) figurehead = 1;
+  if (inf >= FIGUREHEAD2_AT) figurehead = 2;
+  return { infamy: inf, sailDarken, trophies, figurehead };
 }

@@ -19,7 +19,7 @@ import { offersSurrender } from '../src/systems/board.js'; // #172: prove the dr
 import { fearTier, pickFearfulHail } from '../src/systems/fearful-hail.js'; // #175: dread's HEAR half — the pure notoriety→fearful-hail line picker
 import { coastProximity, gullCoastGain } from '../src/audio.js'; // #68: the coast comes alive — gull-cry intensity vs distance-to-coast (audio-led, AudioContext-free curve)
 import { BOOT_TIPS, pickTip } from '../src/boot-tips.js'; // #15: the wry boot-tip pool + its anti-repeat picker — a laugh before you sail
-import { fearRigging, TROPHY1_AT, TROPHY2_AT, SAIL_BLACK_AT } from '../src/systems/fear-rigging.js'; // #177: fear you can SEE — the pure Infamy→fear-features map
+import { fearRigging, TROPHY1_AT, TROPHY2_AT, SAIL_BLACK_AT, FIGUREHEAD2_AT, MAX_FIGUREHEAD } from '../src/systems/fear-rigging.js'; // #177/#182: fear you can SEE — the pure Infamy→fear-features map (sails, trophies, figurehead)
 import { defeatLedger } from '../src/renown.js'; // #177: prove a REAL #164 defeat dent strips a trophy off the LIVE rigging
 import { windFactor, sailSpeed } from '../src/physics.js'; // #178: the weather gage — the ONE bounded point-of-sail rule BOTH hulls obey
 import { createCoinsPulse, classifyDelta, formatDelta } from '../src/systems/coins-pulse.js'; // #181: the coins-delta pulse — earn→spend made responsive (change-detect + gain/spend classify + delta format)
@@ -3803,6 +3803,8 @@ try {
   // the hull). A neutral ledger restores the bare ship exactly. Derived from Infamy — NO save bump (v18).
   const beforeLoss177 = TROPHY2_AT + 12;                                          // two trophies flying
   const led177 = defeatLedger(3, 'raid', { coins: 200, infamy: beforeLoss177, standing: 0 }); // a real loss dent
+  const figBefore177 = FIGUREHEAD2_AT + 8;                                        // a snarling beast reared (tier 2)
+  const led177fig = defeatLedger(3, 'raid', { coins: 200, infamy: figBefore177, standing: 0 }); // a real dent past the tier-2 milestone
   const fear = await page.evaluate(async (v) => {
     const tw = window.__tidewake;
     tw.newVoyage(); tw.step(0.1);                                   // clean slate: the bare, humble ship
@@ -3817,32 +3819,51 @@ try {
     const beforeLoss = { ...tw.fear };
     tw.setInfamy(v.afterLossInfamy); tw.step(0.1);                  // …then a #164 defeat dents Infamy
     const afterLoss = { ...tw.fear };
+    tw.setInfamy(v.figBefore); tw.setStanding(0); tw.step(0.1);     // a snarling beast reared at the prow…
+    const figBeforeLoss = { ...tw.fear };
+    tw.setInfamy(v.figAfterLossInfamy); tw.step(0.1);              // …then a #164 defeat softens the prow a step
+    const figAfterLoss = { ...tw.fear };
     tw.newVoyage(); tw.step(0.1);                                   // back to a neutral ledger
     const restored = { ...tw.fear };
-    return { humble, ladder, feared, beforeLoss, afterLoss, restored };
-  }, { ladder: [0, TROPHY1_AT, TROPHY2_AT, SAIL_BLACK_AT + 100], feared: SAIL_BLACK_AT + 400, before: beforeLoss177, afterLossInfamy: led177.infamy });
+    return { humble, ladder, feared, beforeLoss, afterLoss, figBeforeLoss, figAfterLoss, restored };
+  }, { ladder: [0, TROPHY1_AT, TROPHY2_AT, SAIL_BLACK_AT + 100], feared: SAIL_BLACK_AT + 400, before: beforeLoss177, afterLossInfamy: led177.infamy, figBefore: figBefore177, figAfterLossInfamy: led177fig.infamy });
   const fLum = (h) => (h == null ? 255 : (((h >> 16) & 0xff) + ((h >> 8) & 0xff) + (h & 0xff)) / 3);
   if (!fear.humble.applied) fail('fear-rigging (#177): the hero ship exposed no sail material to darken');
   if (fear.humble.trophiesShown !== 0 || fear.humble.sailDarken !== 0) fail(`fear-rigging (#177): a fresh captain's ship is not bare (${JSON.stringify(fear.humble)})`);
   if (fear.humble.sailColor !== 0xffffff) fail(`fear-rigging (#177): the humble start is not the untouched white sail (${fear.humble.sailColor})`);
+  // #182: a fresh captain sails a PLAIN PROW — no figurehead drawn (0 extra draws at the humble start).
+  if (fear.humble.figureheadShown !== 0 || fear.humble.figureheadsVisible !== 0) fail(`fiercer figurehead (#182): a fresh captain's prow is not plain (${JSON.stringify(fear.humble)})`);
   // monotonic: trophies never decrease and the sails never lighten as Infamy climbs.
-  let prevT = -1, prevLum = 256;
+  let prevT = -1, prevLum = 256, prevFig = -1;
   for (const s of fear.ladder) {
     if (!(s.trophiesShown >= prevT)) fail(`fear-rigging (#177): trophies dipped climbing to Infamy ${s.infamy} (${s.trophiesShown} < ${prevT})`);
     if (!(fLum(s.sailColor) <= prevLum + 0.5)) fail(`fear-rigging (#177): sails LIGHTENED climbing to Infamy ${s.infamy}`);
     if (!(s.trophiesShown === s.trophies)) fail(`fear-rigging (#177): rendered trophies ${s.trophiesShown} ≠ derived ${s.trophies} at Infamy ${s.infamy}`);
-    prevT = s.trophiesShown; prevLum = fLum(s.sailColor);
+    // #182: the figurehead tier grows MONOTONICALLY, the render matches the derived tier, and at most ONE variant is ever drawn (≤1 draw).
+    if (!(s.figureheadShown >= prevFig)) fail(`fiercer figurehead (#182): the prow softened climbing to Infamy ${s.infamy} (${s.figureheadShown} < ${prevFig})`);
+    if (!(s.figureheadShown === s.figurehead)) fail(`fiercer figurehead (#182): rendered tier ${s.figureheadShown} ≠ derived ${s.figurehead} at Infamy ${s.infamy}`);
+    if (s.figureheadsVisible > 1) fail(`fiercer figurehead (#182): more than one figurehead drawn at Infamy ${s.infamy} (${s.figureheadsVisible}) — over the ≤1-draw budget`);
+    prevT = s.trophiesShown; prevLum = fLum(s.sailColor); prevFig = s.figureheadShown;
   }
   if (fear.feared.trophiesShown !== 2 || fear.feared.sailDarken !== 1) fail(`fear-rigging (#177): a deeply feared captain does not fly 2 trophies + full-black sails (${JSON.stringify(fear.feared)})`);
   if (!(fLum(fear.feared.sailColor) < fLum(fear.humble.sailColor))) fail('fear-rigging (#177): a feared ship\'s sails are not visibly darker than the humble start');
   if (fear.feared.auraPole !== 'pirate' || !fear.feared.auraApplied) fail(`fear-rigging (#177): the #132 aura did not compose under the fear layer (pole=${fear.feared.auraPole})`);
   if (!fear.feared.trophiesParentedToHull) fail('fear-rigging (#177): trophies are not parented to the ship group — they will not ride the #171 class scale');
+  // #182: a deeply feared captain rears the FIERCEST figurehead (tier 2, exactly one drawn), parented to the hull so it rides #171's class scale.
+  if (fear.feared.figureheadShown !== MAX_FIGUREHEAD || fear.feared.figureheadsVisible !== 1) fail(`fiercer figurehead (#182): a deeply feared captain does not rear the fiercest prow (${JSON.stringify(fear.feared)})`);
+  if (!(fear.feared.figureheadShown > fear.humble.figureheadShown)) fail('fiercer figurehead (#182): a feared prow is not fiercer than the humble start');
+  if (!fear.feared.figureheadParentedToHull) fail('fiercer figurehead (#182): the figurehead is not parented to the ship group — it will not ride the #171 class scale');
   // strip-on-loss: the REAL #164 dent knocks a trophy off, bounded (never negative).
   if (fear.beforeLoss.trophiesShown !== 2) fail(`fear-rigging (#177): expected 2 trophies before the loss (${fear.beforeLoss.trophiesShown})`);
   if (!(fear.afterLoss.trophiesShown < fear.beforeLoss.trophiesShown)) fail(`fear-rigging (#177): a #164 defeat did NOT strip a trophy (${fear.afterLoss.trophiesShown} !< ${fear.beforeLoss.trophiesShown})`);
   if (fear.afterLoss.trophiesShown < 0) fail('fear-rigging (#177): trophies went negative — not bounded');
+  // #182: step-back on a loss — a snarling prow (tier 2) softens a step when a #164 defeat dents Infamy past the milestone, bounded (never below plain).
+  if (fear.figBeforeLoss.figureheadShown !== MAX_FIGUREHEAD) fail(`fiercer figurehead (#182): expected the fiercest prow before the loss (${fear.figBeforeLoss.figureheadShown})`);
+  if (!(fear.figAfterLoss.figureheadShown < fear.figBeforeLoss.figureheadShown)) fail(`fiercer figurehead (#182): a #164 defeat did NOT step the prow back (${fear.figAfterLoss.figureheadShown} !< ${fear.figBeforeLoss.figureheadShown})`);
+  if (fear.figAfterLoss.figureheadShown < 0) fail('fiercer figurehead (#182): the figurehead tier went negative — not bounded');
   if (fear.restored.trophiesShown !== 0 || fear.restored.sailColor !== 0xffffff) fail(`fear-rigging (#177): a neutral ledger did not restore the bare ship exactly (${JSON.stringify(fear.restored)})`);
-  if (process.exitCode !== 1) console.log(`  ✓ fear you can SEE (#177): your Infamy dresses your OWN ship — sails darken toward black + trophy pennants run up the rigging at milestones (monotonic), a REAL #164 defeat strikes a trophy (${fear.beforeLoss.trophiesShown}→${fear.afterLoss.trophiesShown}, bounded), composing OVER the #132 aura (still pirate) and riding the #171 class scale; derived from Infamy, NO save bump (v${SAVE_VERSION})`);
+  if (fear.restored.figureheadShown !== 0) fail(`fiercer figurehead (#182): a neutral ledger did not restore the plain prow (${fear.restored.figureheadShown})`);
+  if (process.exitCode !== 1) console.log(`  ✓ fear you can SEE (#177/#182): your Infamy dresses your OWN ship — sails darken toward black + trophy pennants + a fiercer carved FIGUREHEAD rear at milestones (monotonic, ≤1 fig drawn), a REAL #164 defeat strikes a trophy (${fear.beforeLoss.trophiesShown}→${fear.afterLoss.trophiesShown}) AND softens the prow a step (${fear.figBeforeLoss.figureheadShown}→${fear.figAfterLoss.figureheadShown}), all bounded, composing OVER the #132 aura (still pirate) and riding the #171 class scale; derived from Infamy, NO save bump (v${SAVE_VERSION})`);
 
   // 2j-5) The harmonic reputation needle (#132 Slice B, DL #5): the SAME signed lean, now AUDIBLE. The
   // procedural bed's lead recolours its MODE off repLean — a fresh captain hears the honest D-major
