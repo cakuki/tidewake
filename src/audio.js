@@ -451,10 +451,18 @@ export function createAudio(opts = {}) {
     noiseTick(t0 + 0.06, 0.10, 0.035, 1150, 0.9, dest); // a light droplet/breath on top
   }
 
+  // SPAR (#70 post-RISE): a low waterlogged-timber GROAN sinking into a dull knock against the hull —
+  // the creak of wreckage nudging by. Woody + soft, kin to the hull-creak but briefer and gentler.
+  function sfxSpar(t0, dest) {
+    tone(t0, 0.30, 0.085, 'sawtooth', 180, 115, dest, 0.03); // the low timber groan, sinking
+    tone(t0 + 0.02, 0.22, 0.05, 'triangle', 300, 230, dest, 0.02); // a woody overtone above it
+    noiseTick(t0 + 0.05, 0.11, 0.05, 420, 0.7, dest); // a dull knock as it thumps the bow
+  }
+
   /**
    * Play a curio cue. No-op until a real gesture has the engine running, so a headless run
    * (no context) is silent and never throws.
-   * @param {'bottle'|'turtle'} type
+   * @param {'bottle'|'turtle'|'spar'} type
    */
   function playCurio(type) {
     if (!ctx || ctx.state !== 'running' || !master) return;
@@ -463,6 +471,7 @@ export function createAudio(opts = {}) {
       const t0 = ctx.currentTime + 0.005;
       if (type === 'bottle') sfxBottle(t0, dest);
       else if (type === 'turtle') sfxTurtle(t0, dest);
+      else if (type === 'spar') sfxSpar(t0, dest);
     } catch {
       /* a curio cue must never break the game */
     }

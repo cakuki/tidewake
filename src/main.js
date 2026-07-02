@@ -969,7 +969,7 @@ audio.init();
 // the surface — and sailing over it plays a soft cue + raises a wry line (never the same twice in a
 // row). Ambient open-sea only (never during a battle), deterministic + distance-culled, a single
 // reused mesh per kind → ≤1 extra draw. Pure delight between the fights; no mechanics, no save change.
-const CURIO_BANNER = { bottle: '🍾 Flotsam', turtle: '🐢 A turtle surfaces' };
+const CURIO_BANNER = { bottle: '🍾 Flotsam', turtle: '🐢 A turtle surfaces', spar: '🪵 Wreckage adrift' };
 const curios = createCurios({
   onEncounter: (type, line) => {
     try { audio.playCurio(type); } catch { /* a soft cue must never break the sea */ }
@@ -2887,6 +2887,7 @@ window.__tidewake = {
   // draw-when-near / cull-when-far, cue fires, witty-line anti-repeat) without touching the live sim.
   get curios() { return curios.snapshot(); },
   qaCurioProbe() { return curios.qaProbe(); },
+  qaCurioForce(type) { curios.qaForce(type); }, // QA/gallery: pin the next curio kind + arm it now
   // CC0 Pirate Kit port dressing (#101) QA surface: how many props were placed, how many are
   // currently drawn (distance cull), and how many port clusters exist — so a headless playtest
   // can assert the harbours are furnished and that far clusters are culled to nothing.

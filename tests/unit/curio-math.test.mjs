@@ -113,3 +113,24 @@ test('CURIO_LINES: healthy, deduplicated witty-line pools for every kind', () =>
     assert.ok(CURIO_SURFACE[kind], `${kind} has surface behaviour`);
   }
 });
+
+test('SPAR (#70 post-RISE): the new drifting-wreckage kind is a first-class curio', () => {
+  // The third kind is present, reachable, and honours the same charm contract as bottle/turtle.
+  assert.ok(CURIO_TYPES.includes('spar'), 'spar is a curio kind');
+  // Reachable from the deterministic type-picker over the 0..1 range (not stranded off the end).
+  const seen = new Set();
+  for (let r = 0; r <= 1.0001; r += 0.01) seen.add(pickCurioType(r));
+  assert.ok(seen.has('spar'), 'a spar can actually be picked');
+  // Its own witty-line pool + surface behaviour, and it sits nearly awash (rides lower than a turtle).
+  assert.ok(CURIO_LINES.spar.length >= 5, 'spar has a real witty-line pool');
+  assert.ok(CURIO_SURFACE.spar && CURIO_SURFACE.spar.bob > 0, 'a waterlogged spar rolls on the swell');
+  assert.ok(CURIO_SURFACE.spar.lift < CURIO_SURFACE.turtle.lift, 'a spar rides lower than a proud turtle shell');
+  // Anti-repeat holds on the spar pool exactly as it must for every kind: never the same line twice.
+  const n = CURIO_LINES.spar.length;
+  let last = -1;
+  for (let k = 0; k < 200; k++) {
+    const idx = pickLine(n, last, (k * 0.6180339887) % 1);
+    assert.notEqual(idx, last, 'a spar line never repeats back-to-back');
+    last = idx;
+  }
+});

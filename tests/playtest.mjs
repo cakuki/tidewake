@@ -3646,7 +3646,16 @@ try {
   if (!curios.cueFired) fail('curios (#70): sailing over a curio did not fire its cue');
   if (!curios.antiRepeat) fail(`curios (#70): the witty line repeated twice in a row — anti-repeat broken (lines=${JSON.stringify(curios.lines)})`);
   if (!(curios.distinct >= 2)) fail(`curios (#70): the witty-line pool never varied (distinct=${curios.distinct}) — it should draw several different lines`);
-  if (process.exitCode !== 1) console.log(`  ✓ ocean sail-over curios (#70): a ${curiosLive.lastCue || 'curio'} drifted in + drew while sailing (spawns ${curiosLive.spawns}); probe: deterministic spawn, ≤1 draw, culled off-stage, cue fires, ${curios.distinct} distinct witty lines with no back-to-back repeat`);
+  // Post-RISE: the NEW spar kind (and every kind) must fire its own cue + never repeat its line back-to-back.
+  if (!(curios.types || []).includes('spar')) fail('curios (#70 post-RISE): the new drifting-spar kind is missing from CURIO_TYPES');
+  const spar = (curios.perKind && curios.perKind.spar) || null;
+  if (!spar) fail('curios (#70 post-RISE): the probe reported no per-kind result for the spar');
+  else {
+    if (!spar.cueFired) fail('curios (#70 post-RISE): sailing over a drifting spar did not fire its cue');
+    if (!spar.antiRepeat) fail(`curios (#70 post-RISE): the spar witty line repeated twice in a row (lines=${JSON.stringify(spar.lines)})`);
+    if (!(spar.distinct >= 2)) fail(`curios (#70 post-RISE): the spar witty-line pool never varied (distinct=${spar.distinct})`);
+  }
+  if (process.exitCode !== 1) console.log(`  ✓ ocean sail-over curios (#70): a ${curiosLive.lastCue || 'curio'} drifted in + drew while sailing (spawns ${curiosLive.spawns}); probe: deterministic spawn, ≤1 draw, culled off-stage, cue fires, ${curios.distinct} distinct witty lines with no back-to-back repeat; new spar kind fires its cue with ${spar ? spar.distinct : '?'} distinct anti-repeat lines`);
 
   // 2z-dread) THE WORLD FEARS YOU (#172, epic #168 "The Rise" slice 4): now that you can grow notorious
   // (#169 ranks) and BIG (#171 class), the world NOTICES. A much-outclassed, much-feared captain makes

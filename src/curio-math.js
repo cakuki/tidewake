@@ -22,15 +22,19 @@ export const MIN_SAIL_SPEED = 1.5;      // only drift in while genuinely under w
 export const CURIO_BOB_RATE = 1.25;     // how fast a curio bobs on the swell
 export const CURIO_SPIN_RATE = 0.35;    // slow idle rotation (radians/sec) — a touch of life
 
-// The curio kinds shipped in slice 1 — the two highest-charm, cheapest picks. More (flotsam,
-// message-in-a-bottle variants, breaching rays…) are deferred follow-ups under the #70 standing rule.
-export const CURIO_TYPES = ['bottle', 'turtle'];
+// The curio kinds. Slice 1 shipped the two highest-charm cheap picks (bottle, turtle). Post-RISE
+// polish adds a third under the #70 standing 1–2-per-loop drip: a drifting SPAR — the wreckage of
+// the fights you've been winning, the sea now carrying the debris of your growing legend. More
+// (message-in-a-bottle variants, breaching rays, gulls on flotsam…) stay deferred follow-ups.
+export const CURIO_TYPES = ['bottle', 'turtle', 'spar'];
 
 // Per-type surface behaviour: a bottle rides low and bobs a little; a turtle's shell sits a touch
-// PROUD of the waterline and rises/settles as it breathes. Pure data the factory reads.
+// PROUD of the waterline and rises/settles as it breathes; a waterlogged SPAR sits nearly awash and
+// rolls heavily on the swell. Pure data the factory reads.
 export const CURIO_SURFACE = {
   bottle: { lift: 0.15, bob: 0.35 },
   turtle: { lift: 0.55, bob: 0.30 },
+  spar: { lift: 0.10, bob: 0.42 },
 };
 
 // The witty-line pools, by kind. Original, on-brand 🪶 humour + 🌊 atmosphere — never a named
@@ -62,6 +66,21 @@ export const CURIO_LINES = {
     'A green turtle rises, chews a jelly, and judges your seamanship in silence.',
     'A turtle bobs up beside the hull, unbothered by pirates, weather, or time itself.',
     'An old turtle surfaces trailing weed like a beard. Nods. Dives. A whole life, that.',
+  ],
+  // SPAR — post-RISE flavour: the sea now carries the wreckage of the fights you've been winning.
+  // Wry, a touch dark, the world quietly acknowledging a rising legend. Never a named franchise.
+  spar: [
+    "A shattered spar drifts by — someone's mast, someone's very bad morning.",
+    'Wreckage rolls past: a broken beam trailing rope, a loose thread of some old fight.',
+    'A splintered spar knocks the hull — the sea handing back what it took from a rival.',
+    "Driftwood in the swell: a ship's rib, picked clean. The Caribbean keeps no graves.",
+    'A spar wallows past, barnacled and beaten — someone sailed her proud, once.',
+    "Broken timber drifts by. Yours? No. But the sea's collecting, and it knows your name now.",
+    "A tangled spar floats past, its colours long rotted off. Nobody's flag any more.",
+    'A charred beam bobs by — a fire, a fight, a story that ended before yours got good.',
+    'Flotsam of a bigger ship than yours drifts past. Was. Was bigger.',
+    "A cracked mast rolls in the swell, its gulls long flown. The wake of somebody else's ambition.",
+    "A waterlogged spar thumps the bow — the ocean's way of noting it has seen worse than you.",
   ],
 };
 

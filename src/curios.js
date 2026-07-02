@@ -34,6 +34,16 @@ function makeTurtleGeometry() {
   return geo;
 }
 
+// A drifting SPAR (#70 post-RISE): a snapped ship's beam wallowing awash — the wreckage of the
+// fights you've been winning. A tapered hexagonal timber (thick butt → splintered end) laid flat
+// and canted a touch, so it reads as battle-flotsam from the deck. One cheap low-poly mesh.
+function makeSparGeometry() {
+  const geo = new THREE.CylinderGeometry(0.36, 0.2, 5.6, 6, 1); // a broken, tapered beam
+  geo.rotateZ(Math.PI / 2);  // lay it flat on the water
+  geo.rotateX(0.18);         // a jaunty roll, half-swallowed by the swell
+  return geo;
+}
+
 // createCurios({ seed, onEncounter }) -> { group, update(dt, t, ctx), snapshot(), qaProbe() }
 //   ctx: { shipPos:{x,z}|[x,..,z], focus:{x,z}|Vector3|null, heading?, speed?, inBattle?, sampleHeight? }
 //   onEncounter(type, line): fired ONCE when the ship sails over a curio (main wires SFX + banner).
@@ -45,9 +55,11 @@ export function createCurios({ seed = 0x5EA1FE, onEncounter = null } = {}) {
   // and only ever one is visible at a time.
   const bottleMat = new THREE.MeshStandardMaterial({ color: 0x3f6b52, roughness: 0.5, metalness: 0.05 });
   const turtleMat = new THREE.MeshStandardMaterial({ color: 0x3b5a3a, roughness: 0.8, metalness: 0.0 });
+  const sparMat = new THREE.MeshStandardMaterial({ color: 0x5b4632, roughness: 0.9, metalness: 0.0 }); // weathered, waterlogged wood
   const meshes = {
     bottle: new THREE.Mesh(makeBottleGeometry(), bottleMat),
     turtle: new THREE.Mesh(makeTurtleGeometry(), turtleMat),
+    spar: new THREE.Mesh(makeSparGeometry(), sparMat),
   };
   for (const t of CURIO_TYPES) {
     const m = meshes[t];
@@ -77,7 +89,8 @@ export function createCurios({ seed = 0x5EA1FE, onEncounter = null } = {}) {
     timer: nextCurioDelay(rng()),
   };
   let spawns = 0, encounters = 0, lastCue = null, lastLine = null, lastType = null;
-  const lastLineIndex = { bottle: -1, turtle: -1 };
+  const lastLineIndex = {};
+  for (const t of CURIO_TYPES) lastLineIndex[t] = -1; // anti-repeat cursor, one per kind
   let forcedType = null; // QA only: pin the next kind so the anti-repeat test can hammer one pool
 
   function readXZ(p) {
@@ -180,7 +193,7 @@ export function createCurios({ seed = 0x5EA1FE, onEncounter = null } = {}) {
     rngState = s >>> 0;
     curio.active = false; curio.type = null; curio.encountered = false; curio.timer = 0;
     spawns = 0; encounters = 0; lastCue = null; lastLine = null; lastType = null;
-    lastLineIndex.bottle = -1; lastLineIndex.turtle = -1;
+    for (const t of CURIO_TYPES) lastLineIndex[t] = -1;
     forcedType = null;
     hideAll();
   }
@@ -210,25 +223,45 @@ export function createCurios({ seed = 0x5EA1FE, onEncounter = null } = {}) {
 
     // (3+4) CUE + WITTY-LINE ANTI-REPEAT: hammer the SAME kind (turtle) over many encounters and
     // collect the line each time; the picker must never repeat back-to-back, yet vary.
-    reset(SEED);
-    forcedType = 'turtle';
-    const lines = []; const cues = [];
-    for (let k = 0; k < 12; k++) {
-      curio.active = false; curio.timer = 0;            // arm the next spawn immediately
-      update(0.016, 0, at(0, 0));                       // drift a turtle in ahead of the bow
-      const ox = curio.origin.x, oz = curio.origin.z;
-      update(0.016, 0, at(ox, oz));                     // sail over it → encounter fires once
-      lines.push(lastLine); cues.push(lastCue);
+    // Hammer each kind in turn so EVERY curio (bottle, turtle, AND the new spar) proves its own cue
+    // fires and its own witty-line pool never repeats back-to-back yet varies.
+    const perKind = {};
+    for (const kind of CURIO_TYPES) {
+      reset(SEED);
+      forcedType = kind;
+      const lines = []; const cues = [];
+      for (let k = 0; k < 12; k++) {
+        curio.active = false; curio.timer = 0;            // arm the next spawn immediately
+        update(0.016, 0, at(0, 0));                       // drift this kind in ahead of the bow
+        const ox = curio.origin.x, oz = curio.origin.z;
+        update(0.016, 0, at(ox, oz));                     // sail over it → encounter fires once
+        lines.push(lastLine); cues.push(lastCue);
+      }
+      forcedType = null;
+      let anti = true;
+      for (let i = 1; i < lines.length; i++) if (lines[i] === lines[i - 1]) anti = false;
+      perKind[kind] = {
+        cueFired: cues.length > 0 && cues.every((c) => c === kind),
+        antiRepeat: anti,
+        distinct: new Set(lines).size,
+        lines,
+      };
     }
-    forcedType = null;
-    let antiRepeat = true;
-    for (let i = 1; i < lines.length; i++) if (lines[i] === lines[i - 1]) antiRepeat = false;
-    const cueFired = cues.length > 0 && cues.every((c) => c === 'turtle');
-    const distinct = new Set(lines).size;
+    // Back-compat top-level fields (the original probe reported on the turtle pool).
+    const t = perKind.turtle;
+    const cueFired = Object.values(perKind).every((p) => p.cueFired);
+    const antiRepeat = Object.values(perKind).every((p) => p.antiRepeat);
+    const distinct = t.distinct;
+    const lines = t.lines;
 
     reset(nextCurioDelay(0)); // leave the live schedule in a sane state after probing (no leftover forced state)
-    return { spawnDeterministic, drawnWhenNear, drawnCount, culledWhenFar, cueFired, antiRepeat, distinct, lines, types: CURIO_TYPES };
+    return { spawnDeterministic, drawnWhenNear, drawnCount, culledWhenFar, cueFired, antiRepeat, distinct, lines, perKind, types: CURIO_TYPES };
   }
 
-  return { group, update, snapshot, qaProbe };
+  // QA/gallery only: pin the next spawn to a given kind and arm it to drift in immediately, so a
+  // one-shot capture (or an owner visual) can reliably frame a specific curio without waiting on the
+  // seeded cadence. Purely a test surface — the live loop never calls it.
+  function qaForce(type) { forcedType = type; curio.active = false; curio.encountered = false; curio.timer = 0; }
+
+  return { group, update, snapshot, qaProbe, qaForce };
 }
