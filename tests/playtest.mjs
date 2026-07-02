@@ -501,6 +501,63 @@ try {
   }
   if (process.exitCode !== 1) console.log('  ✓ loss stings (#164): you CAN lose (hull breaks → engagement lost) AND it STINGS — a raiding loss dents Infamy+coin, a governor-road loss dents Standing, the red "Colours Struck" card names the cost, floored at 0 (no death-spiral)');
 
+  // rank) RANK-UP MILESTONE (#169, epic #168 "The Rise"): the felt "you rose" beat. Crossing a
+  // renown.js rung must fire ONE title card naming the new rank with pole-appropriate tone (dread on
+  // the pirate road, respect on the governor road) + a triumphant sting. Prove it end-to-end,
+  // headlessly: (1) a forward crossing fires exactly one card with the correct pirate title; (2) a
+  // non-crossing rep change within the same rung is SILENT; (3) a rung dropped (as after a defeat)
+  // then re-climbed does NOT re-announce (the "highest rung seen" guard); (4) a genuinely NEW,
+  // higher rung on the OTHER pole fires once with the correct governor title. Driven off the ledger
+  // via qaSetLedger + a deterministic step, read off the tw.rankUp card + its monotonic fire-count.
+  const rank = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    // Establish a clean, known baseline at the bottom rung (other blocks moved the ledger).
+    tw.qaSetLedger({ coins: 0, infamy: 0, standing: 0 });
+    tw.qaResetRankBaseline();
+    tw.step(0.05);                 // re-seed the baseline silently at rung 0
+    const base = tw.rankUp;        // whatever card (if any) predates this block
+    const baseCount = base ? base.count : 0;
+
+    // (1) forward crossing, pirate-led → Corsair (rung 5), "feared" tone
+    tw.qaSetLedger({ infamy: 1001, standing: 0 }); // total 1001 → rung 5 (Sea Captain threshold 1000)
+    tw.step(0.05);
+    const cross1 = tw.rankUp;
+
+    // (2) non-crossing rep change, still rung 5 → no new card
+    tw.qaSetLedger({ infamy: 1200, standing: 0 });
+    tw.step(0.05);
+    const noCross = tw.rankUp;
+
+    // (3) drop a rung (a defeat) then re-climb the SAME rung → must not re-announce
+    tw.qaSetLedger({ infamy: 600, standing: 0 }); // total 600 → rung 4
+    tw.step(0.05);
+    tw.qaSetLedger({ infamy: 1001, standing: 0 }); // back to rung 5
+    tw.step(0.05);
+    const reCross = tw.rankUp;
+
+    // (4) a genuinely higher rung on the governor pole → Magistrate (rung 6), "respect" tone
+    tw.qaSetLedger({ infamy: 0, standing: 1601 }); // total 1601 → rung 6 (Dread Captain threshold 1600)
+    tw.step(0.05);
+    const cross2 = tw.rankUp;
+
+    return { baseCount, cross1, noCross, reCross, cross2 };
+  });
+  // (1) the crossing fired exactly once, naming the pirate rung with dread tone:
+  if (!rank.cross1) fail('rank-up (#169): crossing into a new rung fired NO card');
+  if (rank.cross1.count !== rank.baseCount + 1) fail(`rank-up (#169): a single crossing did not fire exactly once (count ${rank.baseCount}→${rank.cross1.count})`);
+  if (rank.cross1.pole !== 'pirate') fail(`rank-up (#169): an infamy-led crossing wore the wrong pole (${rank.cross1.pole}, expected pirate)`);
+  if (rank.cross1.title !== 'Corsair') fail(`rank-up (#169): the card named the wrong pirate title (${rank.cross1.title}, expected Corsair)`);
+  if (!/feared/i.test(rank.cross1.headline)) fail(`rank-up (#169): the pirate card did not read as dread ("${rank.cross1.headline}")`);
+  // (2) a non-crossing rep change stayed silent:
+  if (rank.noCross.count !== rank.cross1.count) fail(`rank-up (#169): a non-crossing rep change wrongly re-announced (count ${rank.cross1.count}→${rank.noCross.count})`);
+  // (3) dropping a rung then re-climbing did NOT re-fire (the highest-seen guard):
+  if (rank.reCross.count !== rank.cross1.count) fail(`rank-up (#169): re-crossing a rung already seen wrongly re-announced (count ${rank.cross1.count}→${rank.reCross.count})`);
+  // (4) a genuinely higher rung on the OTHER pole fired once, with the civic title + respect tone:
+  if (rank.cross2.count !== rank.cross1.count + 1) fail(`rank-up (#169): a new higher rung did not fire exactly once (count ${rank.cross1.count}→${rank.cross2.count})`);
+  if (rank.cross2.pole !== 'governor') fail(`rank-up (#169): a standing-led crossing wore the wrong pole (${rank.cross2.pole}, expected governor)`);
+  if (rank.cross2.title !== 'Magistrate') fail(`rank-up (#169): the card named the wrong civic title (${rank.cross2.title}, expected Magistrate)`);
+  if (process.exitCode !== 1) console.log('  ✓ rank-up milestone (#169): crossing a rung fires ONE title card with the right pole tone (feared Corsair / respected Magistrate); a non-crossing rep change is silent; a rung dropped then re-climbed does NOT re-announce (save-free "highest rung seen" guard)');
+
   // 2b3-ui) NON-OCCLUDING battle UI (#161 slice 2): the marquee complaint — "the popup covers my
   // ship and I cannot see my ship in action." The fight prompts (#battle/#cannons/#duel) are now
   // DOCKED to a lower band instead of a dead-centre modal, so the battle camera's centre-framed hull

@@ -43,10 +43,9 @@ export function createHud() {
   const TOUCH = typeof document !== 'undefined' && !!document.body && document.body.classList.contains('touch');
 
   let toastTimer = null;
-  // Captain's Ledger: only re-touch the DOM when a pole changes, and flash on rank-up.
-  // `lastRankIndex` starts null so the first frame (incl. a restored voyage) just adopts
-  // the current rank silently — we only celebrate a rank the player *climbs into*.
-  let lastLedgerSig = '', lastRankIndex = null;
+  // Captain's Ledger: only re-touch the DOM when a pole/title changes. The rank-UP celebration
+  // moved to the pure milestone system (#169), driven from main.js.
+  let lastLedgerSig = '';
 
   // ---- Trade panel + keyboard trading ---------------------------------------
   // We can't touch input.js/main.js, so the HUD owns a small, self-contained keydown
@@ -217,8 +216,9 @@ export function createHud() {
     const total = infamy + standing;
     const t = titleFor(infamy, standing);
     const rank = rankForRenown(total);
-    if (lastRankIndex !== null && rank.index > lastRankIndex) showRankUp(t.title);
-    lastRankIndex = rank.index;
+    // The rank-UP celebration now lives in the pure milestone system (#169), driven from main.js so it
+    // can also fire the audio sting and use a robust "highest rung seen" guard — the ledger read-out
+    // here just paints the current numbers/title.
     const sig = `${infamy}|${standing}|${t.title}`;
     if (sig === lastLedgerSig) return; // nothing to repaint
     lastLedgerSig = sig;
@@ -474,22 +474,29 @@ export function createHud() {
     $encounter.classList.add('show');
   }
 
-  // Rank-up flash — reuses the arrival toast, dressed in the ledger's green.
-  const RANKUP_LINES = [
-    'Word of your deeds travels the tideways.',
-    'The harbourmasters have started spelling your name right.',
-    'Someone, somewhere, is nervous. Excellent.',
-    'Your legend gains a barnacle of weight.',
-  ];
-  function showRankUp(title) {
+  // ---- Rank-up milestone card (#169, epic #168 "The Rise") ------------------
+  // The felt "you rose" beat: crossing into a new rung fires a title card in the ledger's green,
+  // NAMING the new title with pole-appropriate tone (dread for the pirate road, respect for the
+  // governor road). Reuses the shared toast (already docked clear of the #161-s2 battle-camera
+  // safe-zone) so it never occludes the framed ship, and the mobile guard (#146) rides with it.
+  // The detection + copy live in the PURE src/systems/rank-milestone.js core; this is the thin
+  // presenter — main.js hands it a ready-made {icon, headline, flourish, title, pole} card. The
+  // last card is exposed for the headless QA gate to assert the crossing fired the right title.
+  let lastRankUp = null, rankUpCount = 0;
+  function showRankUp(card = {}) {
+    const { icon = '⚑', headline = '', flourish = '', title = '', pole = 'neutral' } = card;
+    rankUpCount += 1; // a monotonic fire-count so the headless gate can assert once-only / no re-fire
+    lastRankUp = { icon, headline, flourish, title, pole, count: rankUpCount };
     if (!$toast) return;
-    const line = RANKUP_LINES[Math.floor(Math.random() * RANKUP_LINES.length)];
+    $toast.classList.remove('defeat'); // clear the red loss skin so the rise reads triumphant
     $toast.classList.add('rankup');
-    $toast.innerHTML = `<div class="toast-title">⚑ You're now ${/^[AEIOU]/.test(title) ? 'an' : 'a'} ${title}!</div><div class="toast-line">${line}</div>`;
+    $toast.innerHTML = `<div class="toast-title">${icon} ${headline}</div><div class="toast-line">${flourish}</div>`;
     $toast.classList.add('show');
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(() => { $toast.classList.remove('show'); $toast.classList.remove('rankup'); }, 5000);
   }
+  /** The last rank-up card shown (or null) — for the headless QA gate. */
+  function rankUpCard() { return lastRankUp; }
 
   // ---- Endgame legend overlay (#46) -----------------------------------------
   // The payoff beat: a near-full-screen proclamation crowning the player THE Terror /
@@ -589,5 +596,5 @@ export function createHud() {
     compass.update(state);
   }
 
-  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderBattle, renderRaidPhases, renderKeyPrompts, renderEncounter, flashBanner, showDefeat, defeatCard, showLegend, showGovernorship, showGoal, hideGoal };
+  return { update, showArrival, setWind, renderColours, renderDuel, renderCannons, renderBattle, renderRaidPhases, renderKeyPrompts, renderEncounter, flashBanner, showDefeat, defeatCard, showRankUp, rankUpCard, showLegend, showGovernorship, showGoal, hideGoal };
 }

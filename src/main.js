@@ -53,6 +53,7 @@ import { initEconomy, syncRenown } from './economy.js';
 import { SHIP_RADIUS, NPC_RADIUS } from './physics.js';
 import { VERSION } from './version.js';
 import { greetPlayer, dominantPole, titleFor, earnedLegend, rankForRenown, legendBeat, renownTier, defeatContext, defeatLedger } from './renown.js';
+import { detectRankUp, TOP_RANK } from './systems/rank-milestone.js';
 import { recallLine, rememberArrival, sanitizePortMemory, recordDeed, deedPhrase, homePort } from './systems/port-memory.js';
 import {
   sanitizeHarbour, claim as claimHome, invest as investHome, canClaim, canInvest, harbourLevelName,
@@ -1037,6 +1038,7 @@ function newVoyage() {
   detectRng = makeDetectRng(); // a fresh voyage rolls the bluff's risk from a clean, repeatable seed (#91)
   obsStanding = undefined;
   obsRankIndex = undefined;
+  rankHighest = undefined; // a fresh voyage re-seeds the rank-up baseline at rung 0 (#169)
 }
 addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'n') newVoyage(); });
 
@@ -1793,6 +1795,11 @@ systems.register({ name: 'legends', order: 220, update: () => checkLegends() });
 // — endgame governorship (#119): the lawful arc's NAMED capstone, just after the pole legends.
 systems.register({ name: 'governorship', order: 221, update: () => checkGovernorship() });
 systems.register({ name: 'onboarding', order: 230, update: () => checkOnboarding() });
+// — rank-up milestone (#169, epic #168 "The Rise"): the felt "you rose" card + triumphant sting.
+// Runs AFTER onboarding so, on a captain's very FIRST crossing, this richer named-title card wins the
+// shared toast over the generic first-rank onboarding beat (both fire that frame; last paint wins).
+// The legend crown (#46) is a separate full-screen overlay, so no toast contention there.
+systems.register({ name: 'rankup', order: 235, update: () => checkRankUp() });
 // — the charts: north-up radar (#16) + route-planning chart (only redraws while open) (#54).
 systems.register({ name: 'minimap', order: 240, update: (f) => minimap.update(f.state) });
 systems.register({ name: 'bigmap', order: 250, update: (f) => bigmap.update(f.state) });
@@ -2159,6 +2166,27 @@ function checkOnboarding() {
 
   // The seeded goal card: shown until the captain acts (their first dock clears it).
   if (shouldShowGoal(state.onboarding)) hud.showGoal(GOAL); else hud.hideGoal();
+}
+
+// Rank-up milestone (#169, epic #168 "The Rise"): the felt "you rose" beat. Watches the ledger for a
+// FORWARD rung crossing on either pole and, the first time you climb into a new rank, fires a title
+// card naming it (dread on the pirate road, respect on the governor road) + a triumphant sting — so
+// the rise finally has a heartbeat instead of two silent numbers. SAVE-FREE (stays v17): the guard is
+// a TRANSIENT in-session "highest rung seen" baseline, seeded silently on the first observed frame
+// from the already-persisted rep — so a captain who loads in at a high rank never re-announces, and a
+// rung dropped after a defeat (#164) then re-climbed never re-announces (highest-seen, not current).
+// Detection + copy are pure (systems/rank-milestone.js); at the very top rung of a COMMITTED pole the
+// legend crown (#46) is the far grander beat, so we defer to it (a neutral top still cards).
+let rankHighest; // undefined until the first frame adopts the baseline
+function checkRankUp() {
+  const infamy = state.infamy ?? 0, standing = state.standing ?? 0;
+  if (rankHighest === undefined) { rankHighest = titleFor(infamy, standing).index; return; } // silent seed
+  const m = detectRankUp(rankHighest, infamy, standing);
+  if (!m) return;
+  rankHighest = m.index; // record the summit so it never re-announces
+  if (m.index === TOP_RANK && (m.pole === 'pirate' || m.pole === 'governor')) return; // legend crown owns it
+  hud.showRankUp(m);
+  try { audio.playDuelHit('win'); } catch { /* a sting must never break the loop */ }
 }
 
 let simT = 0;
@@ -2667,6 +2695,15 @@ window.__tidewake = {
   // The last "Colours Struck" defeat card's named cost (or null) — so the headless gate can assert a
   // lost fight surfaced a card that NAMES the fame + coin it deducted (#164).
   get defeatCard() { return hud.defeatCard(); },
+  // The last rank-up milestone card (#169) + a monotonic fire-count, so the headless gate can assert a
+  // rung crossing fired ONE card with the right pole title, a non-crossing was silent, and a rung
+  // dropped then re-climbed did NOT re-announce. Read-only view of the pure "highest rung seen" guard.
+  get rankUp() { return hud.rankUpCard(); },
+  get rankHighest() { return rankHighest; },
+  // QA-only (#169): drop the in-session "highest rung seen" baseline so the next frame re-seeds it
+  // from the CURRENT ledger — lets a headless test pin a known starting rung after other blocks have
+  // moved the ledger. Same effect a fresh voyage has; never used in play.
+  qaResetRankBaseline() { rankHighest = undefined; return true; },
   get loadout() { return (state.loadout || []).slice(); },
   get ammoCatalogue() { return AMMO_TYPES.map((id) => ({ id, ...AMMO[id] })); },
   fitAmmoType(id) { state.loadout = fitAmmo(state.loadout, id); town.render(); return state.loadout.slice(); },
