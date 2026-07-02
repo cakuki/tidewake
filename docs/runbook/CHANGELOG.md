@@ -4,6 +4,14 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #68 Coastal seagulls: the coast comes ALIVE — gull cries swell near land, silent at sea
+  (Loop 139, v0.0.20260702091911; #68 CLOSED — both audio + visual-flock slices met).** The gull SFX
+  already existed but cried flat everywhere; now it's a COASTAL presence — cries swell as your bow turns
+  toward a port (peak gain ~1.23 at the shore) and fade to silence at open sea (gain ~0; below a floor no
+  oscillators are built, so the sea is truly quiet + free). Driven off the SAME nearest-island shoreline
+  distance the #97 flock roosts over, so the wheeling gulls and their cries read together near land. PURE
+  AudioContext-free curve (`coastProximity`→`gullCoastGain`/`gullCoastDelay`, TDD'd) in `src/audio.js`;
+  `src/fauna.js` exposes `coastDist`; `main.js` feeds it to `audio.update()`. Ambient, 0 draws, save v18.
 - **2026-07-02 — #101 Loose town props: the quay feels LIVED-IN — glowing lanterns + market stalls
   (Loop 138, v0.0.20260702090316; props phase 3, #101 stays OPEN for more prop kinds).** Make landfall
   and the port has warm **lanterns glowing** down the jetty and a little cluster of market **stalls** at

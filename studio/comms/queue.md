@@ -797,7 +797,16 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
    **tap-picking** a curio (new raycaster in `input.js`), a "seen" set across sessions, + **#113**
    bow-spray flourish + **#114** sea-colour variation / current streaks. **#70 stays OPEN deliberately**
    as the home of the "1–2 sea-delight beats per loop" rule — do NOT close it. P2 from-owner.
-9. **#68 — seagulls: louder calls near the coast** (SFX exists) + tie to the #97 visual flock. P2 from-owner.
+9. ~~**#68 — seagulls: louder calls near the coast** (SFX exists) + tie to the #97 visual flock. P2 from-owner.~~
+   **✅ SHIPPED (Loop 139, v0.0.20260702091911 — #68 CLOSED).** The gull SFX already existed but cried at a
+   flat volume everywhere; now gulls are a COASTAL presence — cries SWELL as you near a coast/port (peak
+   gain ~1.23 at the shore) and fall SILENT at open sea (gain ~0, no oscillators built below a floor →
+   free + quiet). Driven off the SAME nearest-island shoreline distance the #97 flock roosts over, so the
+   wheeling gulls + their cries read together near land — both acceptance slices met (S1 audio swell/fade,
+   S2 visual flock wheels over islands via #97/#110). PURE AudioContext-free curve `coastProximity` →
+   `gullCoastGain`/`gullCoastDelay` in `src/audio.js` (TDD'd); `src/fauna.js` exposes `coastDist`;
+   `main.js` feeds it to `audio.update()` each frame. Ambient only, no mechanics, no draws, save stays v18.
+   **Remains:** nothing for this slice — a nicer canvas-sprite gull silhouette is a #97 art follow-up, not #68.
 
 ## #94 remaining phases (P1 OPEN — but phase-1 headline acceptance is MET; not top-of-queue)
 
