@@ -611,6 +611,54 @@ try {
     if (process.exitCode !== 1) console.log(`  ✓ non-occluding battle UI (#161 slice 2): fight prompts docked clear of the centre (shown: ${battleUI.shownPanels.join(',')}) — the ship stays visible on desktop + phone`);
   }
 
+  // 2b3-hud) CLEANER PERSISTENT STATUS HUD (#21): THE RISE (#168) piled coins, rank/title, the ⚔/⚖
+  // reputation ledger and the legend crown onto the corner HUD until it read as one scattered run of
+  // text. It now groups into two legible clusters (SAILING + CAPTAIN, mirroring the pure
+  // src/ui/hud-status.js model). The FUN beat to prove: a glance tells you who you are + what you have.
+  // Assert on DESKTOP + a phone-portrait viewport that the read-out (a) splits into both groups, (b)
+  // keeps every RISE field (coins, ⚔ Infamy, ⚖ Standing, rank/title, the needle + the crown element),
+  // (c) FITS the viewport (no overflow/clipping — the #146 guard), and (d) stays anchored in the
+  // top-left corner clear of the mid-screen framed hull (the corner's non-occlusion contract — the
+  // #161-s2 centre safe-zone governs the battle MODALS, still asserted by battleUICentreClear above; a
+  // readable corner HUD can't clear that wide band on a phone). Then engage a fight and assert the
+  // corner cluster does NOT overlap the battle-transient stack (this slice must not disturb it).
+  {
+    // Seed a full RISE ledger so rank/title + both poles are non-trivially painted (worst case for width).
+    await page.evaluate(() => { const tw = window.__tidewake; tw.qaSetLedger({ coins: 12345, infamy: 480, standing: 260 }); tw.step(0.05); });
+    const deskHud = await page.evaluate(() => window.__tidewake.hudStatusLegible());
+    if (!deskHud.grouped) fail(`cleaner status HUD (#21): the corner HUD did not split into both legible groups on desktop (groups: ${JSON.stringify(deskHud.groups)})`);
+    if (!deskHud.fieldsPresent) fail(`cleaner status HUD (#21): a RISE read-out was DROPPED in the consolidation — missing: ${deskHud.missing.join(',')}`);
+    if (!deskHud.fits) fail(`cleaner status HUD (#21): the corner HUD overflows the desktop viewport (hud ${JSON.stringify(deskHud.hud)} vs ${JSON.stringify(deskHud.viewport)})`);
+    if (!deskHud.clear) fail(`cleaner status HUD (#21): the corner HUD dropped out of the top-left corner into the ship-framing band on desktop (hud ${JSON.stringify(deskHud.hud)})`);
+    // Phone portrait (#146): the whole cluster must still fit + group + stay clear on a small screen.
+    await page.setViewport({ width: 400, height: 860 });
+    const phoneHud = await page.evaluate(() => { window.__tidewake.step(0.05); return window.__tidewake.hudStatusLegible(); });
+    if (!phoneHud.grouped) fail('cleaner status HUD (#21): the corner HUD lost its grouping on a phone-portrait viewport');
+    if (!phoneHud.fieldsPresent) fail(`cleaner status HUD (#21): a RISE read-out is missing on phone — missing: ${phoneHud.missing.join(',')}`);
+    if (!phoneHud.fits) fail(`cleaner status HUD (#21): the corner HUD overflows / clips on a phone-portrait viewport (hud ${JSON.stringify(phoneHud.hud)} vs ${JSON.stringify(phoneHud.viewport)}) — the #146 guard`);
+    if (!phoneHud.clear) fail(`cleaner status HUD (#21): the corner HUD dropped into the ship-framing band on a phone-portrait viewport (hud ${JSON.stringify(phoneHud.hud)})`);
+    await page.setViewport({ width: 1280, height: 800 });
+    // No-overlap with the battle-transient stack: engage the nearest foe, confirm a battle panel is
+    // shown, then assert the corner HUD doesn't cover any of it (it lives top-left; the fight docks low).
+    const hudBattle = await page.evaluate(() => {
+      const tw = window.__tidewake;
+      let bi = -1, bd = Infinity; const s = tw.state.pos;
+      for (let i = 0; i < tw.npcs.length; i++) { const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]); if (d < bd) { bd = d; bi = i; } }
+      if (bi === -1) return { engaged: false };
+      const fp = tw.npcs[bi].pos; tw.qaTeleport(fp[0], fp[1] - 120); tw.step(0.05);
+      if (!tw.engageBattle()) return { engaged: false };
+      tw.step(0.1);
+      const r = tw.hudStatusLegible();
+      return { engaged: true, battleShown: r.battleShown, overlap: r.battleOverlap };
+    });
+    if (hudBattle.engaged) {
+      if (!(hudBattle.battleShown.length > 0)) fail('cleaner status HUD (#21): no battle-transient panel showed — cannot verify the corner HUD stays clear of it');
+      if (hudBattle.overlap.length) fail(`cleaner status HUD (#21): the corner HUD OVERLAPS the battle-transient UI (offenders: ${hudBattle.overlap.join(',')}) — it must not disturb the docked fight stack`);
+      await page.evaluate(() => { window.__tidewake.fleeBattle(); window.__tidewake.step(0.05); });
+    }
+    if (process.exitCode !== 1) console.log(`  ✓ cleaner status HUD (#21): grouped into SAILING + CAPTAIN, every RISE field kept (coins/⚔/⚖/rank/needle/crown), fits desktop + phone-portrait, anchored top-left clear of the framed hull${hudBattle.engaged ? `, no overlap with the fight stack (${hudBattle.battleShown.join(',')})` : ''} — status reads at a glance`);
+  }
+
   // 2b3-lock) TARGET LOCK (#161 slice 3): the owner's complaint — "while moving other ships are all
   // around: I don't know which one I am fighting with!" The engaged foe now carries a world-anchored
   // target RING (a projected DOM billboard, 0 draws) and the non-combatant traffic RECEDES (material

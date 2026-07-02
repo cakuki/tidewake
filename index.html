@@ -165,6 +165,17 @@
       border-radius: 8px; padding: 8px 12px; backdrop-filter: blur(3px);
     }
     #hud b { color: #ffd98a; }
+    /* Grouped status HUD (#21): two legible clusters, SAILING then CAPTAIN, split by a hairline so the
+       eye reads "how I'm moving" apart from "who I am / what I have". A tiny uppercase caption names
+       each group; values align in a column so numbers land at the same x on desktop AND phone. */
+    #hud .hud-group + .hud-group { margin-top: 9px; padding-top: 8px; border-top: 1px solid rgba(120,180,230,.2); }
+    #hud .hud-cap { font-size: 9.5px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+      color: #8fb4d6; opacity: .8; margin-bottom: 2px; }
+    #hud .hud-row { display: flex; align-items: baseline; gap: 6px; }
+    #hud .hud-row .hud-k { flex: 0 0 auto; min-width: 62px; color: #a8c6e0; opacity: .82; }
+    #hud .hud-sep { opacity: .4; }
+    /* Phone portrait (#146): trim the label column so the grouped rows never crowd a small screen. */
+    @media (max-width: 560px) { #hud .hud-row .hud-k { min-width: 54px; } #hud { font-size: 12.5px; } }
     #ledger #rank { color: #ffcf6e; }
     #ledger #infamy { color: #ff9a8a; }
     #ledger #standing { color: #87e0a4; }
@@ -996,40 +1007,50 @@
   <div id="juice-flash" aria-hidden="true"></div>
   <div id="title">⚓ T I D E W A K E</div>
   <div id="hud">
-    <div>Heading <b><span id="heading">0</span>°</b></div>
-    <div>Speed <b><span id="speed">0.0</span></b> kn</div>
-    <div>Wind <b><span id="wind">—</span></b></div>
-    <div>Coins <b><span id="coins">100</span></b> · Hold <b><span id="cargo">0/12</span></b></div>
-    <div id="ledger" title="⚔ Infamy (pirate path) · ⚖ Standing (governor path)">⚔ <b><span id="infamy">0</span></b> · ⚖ <b><span id="standing">0</span></b> · <b><span id="rank">Bilge-rat</span></b><span id="rankprog"></span></div>
-    <!-- Reputation needle (#132): the gauge swings toward your pole — ⚖ Standing (left) ↔ ⚔ Infamy
-         (right) — and strikes on every felt shift. The pointer pivots about (32,30). -->
-    <div id="repneedle" class="lean-neutral" role="img" aria-label="Reputation needle — leaning between Standing and Infamy" title="Your legend's lean — ⚖ respected ↔ ⚔ feared">
-      <span class="rn-pole rn-gov">⚖</span>
-      <svg viewBox="0 0 64 36" width="72" height="40" aria-hidden="true">
-        <path class="rn-arc" d="M 8 30 A 24 24 0 0 1 56 30" fill="none" />
-        <line class="rn-tick" x1="32" y1="30" x2="32" y2="9" />
-        <g id="repneedle-pointer" transform="rotate(0 32 30)">
-          <line class="rn-pointer" x1="32" y1="30" x2="32" y2="8" />
-          <circle class="rn-hub" cx="32" cy="30" r="3" />
-        </g>
-      </svg>
-      <span class="rn-pole rn-pir">⚔</span>
+    <!-- Persistent status HUD (#21): grouped into two legible clusters so THE RISE (#168) reads at a
+         glance — SAILING (how you're moving) above, CAPTAIN (who you are / what you have) below. Each
+         value aligns in a column and every read-out keeps its span id; the grouping is mirrored by the
+         pure src/ui/hud-status.js model the QA gate asserts against so DOM + gate never drift. -->
+    <div class="hud-group hud-sail">
+      <div class="hud-cap">Sailing</div>
+      <div class="hud-row"><span class="hud-k">Heading</span><b><span id="heading">0</span>°</b></div>
+      <div class="hud-row"><span class="hud-k">Speed</span><b><span id="speed">0.0</span></b> kn</div>
+      <div class="hud-row"><span class="hud-k">Wind</span><b><span id="wind">—</span></b></div>
+      <div id="windrose">
+        <svg width="48" height="48" viewBox="0 0 48 48" aria-label="Wind relative to ship">
+          <circle cx="24" cy="24" r="20" fill="rgba(7,22,38,.35)" stroke="rgba(120,180,230,.45)" stroke-width="1.5" />
+          <!-- bow marker: the ship always points up in this ship-relative dial -->
+          <path d="M24 1.5 l4.5 7.5 l-9 0 z" fill="#ffd98a" />
+          <!-- wind-flow arrow: rotates as you steer; points the way the wind pushes -->
+          <g id="windarrow">
+            <line x1="24" y1="38" x2="24" y2="13" stroke="#7fc4ff" stroke-width="2.5" stroke-linecap="round" />
+            <path d="M24 8 l5 8 l-10 0 z" fill="#7fc4ff" />
+          </g>
+          <circle cx="24" cy="24" r="2.4" fill="#cfe8ff" />
+        </svg>
+        <span id="pos" class="pos-good">—</span>
+      </div>
     </div>
-    <div id="repneedle-ack" role="status" aria-live="polite"></div>
-    <div id="legend-badge" role="status"></div>
-    <div id="windrose">
-      <svg width="48" height="48" viewBox="0 0 48 48" aria-label="Wind relative to ship">
-        <circle cx="24" cy="24" r="20" fill="rgba(7,22,38,.35)" stroke="rgba(120,180,230,.45)" stroke-width="1.5" />
-        <!-- bow marker: the ship always points up in this ship-relative dial -->
-        <path d="M24 1.5 l4.5 7.5 l-9 0 z" fill="#ffd98a" />
-        <!-- wind-flow arrow: rotates as you steer; points the way the wind pushes -->
-        <g id="windarrow">
-          <line x1="24" y1="38" x2="24" y2="13" stroke="#7fc4ff" stroke-width="2.5" stroke-linecap="round" />
-          <path d="M24 8 l5 8 l-10 0 z" fill="#7fc4ff" />
-        </g>
-        <circle cx="24" cy="24" r="2.4" fill="#cfe8ff" />
-      </svg>
-      <span id="pos" class="pos-good">—</span>
+    <div class="hud-group hud-status">
+      <div class="hud-cap">Captain</div>
+      <div class="hud-row"><span class="hud-k">Coins</span><b><span id="coins">100</span></b> <span class="hud-sep">·</span> Hold <b><span id="cargo">0/12</span></b></div>
+      <div id="ledger" title="⚔ Infamy (pirate path) · ⚖ Standing (governor path)">⚔ <b><span id="infamy">0</span></b> · ⚖ <b><span id="standing">0</span></b> · <b><span id="rank">Bilge-rat</span></b><span id="rankprog"></span></div>
+      <!-- Reputation needle (#132): the gauge swings toward your pole — ⚖ Standing (left) ↔ ⚔ Infamy
+           (right) — and strikes on every felt shift. The pointer pivots about (32,30). -->
+      <div id="repneedle" class="lean-neutral" role="img" aria-label="Reputation needle — leaning between Standing and Infamy" title="Your legend's lean — ⚖ respected ↔ ⚔ feared">
+        <span class="rn-pole rn-gov">⚖</span>
+        <svg viewBox="0 0 64 36" width="72" height="40" aria-hidden="true">
+          <path class="rn-arc" d="M 8 30 A 24 24 0 0 1 56 30" fill="none" />
+          <line class="rn-tick" x1="32" y1="30" x2="32" y2="9" />
+          <g id="repneedle-pointer" transform="rotate(0 32 30)">
+            <line class="rn-pointer" x1="32" y1="30" x2="32" y2="8" />
+            <circle class="rn-hub" cx="32" cy="30" r="3" />
+          </g>
+        </svg>
+        <span class="rn-pole rn-pir">⚔</span>
+      </div>
+      <div id="repneedle-ack" role="status" aria-live="polite"></div>
+      <div id="legend-badge" role="status"></div>
     </div>
   </div>
   <div id="trade" aria-live="polite"></div>

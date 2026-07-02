@@ -49,7 +49,8 @@ import { shouldEnterTown, harbourAssistActive, nextLeftHarbour, seawardHeading }
 import { createLandfall, mooredSwellScale } from './systems/landfall.js';
 import { createSystemsRegistry } from './systems/registry.js';
 import { interactionsSuppressed, ambientInteractionsAllowed } from './systems/battle-isolation.js';
-import { centreSafeZone, clearsCentre } from './ui/safe-zone.js';
+import { centreSafeZone, clearsCentre, rectsOverlap } from './ui/safe-zone.js';
+import { HUD_FIELDS, fitsViewport, anchoredTopLeft } from './ui/hud-status.js';
 import { createOverShipBillboard, projectToScreen } from './ui/over-ship-billboard.js';
 import { raidPhaseModel } from './ui/raid-phases.js';
 import { threatLabelFor, selectLabels, maxLabelsForViewport } from './systems/threat-label.js';
@@ -3324,6 +3325,53 @@ window.__tidewake = {
       return { id, shown, rect, clear: !shown || clearsCentre(rect, w, h) };
     });
     return { clear: panels.every((p) => p.clear), zone: centreSafeZone(w, h), panels, viewport: { w, h } };
+  },
+  // Persistent status HUD gate (#21): can you read WHO YOU ARE and WHAT YOU HAVE at a glance? Reads the
+  // live corner-HUD DOM and reports: it splits into the two legible GROUPS (Sailing + Captain, mirroring
+  // the pure src/ui/hud-status.js model), every RISE read-out (coins, ⚔ Infamy, ⚖ Standing, rank/title
+  // + the reputation needle + the legend crown) is still present, the whole cluster FITS the viewport
+  // (no overflow/clipping — the #146 phone guard), it clears the battle-camera safe-zone (#161 s2), and
+  // it does NOT overlap any shown battle-transient panel. One source of truth for "is the HUD legible?".
+  hudStatusLegible() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const $hud = document.getElementById('hud');
+    const rectOf = (el) => {
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+    };
+    const hud = rectOf($hud);
+    const groups = ['sail', 'status'].map((id) => {
+      const el = $hud && $hud.querySelector('.hud-' + id);
+      const r = rectOf(el);
+      const area = r ? (r.right - r.left) * (r.bottom - r.top) : 0;
+      return { id, present: !!el, area };
+    });
+    const fields = {};
+    for (const id of HUD_FIELDS) fields[id] = !!document.getElementById(id);
+    // The RISE crown + needle are presentational (not text spans) — assert their elements exist too.
+    for (const id of ['repneedle', 'legend-badge']) fields[id] = !!document.getElementById(id);
+    const battleIds = ['battle', 'cannons', 'duel', 'encounter', 'raid-phases', 'key-prompts'];
+    const battle = battleIds.map((id) => {
+      const el = document.getElementById(id);
+      const shown = !!el && el.classList.contains('show');
+      return { id, shown, rect: shown ? rectOf(el) : null };
+    });
+    const overlap = battle.filter((b) => b.shown && b.rect && hud && rectsOverlap(hud, b.rect)).map((b) => b.id);
+    return {
+      viewport: { w, h }, hud, groups, fields,
+      grouped: groups.every((g) => g.present && g.area > 0),
+      fieldsPresent: Object.values(fields).every(Boolean),
+      missing: Object.keys(fields).filter((k) => !fields[k]),
+      fits: fitsViewport(hud, w, h, 2),
+      // Non-occlusion for a persistent CORNER cluster: anchored top-left + confined to the upper half,
+      // so it never covers the mid-screen framed hull. (The #161-s2 centre safe-zone governs the battle
+      // MODALS, asserted by battleUICentreClear; a readable corner HUD can't clear that wide band on a
+      // phone, so anchoredTopLeft — see src/ui/hud-status.js — is the right rule for the corner.)
+      clear: anchoredTopLeft(hud, w, h),
+      battleShown: battle.filter((b) => b.shown).map((b) => b.id),
+      battleOverlap: overlap,
+    };
   },
   // Re-project the foe's target marker against the CURRENT camera without stepping the sim — so a
   // gallery capture can swing to a wide framing (qaFrameShip) and still have the ring aligned (#161 s3).
