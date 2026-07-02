@@ -44,11 +44,17 @@ brief [`docs/briefs/2026-07-02-next-fun-frontier.md`](https://github.com/cakuki/
 Six original, vision-aligned, FUN-FIRST slices, sequenced value·complexity·deps; **only #170 bumps the save
 (v17→v18, and its schema reserves #171's ship-class field so the lane bumps ONCE — #122 rule).**_
 
-- **#169 — Rank-up milestone: the felt "you rose" (S · no save bump). BUILD FIRST.** Crossing a `renown.js`
-  rank fires a title card + level-up sting — every deed you already do now pays into a visible climb.
-  _FUN: SEE the title name your new rank, HEAR the sting, FEEL the rise get a heartbeat._ Derived from
-  persisted infamy/standing (seed baseline on load, announce forward crossings only) → stays v17. Relates #136.
-- **#170 — Buy a cannon at the Gunner's Workshop: SEE it on your deck (M · SAVE v17→v18).** The owner's
+- ✅ **#169 — Rank-up milestone: the felt "you rose" — SHIPPED (Loop 126, v0.0.20260702033359, #169 CLOSED).**
+  Crossing into a new `renown.js` rung now announces itself: a title card naming the new rank with
+  pole-appropriate tone (dread — "You are now feared as a **Corsair**"; respect — "The council names you
+  **Magistrate**") + a triumphant sting, so the rise finally has a heartbeat. New PURE core
+  `src/systems/rank-milestone.js` (pole-aware copy + forward-crossing detector + a "highest rung seen"
+  once-only guard) reading the EXISTING ladder — no new economy. **SAVE-FREE (stays v17):** the guard is a
+  TRANSIENT in-session baseline seeded from the already-persisted rep on load, so a high-rank load never
+  re-announces and a rung dropped after a defeat (#164) then re-climbed never re-fires. SEE the title · HEAR
+  the sting (`playDuelHit('win')`) · FEEL the climb; DOM card + audio = 0 draws. Playtest asserts
+  crossing→fires-once, non-crossing→silent, drop-then-re-climb→no re-fire. Gallery `rankup-milestone-169.png`.
+- **#170 — Buy a cannon at the Gunner's Workshop: SEE it on your deck (M · SAVE v17→v18). BUILD NEXT.** The owner's
   canonical broken-arrow fix — persistent gun upgrade: extra cannon mesh on your deck + heavier boom + more
   broadside damage. _FUN: SEE the new gun, HEAR the heavier boom, FEEL enemies sink faster._ **v18 must
   migrate all prior + frozen corpus AND reserve the ship-class field for #170.** Delivers #141 core.
@@ -76,9 +82,10 @@ regardless (slices don't depend on this).
 player's. Recommend shipping the class-scaled *visible* change now (no new art) and queuing the CC0
 ship-class set as a parallel art follow-up — not a blocker.
 
-**Sequencing note:** #169–#171 are 3 unblocked, non-owner-decision READY slices (+#172/#173/#174) → the loop
-stays in DELIVERY; the two [OWNER-DECISION]s above are questions to surface, NOT build blockers and NOT
-counted toward the low-water-mark. Build #169 first (highest leverage-per-cost, frames the lane, no bump).
+**Sequencing note:** #169 SHIPPED (Loop 126). #170–#171 + #172/#173/#174 remain unblocked, non-owner-decision
+READY slices → the loop stays in DELIVERY; the two [OWNER-DECISION]s above are questions to surface, NOT build
+blockers and NOT counted toward the low-water-mark. **Build #170 next** — the owner's canonical broken-arrow
+fix (buy a cannon → see it on the deck) and the lane's ONLY save bump (v17→v18, reserving #171's ship-class field).
 
 ---
 

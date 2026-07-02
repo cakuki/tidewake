@@ -4,6 +4,22 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #169 Rank-up milestone shipped — the felt "you rose" beat (Loop 126,
+  v0.0.20260702033359).** Epic **#168 "The Rise"** slice 1/6. Crossing into a new `renown.js` rung now
+  ANNOUNCES itself: a title card naming the new rank with pole-appropriate tone — dread on the pirate road
+  ("You are now feared as a **Corsair**"), respect on the governor road ("The council names you
+  **Magistrate**") — plus a triumphant sting (`playDuelHit('win')`), so the rise finally has a heartbeat
+  instead of two silent numbers. New PURE core `src/systems/rank-milestone.js` (pole-aware copy +
+  forward-crossing detector + a **"highest rung seen"** once-only guard) reads the EXISTING ladder — invents
+  no new economy. **SAVE-FREE (stays v17):** the guard is a TRANSIENT in-session baseline seeded from the
+  already-persisted rep on load, so a captain who loads in at a high rank never re-announces, and a rung
+  dropped after a defeat (#164) then re-climbed never re-fires. The fragile inline detection was lifted out
+  of `hud.renderLedger`; `main.js` drives it as a system after onboarding so the richer named card wins the
+  shared toast on the first crossing, and defers to the legend crown (#46) at the very top rung of a
+  committed pole. SEE the title · HEAR the sting · FEEL the climb; DOM card + audio = **0 draws**. 19 new
+  pure unit tests; playtest asserts crossing→fires-once, non-crossing→silent, drop-then-re-climb→no re-fire;
+  perf 29/130 draws. Gallery `studio/qa/gallery/rankup-milestone-169.png`. #169 CLOSED; epic #168 stays OPEN
+  (#170 the cannon-buy is next — the lane's only save bump).
 - **2026-07-02 — #70 slice 1 Ocean sail-over curios shipped — a sea-delight beat (Loop 125,
   v0.0.20260702025543).** The empty sea now rewards attention: while under way a small curio drifts in
   ahead of the bow — a corked **BOTTLE** bobbing in the swell or a sea **TURTLE** breaking the surface —
