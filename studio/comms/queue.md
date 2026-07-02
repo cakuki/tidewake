@@ -770,8 +770,16 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
 5. ~~**#110 — Living fauna phase 2: jumping dolphins**~~ **SHIPPED + CLOSED Loop 75 (v0.0.20260628094945)** — instanced pod arcs alongside the moving ship, deterministic + distance-culled, ≤1 extra draw. _#97 stays OPEN for phase 3 (other animals)._
 6. **#101 — props phase 3: loose props** (lanterns/market stalls **feed the town mode** #96/#103).
    P2 from-owner. _(island dressing shipped via #71; texture-embed + extra variety PARKED.)_
-7. **#129 — Per-town music, richer** (distinct melodies/instrument sets + a dedicated docked cue +
-   live tempo — the #69 full follow-up). P3 audio.
+7. **#129 — Per-town music, richer** (the #69 full follow-up). P3 audio. _**DOCKED-CUE SLICE SHIPPED
+   (Loop 136, v0.0.20260702081147):** making landfall now rings a dedicated per-town **docked cue** —
+   voiced in the town's own key/mode with a per-town motif **shape** (rise/peal/call/lilt) + its
+   **timbre** (leadType), distinct from the approach swell and every other harbour, so arriving sounds
+   like arriving somewhere with character. PURE `townDockedCue()` + `TOWN_CUE_SHAPES` in `town-theme.js`;
+   `music.js` `voiceStinger`/`stinger()` voice + latch it (bar-quantised, no percussive bed, no
+   `loadTrack`); no save change (v18)._ **Remains (#129 stays OPEN):** distinct per-town **melodies for
+   the drone/bed itself** (not just the docked flourish), fuller **instrument sets** beyond the lowpass
+   tint + leadType (accordion vs fiddle vs fife lead colour), and **live tempo per town** (deferred —
+   needs a scheduler that can re-time without a click).
 8. **#70 [STANDING-RULE] — ocean sail-over curios.** _**SLICE 1 SHIPPED (Loop 125, v0.0.20260702025543):**
    a BOTTLE + a TURTLE drift in ahead of the bow while under way; sailing over one plays a soft cue + a
    wry line (anti-repeat pool, never twice in a row). Deterministic + distance-culled + one reused mesh

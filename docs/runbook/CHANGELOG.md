@@ -4,6 +4,22 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #129 Each harbour greets you with its own docked flourish (Loop 136,
+  v0.0.20260702081147; the #69 per-town-music follow-up; #129 stays OPEN for the deeper follow-ups).**
+  Deepen the shipped #69 per-town identity (a re-voiced drone) into a felt AUDIBLE beat: making landfall
+  now rings a dedicated **DOCKED CUE** voiced in the town's own key/mode, with a per-town motif **shape**
+  (rise/peal/call/lilt) and its **timbre** (leadType) — so arriving at a port sounds like arriving
+  *somewhere with character*, distinct from the approach swell and from every other harbour. PURE
+  `townDockedCue()` + `TOWN_CUE_SHAPES` in `src/town-theme.js` (deterministic, junk-safe — the town chord
+  an octave up, ordered by a seed-picked motif); `src/music.js` `voiceStinger` voices the current town's
+  cue and `stinger()` latches the docked port's cue at landfall (no percussive bed, no `loadTrack`);
+  still bar-quantised (fires on the next downbeat), `setTownTheme` glide unchanged. TDD'd first (town-theme
+  + music unit tests: determinism, distinctness, in-key, arm-on-landfall); playtest asserts distinct ports
+  → distinct cues and that landfall arms the docked port's own flourish, AudioContext-free. 1360 unit tests
+  + playtest green; perf 29/130 draws · 92,780/150k tris (audio = +0 draws). **NO save change — stays v18.**
+  Battle (#158) / mode-aware bed (#94/#109) / harmonic mood (#132) / #69 identity all untouched.
+  **Remains (#129 OPEN):** distinct per-town melodies for the *drone/bed* itself, fuller instrument sets
+  beyond leadType (accordion vs fiddle vs fife), live tempo per town (needs a re-timing scheduler).
 - **2026-07-02 — #70 A drifting spar — the sea carries the wreckage of your wins (Loop 135,
   v0.0.20260702075438; post-RISE polish lane slice 4/4 — the lane is now COMPLETE; #70 stays OPEN
   [STANDING-RULE]).** A third open-sea curio in the shipped bottle/turtle idiom (`src/curios.js` +
