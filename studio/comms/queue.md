@@ -27,6 +27,61 @@ when its latest slice shipped.
 
 ---
 
+## 🧭 TOP OF QUEUE — PRODUCT REFILL (2026-07-02) — **THE RISE** (epic #168) — BUILD IN ORDER
+
+_**UPDATE 2026-07-02 — PRODUCT cycle at an inflection point (roadmap change, report-worthy).** Battle is now
+rich/varied/fair/juicy (#161 + #162/#163–167 + #158/#159/#80/#70 all shipped tonight). Per
+`docs/design/what-makes-it-fun.md` the fun loop is action→feedback→**progression**→mastery — the
+action→feedback arrow is now strong, and this cycle finds the honest gap: **progression is the broken
+arrow.** Verified against the source: (a) **no ship upgrades exist** — the player's a fixed 4-cannon sloop,
+the sloop→man-o'-war class system is NPC-only, and the owner's canonical "buy a cannon → see it on the deck"
+fantasy is ABSENT; (b) **rank-ups don't announce** (8 ranks exist in `renown.js`, nothing celebrates them);
+(c) **the world never flees/surrenders a feared captain**; (d) **no "one more voyage" goal.** Frontier =
+**THE RISE**: make spoils visibly grow your ship+power, mark the climb, make the world escalate, give a goal.
+**Inspiration:** WebSearch (Rogue Waters / Rise of Piracy / SoT critiques — the one-more-voyage hook lives in
+*visible persistent upgrades* + *word-of-mouth dread*) + the vision's own core loops #4/#5. Epic **#168** +
+brief [`docs/briefs/2026-07-02-next-fun-frontier.md`](https://github.com/cakuki/tidewake/blob/main/docs/briefs/2026-07-02-next-fun-frontier.md).
+Six original, vision-aligned, FUN-FIRST slices, sequenced value·complexity·deps; **only #170 bumps the save
+(v17→v18, and its schema reserves #171's ship-class field so the lane bumps ONCE — #122 rule).**_
+
+- **#169 — Rank-up milestone: the felt "you rose" (S · no save bump). BUILD FIRST.** Crossing a `renown.js`
+  rank fires a title card + level-up sting — every deed you already do now pays into a visible climb.
+  _FUN: SEE the title name your new rank, HEAR the sting, FEEL the rise get a heartbeat._ Derived from
+  persisted infamy/standing (seed baseline on load, announce forward crossings only) → stays v17. Relates #136.
+- **#170 — Buy a cannon at the Gunner's Workshop: SEE it on your deck (M · SAVE v17→v18).** The owner's
+  canonical broken-arrow fix — persistent gun upgrade: extra cannon mesh on your deck + heavier boom + more
+  broadside damage. _FUN: SEE the new gun, HEAR the heavier boom, FEEL enemies sink faster._ **v18 must
+  migrate all prior + frozen corpus AND reserve the ship-class field for #170.** Delivers #141 core.
+- **#171 — Buy a bigger ship: the hull visibly grows (M · rides #170's v18).** Give the PLAYER the existing
+  class system (#163); buy up sloop→brig→frigate. _FUN: SEE your ship dwarf the sloop you started in._
+  Exposes #144 (player-ship art) — class scale is a real visible change with no new art; CC0 set is a
+  parallel follow-up, not a blocker. Delivers #141 core.
+- **#172 — The world fears you: weak ships flee / strike early (M · no bump).** Infamy rank bends NPC
+  behaviour (bounded — only weak prey blinks; even/over-tier fights unchanged). _FUN: SEE a sloop run from
+  your notorious sails._ Derived from persisted renown; reuses strike-colours/`arenaHelm`. Relates #128/#136.
+- **#173 — The bounty board: a named target + scaled reward (M · reuses the persisted objective slot).** The
+  "one more voyage" hook; the reward feeds the upgrade loop. _FUN: SEE a bounty → chase → claim → spend on
+  your ship._ Prefer no bump (fail-open objective shape). Relates #128/#112/#127.
+- **#174 — Governor-pole symmetry: invest spoils to grow your port VISIBLY (S/M · no bump).** The Standing
+  road's equivalent of a bigger ship, so both paths feel complete. _FUN: SEE your port prosper as you invest._
+  Derived from persisted `harbour.level`; reuses #101 port props. Relates #118/#134.
+
+**[OWNER-DECISION] — Lane sequencing: THE RISE (fun frontier) vs. the previously-queued #145 `/preview/`
+release-ops lane.** The owner earlier named #145 as next, but that's release infra, not game FUN; the
+standing fun-first direction points to The Rise. **Recommend:** The Rise leads the fun lane; the cheap #145
+preview slice can ride alongside (non-competing ops). Surface over the owner channel; the lane is buildable
+regardless (slices don't depend on this).
+
+**[OWNER-DECISION] — Player-ship art (#144/#143).** #171 exposes that NPC ships look better than the
+player's. Recommend shipping the class-scaled *visible* change now (no new art) and queuing the CC0
+ship-class set as a parallel art follow-up — not a blocker.
+
+**Sequencing note:** #169–#171 are 3 unblocked, non-owner-decision READY slices (+#172/#173/#174) → the loop
+stays in DELIVERY; the two [OWNER-DECISION]s above are questions to surface, NOT build blockers and NOT
+counted toward the low-water-mark. Build #169 first (highest leverage-per-cost, frames the lane, no bump).
+
+---
+
 ## ✅ FROM-OWNER P1 — #161 Make Battle FUN — LANE COMPLETE (all 6 slices shipped, #161 CLOSED)
 The owner playtested battle (#135) and it's **NOT fun** (2026-07-01): occluding center popups cover the
 ship · no target lock among traffic · an **isolation BUG** (#125 rescue + `f`/`g` hails leak into the
