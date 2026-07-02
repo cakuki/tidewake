@@ -580,7 +580,19 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
     aims, fleeing chase, cannon audio, foe initiative). Much of it **feeds #100 battle** — revisit
     after the owner brief.
 14. **#80 — combat/harbour game-feel "juice" pass** (hit-stop, screenshake, camera punch; toggle-able).
-    Pairs with #102's landfall punch + any #100 battle.
+    _**PARTIAL, OPEN** (Loop 124, v0.0.20260702023718): the impact "juice" pass that makes a hit LAND._
+    **SHIPPED** — generalised the existing #155 broadside camera kick (same shake stack + 0-draw
+    cameraOffset, NOT a second effect) so **hit-landed** (your clean bite on her) + **hit-taken** (her
+    reply raking you) now ROCK the view scaled by the hull bite; added a bounded **HIT-STOP** (a
+    few-frame sim freeze on a solid strike, drains on real time → auto-resumes, can't stall the loop /
+    desync the world clock; deterministic `tw.step()` never freezes so #121 mesh-conservation stays
+    pristine) + a **SINK** punctuation. Toggle-able ("Combat feel", default ON) + prefers-reduced-motion
+    aware (off = fully playable, zero residual motion). No save change (v17). Pure curves TDD'd; playtest
+    §2b4c asserts event→shake/hit-stop, decay-to-zero, toggle-off suppression. Gallery
+    `combat-juice-80.png`. **REMAINS (deferred follow-ups):** a boarding-specific screenshake (boarding
+    already LUNGES via #155 but could add a shake on the rail-clash), a surrender/strike-colours beat,
+    a **harbour docking ease/settle** juice, and the pitched **time-dilation** on a kill. Pairs with
+    #102's landfall punch + any #100 battle.
 15. **#90 — Ballad richer composition** — _PARTIAL, OPEN (Loop 82 + 94 + 95 + 96): crew-morale verses +
     a dominant-pole closing couplet + 3-variant pools (Loop 82), a **"best of voyage" superlative line
     — richest haul + fiercest foe, named, deterministic, save-free** (Loop 94, v0.0.20260630230030),

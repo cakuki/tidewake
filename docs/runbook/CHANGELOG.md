@@ -4,6 +4,20 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #80 Combat game-feel "juice" pass shipped — make a hit LAND (Loop 124,
+  v0.0.20260702023718).** The fights are visible (#161 cannonballs) but floaty; this makes impact FELT.
+  **Generalises** the existing #155 broadside camera kick — the SAME shake stack + 0-draw `cameraOffset()`,
+  explicitly NOT a second camera effect — so a clean bite on HER and her reply raking YOU both now ROCK
+  the view scaled by the hull bite, adds a bounded **HIT-STOP** (a few-frame sim freeze on a solid strike)
+  and a **SINK** punctuation (a graze ≠ a full broadside ≠ a kill). Hit-stop is safe by construction: it
+  zeroes the sim `dt` for the real frames it lasts in `loop()` only and drains on real wall-clock time, so
+  it is bounded (~5 frames), auto-resumes, can never stall the loop or desync the world clock; the
+  deterministic `tw.step()` path never freezes, so the fixed sim / #121 mesh-conservation gate stays
+  pristine. Toggle-able ("Combat feel", default ON) + `prefers-reduced-motion` aware — off = fully
+  playable, zero residual motion. Pure curves TDD'd (`src/systems/juice.js`); playtest §2b4c asserts the
+  wiring end to end (event→shake/hit-stop, decay-to-zero, toggle-off suppression). No save change (v17).
+  1229 unit tests + playtest + gallery `combat-juice-80.png`. **#80 stays OPEN** — deferred: boarding
+  rail-clash shake, surrender beat, harbour docking ease/settle, kill time-dilation.
 - **2026-07-02 — #159 Diegetic age-of-sail keycap skin shipped — deep-reading batch #153–#159 DRAINED
   (Loop 123, v0.0.20260702021440).** The #153 contextual key-prompts are re-dressed as the world speaking:
   **ink-on-parchment verb ribbons carrying rope-bound brass keycaps**, not a modern debug overlay — the
