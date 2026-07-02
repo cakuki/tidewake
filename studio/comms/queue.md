@@ -167,8 +167,22 @@ Brief [`docs/briefs/2026-07-02-post-rise-polish.md`](https://github.com/cakuki/t
   (bounded [min,1], never 0), so it always auto-resumes and can never stall the loop / desync the sim clock; the
   deterministic `tw.step()` path never calls it (#121 pristine). Both fully suppressed by the "Combat feel" toggle +
   `prefers-reduced-motion`. Pure curves (`timeScale`/`settleEnvelope`) TDD'd; **NO save bump (v18).**
-  **Remains (why #80 stays OPEN):** the **harbour docking ease/settle** juice, the boarding rail-clash screenshake —
-  both still-deferred #80 follow-ups, not blockers. **#70 curio next.**
+  **Remains → NOW SHIPPED (Loop 149):** the **harbour docking ease/settle** juice + the **boarding rail-clash**
+  screenshake — the LAST two deferred #80 events, both delivered below. **#80 CLOSED.**
+
+- **✅ #80 — The LAST two game-feel beats: boarding rail-clash + harbour dock-settle — SHIPPED (Loop 149, v0.0.20260702132747). #80 CLOSED.**
+  The two remaining deferred #80 events, on the SAME `juice.js` machinery (the shake stack + the settle envelope),
+  NOT a new system: (1) a **BOARDING RAIL-CLASH** (#135/#89 board→brawl) — the crews meet at the rail and the deck
+  JOLTS: a sharp/short shake (snappier than a fire recoil) with a metallic **clash cue** (the existing `cut` sting,
+  reused); (2) a **HARBOUR DOCK-SETTLE** (#102 landfall) — making port breathes the camera OUT and eases you gently
+  alongside, a soft arrival on the settle envelope (gentler + slower than the surrender hush). Both camera-only (owe
+  NO sim freeze → `tw.step()`/#121 pristine), bounded, auto-resuming, and fully suppressed by the "Combat feel"
+  toggle + `prefers-reduced-motion`. Pure `railClashMag` + the clash-shake decay + the dock-settle ease envelope
+  TDD'd first; playtest drives the REAL wiring (a real boarding fires the clash · a real landfall fires the settle),
+  asserting each fires, rocks/eases the view, owes no stall, decays to zero, and is off when toggled. **NO save bump (v18).**
+  **Why #80 CLOSES:** every concretely-listed #80 juice event is now shipped (hit-stop · screenshake · camera punch ·
+  time-dilation kill · surrender hush · docking ease/settle · boarding clash). The game-feel pass is complete; any
+  further juice is new-slice territory, not an #80 tail.
 
 - **✅ #70 — One new sea curio: a DRIFTING SPAR — SHIPPED (this loop, v0.0.20260702075438). #70 STAYS OPEN [STANDING-RULE].**
   A third open-sea curio in the shipped bottle/turtle idiom (`src/curios.js` + `src/curio-math.js`): a snapped

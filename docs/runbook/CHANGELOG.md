@@ -4,6 +4,18 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #80 The LAST two game-feel beats: boarding rail-clash + harbour dock-settle (Loop 149,
+  v0.0.20260702132747; #80 CLOSED — the game-feel juice pass is complete).** The two remaining deferred #80
+  events, on the SAME juice.js machinery (the shake stack + the settle envelope), NOT a new system: (1) a
+  BOARDING RAIL-CLASH (#135/#89 board→brawl) — the crews meet at the rail and the deck JOLTS, a sharp/short
+  shake (snappier than a fire recoil) with a metallic clash cue (the existing 'cut' sting, reused); (2) a
+  HARBOUR DOCK-SETTLE (#102 landfall) — making port breathes the camera OUT and eases you gently alongside, a
+  soft arrival on the settle envelope, gentler+slower than the surrender hush. Both camera-only (owe no sim
+  freeze → tw.step()/#121 stay pristine), bounded, auto-resuming, and fully suppressed by prefers-reduced-motion
+  + the "Combat feel" toggle. PURE `railClashMag` + the clash-shake decay + the dock-settle ease envelope TDD'd
+  first; the playtest drives the REAL wiring (a real boarding fires the clash, a real landfall fires the settle)
+  asserting each fires, rocks/eases the view, owes no stall, decays to zero, and is off when toggled. NO save
+  bump (v18). **Completes the #80 game-feel pass (base · impact/hit-stop · climax kill+surrender · these two).**
 - **2026-07-02 — #179 Negative space: the held breath before the payoff (Loop 148,
   v0.0.20260702130306; the "one more voyage" lane slice 4/4 — LANE COMPLETE, #179 CLOSED; salvaged after a
   prior runner stalled on an API timeout post-module-write).** Reserve peak intensity so ALREADY-SHIPPED
