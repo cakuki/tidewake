@@ -36,6 +36,17 @@ export const MIN_HITSTOP = 0.03;   // the smallest freeze a SOLID hit earns (~2 
 export const HITSTOP_GRAZE = 0.22; // impacts below this normalised bite don't stop time (a graze ≠ a hit)
 export const IMPACT_SHAKE_FLOOR = 0.35; // a solid hit's minimum shake fraction (a felt hit is always felt)
 
+// #80 CLIMAX game-feel (the deferred events) — a NOTORIOUS kill and a SURRENDER each get their own beat,
+// built on the SAME machinery (the shake stack + the real-time hit-stop drain), NOT a new system. A
+// bounty-target kill drops the world into a brief beat of SLOW-MO (time-dilation) after the freeze; a
+// "she strikes her colours" surrender EASES the camera to a hush (a smooth settle, never a shake). The
+// slow-mo is bounded + auto-resuming EXACTLY like the base hit-stop — it can never stall the loop or
+// desync the sim clock (it drains on real wall-clock time inside consumeHitStop, the only place it falls).
+export const TIME_DILATION_SECONDS = 0.5; // a bounty kill's slow-mo window, in REAL seconds — bounded, auto-resumes
+export const TIME_DILATION_MIN = 0.3;     // slowest the sim runs in the beat (never 0 — the world still MOVES, dreamlike)
+export const SETTLE_SECONDS = 0.9;        // a surrender camera-settle: one slow smooth breath, not a jitter
+export const SETTLE_MAG = 2.0;            // how far the camera eases on a settle (world units; ceiling, not a target)
+
 // ---- PURE curves ------------------------------------------------------------
 
 /** Clamp helper (juice keeps its own — no shared dep). Pure. */
@@ -124,12 +135,39 @@ export function hitStopDuration(imp = 0) {
   return Math.min(MAX_HITSTOP, MIN_HITSTOP + (MAX_HITSTOP - MIN_HITSTOP) * f);
 }
 
+// ---- #80 CLIMAX curves — a notorious kill's slow-mo + a surrender's settle -------------------
+
+/**
+ * The sim TIME-SCALE during a bounty-kill SLOW-MO beat: `minScale` at elapsed 0 (the deepest slow-mo),
+ * easing UP to 1 by `duration` (and 1 past it) — the world drops into slow-mo, lingers, then snaps back
+ * to full speed. ALWAYS bounded to [minScale, 1] and NEVER 0 (the world always moves — a slow-mo, not a
+ * freeze), so it can never stall the loop. The t² shape holds the slow-mo low, then eases out. Pure.
+ */
+export function timeScale(elapsed, duration, minScale = TIME_DILATION_MIN) {
+  const m = clamp(minScale, 0, 1);
+  if (!(elapsed > 0)) return m;            // the opening of the beat = the deepest slow-mo
+  if (!(duration > 0) || elapsed >= duration) return 1; // spent (or a zero-length beat) = full speed
+  const t = elapsed / duration;
+  return m + (1 - m) * (t * t);            // linger low, then ease back up to full
+}
+
+/**
+ * A camera-SETTLE envelope in [0,1]: one smooth breath — 0 at the start, rising to 1 at the midpoint,
+ * easing back to 0 by `duration`. A hush, NOT a shake (no oscillation, never negative). sin(π·t). Pure.
+ */
+export function settleEnvelope(elapsed, duration) {
+  if (!(duration > 0) || !(elapsed >= 0) || elapsed >= duration) return 0;
+  return Math.sin(Math.PI * (elapsed / duration));
+}
+
 // ---- Controller (wired into main.js) ---------------------------------------
 //
 // Owns the transient effect state (SAVE-free — it's pure game-feel, never persisted). main.js
 // triggers off live combat: fire() on a discharged broadside, hit() on landed damage, board() on
-// a boarding; and #80's impact()/sink() to make a hit LAND (an impact-scaled screen-rock + a
-// bounded hit-stop). Each frame main.js reads cameraOffset() (a 0-draw camera nudge) + flashLevel()
+// a boarding; #80's impact()/sink() to make a hit LAND (an impact-scaled screen-rock + a bounded
+// hit-stop); and #80's CLIMAX events — bountyKill() on a notorious wanted-vessel kill (the full
+// freeze + a bounded beat of slow-mo) and cameraSettle() on a surrender ("she strikes her colours",
+// a smooth camera hush). Each frame main.js reads cameraOffset() (a 0-draw camera nudge) + flashLevel()
 // (a single DOM overlay's opacity), and consumeHitStop(realDt) ONCE per rAF frame to freeze the sim
 // for a few frames on a solid strike. A reduce-motion preference OR the runtime toggle (setEnabled)
 // makes every trigger a clean no-op with zero residual motion — fully playable with the juice off.
@@ -141,6 +179,9 @@ export function createJuice({ reducedMotion = false, enabled = true } = {}) {
   let lunge = null;   // { age, magnitude, duration }
   let flash = null;   // { age, peak, duration, tint }
   let hitStopLeft = 0; // #80: seconds of sim-freeze still owed; drained ONLY by consumeHitStop (real time)
+  let timeDilLeft = 0; // #80 CLIMAX: REAL seconds of slow-mo still owed; also drained ONLY by consumeHitStop
+  let timeDilDur = 0;  // the window the slow-mo was owed over (drives the ease-back curve)
+  let settle = null;   // #80 CLIMAX: { age, magnitude, duration } — the surrender camera hush (smooth, non-shake)
   const motionOff = !!reducedMotion; // hard accessibility off (from prefers-reduced-motion)
   let userOff = !enabled;            // runtime toggle off (the #73 settings switch)
   // Effective master switch: any trigger is a clean no-op while suppressed.
@@ -199,6 +240,31 @@ export function createJuice({ reducedMotion = false, enabled = true } = {}) {
   }
 
   /**
+   * #80 CLIMAX — a NOTORIOUS kill (a WANTED bounty vessel goes down): the strongest rock + the full
+   * (capped) hit-stop of a sink, THEN a bounded beat of SLOW-MO before the world snaps back — so the
+   * kill FEELS like a moment. The slow-mo is a stronger punctuation than an ordinary sink (which owes
+   * NO time-dilation). It drains on real wall-clock time in consumeHitStop (the ONLY place it falls),
+   * so it is bounded, always auto-resumes, and can never stall the loop or desync the world clock.
+   */
+  function bountyKill() {
+    if (suppressed()) return;
+    pushShake(impactShakeMag(1));
+    hitStopLeft = MAX_HITSTOP;             // the freeze first — the same punch a sink lands…
+    timeDilLeft = TIME_DILATION_SECONDS;   // …then the world drops into a beat of slow-mo
+    timeDilDur = TIME_DILATION_SECONDS;
+  }
+
+  /**
+   * #80 CLIMAX — a SURRENDER ("she strikes her colours"): a smooth camera SETTLE (a hush), NOT a shake
+   * — the guns fall quiet and the view eases. 0-draw, decays to nothing, owes NO sim freeze/slow-mo
+   * (camera-only), and is a clean no-op while suppressed. One settle at a time (a fresh strike re-settles).
+   */
+  function cameraSettle() {
+    if (suppressed()) return;
+    settle = { age: 0, magnitude: SETTLE_MAG, duration: SETTLE_SECONDS };
+  }
+
+  /**
    * #80 — consume this REAL frame's hit-stop. Called ONCE per rAF frame with the real wall-clock dt
    * BEFORE the sim step; returns the fraction of dt the sim should advance: 0 while a freeze is owed
    * (the world holds on a solid hit), 1 otherwise. The freeze DRAINS on real time HERE — the ONLY
@@ -206,15 +272,25 @@ export function createJuice({ reducedMotion = false, enabled = true } = {}) {
    * path never calls this, so the fixed sim / mesh-conservation gate (#121) is completely untouched.
    */
   function consumeHitStop(realDt = 0) {
-    if (!(hitStopLeft > 0)) return 1;
-    hitStopLeft = Math.max(0, hitStopLeft - Math.max(0, realDt));
-    return 0;
+    const dt = Math.max(0, realDt);
+    if (hitStopLeft > 0) {
+      hitStopLeft = Math.max(0, hitStopLeft - dt); // the FREEZE first — the world holds, sim dt = 0
+      return 0;
+    }
+    if (timeDilLeft > 0) {
+      // #80 CLIMAX: then the SLOW-MO — the sim advances at a fraction, easing back to full. Read the
+      // scale from where we are in the beat, THEN drain on real time (bounded, always auto-resumes).
+      const scale = timeScale(timeDilDur - timeDilLeft, timeDilDur, TIME_DILATION_MIN);
+      timeDilLeft = Math.max(0, timeDilLeft - dt);
+      return scale;
+    }
+    return 1;
   }
 
   /** #80 — the runtime toggle. Turning the juice OFF clears every live effect so there's NO residual motion. */
   function setEnabled(v) {
     userOff = !v;
-    if (userOff) { shakes = []; lunge = null; flash = null; hitStopLeft = 0; }
+    if (userOff) { shakes = []; lunge = null; flash = null; hitStopLeft = 0; timeDilLeft = 0; settle = null; }
     return !userOff;
   }
 
@@ -227,6 +303,7 @@ export function createJuice({ reducedMotion = false, enabled = true } = {}) {
     }
     if (lunge) { lunge.age += dt; if (lunge.age >= lunge.duration) lunge = null; }
     if (flash) { flash.age += dt; if (flash.age >= flash.duration) flash = null; }
+    if (settle) { settle.age += dt; if (settle.age >= settle.duration) settle = null; } // #80 CLIMAX
   }
 
   /**
@@ -245,6 +322,13 @@ export function createJuice({ reducedMotion = false, enabled = true } = {}) {
       z -= lunge.magnitude * e;        // push the camera forward, toward the foe
       y += 0.3 * lunge.magnitude * e;  // a small vertical settle so the lunge has heft
     }
+    if (settle) {
+      // #80 CLIMAX — the surrender hush: ease the camera gently BACK (+z, away from the target) and
+      // settle it a touch DOWN — the fight's breath going out. A smooth single breath, never a jitter.
+      const e = settleEnvelope(settle.age, settle.duration);
+      z += settle.magnitude * e;
+      y -= 0.25 * settle.magnitude * e;
+    }
     return { x, y, z };
   }
 
@@ -257,7 +341,8 @@ export function createJuice({ reducedMotion = false, enabled = true } = {}) {
 
   /** True while any effect is live — a JSON-safe read for the QA hook. */
   function active() {
-    return shakes.length > 0 || lunge !== null || flash !== null || hitStopLeft > 0;
+    return shakes.length > 0 || lunge !== null || flash !== null || settle !== null
+      || hitStopLeft > 0 || timeDilLeft > 0;
   }
 
   /** A plain snapshot for window.__tidewake (lets a headless test assert a fire produced a kick). */
@@ -275,11 +360,13 @@ export function createJuice({ reducedMotion = false, enabled = true } = {}) {
       flash: f.level,
       flashTint: f.tint,
       hitStop: hitStopLeft, // #80: seconds of sim-freeze still owed (0 = the world runs full)
+      timeDilation: timeDilLeft, // #80 CLIMAX: REAL seconds of slow-mo still owed (0 = full speed)
+      settle: settle !== null,   // #80 CLIMAX: a surrender camera hush is live
     };
   }
 
   return {
-    fire, hit, board, impact, sink, update,
+    fire, hit, board, impact, sink, bountyKill, cameraSettle, update,
     cameraOffset, flashLevel, consumeHitStop, setEnabled, active, snapshot,
   };
 }

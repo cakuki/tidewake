@@ -401,6 +401,11 @@ const duel = createDuel({
 // but the ledger the deed already moves). The key handler claims 1/2 while a prize is pending.
 let pendingPrize = null;
 
+// #80 CLIMAX — did the just-resolved fight CLAIM A BOUNTY (a named wanted vessel)? claimBounty (below,
+// called from inside battle.fire → onResolve) sets this; battleFireJuiced reads it on a WIN to punctuate
+// a notorious kill with the stronger climax juice (a beat of slow-mo) instead of an ordinary sink.
+let lastResolveClaimedBounty = false;
+
 function openPrizeChoice({ enemyName, coins, infamy }) {
   pendingPrize = { enemyName, coins, infamy };
   hud.flashBanner('⚔ Her deck is yours — her FATE is your call',
@@ -572,6 +577,9 @@ const battle = createBattle({
   // Accepting routes through onResolve('capture') below (the existing capture banner + deed); pressing
   // just narrates the refusal — the fight simply resumes.
   onSurrender: ({ foeName, dread }) => {
+    // #80 CLIMAX — she strikes her colours: ease the camera to a HUSH (a smooth settle, not a shake) to
+    // mark the moment the guns fall quiet. Toggle-/reduced-motion-safe (cameraSettle no-ops when off).
+    try { juice.cameraSettle(); } catch { /* the feel must never break the surrender */ }
     // Dread's HEAR half (#175): if it was YOUR notoriety that broke her early, her crew cries your NAME
     // in terror — folded into the SAME surrender banner (reuse the hail surface; the quarter prompt still
     // shows). A peer/apex (~0 dread pressure) sets no `dread`, so an even fight strikes in silence.
@@ -719,6 +727,7 @@ writeProjectiles(); // seed every instance to scale 0 so nothing shows before th
 // volley result for the hit-flash: her reply biting your hull flashes RED, a clean hit on her GOLD.
 function battleFireJuiced() {
   const before = battle.snapshot();
+  lastResolveClaimedBounty = false; // #80 CLIMAX: reset — claimBounty (inside fire→onResolve) re-sets it on a bounty claim
   const r = battle.fire();
   if (!r) return r; // reloading / not engaged / a held white flag — no volley discharged
   try {
@@ -729,8 +738,10 @@ function battleFireJuiced() {
     // + hit-stops (scaled by what she took out of you); a SINKING punctuates hardest. All feed the SAME
     // camera-shake stack the broadside recoil uses (one effect, generalised — NOT a second camera
     // system), and the freeze is bounded + drains on real time so it can never stall the loop.
-    // r.result==='win' is the sink verdict from battle.finish().
-    if (r.result === 'win') juice.sink();                                       // she goes down — the kill lands
+    // r.result==='win' is the sink verdict from battle.finish(). A NOTORIOUS kill (a wanted bounty vessel,
+    // #173 — claimBounty set the flag inside onResolve) lands the #80 CLIMAX: the full freeze + a bounded
+    // beat of slow-mo, so the kill FEELS like a moment. An ordinary kill still punctuates with a sink().
+    if (r.result === 'win') { if (lastResolveClaimedBounty) juice.bountyKill(); else juice.sink(); }
     if (r.playerHit > 0) {
       juice.hit({ damage: r.playerHit, tint: 'red' });                          // her reply raked your hull…
       juice.impact({ damage: r.playerHit });                                    // …and it ROCKS your view
@@ -1696,6 +1707,7 @@ function claimBounty(foeName) {
     state.infamy += fame;                                // a hunted-down name pays real infamy (#45)
     syncRenown(state);
     state.objective = null;                              // the hunt is done — clear the pin (claim-once)
+    lastResolveClaimedBounty = true;                     // #80 CLIMAX: mark this kill NOTORIOUS for the juice
     logDeed({ type: 'bounty', foe: foeName, coins, infamy: fame }); // sing it into the Ballad (#78)
     try { music.loopCue('payoff', coinChimes({ coins }) ? { under: 'coin' } : undefined); } catch { /* flourish */ }
     hud.flashBanner('⚑ Bounty claimed!',
@@ -2958,6 +2970,12 @@ window.__tidewake = {
   // that the toggle/reduced-motion fully suppresses it — without needing a real camera or a live frame.
   juiceSetEnabled(on) { juice.setEnabled(on); return juice.snapshot(); },
   juiceConsumeHitStop(dt = 1 / 60) { return juice.consumeHitStop(dt); },
+  // #80 CLIMAX QA surface: fire the two deferred climax beats DIRECTLY so a headless test can prove
+  // event→effect, decay, and toggle/reduced-motion suppression deterministically (mirrors the existing
+  // juice QA hooks). The REAL wiring is proven separately (a bounty-target kill / a strike-colours
+  // surrender). Never used in play. bountyKill = the notorious-kill slow-mo; cameraSettle = the hush.
+  juiceBountyKill() { juice.bountyKill(); return juice.snapshot(); },
+  juiceCameraSettle() { juice.cameraSettle(); return juice.snapshot(); },
   engageBattle() { return battle.engage(); },
   fleeBattle() { return battle.flee(); },
   battleFire() { return battleFireJuiced(); },
@@ -3077,6 +3095,26 @@ window.__tidewake = {
       battle.state.enemyHull = MAX_HULL;   // hale — she survives your volley and fires back
       battle.state.enemyMorale = battle.state.maxMorale; // full nerve — she won't strike her colours instead
       battle.state.playerHull = 1;         // one more hit from her breaks your hull
+      battle.state.reload = 0;
+    }
+    return battle.snapshot();
+  },
+  // QA-only (#80 CLIMAX): mark the currently-engaged foe as the active BOUNTY target, so a headless test
+  // can drive the REAL "notorious kill" path (claimBounty → the stronger climax juice: slow-mo) without
+  // the full board→accept flow. Sets state.objective to an active bounty whose name matches her exactly
+  // (the disjoint name pools mean this is the ONLY way an engaged foe becomes wanted). No-op un-engaged.
+  qaMarkFoeAsBounty() {
+    if (!battle.state.active || !battle.state.foeName) return null;
+    state.objective = makeBounty({ kind: 'ship', name: battle.state.foeName }, { tier: 3 });
+    return state.objective;
+  },
+  // QA-only (#80 CLIMAX): stage a KILL — the engaged foe one clean hit from the deep, at FULL nerve so
+  // she fights on (never strikes her colours). The NEXT clean battleFire() then SINKS her (finish('win')),
+  // reaching the real sink/bounty-kill juice path. No-op un-engaged. Mirrors battleForceDefeat.
+  battleForceSink() {
+    if (battle.state.active) {
+      battle.state.enemyHull = 1;                        // one clean hit ends her
+      battle.state.enemyMorale = battle.state.maxMorale; // full nerve — she sinks, never strikes
       battle.state.reload = 0;
     }
     return battle.snapshot();

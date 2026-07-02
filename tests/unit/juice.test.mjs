@@ -2,9 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createJuice, decay, flashEnvelope, shakeOffset, recoilMagnitude, ammoWeight, flashPeak,
-  impact01, impactShakeMag, hitStopDuration,
+  impact01, impactShakeMag, hitStopDuration, timeScale, settleEnvelope,
   MAX_SHAKE, MAX_FLASH, SHAKE_SECONDS, LUNGE_SECONDS, FLASH_SECONDS,
   MAX_HITSTOP, MIN_HITSTOP, HITSTOP_GRAZE, DAMAGE_REF,
+  TIME_DILATION_SECONDS, TIME_DILATION_MIN, SETTLE_SECONDS,
 } from '../../src/systems/juice.js';
 
 // ---- PURE curves ------------------------------------------------------------
@@ -166,6 +167,129 @@ test('reduce-motion suppresses the #80 impact/sink triggers + hit-stop too', () 
   assert.equal(j.active(), false, 'reduced-motion silences the impact pass');
   assert.equal(j.snapshot().hitStop, 0, 'no freeze under reduced-motion');
   assert.equal(j.consumeHitStop(1 / 60), 1, 'the sim runs full under reduced-motion (no freeze)');
+});
+
+// ---- #80 CLIMAX game-feel (deferred events): time-dilation + camera settle --
+// A NOTORIOUS kill (a wanted bounty vessel) drops the world into a bounded beat of SLOW-MO after the
+// freeze; a SURRENDER eases the camera to a hush (a smooth settle, never a shake). Both are pure +
+// bounded + auto-resuming — the slow-mo must NEVER stall the sim, the settle must decay to nothing.
+
+test('timeScale: slowest at the start, eases back to full speed, bounded [min,1]', () => {
+  assert.equal(timeScale(0, 0.5, 0.3), 0.3, 'the beat opens at the deepest slow-mo');
+  assert.equal(timeScale(0.5, 0.5, 0.3), 1, 'spent at the duration → full speed');
+  assert.equal(timeScale(0.9, 0.5, 0.3), 1, 'past the duration → full speed (auto-resume)');
+  assert.equal(timeScale(0, 0, 0.3), 0.3, 'the very opening is the floor even for a degenerate beat');
+  assert.equal(timeScale(0.1, 0, 0.3), 1, 'a zero-duration beat is no beat → full speed');
+  const early = timeScale(0.1, 0.5, 0.3), late = timeScale(0.4, 0.5, 0.3);
+  assert.ok(early < late, 'the world speeds back up as the beat elapses (monotone)');
+  for (let e = 0; e <= 0.5; e += 0.01) {
+    const s = timeScale(e, 0.5, 0.3);
+    assert.ok(s >= 0.3 - 1e-9 && s <= 1 + 1e-9, 'the scale is ALWAYS bounded to [min,1] — never 0, never a stall');
+  }
+});
+
+test('settleEnvelope: a smooth hush — 0, up to a peak at the midpoint, back to 0 (no oscillation)', () => {
+  assert.equal(settleEnvelope(0, 0.9), 0, 'starts at rest');
+  assert.equal(settleEnvelope(0.9, 0.9), 0, 'ends at rest');
+  assert.equal(settleEnvelope(1.5, 0.9), 0, 'spent past the duration');
+  const peak = settleEnvelope(0.45, 0.9); // the midpoint is the fullest ease
+  assert.ok(peak > 0.99, 'reaches full at the midpoint');
+  for (let e = 0; e <= 0.9; e += 0.01) {
+    const v = settleEnvelope(e, 0.9);
+    assert.ok(v >= 0 && v <= 1 + 1e-9, 'a settle never goes negative (a hush, not a shake)');
+  }
+  // strictly rising into the peak, strictly falling out of it — a single smooth breath, no jitter
+  assert.ok(settleEnvelope(0.1, 0.9) < settleEnvelope(0.3, 0.9), 'rises smoothly into the hush');
+  assert.ok(settleEnvelope(0.6, 0.9) > settleEnvelope(0.8, 0.9), 'eases smoothly out of the hush');
+});
+
+test('createJuice.bountyKill: a notorious kill freezes MAX, then owes a BOUNDED beat of slow-mo', () => {
+  const j = createJuice();
+  j.bountyKill();
+  const snap = j.snapshot();
+  assert.equal(snap.hitStop, MAX_HITSTOP, 'the notorious kill lands the full freeze (as strong as a sink)');
+  assert.ok(snap.timeDilation > 0, 'a notorious kill owes a beat of slow-mo (an ordinary sink does not)');
+  j.update(1 / 60);
+  assert.ok(j.snapshot().offsetMag > 0, 'and it rocks the view');
+});
+
+test('createJuice.bountyKill: freeze THEN slow-mo THEN full speed — bounded, always auto-resumes', () => {
+  const j = createJuice();
+  j.bountyKill();
+  let frames = 0, sawFrozen = false, sawSlowMo = false;
+  // Drain exactly the way loop() does: consume on the real dt each frame until the world runs full again.
+  while (j.snapshot().hitStop > 0 || j.snapshot().timeDilation > 0) {
+    const scale = j.consumeHitStop(1 / 60);
+    if (scale === 0) sawFrozen = true;
+    else if (scale > 0 && scale < 1) sawSlowMo = true;
+    frames++;
+    assert.ok(frames < 120, 'the whole climax is bounded — it CANNOT stall the loop');
+  }
+  assert.ok(sawFrozen, 'the kill froze the world for a beat (the hit-stop)');
+  assert.ok(sawSlowMo, 'then dropped it into slow-mo (0 < scale < 1)');
+  assert.equal(j.consumeHitStop(1 / 60), 1, 'and the world snaps back to full speed (auto-resume, no desync)');
+  assert.equal(j.snapshot().timeDilation, 0, 'no residual slow-mo');
+});
+
+test('consumeHitStop: enormous real dts drain the whole climax in a BOUNDED few frames (no runaway)', () => {
+  const j = createJuice();
+  j.bountyKill();
+  // A backgrounded-tab-sized dt every frame must NOT leave the sim stuck slow forever — it drains the
+  // freeze, then the slow-mo, then resumes full, all in a handful of frames regardless of dt size.
+  let frames = 0, last = 0;
+  do {
+    last = j.consumeHitStop(10);
+    assert.ok(++frames < 6, 'a huge dt still resolves the climax in a bounded number of frames');
+  } while (j.snapshot().hitStop > 0 || j.snapshot().timeDilation > 0);
+  assert.equal(j.consumeHitStop(1 / 60), 1, 'the world runs full again (auto-resume)');
+  assert.equal(j.snapshot().timeDilation, 0);
+  assert.equal(j.snapshot().hitStop, 0);
+});
+
+test('createJuice.cameraSettle: a surrender eases the camera to a hush that decays to nothing', () => {
+  const j = createJuice();
+  j.cameraSettle();
+  assert.equal(j.active(), true, 'the settle is live');
+  j.update(SETTLE_SECONDS * 0.5); // step to the fullest ease
+  const o = j.cameraOffset();
+  assert.ok(Math.hypot(o.x, o.y, o.z) > 0, 'the camera eases off its rest pose');
+  assert.equal(j.snapshot().settle, true, 'the settle reads on the QA snapshot');
+  j.update(SETTLE_SECONDS);
+  assert.equal(j.active(), false, 'the settle decays to nothing');
+  assert.equal(j.snapshot().offsetMag, 0, 'no residual camera offset');
+});
+
+test('the settle is a HUSH, not a shake: no oscillation, and it owes NO sim freeze/slow-mo', () => {
+  const j = createJuice();
+  j.cameraSettle();
+  assert.equal(j.snapshot().hitStop, 0, 'a surrender never freezes the sim');
+  assert.equal(j.snapshot().timeDilation, 0, 'a surrender never slows the sim');
+  assert.equal(j.consumeHitStop(1 / 60), 1, 'the sim runs full through a settle (it is camera-only)');
+});
+
+test('#80 climax triggers are suppressed by the toggle AND reduced-motion (fully off)', () => {
+  for (const opts of [{ enabled: false }, { reducedMotion: true }]) {
+    const j = createJuice(opts);
+    j.bountyKill(); j.cameraSettle();
+    j.update(1 / 60);
+    assert.equal(j.active(), false, 'both climax beats are clean no-ops while suppressed');
+    assert.equal(j.snapshot().hitStop, 0, 'no freeze');
+    assert.equal(j.snapshot().timeDilation, 0, 'no slow-mo');
+    assert.equal(j.snapshot().offsetMag, 0, 'no camera motion');
+    assert.equal(j.consumeHitStop(1 / 60), 1, 'the sim runs full (fully playable)');
+  }
+});
+
+test('setEnabled(false) clears a live climax (slow-mo + settle) — no residual', () => {
+  const j = createJuice();
+  j.bountyKill(); j.cameraSettle();
+  j.update(1 / 60);
+  assert.equal(j.active(), true, 'live while enabled');
+  j.setEnabled(false);
+  assert.equal(j.active(), false, 'turning the juice off clears the slow-mo and the settle');
+  assert.equal(j.snapshot().timeDilation, 0, 'no residual slow-mo');
+  assert.equal(j.snapshot().settle, false, 'no residual settle');
+  assert.equal(j.consumeHitStop(1 / 60), 1, 'the sim runs full while off');
 });
 
 // ---- Controller trigger edges ----------------------------------------------

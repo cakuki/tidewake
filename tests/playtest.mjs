@@ -1051,6 +1051,84 @@ try {
     if (process.exitCode !== 1) console.log(`  ✓ combat game-feel juice (#80): a clean hit LANDS — a ${juicePass.afterFire.hitStop.toFixed(3)}s hit-stop + a camera kick (offsetMag ${juicePass.afterFire.offsetMag.toFixed(2)}), decays to zero in ${juicePass.drainFrames} frames (bounded, no stall), and toggles fully OFF (no residual motion)`);
   }
 
+  // 2b4d) #80 CLIMAX — the NOTORIOUS KILL lands (deferred #80 event): sinking a WANTED bounty vessel
+  // (#173) punctuates harder than an ordinary kill — the full (capped) hit-stop AND a bounded beat of
+  // SLOW-MO (time-dilation) before the world snaps back. The slow-mo drains on real time exactly like
+  // the base hit-stop, so it is bounded, always auto-resumes, and can NEVER stall the sim. We drive the
+  // REAL wiring: engage → mark her the wanted vessel → land a clean killing shot → assert the climax.
+  const climaxKill = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    }
+    function fireClean() {
+      const foeIdx = tw.battle.foeIndex;
+      const F = tw.npcs[foeIdx].pos, h = tw.state.heading;
+      tw.qaTeleport(F[0] - Math.cos(h) * 120, F[1] + Math.sin(h) * 120); // foe dead abeam to starboard
+      const aim = tw.battleAim();
+      if (!(tw.battle.active && tw.battle.loaded && aim.inArc)) return false;
+      tw.battleFire();
+      return true;
+    }
+    const bi = nearest();
+    if (bi === -1) return { engaged: false };
+    const fp = tw.npcs[bi].pos;
+    tw.qaTeleport(fp[0], fp[1] - 120);
+    tw.step(0.05);
+    if (!tw.engageBattle()) return { engaged: false };
+    // Mark her the WANTED vessel (the real #173 objective), then stage & land a clean killing shot.
+    const marked = tw.qaMarkFoeAsBounty();
+    const isBounty = !!(marked && marked.kind === 'bounty');
+    for (let i = 0; i < 16 && !tw.battle.loaded && tw.battle.active; i++) tw.step(0.2);
+    tw.battleForceSink();
+    const firedKill = fireClean();
+    const result = tw.battle.result;
+    const afterKill = tw.juice; // read BEFORE any consume — the freeze + slow-mo are still owed
+    // Drain the whole climax the way loop() does (on real dt): freeze first (scale 0), then slow-mo
+    // (0 < scale < 1), then full speed — bounded, always resuming (it can NEVER stall the loop).
+    let frames = 0, sawFrozen = false, sawSlowMo = false;
+    while (tw.juice.hitStop > 0 || tw.juice.timeDilation > 0) {
+      const scale = tw.juiceConsumeHitStop(1 / 60);
+      if (scale === 0) sawFrozen = true;
+      else if (scale > 0 && scale < 1) sawSlowMo = true;
+      if (++frames > 120) break; // guard: a runaway climax would trip this (a stall)
+    }
+    const resumed = tw.juiceConsumeHitStop(1 / 60);
+    const afterDrain = tw.juice;
+    // Toggle OFF → the climax is fully suppressed (no freeze, no slow-mo, no camera motion).
+    tw.juiceSetEnabled(false);
+    const offSnap = tw.juiceBountyKill(); // fire the notorious-kill beat with the juice OFF
+    tw.juiceSetEnabled(true);
+    if (tw.battle.active) tw.fleeBattle();
+    return {
+      engaged: true, isBounty, firedKill, result, afterKill, sawFrozen, sawSlowMo, frames,
+      resumed, afterDrain, offTimeDil: offSnap.timeDilation, offStop: offSnap.hitStop, offOffset: offSnap.offsetMag,
+    };
+  });
+  if (!climaxKill.engaged || !climaxKill.firedKill) {
+    console.warn('  (#80 climax notorious-kill: no foe to engage / never reloaded — skipped, like the other battle steps)');
+  } else {
+    if (!climaxKill.isBounty) fail('#80 climax: could not mark the engaged foe as a wanted bounty vessel');
+    if (climaxKill.result !== 'win') fail(`#80 climax: the killing shot did not sink the wanted vessel (result=${climaxKill.result})`);
+    // (1) the NOTORIOUS kill lands the full freeze AND owes a beat of slow-mo (an ordinary kill does not).
+    if (!(climaxKill.afterKill.hitStop > 0)) fail(`#80 climax: a bounty kill owed NO hit-stop (${climaxKill.afterKill.hitStop}) — the notorious kill does not LAND`);
+    if (!(climaxKill.afterKill.timeDilation > 0)) fail(`#80 climax: a bounty kill owed NO slow-mo/time-dilation (${climaxKill.afterKill.timeDilation}) — the kill does not FEEL notorious`);
+    // (2) freeze → slow-mo → full speed: bounded, actually felt, and never runs away (no stall).
+    if (!climaxKill.sawFrozen) fail('#80 climax: the bounty kill never froze a frame (no hit-stop felt)');
+    if (!climaxKill.sawSlowMo) fail('#80 climax: the bounty kill never dropped into slow-mo (no time-dilation felt)');
+    if (!(climaxKill.frames <= 60)) fail(`#80 climax: the climax took ${climaxKill.frames} frames to drain (>60) — an unbounded slow-mo can STALL the loop`);
+    if (!(climaxKill.afterDrain.hitStop === 0 && climaxKill.afterDrain.timeDilation === 0)) fail(`#80 climax: the climax did not decay to zero (hitStop=${climaxKill.afterDrain.hitStop}, timeDilation=${climaxKill.afterDrain.timeDilation})`);
+    if (!(climaxKill.resumed === 1)) fail(`#80 climax: the sim did not resume full speed after the slow-mo (scale=${climaxKill.resumed}) — the world clock could desync`);
+    // (3) TOGGLE OFF fully suppresses the notorious-kill beat.
+    if (!(climaxKill.offTimeDil === 0 && climaxKill.offStop === 0 && climaxKill.offOffset === 0)) fail(`#80 climax: a bounty kill with the toggle OFF still produced juice (timeDil=${climaxKill.offTimeDil}, stop=${climaxKill.offStop}, offset=${climaxKill.offOffset})`);
+    if (process.exitCode !== 1) console.log(`  ✓ #80 climax — a NOTORIOUS kill LANDS: full freeze + a bounded beat of slow-mo (${climaxKill.afterKill.timeDilation.toFixed(2)}s), decays to zero in ${climaxKill.frames} frames (no stall), and fully OFF under the toggle`);
+  }
+
   // 2b5-aim) AIM-ANGLE FEEDBACK (#161 slice 5): the owner's note — "the angles should matter." They DO
   // in the maths (broadsideAim); this slice makes the firing solution VISIBLE — an aim LINE from your
   // ship to the foe that colours + TIGHTENS as she comes abeam, so you can SEE "I'm on target" before
@@ -1688,6 +1766,21 @@ try {
     tw.battleFire();
     const offerOpen = !!tw.surrenderOffer;
     const pendingFlag = tw.battle.surrenderPending;
+    // #80 CLIMAX — she strikes her colours → the camera eases to a HUSH (a smooth settle, camera-only).
+    // Read it the instant the flag goes up: a settle is live and rocks the view, but owes NO sim freeze
+    // or slow-mo (it is renderer-only — the sim runs full through it).
+    const settleLive = tw.juice.settle;
+    tw.step(1 / 60);
+    const settleOffset = tw.juice.offsetMag;
+    const settleFrozensim = tw.juiceConsumeHitStop(1 / 60); // must be 1 — a settle never holds the sim
+    // …and it DECAYS to nothing over its window (it's a transient breath, not a stuck camera).
+    for (let i = 0; i < 90; i++) tw.step(1 / 60);
+    const settleGone = !tw.juice.settle;
+    const settleResidual = tw.juice.offsetMag;
+    // Toggle OFF → the settle is fully suppressed (no camera motion).
+    tw.juiceSetEnabled(false);
+    const offSettle = tw.juiceCameraSettle();
+    tw.juiceSetEnabled(true);
     const cannotBoardUnderFlag = tw.battle.canBoard;   // must be false — answer the flag first
     const cannotFireUnderFlag = tw.battleFire();        // must be null — no firing past a white flag
     const standingBefore = tw.state.standing;
@@ -1701,6 +1794,8 @@ try {
       battleEnded: !tw.battle.active,
       standingGained: tw.state.standing - standingBefore,
       infamyGained: tw.state.infamy - infamyBefore,
+      settleLive, settleOffset, settleFrozensim, settleGone, settleResidual,
+      offSettleActive: offSettle.settle, offSettleOffset: offSettle.offsetMag,
     };
   });
   if (surrender.engaged) {
@@ -1713,6 +1808,15 @@ try {
     if (!surrender.offerClearedAfter) fail('early-surrender: the offer did not clear after accepting (#135 Option 4)');
     if (!surrender.battleEnded) fail('early-surrender: accepting the surrender did not end the engagement (#135 Option 4)');
     if (!(surrender.standingGained > 0)) fail(`early-surrender: ACCEPT paid no Standing (gained ${surrender.standingGained}) (#135 Option 4)`);
+    // #80 CLIMAX — the surrender camera SETTLE (a hush): fired on the strike, camera-only, decays away.
+    if (!surrender.settleLive) fail('#80 climax: "she strikes her colours" did not ease the camera to a settle (no hush)');
+    if (!(surrender.settleOffset > 0)) fail(`#80 climax: the surrender settle did not move the camera (offsetMag=${surrender.settleOffset})`);
+    if (surrender.settleFrozensim !== 1) fail(`#80 climax: the surrender settle FROZE the sim (scale=${surrender.settleFrozensim}) — a settle must be camera-only`);
+    if (!surrender.settleGone) fail('#80 climax: the surrender settle did not decay away (a stuck camera)');
+    if (!(surrender.settleResidual === 0)) fail(`#80 climax: the surrender settle left a residual camera offset (${surrender.settleResidual})`);
+    if (surrender.offSettleActive) fail('#80 climax: a surrender settle fired with the juice toggle OFF (must be suppressed)');
+    if (!(surrender.offSettleOffset === 0)) fail(`#80 climax: a settle with the toggle OFF still moved the camera (${surrender.offSettleOffset})`);
+    if (process.exitCode !== 1) console.log('  ✓ #80 climax — a surrender eases the camera to a HUSH (camera-only, decays to zero, off under the toggle)');
   } else {
     console.warn('  (#135 Option 4 early-surrender: no foe came in range to engage — skipped, like slice 2/3/4)');
   }
