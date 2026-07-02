@@ -19,6 +19,8 @@ import { offersSurrender } from '../src/systems/board.js'; // #172: prove the dr
 import { fearTier, pickFearfulHail } from '../src/systems/fearful-hail.js'; // #175: dread's HEAR half — the pure notoriety→fearful-hail line picker
 import { coastProximity, gullCoastGain } from '../src/audio.js'; // #68: the coast comes alive — gull-cry intensity vs distance-to-coast (audio-led, AudioContext-free curve)
 import { BOOT_TIPS, pickTip } from '../src/boot-tips.js'; // #15: the wry boot-tip pool + its anti-repeat picker — a laugh before you sail
+import { fearRigging, TROPHY1_AT, TROPHY2_AT, SAIL_BLACK_AT } from '../src/systems/fear-rigging.js'; // #177: fear you can SEE — the pure Infamy→fear-features map
+import { defeatLedger } from '../src/renown.js'; // #177: prove a REAL #164 defeat dent strips a trophy off the LIVE rigging
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
@@ -3497,6 +3499,55 @@ try {
   if (!(aura.lawful.sail.emissiveIntensity > 0)) fail('ship-aura: a respected ship did not light its trim glow');
   if (!(aura.lawful.sail.roughness < aura.neutral.sail.roughness)) fail('ship-aura: a lawful canvas did not sheen (smoother/cared-for)');
   if (aura.restored.sail.color !== aura.neutral.sail.color || aura.restored.sail.emissiveIntensity !== aura.neutral.sail.emissiveIntensity) fail(`ship-aura: a neutral ledger did not restore the untouched ship exactly (${JSON.stringify(aura.restored)})`);
+
+  // 2j-4b) Fear you can SEE on your own ship (#177): notoriety dressed onto the player's OWN rigging,
+  // OVER the #132 aura. A fresh captain sails a bare ship (no trophies, sails untouched-white). Climb
+  // Infamy → the sails darken toward black AND captured trophy pennants run up the rigging at milestones,
+  // monotonically. A REAL #164 defeat (which dents Infamy) strikes a trophy — fear knocked back. It
+  // composes with the aura (still casting pirate) and rides the #171 class scale (trophies parented to
+  // the hull). A neutral ledger restores the bare ship exactly. Derived from Infamy — NO save bump (v18).
+  const beforeLoss177 = TROPHY2_AT + 12;                                          // two trophies flying
+  const led177 = defeatLedger(3, 'raid', { coins: 200, infamy: beforeLoss177, standing: 0 }); // a real loss dent
+  const fear = await page.evaluate(async (v) => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);                                   // clean slate: the bare, humble ship
+    const humble = { ...tw.fear };
+    const ladder = v.ladder.map((inf) => {                          // a monotonic Infamy climb
+      tw.setInfamy(inf); tw.setStanding(0); tw.step(0.1);
+      return { infamy: inf, ...tw.fear, auraPole: tw.aura.pole };
+    });
+    tw.setInfamy(v.feared); tw.setStanding(0); tw.step(0.1);        // a deeply feared captain
+    const feared = { ...tw.fear, auraPole: tw.aura.pole, auraApplied: tw.aura.applied };
+    tw.setInfamy(v.before); tw.setStanding(0); tw.step(0.1);        // two trophies aloft…
+    const beforeLoss = { ...tw.fear };
+    tw.setInfamy(v.afterLossInfamy); tw.step(0.1);                  // …then a #164 defeat dents Infamy
+    const afterLoss = { ...tw.fear };
+    tw.newVoyage(); tw.step(0.1);                                   // back to a neutral ledger
+    const restored = { ...tw.fear };
+    return { humble, ladder, feared, beforeLoss, afterLoss, restored };
+  }, { ladder: [0, TROPHY1_AT, TROPHY2_AT, SAIL_BLACK_AT + 100], feared: SAIL_BLACK_AT + 400, before: beforeLoss177, afterLossInfamy: led177.infamy });
+  const fLum = (h) => (h == null ? 255 : (((h >> 16) & 0xff) + ((h >> 8) & 0xff) + (h & 0xff)) / 3);
+  if (!fear.humble.applied) fail('fear-rigging (#177): the hero ship exposed no sail material to darken');
+  if (fear.humble.trophiesShown !== 0 || fear.humble.sailDarken !== 0) fail(`fear-rigging (#177): a fresh captain's ship is not bare (${JSON.stringify(fear.humble)})`);
+  if (fear.humble.sailColor !== 0xffffff) fail(`fear-rigging (#177): the humble start is not the untouched white sail (${fear.humble.sailColor})`);
+  // monotonic: trophies never decrease and the sails never lighten as Infamy climbs.
+  let prevT = -1, prevLum = 256;
+  for (const s of fear.ladder) {
+    if (!(s.trophiesShown >= prevT)) fail(`fear-rigging (#177): trophies dipped climbing to Infamy ${s.infamy} (${s.trophiesShown} < ${prevT})`);
+    if (!(fLum(s.sailColor) <= prevLum + 0.5)) fail(`fear-rigging (#177): sails LIGHTENED climbing to Infamy ${s.infamy}`);
+    if (!(s.trophiesShown === s.trophies)) fail(`fear-rigging (#177): rendered trophies ${s.trophiesShown} ≠ derived ${s.trophies} at Infamy ${s.infamy}`);
+    prevT = s.trophiesShown; prevLum = fLum(s.sailColor);
+  }
+  if (fear.feared.trophiesShown !== 2 || fear.feared.sailDarken !== 1) fail(`fear-rigging (#177): a deeply feared captain does not fly 2 trophies + full-black sails (${JSON.stringify(fear.feared)})`);
+  if (!(fLum(fear.feared.sailColor) < fLum(fear.humble.sailColor))) fail('fear-rigging (#177): a feared ship\'s sails are not visibly darker than the humble start');
+  if (fear.feared.auraPole !== 'pirate' || !fear.feared.auraApplied) fail(`fear-rigging (#177): the #132 aura did not compose under the fear layer (pole=${fear.feared.auraPole})`);
+  if (!fear.feared.trophiesParentedToHull) fail('fear-rigging (#177): trophies are not parented to the ship group — they will not ride the #171 class scale');
+  // strip-on-loss: the REAL #164 dent knocks a trophy off, bounded (never negative).
+  if (fear.beforeLoss.trophiesShown !== 2) fail(`fear-rigging (#177): expected 2 trophies before the loss (${fear.beforeLoss.trophiesShown})`);
+  if (!(fear.afterLoss.trophiesShown < fear.beforeLoss.trophiesShown)) fail(`fear-rigging (#177): a #164 defeat did NOT strip a trophy (${fear.afterLoss.trophiesShown} !< ${fear.beforeLoss.trophiesShown})`);
+  if (fear.afterLoss.trophiesShown < 0) fail('fear-rigging (#177): trophies went negative — not bounded');
+  if (fear.restored.trophiesShown !== 0 || fear.restored.sailColor !== 0xffffff) fail(`fear-rigging (#177): a neutral ledger did not restore the bare ship exactly (${JSON.stringify(fear.restored)})`);
+  if (process.exitCode !== 1) console.log(`  ✓ fear you can SEE (#177): your Infamy dresses your OWN ship — sails darken toward black + trophy pennants run up the rigging at milestones (monotonic), a REAL #164 defeat strikes a trophy (${fear.beforeLoss.trophiesShown}→${fear.afterLoss.trophiesShown}, bounded), composing OVER the #132 aura (still pirate) and riding the #171 class scale; derived from Infamy, NO save bump (v${SAVE_VERSION})`);
 
   // 2j-5) The harmonic reputation needle (#132 Slice B, DL #5): the SAME signed lean, now AUDIBLE. The
   // procedural bed's lead recolours its MODE off repLean — a fresh captain hears the honest D-major

@@ -61,6 +61,7 @@ import { combatOdds, oddsReadout } from './systems/odds.js';
 import { pickShipAction, shipIndexFromObject, actionLabel } from './systems/ship-picker.js';
 import { reputationLean, leanPole, gradeHaze, gradeSun, gradeSunKey } from './systems/reputation-grade.js';
 import { shipAura } from './systems/reputation-aura.js';
+import { fearRigging, FEAR_SAIL_BLACK } from './systems/fear-rigging.js';
 import { snapshotAshore, composeAshoreDigest } from './systems/ashore-digest.js';
 import { mixHex } from './sea-color.js';
 import { initEconomy, syncRenown } from './economy.js';
@@ -214,6 +215,49 @@ function applyShipAura(lean) {
   return aura;
 }
 let shipAuraLive = shipAura(0); // the live cast, for the QA surface (starts neutral)
+// Fear you can SEE on your own ship (#177): captured TROPHY pennants that run up the rigging at Infamy
+// milestones, plus a sail-DARKEN the aura's single sail writer composes below. Build the trophies ONCE
+// (a shared tiny pennant geometry — #121: no per-toggle allocation, hidden = not drawn), parent them to
+// the SHIP group so #171's class scale carries them with the hull. Positioned relative to the flag mount
+// so they read on both the GLB and the procedural hull. A bad build must never block a boot.
+const trophyMeshes = [];
+try {
+  const mount = (ship.userData && ship.userData.flag && ship.userData.flag.position) || { x: 0.45, y: 20, z: -1 };
+  // one small swallow-tail pennant geometry, shared across trophies (menacing crimson, bone-dark).
+  const tShape = new THREE.Shape();
+  tShape.moveTo(0, -0.5); tShape.lineTo(0, 0.5); tShape.lineTo(2.2, 0.28);
+  tShape.lineTo(1.6, 0.0); tShape.lineTo(2.2, -0.28); tShape.lineTo(0, -0.5);
+  const trophyGeo = new THREE.ShapeGeometry(tShape);
+  const trophyMat = new THREE.MeshStandardMaterial({ color: 0x6e1414, roughness: 0.9, side: THREE.DoubleSide });
+  // stagger the two captured pennants down the rigging, flanking the main flag.
+  const spots = [
+    { x: mount.x - 1.8, y: mount.y - 3.2, z: mount.z },
+    { x: mount.x + 1.6, y: mount.y - 5.4, z: mount.z },
+  ];
+  for (const s of spots) {
+    const m = new THREE.Mesh(trophyGeo, trophyMat);
+    m.position.set(s.x, s.y, s.z);
+    m.visible = false; // hidden until Infamy earns it → 0 extra draws at the humble start
+    ship.add(m);
+    trophyMeshes.push(m);
+  }
+} catch { /* the trophies are a flourish — never block a boot */ }
+let fearLive = fearRigging(0); // the live fear-features, for the QA surface (starts bare)
+// Compose the #177 fear layer ONTO the frame: darken the aura-cast SAILS further toward tarred black
+// (ONE extra multiply over #132's write — the two layers stack, never fight) and toggle the trophy
+// pennants to the Infamy-derived count. PURE mapping in fear-rigging.js; here is only the render wiring.
+function applyFearRigging(infamy) {
+  const fear = fearRigging(infamy);
+  if (fear.sailDarken > 0) {
+    for (const part of shipAuraParts) {
+      if (part.role !== 'sail') continue;
+      try { part.mat.color.setHex(mixHex(part.mat.color.getHex(), FEAR_SAIL_BLACK, fear.sailDarken)); }
+      catch { /* a bad cast must never break the frame */ }
+    }
+  }
+  for (let i = 0; i < trophyMeshes.length; i++) trophyMeshes[i].visible = i < fear.trophies;
+  return fear;
+}
 // Foundering-ship encounter (#125): reuse the hero hull for the stricken vessel — its OWN GLB
 // instance (independent materials, so the player's False-Colours pennant tint never leaks onto it).
 // Hidden until an encounter is live; heeled over + settled low each frame so she reads foundering.
@@ -2123,7 +2167,13 @@ systems.register({ name: 'reputation-grade', order: 120, update: () => applyRepu
 // — your ship wears your legend (#132 Slice A, DL #5): cast the hero ship's sail + hull off the SAME
 //   signed lean reputation-grade just wrote to repLean — Infamy grimes/darkens, Standing cleans/glows.
 //   Uniform writes only (colour/roughness/emissive), zero new draws; neutral leaves the ship untouched.
-systems.register({ name: 'ship-aura', order: 122, update: () => { shipAuraLive = applyShipAura(repLean) || shipAuraLive; } });
+// — your ship wears your legend (#132) AND your fear (#177): the aura casts the sail/hull mood off the
+//   lean; then the fear layer darkens the sails further toward black + runs the trophy pennants up the
+//   rigging off raw Infamy. ORDER matters: fear composes AFTER the aura's per-frame sail write.
+systems.register({ name: 'ship-aura', order: 122, update: () => {
+  shipAuraLive = applyShipAura(repLean) || shipAuraLive;
+  fearLive = applyFearRigging(state.infamy ?? 0);
+} });
 systems.register({ name: 'landfall-grade', order: 130, update: () => applyLandfallGrade() });
 // — arrival detection (fires onArrive once → auto-harbour) + buoy bob (#67/#96).
 systems.register({ name: 'ports', order: 140, update: (f) => ports.update(f.state, onArrive, f.t) });
@@ -2771,6 +2821,25 @@ window.__tidewake = {
       return p ? { color: p.mat.color.getHex(), roughness: p.mat.roughness, emissiveIntensity: p.mat.emissiveIntensity } : null;
     };
     return { lean: repLean, pole: live.pole, mag: live.mag, applied: shipAuraParts.length > 0, sail: read('sail'), hull: read('hull') };
+  },
+  // Fear you can SEE on your own ship (#177) QA surface: the live fear-features derived from the
+  // persisted Infamy — the sail-darken amount + the trophy count the map WANTS, alongside what's
+  // ACTUALLY rendered (the applied sail colour hex after the #132 aura + #177 darken compose, and the
+  // number of trophy pennants CURRENTLY drawn). So a headless playtest can drive setInfamy and assert
+  // the rigging escalates monotonically, a loss (a dented Infamy) strips a trophy, it composes with the
+  // aura, and the trophies ride the #171 class scale (parented to the ship group).
+  get fear() {
+    const f = fearRigging(state.infamy ?? 0);
+    const sailPart = shipAuraParts.find((q) => q.role === 'sail');
+    return {
+      infamy: state.infamy ?? 0,
+      sailDarken: f.sailDarken,
+      trophies: f.trophies,
+      trophiesShown: trophyMeshes.filter((m) => m.visible).length,
+      sailColor: sailPart ? sailPart.mat.color.getHex() : null,
+      applied: shipAuraParts.length > 0,
+      trophiesParentedToHull: trophyMeshes.length > 0 && trophyMeshes.every((m) => m.parent === ship),
+    };
   },
   // Reputation needle (#132, DL #5) QA surface: the live eased pointer position, its target, the
   // categorical pole + commitment tier, and the last FELT shift ({pole, delta, tier, cue, line}) —
