@@ -74,11 +74,21 @@ onto **parked owner-decision frontiers** and are surfaced as `[OWNER-DECISION]` 
   with throttle/class); playtest asserts the fleet's LIVE windMult stays in-band, matches
   windFactor(heading,windDir) exactly, and spans the beam. **NO save bump — transient sailing rule stays
   v18.** **#179 is next (last of the lane).**
-- **#179 — Negative space: the held breath before the payoff** *(audio/art, S — P3)* **← NEXT (last of the lane).** Three cheap beats on
-  SHIPPED climaxes: (a) ~1s near-silence before a surrender sting + #80 settle; (b) a charged rank-up swell →
-  bass "thunk"; (c) a one-pass colour-grade pulse on a notorious kill / rank-up. **FUN:** the wins feel
-  *bigger* for free. *Builds on juice #80 + rank-up #169 + audio bus; ~0 draws, NO save bump, respects the
-  Combat-feel toggle + reduced-motion.*
+- ✅ **#179 — Negative space: the held breath before the payoff** *(audio/art, S — P3)* — **SHIPPED Loop 148,
+  v0.0.20260702130306, #179 CLOSED (salvaged after a prior runner stalled on an API timeout post-module-write).**
+  Three cheap beats reserve peak intensity so SHIPPED climaxes land bigger for ~0 draws, all on the #80 juice
+  doctrine (bounded, always auto-resuming, audio/visual only — no sim freeze, so tw.step()/#121 stay pristine):
+  **(a)** a **HUSH** — the combat bus ducks to near-silence for ~0.6s BEFORE the surrender sting, which then
+  cracks into re-opened air ("she strikes her colours", #135/#172; #80's camera-settle stays immediate);
+  **(b)** a **CHARGED rank-up** (#169) — a ~0.8s rising swell + a warm colour-grade **PULSE** HOLD the crown,
+  then the card SNAPS on the bass thunk (vs the old instant card); **(c)** the colour-grade **PULSE** also
+  fires on a notorious kill (#173). Suppressed by the SAME prefers-reduced-motion + **Combat-feel** toggle as
+  the juice (off → the payoff still fires, instantly, never lost). PURE `src/systems/negative-space.js`
+  (hushGain/swellRise/pulseEnvelope + controller) TDD'd first (17 unit tests); main.js ages it on the sim
+  clock via its own system and applies the audio duck + grade overlay each frame; audio.js gains a duck bus +
+  a strike sting + a rising swell. Playtest asserts hush-defers-sting, charged rank-up (swell holds the crown),
+  bounded auto-resume, no sim freeze, and full toggle-off suppression. **NO save bump — stays v18.**
+  **⚓ THE "ONE MORE VOYAGE" LANE (#176 → #177 → #178 → #179) IS NOW COMPLETE — all four slices shipped, all v18.**
 
 **Sequencing note.** Build in listed order: **#176** (highest-leverage — the actual retention hook) →
 **#177** (cheapest high-confidence identity win) → **#178** (combat depth) → **#179** (juice polish). All four

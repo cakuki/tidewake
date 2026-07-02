@@ -4,6 +4,19 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #179 Negative space: the held breath before the payoff (Loop 148,
+  v0.0.20260702130306; the "one more voyage" lane slice 4/4 — LANE COMPLETE, #179 CLOSED; salvaged after a
+  prior runner stalled on an API timeout post-module-write).** Reserve peak intensity so ALREADY-SHIPPED
+  climaxes land bigger for ~0 draws. Three cheap beats on the #80 juice doctrine (bounded, always
+  auto-resuming, audio/visual only — no sim freeze, so tw.step()/#121 stay pristine): (a) a HUSH ducks the
+  combat bus to near-silence for ~0.6s BEFORE the surrender sting, which then cracks into re-opened air
+  (#135/#172); (b) a CHARGED rank-up (#169) — a ~0.8s rising swell + a warm colour-grade pulse HOLD the crown,
+  then the card SNAPS on the bass thunk (vs the old instant card); (c) the colour-grade pulse also fires on a
+  notorious kill (#173). Suppressed by the SAME prefers-reduced-motion + Combat-feel toggle as the juice (off
+  → the payoff still fires, instantly, never lost). PURE `src/systems/negative-space.js` TDD'd first (17
+  tests); main.js ages it on the sim clock via its own system + applies the audio duck + grade overlay each
+  frame; audio.js gains a duck bus + a strike sting + a rising swell. NO save bump (v18). **Completes the
+  "one more voyage" lane (#176 · #177 · #178 · #179 — all shipped, all v18).**
 - **2026-07-02 — #178 The weather gage: the wind becomes a rule BOTH hulls obey (Loop 147,
   v0.0.20260702121814; the "one more voyage" lane slice 3/4, #178 CLOSED).** Promoted the shipped wind
   (`state.windDir`, the one the HUD windrose already shows) from decoration to a RULE: heading relative to
