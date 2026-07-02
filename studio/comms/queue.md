@@ -94,11 +94,20 @@ Six original, vision-aligned, FUN-FIRST slices, sequenced value·complexity·dep
   **Derived from persisted infamy/class — NO save change (stays v18).** SEE the sea part as your notorious
   sails crest · FEEL your reputation has weight. Playtest asserts big-gap→flee+early-strike, peer/apex→stand,
   and the dread strike opens+ACCEPTs the surrender flag cleanly (no soft-lock). Gallery
-  `world-fears-you-172.png` (before/after of the rise). **#173 BUILD NEXT.**
-- **#173 — The bounty board: a named target + scaled reward (M · reuses the persisted objective slot). BUILD NEXT.** The
-  "one more voyage" hook; the reward feeds the upgrade loop. _FUN: SEE a bounty → chase → claim → spend on
-  your ship._ Prefer no bump (fail-open objective shape). Relates #128/#112/#127.
-- **#174 — Governor-pole symmetry: invest spoils to grow your port VISIBLY (S/M · no bump).** The Standing
+  `world-fears-you-172.png` (before/after of the rise).
+- **#173 — The bounty board: a named target + scaled reward. ✅ SHIPPED.** The "one more voyage" hook.
+  A port board posts a NAMED wanted vessel (`the Grey Gull`…) with a tier-scaled purse (#167-symmetric:
+  tier-4 warship frigate = 400c). Accept → she rides the EXISTING `state.objective` slot as a NEW KIND
+  (`bounty`, NOT a new system) so the chart marker pins her hunt for free; run her down + DEFEAT her
+  (sink/capture) → the board pays the purse ONCE into coin (+ fame in renown), which funds the
+  Workshop/Shipwright (#170/#171) — the earn→spend loop CLOSES. New target kind `ship`; pure model in
+  `src/objectives.js` (`makeBounty`/`bountyReward`/`resolvesOnDefeat`/`bountyPayoff`/`pickBounty`), TDD'd
+  (28 objective cases); board UI in `src/ui/town.js`; foe-dressing hook in `battle.js`; Ballad verse in
+  `voyage-log.js`. **Rides the existing objective persistence — NO save change (stays v18).** SEE the
+  wanted poster · chase the marker · claim the purse → spend it on the next cannon. Playtest asserts
+  accept→marker, defeat-target→claim-once (into coin +469c/+615 renown), wrong-target→no-claim,
+  claim-once (no re-hunt). Gallery `bounty-board-173.png`. **#174 BUILD NEXT (last of the lane).**
+- **#174 — Governor-pole symmetry: invest spoils to grow your port VISIBLY (S/M · no bump). BUILD NEXT (last).** The Standing
   road's equivalent of a bigger ship, so both paths feel complete. _FUN: SEE your port prosper as you invest._
   Derived from persisted `harbour.level`; reuses #101 port props. Relates #118/#134.
 
@@ -112,10 +121,11 @@ regardless (slices don't depend on this).
 player's. Recommend shipping the class-scaled *visible* change now (no new art) and queuing the CC0
 ship-class set as a parallel art follow-up — not a blocker.
 
-**Sequencing note:** #169 + #170 SHIPPED. #171 + #172/#173/#174 remain unblocked, non-owner-decision READY
-slices → the loop stays in DELIVERY; the two [OWNER-DECISION]s above are questions to surface, NOT build
-blockers and NOT counted toward the low-water-mark. **Build #171 next** — buy a bigger ship (rides #170's
-v18 schema, which already reserved the `shipClass` field, so #171 needs NO further save bump).
+**Sequencing note:** #169 + #170 + #171 + #172 + #173 SHIPPED. **#174** is the last unblocked, non-owner-decision
+READY slice of THE RISE → the loop stays in DELIVERY; the two [OWNER-DECISION]s above are questions to surface,
+NOT build blockers and NOT counted toward the low-water-mark. **Build #174 next** — governor-pole symmetry
+(invest spoils to grow your port VISIBLY; derived from persisted `harbour.level`, reuses #101 port props, NO
+save bump). After #174 the epic #168 lane is complete — refill the roadmap (PRODUCT) before the next cycle.
 
 ---
 

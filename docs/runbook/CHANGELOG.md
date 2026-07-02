@@ -4,6 +4,19 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #173 The bounty board shipped — a named target + tier-scaled purse; the earn→spend loop
+  CLOSED (Loop 130, v0.0.20260702055950).** Epic **#168 "The Rise"** slice 5/6 — the "one more voyage"
+  hook. A port board posts a NAMED wanted vessel (`the Grey Gull`…) with a tier-scaled purse (#167-symmetric:
+  tier-4 warship frigate = 400c + fame). Accept → she rides the EXISTING `state.objective` slot as a NEW KIND
+  (`bounty`, a new target kind `ship` — NOT a new system) so the chart marker pins her hunt for free; run her
+  down + defeat her (sink/capture) → the board pays the purse ONCE into coin (+ fame in renown), which funds
+  the Workshop/Shipwright (#170/#171). PURE TDD'd model in `src/objectives.js` (`makeBounty`/`bountyReward`/
+  `resolvesOnDefeat`/`bountyPayoff`/`pickBounty`; disjoint name pools so a random foe can't claim); board UI in
+  `ui/town.js`; a `bountyFoe` dressing hook in `battle.js` (the ship at the marker IS the target); claim in
+  `main.js` `onResolve`; Ballad verse in `voyage-log.js`. **Rides the existing objective persistence — NO save
+  change (stays v18).** Gate: `npm test` + playtest PASSED (accept→marker, defeat-target→claim-once into coin,
+  wrong-target→no-claim, claim-once), perf 29/130 draws · 92.8k/150k tris. Gallery `bounty-board-173.png`.
+  **#174** (governor-pole symmetry) is the LAST slice of the #168 lane.
 - **2026-07-02 — #172 The world fears you shipped — weak ships flee / strike early to a feared captain
   (Loop 129, v0.0.20260702052934).** Epic **#168 "The Rise"** slice 4/6 — the world reacts to your rise.
   Now that a captain can grow notorious (#169 ranks) and BIG (#171 class), the world NOTICES: a
