@@ -54,11 +54,19 @@ Six original, vision-aligned, FUN-FIRST slices, sequenced value·complexity·dep
   re-announces and a rung dropped after a defeat (#164) then re-climbed never re-fires. SEE the title · HEAR
   the sting (`playDuelHit('win')`) · FEEL the climb; DOM card + audio = 0 draws. Playtest asserts
   crossing→fires-once, non-crossing→silent, drop-then-re-climb→no re-fire. Gallery `rankup-milestone-169.png`.
-- **#170 — Buy a cannon at the Gunner's Workshop: SEE it on your deck (M · SAVE v17→v18). BUILD NEXT.** The owner's
-  canonical broken-arrow fix — persistent gun upgrade: extra cannon mesh on your deck + heavier boom + more
-  broadside damage. _FUN: SEE the new gun, HEAR the heavier boom, FEEL enemies sink faster._ **v18 must
-  migrate all prior + frozen corpus AND reserve the ship-class field for #170.** Delivers #141 core.
-- **#171 — Buy a bigger ship: the hull visibly grows (M · rides #170's v18).** Give the PLAYER the existing
+- ✅ **#170 — Buy a cannon at the Gunner's Workshop: SEE it on your deck — SHIPPED (Loop 127, v0.0.20260702041455, #170 CLOSED).**
+  The owner's canonical broken-arrow fix landed: at the town ⚒ Gunner's Workshop you now **spend coin to buy a
+  PERSISTENT extra cannon** (up to a small cap of +3). All three payoffs land — you **SEE** a new bronze gun
+  bolted to your deck the instant you buy it (`src/deck-guns.js`, mesh-conserving InstancedMesh-free pool of
+  ONE shared barrel/carriage geometry, #121), **HEAR** a boom as she's run out, and **FEEL** foes fold sooner
+  (owned cannons feed a `broadsideMult` into `cannons.resolveBroadside`/`resolveExchange` — base ×1 → full
+  ×1.48). PURE core `src/systems/gun-upgrade.js` (cost curve 180/340/560c · clamp · buy math · damage map ·
+  deck slots), TDD'd. **SAVE v17→v18 (the lane's ONE bump):** persists `extraCannons` **AND reserves #171's
+  `shipClass`** (defaulting to the starting sloop) so the lane bumps ONCE — migrates every prior version
+  forward + a frozen v18 corpus blob + coverage guard green (#122). Playtest asserts buy→coin-deducted +
+  owned+1 + deck-gun-shown + heavier-bite + capped + **survives a reload (v18 round-trip)**. Gallery
+  `buy-a-cannon-170.png`. **#171 BUILD NEXT** (rides this v18 — no further bump).
+- **#171 — Buy a bigger ship: the hull visibly grows (M · rides #170's v18 — NO further save bump). BUILD NEXT.** Give the PLAYER the existing
   class system (#163); buy up sloop→brig→frigate. _FUN: SEE your ship dwarf the sloop you started in._
   Exposes #144 (player-ship art) — class scale is a real visible change with no new art; CC0 set is a
   parallel follow-up, not a blocker. Delivers #141 core.
@@ -82,10 +90,10 @@ regardless (slices don't depend on this).
 player's. Recommend shipping the class-scaled *visible* change now (no new art) and queuing the CC0
 ship-class set as a parallel art follow-up — not a blocker.
 
-**Sequencing note:** #169 SHIPPED (Loop 126). #170–#171 + #172/#173/#174 remain unblocked, non-owner-decision
-READY slices → the loop stays in DELIVERY; the two [OWNER-DECISION]s above are questions to surface, NOT build
-blockers and NOT counted toward the low-water-mark. **Build #170 next** — the owner's canonical broken-arrow
-fix (buy a cannon → see it on the deck) and the lane's ONLY save bump (v17→v18, reserving #171's ship-class field).
+**Sequencing note:** #169 + #170 SHIPPED. #171 + #172/#173/#174 remain unblocked, non-owner-decision READY
+slices → the loop stays in DELIVERY; the two [OWNER-DECISION]s above are questions to surface, NOT build
+blockers and NOT counted toward the low-water-mark. **Build #171 next** — buy a bigger ship (rides #170's
+v18 schema, which already reserved the `shipClass` field, so #171 needs NO further save bump).
 
 ---
 

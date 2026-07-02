@@ -4,6 +4,19 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #170 Buy a cannon at the Gunner's Workshop shipped — SEE it on your deck (Loop 127,
+  v0.0.20260702041455).** Epic **#168 "The Rise"** slice 2/6 — the owner's canonical broken-arrow fix. At
+  the town ⚒ Gunner's Workshop you now **spend coin for a PERSISTENT extra cannon** (small cap +3), landing
+  all three payoffs: **SEE** a new bronze gun bolted to your deck the instant you buy it, **HEAR** a boom as
+  she's run out, **FEEL** foes fold sooner (owned cannons feed a `broadsideMult` into
+  `cannons.resolveBroadside`/`resolveExchange` — base ×1 → full ×1.48). PURE core
+  `src/systems/gun-upgrade.js` (cost curve 180/340/560c · clamp · buy math · damage map · deck slots), TDD'd;
+  deck mesh `src/deck-guns.js` reuses ONE shared barrel/carriage geometry, hidden guns aren't drawn (#121).
+  **SAVE v17→v18 — the lane's ONE bump:** persists `extraCannons` **AND reserves #171's `shipClass`** (default
+  sloop) so the lane bumps once; migrates every prior version forward + a frozen v18 corpus blob + coverage
+  guard green (#122). Playtest asserts buy→coin-deducted + owned+1 + deck-gun-shown + heavier-bite + capped +
+  **survives a reload (v18 round-trip)**. Gallery `buy-a-cannon-170.png`. #170 CLOSED; epic #168 stays OPEN
+  (#171 buy-a-bigger-ship next, rides this v18 — no further bump).
 - **2026-07-02 — #169 Rank-up milestone shipped — the felt "you rose" beat (Loop 126,
   v0.0.20260702033359).** Epic **#168 "The Rise"** slice 1/6. Crossing into a new `renown.js` rung now
   ANNOUNCES itself: a title card naming the new rank with pole-appropriate tone — dread on the pirate road
