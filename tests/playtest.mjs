@@ -12,6 +12,7 @@ import { threatLabelFor } from '../src/systems/threat-label.js'; // #165: assert
 import { shipStats } from '../src/ship-classes.js'; // #166: canonical class matchups for the legible-odds fairness gate
 import { regionDanger, regionalSpec, DEEP_R } from '../src/systems/danger.js'; // #167: the FIXED regional-danger rule the fleet spawns against
 import { spoils } from '../src/cannons.js'; // #167: prove the sinking reward scales by foe tier
+import { battleLayer, nextTransition, DRIVE_SCALE, MENACE_SCALE, EDGE_SCALE } from '../src/systems/battle-score.js'; // #158: per-phase battle layers + bar-clock crossfade scheduling
 import { SAVE_VERSION } from '../src/save.js'; // #167 owner-decision: regional danger is positional — NO save bump (stays v17)
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -2703,6 +2704,65 @@ try {
   if (harmony.lawful.pole !== 'governor' || !(harmony.lawful.blend > 0)) fail(`harmony: a lawful ledger did not brighten the lead (${JSON.stringify(harmony.lawful)})`);
   if (harmony.lawful.scale[3] !== 6) fail(`harmony: the lawful voicing is not the warm raised-4th Lydian (${JSON.stringify(harmony.lawful.scale)})`);
   if (harmony.restored.pole !== 'neutral' || harmony.restored.blend !== 0 || harmony.restored.scale[3] !== 5) fail(`harmony: a neutral ledger did not restore the honest Ionian bed exactly (${JSON.stringify(harmony.restored)})`);
+
+  // 2j-6) PER-PHASE BATTLE MUSICAL SIGNATURES (#158): the raid's Three-Act structure, now AUDIBLE. Each
+  // act (⚔ Maneuver / 🪝 Boarding / 🗣 Duel — the shipped #135 raidPhaseModel) wears a DISTINCT musical
+  // LAYER (a different mode/register, not merely louder) that cross-fades in on the phase transition via
+  // the bar-clock — so you HEAR which act of the fight you're in before you read the HUD. AudioContext-
+  // free here (no gesture → the music engine never starts): the battle-layer CAST is set from the live
+  // raid act every frame regardless, so it asserts headless via tw.battleScore. We prove: (A) at sea
+  // there is NO battle layer (the honest bed alone); (B) squaring up to a foe arms the MANEUVER layer —
+  // its own driving mode, distinct from the at-sea rest; (C) breaking off fades the battle layer away;
+  // (D) the three acts map to pairwise-DISTINCT layers (the shipped param sets); (E) a phase transition
+  // is bar-quantised — the crossfade is HELD off the beat and only fires ON the downbeat.
+  const bscore = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);            // clean slate: at sea, no raid
+    const atSea = { ...tw.battleScore, scale: [...tw.battleScore.scale] };
+    function nearest() {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    }
+    const bi = nearest();
+    if (bi === -1) return { engaged: false, atSea };
+    const fp = tw.npcs[bi].pos;
+    tw.qaTeleport(fp[0], fp[1] - 120);        // drop just off her — inside engage range
+    tw.step(0.05);
+    const engaged = tw.engageBattle();
+    if (!engaged) return { engaged: false, atSea };
+    tw.step(0.1);                             // the music system folds the raid act into the layer cast
+    const maneuver = { ...tw.battleScore, scale: [...tw.battleScore.scale] };
+    tw.fleeBattle(); tw.step(0.1);            // break off — the battle layer must fade away
+    const afterFlee = { ...tw.battleScore, scale: [...tw.battleScore.scale] };
+    return { engaged: true, atSea, maneuver, afterFlee };
+  });
+  // (A) at sea: no battle layer, the honest bed alone
+  if (bscore.atSea.act !== null || bscore.atSea.drive !== 0) fail(`battle signatures (#158): a captain at sea already carries a battle layer (${JSON.stringify(bscore.atSea)})`);
+  if (!bscore.engaged) {
+    console.warn('  (#158 per-phase battle signatures: no foe to engage — live layer check skipped; pure phase→layer + crossfade scheduling still asserted)');
+  } else {
+    // (B) squaring up arms the MANEUVER layer — its own driving mode, distinct from the at-sea rest
+    if (bscore.maneuver.act !== 'maneuver') fail(`battle signatures (#158): squaring up did not arm the opening MANEUVER layer (act=${bscore.maneuver.act})`);
+    if (!(bscore.maneuver.drive > 0)) fail(`battle signatures (#158): the maneuver layer is silent (drive=${bscore.maneuver.drive}) — the fight is not scored`);
+    if (JSON.stringify(bscore.maneuver.scale) !== JSON.stringify(DRIVE_SCALE)) fail(`battle signatures (#158): the maneuver layer is not the driving mixolydian roll (${JSON.stringify(bscore.maneuver.scale)})`);
+    if (JSON.stringify(bscore.maneuver.scale) === JSON.stringify(bscore.atSea.scale)) fail('battle signatures (#158): the maneuver layer sounds the SAME as the at-sea bed — the fight is not audibly distinct');
+    // (C) breaking off fades the battle layer away
+    if (bscore.afterFlee.act !== null || bscore.afterFlee.drive !== 0) fail(`battle signatures (#158): the battle layer lingered after fleeing (${JSON.stringify(bscore.afterFlee)})`);
+  }
+  // (D) the three acts map to pairwise-DISTINCT layers (the shipped param sets the live system uses)
+  const layMan = battleLayer('maneuver'), layBrd = battleLayer('boarding'), layDuel = battleLayer('duel');
+  const sig = (l) => JSON.stringify(l.scale) + '|' + l.drive + '|' + l.octave;
+  if (new Set([sig(layMan), sig(layBrd), sig(layDuel)]).size !== 3) fail('battle signatures (#158): the three acts do not carry distinct layers (a phase is only louder, not recoloured)');
+  if (JSON.stringify(layMan.scale) !== JSON.stringify(DRIVE_SCALE) || JSON.stringify(layBrd.scale) !== JSON.stringify(MENACE_SCALE) || JSON.stringify(layDuel.scale) !== JSON.stringify(EDGE_SCALE)) fail('battle signatures (#158): an act layer drifted from its shipped mode');
+  // (E) a phase transition is bar-quantised: HELD off the beat, FIRES on the downbeat (the score is the timer)
+  const held = nextTransition({ committed: 'maneuver', target: 'boarding', step: 3, stepsPerBar: 8 });
+  const fired = nextTransition({ committed: 'maneuver', target: 'boarding', step: 8, stepsPerBar: 8 });
+  if (held.fire !== false || fired.fire !== true || fired.act !== 'boarding') fail(`battle signatures (#158): the phase crossfade is not bar-quantised (held=${JSON.stringify(held)}, fired=${JSON.stringify(fired)})`);
+  if (process.exitCode !== 1) console.log(`  ✓ per-phase battle signatures (#158): the fight is SCORED — at sea no battle layer; squaring up arms the driving MANEUVER layer (distinct from the bed); the three acts carry distinct modes [⚔ mixolydian · 🪝 freygish · 🗣 lydian+8ve]; the swap is bar-quantised (held off-beat, fires on the downbeat)`);
 
   // 2k) Island names + landfall flavour (#19): every island carries a characterful name, and
   // the FIRST time you sail close to one, a one-time toast hails it by name with a comedic line.

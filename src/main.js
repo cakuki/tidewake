@@ -39,6 +39,7 @@ import { createSystemsRegistry } from './systems/registry.js';
 import { interactionsSuppressed, ambientInteractionsAllowed } from './systems/battle-isolation.js';
 import { centreSafeZone, clearsCentre } from './ui/safe-zone.js';
 import { createOverShipBillboard, projectToScreen } from './ui/over-ship-billboard.js';
+import { raidPhaseModel } from './ui/raid-phases.js';
 import { threatLabelFor, selectLabels, maxLabelsForViewport } from './systems/threat-label.js';
 import { createAimIndicator, aimReadout } from './ui/aim-indicator.js';
 import { combatOdds, oddsReadout } from './systems/odds.js';
@@ -1950,7 +1951,13 @@ systems.register({ name: 'town-music', order: 300, update: (f) => {
 //   drives the sea/port crossfade, and the SAME signed lean (repLean) reputation-grade wrote this frame
 //   recolours the lead's MODE — Infamy → a freygish "bite", Standing → a warm Lydian voicing, neutral →
 //   the honest D-major hornpipe. Order 310 (after reputation-grade@120), so repLean is fresh.
-systems.register({ name: 'music', order: 310, update: (f) => music.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED, rudder: f.state.rudder, wave: ocean.swellScale, mode: mode.current, portDistance: f.harbourDistance, dockRadius: DOCK_RADIUS, lean: repLean }) });
+// — per-phase battle signatures (#158): the raid ACT (⚔ Maneuver / 🪝 Boarding / 🗣 Duel, from the
+//   shipped #135 raidPhaseModel, or null at sea) arms a distinct battle music LAYER that cross-fades
+//   in on the phase transition (bar-quantised) — so you HEAR which act of the fight you're in.
+systems.register({ name: 'music', order: 310, update: (f) => {
+  const raid = raidPhaseModel(battle.snapshot(), duel.snapshot());
+  music.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED, rudder: f.state.rudder, wave: ocean.swellScale, mode: mode.current, portDistance: f.harbourDistance, dockRadius: DOCK_RADIUS, lean: repLean, raidAct: raid ? raid.actKey : null });
+} });
 
 function update(dt, t) {
   // The WHOLE per-frame loop is the systems registry now (#130, DL #5). Every system registered
@@ -2487,6 +2494,11 @@ window.__tidewake = {
   // ledger and assert the SCORE recolours: freygish "bite" toward Infamy, warm Lydian toward Standing,
   // the untouched D-major Ionian at neutral. The crossfade through musicGain means mute still covers it.
   get harmony() { return music.mood(); },
+  // Per-phase battle signatures (#158) QA surface: the live battle-layer cast — the raid ACT the fight
+  // is in (⚔ maneuver / 🪝 boarding / 🗣 duel, or null at sea) + its distinct { scale, drive, octave },
+  // set from the raid act every frame with NO AudioContext — so a playtest can drive a fight and assert
+  // each act maps to a distinct musical layer (a different mode/register, not merely louder).
+  get battleScore() { return music.battleScore(); },
   // Invisible onboarding (#60) QA surface: the live progress flags, the next step, and
   // whether the seeded goal card is currently on screen.
   get onboarding() {

@@ -31,6 +31,19 @@ import { varyMelodyPass, variationPlan, SEA_VARIATION_SEED } from './systems/mel
 import { selectCue } from './systems/loop-cues.js';
 import { harmonicMood, IONIAN } from './systems/harmonic-mood.js';
 import { creakRate, creakGain, shouldCreak, creakGrain, CREAK_IDLE_RATE } from './systems/hull-creak.js';
+import { battleLayer, crossfadeGains, nextTransition } from './systems/battle-score.js';
+
+// Per-phase battle crossfade (#158): pre-baked constant-power (equal-power) gain curves the battle-
+// layer crossfade rides — sampled from the PURE crossfadeGains() so a phase swap sums to unity loudness
+// through the swap (no dip, no click). UP = the incoming act's gain 0→1, DOWN = the outgoing act's 1→0.
+const BATTLE_XFADE_N = 33;
+const BATTLE_XFADE_UP = new Float32Array(BATTLE_XFADE_N);
+const BATTLE_XFADE_DOWN = new Float32Array(BATTLE_XFADE_N);
+for (let i = 0; i < BATTLE_XFADE_N; i++) {
+  const g = crossfadeGains(i / (BATTLE_XFADE_N - 1));
+  BATTLE_XFADE_UP[i] = g.to;
+  BATTLE_XFADE_DOWN[i] = g.from;
+}
 
 // ---- Pure, browser-free helpers (unit-tested) ----
 
@@ -201,6 +214,23 @@ export function createMusic() {
   let recolourGain = null;  // the harmonic-needle recolour lead lives here (#132 Slice B); crossfades up with |lean|
   let recolourBus = null;   // the recolour lead's pre-gain bus (its own softening lowpass), parallel to leadBus
   let recolourState = { pole: 'neutral', blend: 0, scale: IONIAN }; // live modal-recolour cast (QA surface; headless-safe)
+  // Per-phase battle signatures (#158): each raid act (⚔ Maneuver / 🪝 Boarding / 🗣 Duel) voices the
+  // SAME lead melody a THIRD time in the act's distinct mode/register into a battle-layer bus, riding a
+  // bar-quantised, constant-power crossfade on the phase transition — so you HEAR which act you're in.
+  // Two parallel lead buses (A/B) let one act cross-fade OUT as the next fades IN. All under a battle
+  // layer-gain hung off musicGain (NOT seaLayerGain — the honest bed ducks in a fight while THIS swells).
+  let battleLayerGain = null;                 // overall battle-layer presence (drive-scaled; 0 at sea) → musicGain
+  let battleBusA = null, battleBusB = null;   // the two parallel lead buses voiceLead() renders battle notes into
+  let battleGainA = null, battleGainB = null; // the per-bus crossfade gains (constant-power A↔B on a swap)
+  const battleBusScale = { A: IONIAN, B: IONIAN };  // the scale each bus is currently voicing
+  const battleBusOctave = { A: 0, B: 0 };           // the register (octave shift) each bus is voicing
+  let battleActiveBus = 'A';                  // which bus carries the committed act
+  let committedBattleAct = null;              // the act currently SOUNDING (lags the live act until a downbeat)
+  let pendingBattleAct = null;                // the act the fight is in this frame (from update(); the swap target)
+  let battleOutBus = null;                    // the bus fading OUT during a crossfade (or null)
+  let battleOutStepsLeft = 0;                 // grid steps still voicing the outgoing bus (the crossfade tail)
+  let battleActState = battleLayer(null);     // QA surface: the live battle-layer cast {act,scale,drive,octave}; headless-safe
+  const BATTLE_XFADE_STEPS = 4;               // crossfade span (half a bar) — both buses voiced through it
   let portLayerGain = null; // the tavern/port drone lives here (swells on approach, #94)
   let portLP = null;        // the port drone's lowpass — per-town timbre tint (#69)
   let portTremLfo = null;   // the bellows wheeze LFO — per-town tremolo rate (#69)
@@ -556,9 +586,22 @@ export function createMusic() {
       // recolourGain. The bass + chord pad below stay FIXED in D major (the DL#3 trap) — only the lead
       // recolours. Cheap when neutral (blend 0 → skip the extra oscillators entirely).
       const recolour = recolourState.blend > 0.001 && recolourState.scale && recolourState.scale !== IONIAN;
+      // Per-phase battle layer (#158): when a raid act is committed, voice the SAME melody a third time
+      // in the act's distinct mode + register into the active battle bus; during a crossfade, ALSO voice
+      // the outgoing act's mode into the fading bus so the two acts overlap (a true equal-power swap).
+      const inBattle = !!committedBattleAct;
+      const activeBusNode = inBattle ? (battleActiveBus === 'A' ? battleBusA : battleBusB) : null;
+      const activeScale = inBattle ? battleBusScale[battleActiveBus] : null;
+      const activeOct = inBattle ? battleBusOctave[battleActiveBus] * 12 : 0;
+      const fading = battleOutStepsLeft > 0 && battleOutBus;
+      const outBusNode = fading ? (battleOutBus === 'A' ? battleBusA : battleBusB) : null;
+      const outScale = fading ? battleBusScale[battleOutBus] : null;
+      const outOct = fading ? battleBusOctave[battleOutBus] * 12 : 0;
       for (const n of leadByStep[s]) {
         voiceLead(time, degreeToFreq(n.deg, ROOT), n.durSec);
         if (recolour) voiceLead(time, degreeToFreq(n.deg, ROOT, recolourState.scale), n.durSec, recolourBus);
+        if (inBattle && activeBusNode) voiceLead(time, degreeToFreq(n.deg, ROOT + activeOct, activeScale), n.durSec, activeBusNode);
+        if (fading && outBusNode) voiceLead(time, degreeToFreq(n.deg, ROOT + outOct, outScale), n.durSec, outBusNode);
       }
       for (const n of bassByStep[s]) voiceBass(time, degreeToFreq(n.deg, ROOT), n.durSec);
       for (const c of chordByStep[s]) {
@@ -583,8 +626,14 @@ export function createMusic() {
         if (isDownbeat(step, STEPS_PER_BAR)) {
           if (pendingCue) { voiceLoopCue(pendingCue, nextNoteTime); pendingCue = null; }
           if (pendingUnder) { voiceLoopCue(pendingUnder, nextNoteTime); pendingUnder = null; }
+          // Per-phase battle swap (#158): a raid act change is HELD until here, then fires ON the beat
+          // (bar-quantised) — the constant-power layer crossfade lands like a composed cue, not a cut.
+          const trans = nextTransition({ committed: committedBattleAct, target: pendingBattleAct, step, stepsPerBar: STEPS_PER_BAR });
+          if (trans.fire) commitBattleAct(trans.act, stepSec * BATTLE_XFADE_STEPS);
         }
         fireStep(step, nextNoteTime);
+        // Age the battle crossfade tail one step; when spent, stop voicing the outgoing act's bus (#158).
+        if (battleOutStepsLeft > 0) { battleOutStepsLeft -= 1; if (battleOutStepsLeft === 0) battleOutBus = null; }
         // Hull-creak (#81): roll ONE sparse grain per grid step off the live pure rate — the ship
         // working in the swell, quicker under sail / a hard helm / a heavy sea. Muted covers it (the
         // grain routes through musicGain) but skip the roll when muted to stay cheap.
@@ -648,6 +697,28 @@ export function createMusic() {
       // Apply any lean set before the engine came up so the recolour is already cast on the first note.
       setMood(recolourState);
 
+      // Per-phase battle layer (#158): one battle layer-gain off musicGain (silent at sea), with two
+      // parallel lead buses (A/B) → their own softening lowpass → per-bus crossfade gains, so one raid
+      // act can fade OUT while the next fades IN (constant-power). Voiced into musicGain directly, NOT
+      // seaLayerGain, so a fight ducks the honest bed (resolveMix BATTLE) while THIS act layer swells.
+      battleLayerGain = ctx.createGain();
+      battleLayerGain.gain.value = 0;          // no battle layer until a raid act arms it
+      battleLayerGain.connect(musicGain);
+      const buildBattleBus = (startGain) => {
+        const g = ctx.createGain();            // the crossfade gain (A↔B)
+        g.gain.value = startGain;
+        g.connect(battleLayerGain);
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 3200;             // same softening as the neutral/recolour leads
+        const bus = ctx.createGain();          // the input voiceLead() renders into
+        bus.gain.value = 1;
+        bus.connect(lp).connect(g);
+        return { bus, gain: g };
+      };
+      { const a = buildBattleBus(1); battleBusA = a.bus; battleGainA = a.gain; }
+      { const b = buildBattleBus(0); battleBusB = b.bus; battleGainB = b.gain; }
+
       buildWakeBed();
       buildCreakBed();
       buildPortLayer();
@@ -672,6 +743,11 @@ export function createMusic() {
       seaLayerGain = null;
       recolourGain = null;
       recolourBus = null;
+      battleLayerGain = null;
+      battleBusA = null;
+      battleBusB = null;
+      battleGainA = null;
+      battleGainB = null;
       wakeGain = null;
       creakGain_ = null;
       creakNoise = null;
@@ -714,6 +790,47 @@ export function createMusic() {
     } catch {
       /* a bad frame must never throw */
     }
+  }
+
+  // Per-phase battle signatures (#158): set the raid ACT the fight is in this frame (⚔ maneuver / 🪝
+  // boarding / 🗣 duel — from raidPhaseModel().actKey, or null at sea). Stores the pure battle-layer
+  // cast for the QA surface (headless-safe — no ctx needed) and arms it as the crossfade TARGET; the
+  // scheduler commits the swap on the next bar downbeat (bar-quantised). Called every frame by update().
+  function setBattleAct(actKey) {
+    const layer = battleLayer(actKey);
+    battleActState = layer;
+    pendingBattleAct = layer.act; // null when outside a raid → the battle layer fades away
+  }
+
+  // Commit a phase swap (#158): the scheduler calls this ON a bar downbeat when the live act differs
+  // from the sounding one. Voices the incoming act's mode/register into the idle bus, then cross-fades
+  // the two per-bus gains along the pre-baked constant-power curves while the battle layer-gain rides to
+  // the new act's drive — so the layer swap lands on the beat, equal-power, no click. The FIXED D-major
+  // bass+pad below are untouched (the #132 discipline — no percussive bed, no loadTrack). Never throws.
+  function commitBattleAct(act, xfadeSec) {
+    const layer = battleLayer(act);
+    const inc = battleActiveBus === 'A' ? 'B' : 'A';
+    const out = battleActiveBus;
+    battleBusScale[inc] = layer.scale;
+    battleBusOctave[inc] = layer.octave;
+    const gIn = inc === 'A' ? battleGainA : battleGainB;
+    const gOut = out === 'A' ? battleGainA : battleGainB;
+    try {
+      const now = ctx.currentTime;
+      const dur = Math.max(0.05, Number(xfadeSec) || 0.5);
+      gIn.gain.cancelScheduledValues(now);
+      gOut.gain.cancelScheduledValues(now);
+      gIn.gain.setValueCurveAtTime(BATTLE_XFADE_UP, now, dur);
+      gOut.gain.setValueCurveAtTime(BATTLE_XFADE_DOWN, now, dur);
+      battleLayerGain.gain.setTargetAtTime(layer.drive, now, 0.35);
+    } catch {
+      // A curve can throw if it overlaps a prior one — fall back to a plain glide (never break the clock).
+      try { gIn.gain.setTargetAtTime(1, ctx.currentTime, 0.3); gOut.gain.setTargetAtTime(0, ctx.currentTime, 0.3); battleLayerGain.gain.setTargetAtTime(layer.drive, ctx.currentTime, 0.35); } catch { /* ignore */ }
+    }
+    battleOutBus = layer.act ? out : out; // keep voicing the outgoing tail even when leaving battle
+    battleOutStepsLeft = BATTLE_XFADE_STEPS;
+    battleActiveBus = inc;
+    committedBattleAct = layer.act;
   }
 
   // Per-town music identity (#69): re-voice the tavern drone toward a port's identity — transpose
@@ -792,6 +909,11 @@ export function createMusic() {
       // (no ctx → stores the cast for the QA surface, no audio), BEFORE the engine-up early return.
       setMood(harmonicMood(Number(state?.lean) || 0));
 
+      // Per-phase battle signatures (#158): the raid act the fight is in (⚔/🪝/🗣, or null at sea) arms
+      // the battle-layer crossfade target. Pure + headless-safe (stores the QA cast even with no ctx),
+      // BEFORE the engine-up early return, so a playtest can drive a fight and assert the act→layer map.
+      setBattleAct(state?.raidAct);
+
       if (!ctx || !musicGain || muted) return;
       // Gentle overall swell with intensity, on top of the per-note adaptivity.
       const now = ctx.currentTime;
@@ -855,5 +977,19 @@ export function createMusic() {
   // the score recolours (freygish toward Infamy, lydian toward Standing, Ionian at neutral).
   function mood() { return { pole: recolourState.pole, blend: recolourState.blend, scale: recolourState.scale }; }
 
-  return { start, setMute, update, setMix, setMood, setTownTheme, stinger, loopCue, lastCue, lastUnder, wakeLevel, creakLevel, variation, mood };
+  // Per-phase battle signatures (#158) QA surface: the live battle-layer cast — the raid ACT the fight
+  // is in and its distinct { scale, drive, octave } (set from the raid act every frame, even with no
+  // AudioContext), plus the act currently SOUNDING (committed; lags until a bar downbeat). Headless-
+  // assertable, so a playtest can drive a fight and prove each act maps to a distinct musical layer.
+  function battleScore() {
+    return {
+      act: battleActState.act,
+      scale: battleActState.scale.slice(),
+      drive: battleActState.drive,
+      octave: battleActState.octave,
+      committed: committedBattleAct,
+    };
+  }
+
+  return { start, setMute, update, setMix, setMood, setBattleAct, setTownTheme, stinger, loopCue, lastCue, lastUnder, wakeLevel, creakLevel, variation, mood, battleScore };
 }
