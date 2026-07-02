@@ -5,6 +5,7 @@ import { createWorld } from './world.js';
 import { createWake } from './wake.js';
 import { createNpcs } from './npc.js';
 import { createFauna } from './fauna.js';
+import { createCurios } from './curios.js';
 import { createPorts, DOCK_RADIUS } from './ports.js';
 import { loadProps } from './props.js';
 import { createAudio } from './audio.js';
@@ -869,6 +870,20 @@ const audio = createAudio({
 const music = createMusic();
 audio.attachMusic(music);
 audio.init();
+
+// Ocean sail-over curios (#70, slice 1): the empty sea rewards attention. Every so often a small
+// curio drifts in ahead of the bow — a corked bottle bobbing in the swell, or a sea turtle breaking
+// the surface — and sailing over it plays a soft cue + raises a wry line (never the same twice in a
+// row). Ambient open-sea only (never during a battle), deterministic + distance-culled, a single
+// reused mesh per kind → ≤1 extra draw. Pure delight between the fights; no mechanics, no save change.
+const CURIO_BANNER = { bottle: '🍾 Flotsam', turtle: '🐢 A turtle surfaces' };
+const curios = createCurios({
+  onEncounter: (type, line) => {
+    try { audio.playCurio(type); } catch { /* a soft cue must never break the sea */ }
+    try { hud.flashBanner(CURIO_BANNER[type] || '🌊 Something drifts by', line, 5200); } catch { /* nor the banner */ }
+  },
+});
+scene.add(curios.group);
 
 // Reputation needle (#132, DL #5): the HUD gauge that makes the Infamy↔Standing pole PERSONAL &
 // audible. It swings toward your pole as you commit and, the instant a real shift lands (a kill, a
@@ -1761,6 +1776,13 @@ systems.register({ name: 'fauna', order: 190, update: (f) => fauna.update(f.dt, 
   heading: f.state.heading, speed: f.state.speed,                 // #110: pod rides the moving ship
   sampleHeight: (x, z) => ocean.sampleHeight(x, z, f.t),          // surface at the waterline
 }) });
+// — ocean sail-over curios (#70): drift a bottle/turtle in ahead of the bow while under way, fire a
+//   soft cue + wry line as you sail over it. Ambient open-sea only — gated OFF in battle (f.inBattle).
+systems.register({ name: 'curios', order: 195, update: (f) => curios.update(f.dt, f.t, {
+  shipPos: [f.state.pos.x, f.state.pos.z], focus: camera.position,
+  heading: f.state.heading, speed: f.state.speed, inBattle: f.inBattle,
+  sampleHeight: (x, z) => ocean.sampleHeight(x, z, f.t),
+}) });
 systems.register({ name: 'props', order: 200, update: (f) => props.update([f.state.pos.x, f.state.pos.z]) });
 systems.register({ name: 'hud', order: 210, update: (f) => hud.update(f.state, sailing.MAX_SPEED) });
 // Reputation needle (#132): ease the gauge + fire the felt-shift sting/line. Right after the HUD so
@@ -2477,6 +2499,12 @@ window.__tidewake = {
   // cull), whether it's roosting over a coast, and the live flock centre — so a headless
   // playtest can assert the sky is alive and tracks the player.
   get fauna() { return fauna.snapshot(); },
+  // Ocean sail-over curios (#70) QA surface: whether a curio is live + drawn (distance cull), the
+  // running spawn/encounter tallies, and the last cue/line — so a headless playtest can assert the
+  // sea-delight beat. `qaCurioProbe()` runs a self-contained deterministic probe (spawn determinism,
+  // draw-when-near / cull-when-far, cue fires, witty-line anti-repeat) without touching the live sim.
+  get curios() { return curios.snapshot(); },
+  qaCurioProbe() { return curios.qaProbe(); },
   // CC0 Pirate Kit port dressing (#101) QA surface: how many props were placed, how many are
   // currently drawn (distance cull), and how many port clusters exist — so a headless playtest
   // can assert the harbours are furnished and that far clusters are culled to nothing.

@@ -431,6 +431,43 @@ export function createAudio(opts = {}) {
     }
   }
 
+  // ---- Ocean sail-over curios (#70) ----------------------------------------
+  // Soft, brief, wholly-synthesised one-shots for the sea-delight beat: a curio you sail over
+  // gets a gentle cue (paired with a wry line on the HUD). Kept quiet + short so it charms rather
+  // than interrupts. Built from the shared tone()/noiseTick() recipe, hung off sfxGain (so mute
+  // covers it), and fully guarded — a charm cue must never break the sea.
+
+  // BOTTLE: a hollow little glass "tonk" over a soft water plip — flotsam nudging the hull.
+  function sfxBottle(t0, dest) {
+    tone(t0, 0.20, 0.11, 'triangle', 500, 360, dest, 0.006); // the hollow glass body
+    tone(t0 + 0.015, 0.10, 0.05, 'sine', 1250, 1500, dest, 0.004); // a small bright tap
+    noiseTick(t0, 0.09, 0.045, 850, 0.8, dest); // the water plip around it
+  }
+
+  // TURTLE: a gentle water "bloop" as the shell breaks the surface — a soft splash, then a breath.
+  function sfxTurtle(t0, dest) {
+    tone(t0, 0.24, 0.10, 'sine', 320, 170, dest, 0.01); // the low surface-break bloop
+    noiseTick(t0, 0.16, 0.055, 480, 0.6, dest); // a soft broad splash
+    noiseTick(t0 + 0.06, 0.10, 0.035, 1150, 0.9, dest); // a light droplet/breath on top
+  }
+
+  /**
+   * Play a curio cue. No-op until a real gesture has the engine running, so a headless run
+   * (no context) is silent and never throws.
+   * @param {'bottle'|'turtle'} type
+   */
+  function playCurio(type) {
+    if (!ctx || ctx.state !== 'running' || !master) return;
+    try {
+      const dest = sfxGain || master;
+      const t0 = ctx.currentTime + 0.005;
+      if (type === 'bottle') sfxBottle(t0, dest);
+      else if (type === 'turtle') sfxTurtle(t0, dest);
+    } catch {
+      /* a curio cue must never break the game */
+    }
+  }
+
   // ---- Reputation needle sting (#132) --------------------------------------
   //
   // A short, modal one-shot that BITES the moment your reputation shifts — the audible half of the
@@ -730,5 +767,5 @@ export function createAudio(opts = {}) {
     onGesture();
   }
 
-  return { init, setMute, isMuted, update, attachMusic, playDuelHit, playRepSting, unlock };
+  return { init, setMute, isMuted, update, attachMusic, playDuelHit, playRepSting, playCurio, unlock };
 }
