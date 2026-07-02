@@ -20,7 +20,7 @@ the **local loop only** — there are no cloud routines.
 | R6 | 📨 Morning owner briefing | 08:00 | daily | product-manager | 2026-07-02 |
 | R7 | 🗺️ Weekly planning | 09:00 | Mon | product-manager + tech-lead | — |
 | R1 | 😴 Sleep / defrag (memory) | 10:00–12:00 | daily | all 9 agents (fan-out) | 2026-07-02 |
-| R2 | 📚 Deep reading | 13:00 | daily | all 9 agents (fan-out) | 2026-07-01 |
+| R2 | 📚 Deep reading | 13:00 | daily | all 9 agents (fan-out) | 2026-07-02 |
 | R3 | 🧪 Pre-release hardening (**Fri = intense QA event, runs early**) | 16:00 daily · **~14:00 Fri** | daily | qa + software-developer | — |
 | R4 | 🚀 Daily release | 17:00 | **Mon–Thu + Sat–Sun** (every day except Fri) | project-manager + tech-lead | — |
 | R4w | 🌟 Weekly release (replaces R4) | 17:00 | Fri | **marketing-manager** + PM + TL + graphic-designer + sound-engineer | — |

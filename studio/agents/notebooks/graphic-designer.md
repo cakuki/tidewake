@@ -14,3 +14,16 @@ Grounded in the shipped battle epic (#135): deep per-phase naval combat with man
 **Cross-connection (outside games):** automotive **AR-HUD navigation prompts** research shows a cue timed and placed to the exact decision point (the intersection) beats an always-on display for driver response — same principle: right cue, right instant, then gone.
 
 Sources: Wayline (diegetic interfaces); Game UI Database (contextual button prompts); UX Collective (game onboarding); AR-HUD navigation prompt study (NCBI).
+
+### 2026-07-02 — Deep-reading #5: SHOW the reputation — the port and the ship as your story, told silently
+
+The reputation needle is a meter; the deeper (and cheaper-than-a-meter-redesign) move is **environmental storytelling — mood from lighting/colour + a few placed props, not geometry** (Wayline "environmental storytelling"; low-poly aesthetics craft).
+
+- **The port reacts VISIBLY to who you are.** A feared pirate makes landfall to shutters closing, doubled guards, a "WANTED" poster; a respected governor to banners and a lit quay — keyed off the existing reputation value and the #101 pooled town props (#174 already grows the port visibly). Show, don't tell the needle. Maps onto parked **nations #137** / lightly **named-persons #142**. **S/M, cheap** (instanced props we already pool).
+- **Fear you can SEE on your own hull.** Render Infamy on the ship the way THE RISE shows bought cannons (#170): black sails, trophy flags, a fiercer figurehead — derived from persisted infamy, and a bad loss strips a trophy. Fame you can see and lose. **S, cheap.**
+- **A payoff colour-grade pulse.** On a notorious kill / rank-up, briefly push warm saturation + a soft vignette + a one-frame bright bloom, then settle — a single full-screen pass, geometry-free, ~0 extra per-object draws (WebGLFundamentals fog; LearnOpenGL bloom). Deepens the #80 kill-juice + #58/#88 day-night/weather. **S, cheap.**
+- **Exponential fog sells distance-to-land for free** — pairs with the coastal gulls swelling (#68/#97): the coast fades up out of haze rather than popping in. Cheap depth cue, screen-space.
+
+**Cross-connection (outside games):** retail store-window merchandising — a shopper reads a whole brand from the lighting + two props in the window before entering. Same as our dock: the player should read "they fear you here" from the shutters and the poster before a single line of text.
+
+Sources: Reclaiming environmental storytelling (wayline.io); WebGL Fog (webglfundamentals); Bloom (LearnOpenGL); low-poly atmosphere craft (Wayline).

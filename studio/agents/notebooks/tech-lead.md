@@ -15,3 +15,15 @@ Battle epic #135 shipped rich verbs (Maneuver→Board→Duel, keys E/Space/X/F/1
 **Cross-connection (within stack):** a keymap table is the input analogue of the `#24` systems registry — a thin single source of truth others read, not a framework.
 
 Sources: acagamic.com (contextual prompts); gameuidatabase.com; uxpin.com / ixdf.org (progressive disclosure).
+
+### 2026-07-02 — Deep-reading #5: depth as ONE new property reused across shipped systems (not a new epic)
+
+With THE RISE closed, the cheapest deepening is the immersive-sim move: **a few global rules the world obeys, not scripted exceptions** ("player asks 'can I?', systems answer 'yes'" — TV Tropes/Wikipedia Immersive Sim). The recurring engineering shape across this cycle's research: *introduce one property and reuse it everywhere* — matching Tidewake's cheap-systemic, no-save-bump discipline.
+
+1. **Wind as a global rule both hulls obey.** We already ship weather (#88, gameplay-weather deferred). Promote the wind vector to a property read by maneuver, aim AND escape: downwind = speed + a smoke-screen approach, upwind = the "weather gage" (dictate range). One property → emergent tactics, no new tech (Skeleton Code Machine on naval games; BotW fire+wind emergence). This is the natural home for #88's deferred gameplay half. **S/M.**
+2. **Ammo type is one enum on the volley.** Chain-shot → shreds sails (foe can't flee → feeds the #172 surrender path); grape → thins crew (tilts the #135 boarding duel). A single pre-shot choice flows through the EXISTING `resolveBroadside` + boarding math — no new combat system, reuses the #24 systems-registry seam. **M.**
+3. **A remembered rival is a tiny persistent state blob, not a subsystem.** The Nemesis pattern (one named captain who escalates/grudges) rides the shipped `state.objective`/bounty slot (#173) + the Ballad — the risk is the save-schema (#122): keep it ONE additive fail-open field so it round-trips. Maps to parked **named-persons #142**.
+
+**Cross-connection (within stack):** wind-vector and ammo-enum are the *input analogue* of the keymap table (DL#4) and the #24 systems registry — a thin shared property others read, never a framework. The discipline: no idea earns a save bump unless it's derivable from already-persisted state.
+
+Sources: Immersive Sim (TV Tropes/Wikipedia); Skeleton Code Machine (naval games); Emergent gameplay (Wikipedia/daydreamsoft); Nemesis System (Film Stories).
