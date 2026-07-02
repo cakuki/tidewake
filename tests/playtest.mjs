@@ -17,6 +17,7 @@ import { SAVE_VERSION } from '../src/save.js'; // #167 owner-decision: regional 
 import { dreadPressure, fleesOnSight, strikesEarly } from '../src/systems/dread.js'; // #172: the world FEARS you — the pure gap→flee/early-strike model
 import { offersSurrender } from '../src/systems/board.js'; // #172: prove the dread early-strike feeds the EXISTING white-flag path
 import { fearTier, pickFearfulHail } from '../src/systems/fearful-hail.js'; // #175: dread's HEAR half — the pure notoriety→fearful-hail line picker
+import { coastProximity, gullCoastGain } from '../src/audio.js'; // #68: the coast comes alive — gull-cry intensity vs distance-to-coast (audio-led, AudioContext-free curve)
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
@@ -3663,6 +3664,38 @@ try {
   if (!(fauna.shipShift > 20)) fail(`fauna: ship did not actually sail (shift=${fauna.shipShift?.toFixed(1)})`);
   if (!(fauna.centerShift > 5)) fail(`fauna: the flock did not track the player as they sailed (centreShift=${fauna.centerShift?.toFixed(1)})`);
 
+  // 2o¾) Coastal seagulls (#68 — the coast comes ALIVE): the gull SFX already exists; #68 drives its
+  // gain/rate off the distance to the nearest island shoreline (the SAME distance the #97 flock roosts
+  // over), so cries SWELL as you near a port and fall SILENT at open sea. Audio is inert headless, so
+  // we assert the pure curve (audio.js) applied to the LIVE coast distance the game reports (fauna),
+  // plus the visible tie-in: the flock roosts over the coast near land. Deterministic, distance-driven.
+  const gulls = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.2);
+    const isle = tw.islands && tw.islands[0];
+    // NEAR THE COAST: drop the ship right onto an island → shoreline distance ~0, flock roosts over it.
+    if (isle) { tw.qaTeleport(isle.x, isle.z); tw.step(0.5); }
+    const near = { coastDist: tw.fauna.coastDist, nearLand: tw.fauna.nearLand, visible: tw.fauna.visible };
+    // OPEN SEA: teleport far from every island → shoreline distance huge; the flock keeps you company
+    // but the cries go silent. Step so the coast read settles.
+    tw.qaTeleport(80000, 80000); tw.step(0.5);
+    const sea = { coastDist: tw.fauna.coastDist, nearLand: tw.fauna.nearLand };
+    tw.newVoyage(); tw.step(0.1);
+    return { hasIsle: !!isle, near, sea };
+  });
+  if (!gulls.hasIsle) fail('coastal gulls (#68): no island in the world to test coast proximity against');
+  // The distance→intensity curve the gull audio actually runs on, applied to the live reported distance.
+  const nearGain = gullCoastGain(coastProximity(gulls.near.coastDist));
+  const seaGain = gullCoastGain(coastProximity(gulls.sea.coastDist));
+  if (!(nearGain > 0.6)) fail(`coastal gulls (#68): cries do not swell near the coast (gain=${nearGain.toFixed(3)} at coastDist=${gulls.near.coastDist?.toFixed(0)})`);
+  if (!(seaGain < 0.05)) fail(`coastal gulls (#68): gulls are not silent at open sea (gain=${seaGain.toFixed(3)} at coastDist=${gulls.sea.coastDist?.toFixed(0)})`);
+  if (!(nearGain > seaGain + 0.5)) fail(`coastal gulls (#68): no audible swell coast→sea (near ${nearGain.toFixed(3)} vs sea ${seaGain.toFixed(3)})`);
+  // Visible tie-in to the #97 flock: near the coast the gulls actually wheel over the shore (roosting).
+  if (!gulls.near.nearLand) fail('coastal gulls (#68): the flock did not roost over the coast near land (no visual tie-in)');
+  if (!gulls.near.visible) fail('coastal gulls (#68): the flock was not drawn over the coast');
+  if (gulls.sea.nearLand) fail('coastal gulls (#68): the flock is still roosting on land out at open sea');
+  if (process.exitCode !== 1) console.log(`  ✓ coastal gulls (#68): the coast comes ALIVE — cries swell to gain ${nearGain.toFixed(2)} at the shore (coastDist ${gulls.near.coastDist.toFixed(0)}) beside the roosting flock, and fall to ${seaGain.toFixed(2)} (silent) out at open sea (coastDist ${gulls.sea.coastDist.toFixed(0)}); distance-driven, ambient, save-invariant`);
+
   // 2o') Living sea fauna phase 2 — jumping dolphins (#110): a small instanced pod that
   // occasionally surfaces and ARCS alongside the moving ship, then slips back under. Sail under
   // way and confirm a breach fires on the seeded schedule, a dolphin actually rises above water
@@ -4410,7 +4443,7 @@ try {
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
   console.log(`leak-invariant (#121): ${leak.N}× mode cycles · geom ${leak.baseline.geometries}→${leak.final.geometries} (+${leak.geomGrowth}) · tex ${leak.baseline.textures}→${leak.final.textures} (+${leak.texGrowth}) · worst transition ${leak.worstTransition.drawCalls} draws/${leak.worstTransition.triangles} tris`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, weather, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, curios, curiosLive, props, townProps, islandStyle, leak, broadside, cballs, juicePass, ammoCycle, boarding, gun, gunPersist, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, weather, grade, needle, landfall, ballad, falseColours, marque, fauna, gulls, dolphins, curios, curiosLive, props, townProps, islandStyle, leak, broadside, cballs, juicePass, ammoCycle, boarding, gun, gunPersist, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));

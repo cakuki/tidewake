@@ -55,6 +55,61 @@ export function nextGullDelay(rand, min = 12, max = 34) {
   return min + clamp01(rand) * (max - min);
 }
 
+// ---- Coastal gulls (#68): calls swell near land, fall silent at open sea ----
+//
+// The gull SFX already exists (playGull); #68 drives its LOUDNESS + FREQUENCY off how close the
+// coast is, so the shoreline sounds alive and the open sea goes quiet. The distance is the SAME
+// nearest-island shoreline the #97 visual flock roosts over (fauna exposes it), so the wheeling
+// gulls and their cries read together. All of this is pure + browser-free so the curve is unit-
+// tested without an AudioContext; createAudio() just reads the live proximity each cry.
+
+// Shoreline distance (world units) beyond which gulls are effectively at open sea (silent).
+// Matches the flock's ROOST_RANGE idiom so audio + visuals come alive over the same coast.
+export const COAST_AUDIO_RANGE = 520;
+// Peak per-cry gain multiplier right at the coast (a touch louder than the old flat baseline).
+export const GULL_COAST_PEAK = 1.3;
+// Below this proximity a cry is skipped entirely — zero oscillators, truly silent + cheap at sea.
+export const GULL_SILENT_PROX = 0.04;
+
+/**
+ * How "coastal" the ship is, from its distance to the nearest island shoreline. 1 on/at the coast,
+ * easing to 0 at (or beyond) COAST_AUDIO_RANGE out at open sea. Pure.
+ * @param {number} distToCoast  world units from the ship to the nearest shoreline (Infinity = no land)
+ * @param {number} [range]      distance at which gulls fully fade out
+ * @returns {number} proximity in [0,1]
+ */
+export function coastProximity(distToCoast, range = COAST_AUDIO_RANGE) {
+  if (!(range > 0)) return 0;
+  const d = Number(distToCoast);
+  if (!isFinite(d)) return 0; // no island anywhere → open sea
+  return clamp01(1 - Math.max(0, d) / range);
+}
+
+/**
+ * Per-cry gain multiplier for the gull SFX at a given coast proximity: 0 at open sea (silent),
+ * rising to GULL_COAST_PEAK right at the coast. Pure + monotonic.
+ * @param {number} prox  coast proximity in [0,1]
+ * @returns {number} gain multiplier in [0, GULL_COAST_PEAK]
+ */
+export function gullCoastGain(prox) {
+  return GULL_COAST_PEAK * clamp01(prox);
+}
+
+/**
+ * Seconds until the next gull cry, tightened near the coast (frequent, busy shoreline) and
+ * stretched out at open sea (sparse — and near-silent anyway). Interpolates the [min,max] gap
+ * bounds by proximity, then reuses nextGullDelay for the irregular jitter. Pure.
+ * @param {number} prox  coast proximity in [0,1]
+ * @param {number} rand  random value in [0,1] (clamped)
+ * @returns {number} delay in seconds
+ */
+export function gullCoastDelay(prox, rand, nearMin = 5, nearMax = 12, farMin = 20, farMax = 42) {
+  const p = clamp01(prox);
+  const min = farMin + (nearMin - farMin) * p;
+  const max = farMax + (nearMax - farMax) * p;
+  return nextGullDelay(rand, min, max);
+}
+
 /**
  * Equal-temperament frequency for a number of semitones above (or below) A4.
  * The duel stingers tune their flourishes from this — keeps the note maths pure
@@ -117,6 +172,7 @@ export function createAudio(opts = {}) {
   let started = false;
   let muted = readMutePref();
   let gullTimer = null;
+  let coastProx = 0; // #68: live 0..1 coastal-ness (from distance-to-coast) — drives gull gain + rate
   let last = { speed: 0, maxSpeed: 55 };
   let music = null; // optional Musician layer sharing this context + master + mute
 
@@ -207,6 +263,11 @@ export function createAudio(opts = {}) {
   // it never sounds tiled. Sometimes a quick double-cry.
   function playGull() {
     if (!ctx || ctx.state !== 'running' || !master) return;
+    // #68: gulls are a COASTAL presence — the cry swells as you near land and falls silent at open
+    // sea. Below the silence floor we build no oscillators at all, so the open sea is truly quiet
+    // and costs nothing. `coastGain` scales the whole cry's loudness by how close the coast is.
+    if (coastProx < GULL_SILENT_PROX) return;
+    const coastGain = gullCoastGain(coastProx);
     try {
       const cries = Math.random() < 0.45 ? 2 : 1;
       for (let c = 0; c < cries; c++) {
@@ -217,7 +278,7 @@ export function createAudio(opts = {}) {
 
         const out = ctx.createGain();
         out.gain.setValueAtTime(0.0001, t0);
-        out.gain.exponentialRampToValueAtTime(0.06 + Math.random() * 0.04, t0 + 0.03);
+        out.gain.exponentialRampToValueAtTime((0.06 + Math.random() * 0.04) * coastGain, t0 + 0.03);
         out.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
 
         let tail = out;
@@ -253,7 +314,8 @@ export function createAudio(opts = {}) {
 
   function scheduleGull() {
     if (typeof setTimeout !== 'function') return;
-    const delay = nextGullDelay(Math.random()) * 1000;
+    // #68: cries come thick and fast near a busy shoreline, sparse (and silent) out at open sea.
+    const delay = gullCoastDelay(coastProx, Math.random()) * 1000;
     gullTimer = setTimeout(() => {
       playGull();
       scheduleGull();
@@ -708,6 +770,11 @@ export function createAudio(opts = {}) {
   }
 
   function update(state) {
+    // #68: track how coastal we are every frame (cheap + AudioContext-free) so the gull scheduler
+    // and each cry read the live proximity — set it BEFORE the ctx guard so it stays fresh even
+    // before audio unlocks. `coastDist` is the nearest-island shoreline distance from fauna (#97),
+    // so the audible gulls and the visible wheeling flock swell over the SAME coast.
+    if (state && 'coastDist' in state) coastProx = coastProximity(state.coastDist);
     if (!ctx || ctx.state !== 'running' || !waveGainNode || !windGainNode) return;
     try {
       const speed = Number(state?.speed) || 0;

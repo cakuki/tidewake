@@ -98,6 +98,10 @@ export function createFauna({ world, count = GULL_COUNT, podCount = DOLPHIN_COUN
   const center = { x: 0, y: FLOCK_HEIGHT, z: 0 };
   let nearLand = false;
   let visible = true;
+  // #68: distance (world units) from the ship to the nearest island SHORELINE — the coastal audio
+  // (audio.js) drives the gull-cry gain/rate off this, so the wheeling flock and its cries swell
+  // over the SAME coast. Infinity when there's no land in the world at all.
+  let coastDist = Infinity;
 
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -232,8 +236,14 @@ export function createFauna({ world, count = GULL_COUNT, podCount = DOLPHIN_COUN
     updatePod(dt, ctx, focus);
 
     // Pick the roost target (ship at sea / shore near land) and glide the centre toward it.
-    const target = roostTarget(ship, nearestIsland(ship.x, ship.z));
+    const isle = nearestIsland(ship.x, ship.z);
+    const target = roostTarget(ship, isle);
     nearLand = target.nearLand;
+    // #68: distance to the nearest island shoreline (centre distance minus its radius, floored at 0),
+    // shared with the coastal gull audio so cries swell over the same coast the flock roosts on.
+    coastDist = isle
+      ? Math.max(0, Math.hypot(isle.x - ship.x, isle.z - ship.z) - (isle.r || 0))
+      : Infinity;
     center.x = easeTowards(center.x, target.x, dt);
     center.z = easeTowards(center.z, target.z, dt);
     center.y = FLOCK_HEIGHT;
@@ -258,7 +268,7 @@ export function createFauna({ world, count = GULL_COUNT, podCount = DOLPHIN_COUN
 
   function snapshot() {
     return {
-      count, visible, nearLand, center: [center.x, center.z], height: center.y,
+      count, visible, nearLand, coastDist, center: [center.x, center.z], height: center.y,
       // Dolphin pod (#110) QA surface: pod size, whether it's mid-breach + drawn, the running
       // breach tally (a pod fired on schedule), and whether any dolphin is above water now.
       dolphins: podCount,
@@ -273,5 +283,9 @@ export function createFauna({ world, count = GULL_COUNT, podCount = DOLPHIN_COUN
     };
   }
 
-  return { group, update, snapshot };
+  // #68: cheap per-frame read of the live shoreline distance for the coastal gull audio — avoids
+  // building a whole snapshot object every frame just to feed audio.update().
+  function getCoastDist() { return coastDist; }
+
+  return { group, update, snapshot, getCoastDist };
 }

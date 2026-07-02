@@ -2320,8 +2320,10 @@ systems.register({ name: 'hud-key-prompts', order: 277, update: () => {
 // inactive snapshot dismisses the panel; the encounter state itself is untouched and resumes on flee.
 systems.register({ name: 'hud-encounter', order: 280, update: () => hud.renderEncounter(
   interactionsSuppressed({ battleActive: battle.state.active }) ? { active: false } : encounter.snapshot()) });
-// — sea ambience + adaptive sailing theme level (#48).
-systems.register({ name: 'audio', order: 290, update: (f) => audio.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED }) });
+// — sea ambience + adaptive sailing theme level (#48). Coastal gulls (#68): feed the live distance
+//   to the nearest island shoreline (from the #97 flock, order 190 → fresh this frame) so the gull
+//   cries swell as you near a coast and fall silent at open sea — heard alongside the wheeling flock.
+systems.register({ name: 'audio', order: 290, update: (f) => audio.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED, coastDist: fauna.getCoastDist() }) });
 // — per-town music identity (#69): re-key the tavern drone to the nearest harbour, only on a change.
 systems.register({ name: 'town-music', order: 300, update: (f) => {
   const nearPort = ports.nearestPortName(f.state.pos);
