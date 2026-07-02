@@ -5,7 +5,7 @@
 // a bottom-docked prompt and the top raid strip both PASS. No save-schema — a layout predicate only.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { centreSafeZone, rectsOverlap, clearsCentre } from '../../src/ui/safe-zone.js';
+import { centreSafeZone, rectsOverlap, clearsCentre, TOP_STRIP_RESERVE } from '../../src/ui/safe-zone.js';
 
 const W = 1280, H = 800; // the playtest's authoritative desktop viewport
 
@@ -67,6 +67,33 @@ test('the top raid-phase strip sits above the safe band — clear', () => {
 test('a hidden / zero-area panel never occludes', () => {
   assert.equal(clearsCentre({ left: 0, top: 0, right: 0, bottom: 0 }, W, H), true);
   assert.equal(clearsCentre(null, W, H), true);
+});
+
+// ---- #75: short LANDSCAPE screen — the top strips must not read as occluders -------------------
+
+test('short landscape: the band top is floored at the top-strip reserve (not 16% of a short height)', () => {
+  const z = centreSafeZone(844, 390);   // 0.16*390 = 62.4 would dip into the top strips
+  assert.equal(z.top, TOP_STRIP_RESERVE); // floored to 100 so the strips sit above the band
+  assert.ok(z.top < z.bottom);            // still a valid (non-inverted) box
+  assert.ok(Math.abs(z.bottom - 226.2) < 1e-6);
+});
+
+test('short landscape: the fixed top strips (raid tracker + key-prompts, ~4→96px) clear the band', () => {
+  const w = 844, h = 390;
+  const raid = { left: w / 2 - 150, top: 4, right: w / 2 + 150, bottom: 54 };
+  const keyPrompts = { left: w / 2 - 100, top: 66, right: w / 2 + 100, bottom: 96 };
+  assert.equal(clearsCentre(raid, w, h), true);
+  assert.equal(clearsCentre(keyPrompts, w, h), true); // 96 ≤ band top 100 → clear (was 62 → occluded)
+});
+
+test('tall screens are UNCHANGED by the reserve floor (16% already clears the strips)', () => {
+  assert.equal(centreSafeZone(1280, 800).top, 128);   // 0.16*800 = 128 > 100
+  assert.ok(Math.abs(centreSafeZone(400, 860).top - 137.6) < 1e-9); // 0.16*860 > 100
+});
+
+test('the reserve floor never inverts the box on a pathologically tiny viewport', () => {
+  const z = centreSafeZone(300, 170); // 0.40*170 = 68 caps the floor below bottom (0.58*170 = 98.6)
+  assert.ok(z.top < z.bottom);
 });
 
 test('the bottom-docked prompt still clears on a phone-portrait viewport', () => {

@@ -744,7 +744,9 @@
       position: fixed; z-index: 13; display: flex; gap: 12px; pointer-events: none;
       bottom: calc(22px + env(safe-area-inset-bottom, 0px));
     }
-    #touch-controls .tc-throttle { right: 18px; flex-direction: column; }
+    /* #75: keep the throttle off the right notch / rounded corner in LANDSCAPE (inset-right is 0 in
+       portrait / on non-notch devices, so nothing moves there). */
+    #touch-controls .tc-throttle { right: calc(18px + env(safe-area-inset-right, 0px)); flex-direction: column; }
     #touch-controls .tc-action { left: 50%; transform: translateX(-50%); bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
     /* Ship's-wheel touch steering (#93): the rotatable helm sits in its OWN fixed control zone
        (bottom-left, where the ◀▶ buttons were). pointer-events:auto + touch-action:none mean a

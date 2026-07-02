@@ -688,6 +688,75 @@ try {
     if (process.exitCode !== 1) console.log(`  ✓ cleaner status HUD (#21): grouped into SAILING + CAPTAIN, every RISE field kept (coins/⚔/⚖/rank/needle/crown), fits desktop + phone-portrait, anchored top-left clear of the framed hull${hudBattle.engaged ? `, no overlap with the fight stack (${hudBattle.battleShown.join(',')})` : ''} — status reads at a glance`);
   }
 
+  // 2b3-land) LANDSCAPE PHONE + SAFE-AREA (#75): the mobile MVP (#63) verified PORTRAIT; this proves
+  // the game is laid out sanely + notch-safe when you TURN THE PHONE. On a landscape phone viewport
+  // (844×390, alongside the existing #146 portrait checks) the key UI — the status HUD, the docked
+  // fight prompts, and the touch controls — must (a) fit / clear the battle-camera centre exactly as
+  // in portrait and (b) sit within the device SAFE AREA (inside the viewport, clear of the notch /
+  // home-indicator env(safe-area-inset-*)). Headless reports insets=0, so `withinSafe` here proves
+  // the LANDSCAPE LAYOUT; the nonzero-inset math (a real notched phone) is proven by the pure
+  // tests/unit/safe-area.test.mjs. tw.safeAreaLayout() feeds the live rects + real insets through
+  // that same src/ui/safe-area.js predicate, so a notch clip on a real device can't silently regress.
+  {
+    await page.setViewport({ width: 844, height: 390, deviceScaleFactor: 1 });
+    // (a) the status HUD stays legible + fits in landscape (worst-case full RISE ledger).
+    const landHud = await page.evaluate(() => {
+      const tw = window.__tidewake;
+      tw.qaSetLedger({ coins: 12345, infamy: 480, standing: 260 }); tw.step(0.05);
+      const legible = tw.hudStatusLegible();
+      const safe = tw.safeAreaLayout(['#hud']);
+      return { legible, safe };
+    });
+    if (!landHud.legible.grouped) fail('landscape phone (#75): the status HUD lost its SAILING/CAPTAIN grouping at 844×390');
+    if (!landHud.legible.fieldsPresent) fail(`landscape phone (#75): a RISE read-out is missing in landscape — missing: ${landHud.legible.missing.join(',')}`);
+    if (!landHud.legible.fits) fail(`landscape phone (#75): the status HUD overflows / clips at 844×390 (hud ${JSON.stringify(landHud.legible.hud)} vs ${JSON.stringify(landHud.legible.viewport)})`);
+    if (!landHud.safe.allOnScreen) fail(`landscape phone (#75): the status HUD runs off the landscape viewport (offenders: ${landHud.safe.offenders.join(',')})`);
+    if (!landHud.safe.allWithinSafe) fail(`landscape phone (#75): the status HUD hides under a safe-area inset in landscape (offenders: ${landHud.safe.offenders.join(',')})`);
+
+    // (b) the docked fight prompts stay clear of the centre AND within the safe area in landscape.
+    const landBattle = await page.evaluate(() => {
+      const tw = window.__tidewake;
+      let bi = -1, bd = Infinity; const s = tw.state.pos;
+      for (let i = 0; i < tw.npcs.length; i++) { const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]); if (d < bd) { bd = d; bi = i; } }
+      if (bi === -1) return { engaged: false };
+      const fp = tw.npcs[bi].pos; tw.qaTeleport(fp[0], fp[1] - 120); tw.step(0.05);
+      if (!tw.engageBattle()) return { engaged: false };
+      tw.step(0.1);
+      const centre = tw.battleUICentreClear();
+      const safe = tw.safeAreaLayout(['#battle', '#cannons', '#duel', '#key-prompts']);
+      return {
+        engaged: true, shown: centre.panels.filter((p) => p.shown).map((p) => p.id),
+        centreClear: centre.clear, centreOffenders: centre.panels.filter((p) => p.shown && !p.clear).map((p) => p.id),
+        safeOk: safe.allWithinSafe && safe.allOnScreen, safeOffenders: safe.offenders,
+      };
+    });
+    if (!landBattle.engaged) {
+      console.warn('  (#75 landscape battle prompts: no foe to engage — skipped)');
+    } else {
+      if (!(landBattle.shown.length > 0)) fail('landscape phone (#75): no battle prompt showed — cannot verify landscape occlusion/safe-area');
+      if (!landBattle.centreClear) fail(`landscape phone (#75): a fight prompt occludes the ship centre at 844×390 (offenders: ${landBattle.centreOffenders.join(',')})`);
+      if (!landBattle.safeOk) fail(`landscape phone (#75): a fight prompt runs off / hides under a safe-area inset in landscape (offenders: ${landBattle.safeOffenders.join(',')})`);
+      await page.evaluate(() => { window.__tidewake.fleeBattle(); window.__tidewake.step(0.05); });
+    }
+
+    // (c) the touch controls (helm + throttle + action clusters) sit on-screen + within the safe area
+    // in landscape — the throttle now carries env(safe-area-inset-right) so it clears the side notch /
+    // rounded corner when the phone is turned (#75). Force touch mode so the cluster is painted.
+    const landTouch = await page.evaluate(() => {
+      const tw = window.__tidewake;
+      document.body.classList.add('touch'); tw.step(0.05);
+      const safe = tw.safeAreaLayout(['#ship-wheel', '.tc-throttle', '.tc-action']);
+      const shown = safe.elements.filter((e) => e.shown).map((e) => e.sel);
+      document.body.classList.remove('touch');
+      return { shown, ok: safe.allOnScreen && safe.allWithinSafe, offenders: safe.offenders };
+    });
+    if (!(landTouch.shown.length > 0)) fail('landscape phone (#75): the touch controls did not paint in touch mode — cannot verify landscape layout');
+    if (!landTouch.ok) fail(`landscape phone (#75): a touch control runs off / hides under a safe-area inset in landscape (offenders: ${landTouch.offenders.join(',')})`);
+
+    await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
+    if (process.exitCode !== 1) console.log(`  ✓ landscape phone + safe-area (#75): at 844×390 the status HUD, the docked fight prompts (${landBattle.engaged ? landBattle.shown.join(',') : 'none'}) and the touch controls (${landTouch.shown.join(',')}) all fit, clear the centre, and sit within the device safe area — the game feels native turned sideways`);
+  }
+
   // 2b3-lock) TARGET LOCK (#161 slice 3): the owner's complaint — "while moving other ships are all
   // around: I don't know which one I am fighting with!" The engaged foe now carries a world-anchored
   // target RING (a projected DOM billboard, 0 draws) and the non-combatant traffic RECEDES (material
@@ -4550,6 +4619,9 @@ try {
         reachedBottom = Math.abs(scroll.scrollHeight - scroll.clientHeight - scroll.scrollTop) <= 2;
       }
       const lr = leave ? leave.getBoundingClientRect() : null;
+      // #75: the Set Sail plank + the town panel must also sit within the device SAFE AREA (clear of
+      // the notch / home-indicator) — proven through the same src/ui/safe-area.js predicate.
+      const safe = tw.safeAreaLayout(['#town-leave', '#town']);
       return {
         townOpen: !!(tw.mode === 'town' && tw.town && tw.town.open),
         hasScroll: !!scroll,
@@ -4558,6 +4630,7 @@ try {
         // The Set Sail plank is on-screen, has real size, and never escapes the panel box.
         leaveOnScreen: !!lr && lr.top >= -1 && lr.bottom <= vpH + 1 && lr.width > 1 && lr.height > 1,
         leaveWithinPanel: !!lr && lr.bottom <= pr.bottom + 1 && lr.top >= pr.top - 1,
+        safeOk: safe.allWithinSafe, safeOffenders: safe.offenders,
         reachedBottom, scrollable,
       };
     });
@@ -4567,6 +4640,7 @@ try {
     if (!m.panelInViewport) fail(`${tag}: #town panel box overflows the viewport (clipping #146)`);
     if (!m.leaveOnScreen) fail(`${tag}: the "Set Sail" plank is not fully on screen (unreachable #146)`);
     if (!m.leaveWithinPanel) fail(`${tag}: the "Set Sail" plank escaped the panel box (#146)`);
+    if (!m.safeOk) fail(`${tag}: the Set Sail plank / town panel hides under a safe-area inset (#75, offenders: ${m.safeOffenders.join(',')})`);
     if (!m.reachedBottom) fail(`${tag}: could not scroll the port body to its end — content unreachable (#146)`);
   }
   // Restore the desktop viewport + a clean voyage for the screenshot artifact below.

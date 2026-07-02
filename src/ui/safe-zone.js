@@ -10,11 +10,23 @@
 // Pure + DOM-free + three.js-free so the zone rule unit-tests under `node --test` (the #53
 // self-tested-component standard). No state, no save-schema — a layout predicate only.
 
+// The fixed TOP INSTRUMENT STRIP reserve (#75): the raid-phase tracker (#135) + the just-in-time
+// key-prompts (#153) are pinned to the top edge and stack to ~96px of FIXED-position UI. On a tall
+// screen 16% of height sits well below them; on a SHORT LANDSCAPE screen 16% of height dips INTO
+// that strip, so the keep-clear band would wrongly read those deliberate top strips as "occluding
+// the ship." We floor the band's top at this reserve so the strips are always above the band. ~96px
+// of strip + a hair of margin.
+export const TOP_STRIP_RESERVE = 100;
+
 /**
  * The central "keep clear" box for the battle stage — the region the framed ship + the fight
  * occupy, that battle UI must never cover. A generous central band: the middle 60% of the width and
  * the upper-centre 42% of the height (top 16% → 58%), where the quarter-view camera frames the hull.
  * Deliberately NOT the full lower band, so bottom-docked prompts and the top raid strip both clear.
+ * The top is floored at TOP_STRIP_RESERVE so a SHORT landscape screen (where 16% of height dips into
+ * the fixed top-strip band) never counts the deliberate top strips as occluders (#75); the floor is
+ * itself capped below the band's own bottom so a pathologically tiny viewport can't invert the box.
+ * Tall screens (desktop / phone portrait) are UNCHANGED — 16% of height already clears the strips.
  * @param {number} width  viewport width in px
  * @param {number} height viewport height in px
  * @returns {{left:number, top:number, right:number, bottom:number}}
@@ -25,7 +37,7 @@ export function centreSafeZone(width, height) {
   return {
     left: 0.20 * w,
     right: 0.80 * w,
-    top: 0.16 * h,
+    top: Math.max(0.16 * h, Math.min(TOP_STRIP_RESERVE, 0.40 * h)),
     bottom: 0.58 * h,
   };
 }

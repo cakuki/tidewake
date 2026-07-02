@@ -50,6 +50,7 @@ import { createLandfall, mooredSwellScale } from './systems/landfall.js';
 import { createSystemsRegistry } from './systems/registry.js';
 import { interactionsSuppressed, ambientInteractionsAllowed } from './systems/battle-isolation.js';
 import { centreSafeZone, clearsCentre, rectsOverlap } from './ui/safe-zone.js';
+import { safeAreaBox, withinSafeArea } from './ui/safe-area.js';
 import { HUD_FIELDS, fitsViewport, anchoredTopLeft } from './ui/hud-status.js';
 import { createOverShipBillboard, projectToScreen } from './ui/over-ship-billboard.js';
 import { raidPhaseModel } from './ui/raid-phases.js';
@@ -3358,6 +3359,54 @@ window.__tidewake = {
       return { id, shown, rect, clear: !shown || clearsCentre(rect, w, h) };
     });
     return { clear: panels.every((p) => p.clear), zone: centreSafeZone(w, h), panels, viewport: { w, h } };
+  },
+  // Safe-area layout gate (#75): does key UI sit within the device SAFE AREA — inside the viewport
+  // AND clear of the notch / status bar / home-indicator (`env(safe-area-inset-*)`) — in EITHER
+  // orientation? Reads the LIVE device insets via a probe whose padding is env(safe-area-inset-*)
+  // (0 on desktop / non-notch / headless; real on a notched phone), then runs each element's live
+  // DOM rect through the pure src/ui/safe-area.js predicate. One source of truth for "does this hide
+  // under the notch?", used by the playtest so a notch/home-indicator clip can never silently regress.
+  // `onScreen` = within the viewport (insets 0); `withinSafe` = within the inset-reduced safe area.
+  // A hidden / zero-area element (display:none ancestor, opacity 0, unshown panel) can't hide under
+  // anything, so it reports clear.
+  safeAreaLayout(selectors = []) {
+    const w = window.innerWidth, h = window.innerHeight;
+    // Probe the real OS insets: a hidden fixed div whose padding IS env(safe-area-inset-*).
+    const probe = document.createElement('div');
+    probe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;'
+      + 'pointer-events:none;padding-top:env(safe-area-inset-top,0px);'
+      + 'padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px);'
+      + 'padding-left:env(safe-area-inset-left,0px);';
+    document.body.appendChild(probe);
+    const cs = getComputedStyle(probe);
+    const insets = {
+      top: parseFloat(cs.paddingTop) || 0, right: parseFloat(cs.paddingRight) || 0,
+      bottom: parseFloat(cs.paddingBottom) || 0, left: parseFloat(cs.paddingLeft) || 0,
+    };
+    probe.remove();
+    const elements = selectors.map((sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return { sel, present: false, shown: false, onScreen: true, withinSafe: true, rect: null };
+      const r = el.getBoundingClientRect();
+      const st = getComputedStyle(el);
+      // "shown" = actually painting: has area, not display:none / hidden, not faded out (opacity 0
+      // is how the .show panels + the town view sit when dismissed).
+      const shown = r.width > 1 && r.height > 1 && st.display !== 'none'
+        && st.visibility !== 'hidden' && (parseFloat(st.opacity) || 0) > 0.01;
+      const rect = shown ? { left: r.left, top: r.top, right: r.right, bottom: r.bottom } : null;
+      return {
+        sel, present: true, shown, rect,
+        onScreen: withinSafeArea(rect, w, h, {}, 1),      // inside the viewport
+        withinSafe: withinSafeArea(rect, w, h, insets, 1), // inside the notch-reduced safe area
+      };
+    });
+    return {
+      viewport: { w, h }, insets, box: safeAreaBox(w, h, insets), elements,
+      // convenience rollups over the SHOWN elements only
+      allOnScreen: elements.every((e) => !e.shown || e.onScreen),
+      allWithinSafe: elements.every((e) => !e.shown || e.withinSafe),
+      offenders: elements.filter((e) => e.shown && (!e.onScreen || !e.withinSafe)).map((e) => e.sel),
+    };
   },
   // Persistent status HUD gate (#21): can you read WHO YOU ARE and WHAT YOU HAVE at a glance? Reads the
   // live corner-HUD DOM and reports: it splits into the two legible GROUPS (Sailing + Captain, mirroring
