@@ -3395,6 +3395,82 @@ try {
   if (held.fire !== false || fired.fire !== true || fired.act !== 'boarding') fail(`battle signatures (#158): the phase crossfade is not bar-quantised (held=${JSON.stringify(held)}, fired=${JSON.stringify(fired)})`);
   if (process.exitCode !== 1) console.log(`  ✓ per-phase battle signatures (#158): the fight is SCORED — at sea no battle layer; squaring up arms the driving MANEUVER layer (distinct from the bed); the three acts carry distinct modes [⚔ mixolydian · 🪝 freygish · 🗣 lydian+8ve]; the swap is bar-quantised (held off-beat, fires on the downbeat)`);
 
+  // 2j-7) ROTATING SEA THEMES (#94 phase 2): the open sea EVOLVES over a long voyage. The once-static
+  // bed now rotates through a small set of DISTINCT sea themes — a mode + transposition RECOLOUR of the
+  // SAME procedural bed (no percussive bed, no loadTrack, the #132/#158 discipline) — cross-faded in ON
+  // a bar downbeat every ROTATE_BARS, seeded and deterministic. AudioContext-free here (no gesture → the
+  // music engine never starts): the live TARGET theme is set from the sea-clock every frame regardless,
+  // so it asserts headless via tw.seaTheme. We prove: (A) a fresh sail opens on the HOME theme (the
+  // untouched Ionian hornpipe); (B) the set is a handful of pairwise-DISTINCT airs; (C) selection is
+  // deterministic and rotates on the bar-clock; (D) sailing a while SWAPS the live theme to a new,
+  // distinct air; (E) the rotation YIELDS to town + battle (frozen while they own the mix) and RESUMES
+  // cleanly under sail — so the sea evolves, but town (#129) and battle (#158) music always take over.
+  const sea = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    const T = 'town', B = 'battle', S = 'sailing';
+    tw.newVoyage(); tw.step(0.1);
+    const fresh = { ...tw.seaTheme, scale: [...tw.seaTheme.scale] };
+    // Pure lookups (headless, cheap): determinism + rotation on the bar-clock.
+    const at0 = tw.seaThemeAt(0);
+    const atRot = tw.seaThemeAt(tw.rotateBars);
+    const det = JSON.stringify(tw.seaThemeAt(tw.rotateBars)) === JSON.stringify(tw.seaThemeAt(tw.rotateBars));
+    const themes = tw.seaThemes.map((t) => JSON.stringify(t.scale) + '@' + t.rootOffset);
+    // (D) sail past a rotation boundary (barSec ≈ 2.22s) → the live theme swaps to a new air.
+    tw.step((tw.rotateBars + 2) * 2.3);
+    const sailed = { ...tw.seaTheme, scale: [...tw.seaTheme.scale] };
+    const expected = tw.seaThemeAt(sailed.bars);
+    // (E) town OWNS the mix → the rotation freezes ashore, resumes under sail.
+    tw.enterMode(T); const townBars0 = tw.seaTheme.bars; tw.step(6); const townBars1 = tw.seaTheme.bars;
+    tw.enterMode(S); tw.step(3); const afterTownBars = tw.seaTheme.bars;
+    // (E) battle OWNS the mix → same freeze/resume. Square up to a REAL foe so mode=BATTLE persists
+    // (a bare enterMode('battle') with no active fight is reverted to SAILING by the mode system).
+    const nearest = () => {
+      const s = tw.state.pos; let bi = -1, bd = Infinity;
+      for (let i = 0; i < tw.npcs.length; i++) {
+        const d = Math.hypot(tw.npcs[i].pos[0] - s[0], tw.npcs[i].pos[1] - s[2]);
+        if (d < bd) { bd = d; bi = i; }
+      }
+      return bi;
+    };
+    let engaged = false, batBars0 = null, batBars1 = null, afterBatBars = null;
+    const bi = nearest();
+    if (bi !== -1) {
+      const fp = tw.npcs[bi].pos;
+      tw.qaTeleport(fp[0], fp[1] - 120); tw.step(0.05);
+      engaged = tw.engageBattle();
+      if (engaged) {
+        tw.step(0.2);
+        batBars0 = tw.seaTheme.bars; tw.step(6); batBars1 = tw.seaTheme.bars;
+        tw.fleeBattle(); tw.step(3); afterBatBars = tw.seaTheme.bars;
+      }
+    }
+    return { fresh, at0, atRot, det, themes, sailed, expected, townBars0, townBars1, afterTownBars, engaged, batBars0, batBars1, afterBatBars, rotateBars: tw.rotateBars };
+  });
+  // (A) a fresh sail opens on the home theme — the untouched Ionian hornpipe at the shipped key
+  if (sea.fresh.name !== 'home' || sea.fresh.rootOffset !== 0) fail(`sea themes (#94 ph2): a fresh sail did not open on the home theme (${JSON.stringify(sea.fresh)})`);
+  if (sea.fresh.scale[3] !== 5 || sea.fresh.scale[1] !== 2) fail(`sea themes (#94 ph2): the home theme is not the honest D-major Ionian (${JSON.stringify(sea.fresh.scale)})`);
+  // (B) a handful of pairwise-distinct airs
+  if (sea.themes.length < 3) fail('sea themes (#94 ph2): need a SET of themes, not one');
+  if (new Set(sea.themes).size !== sea.themes.length) fail('sea themes (#94 ph2): two themes share a (scale, transposition) — not distinct');
+  // (C) deterministic + rotates on the bar-clock
+  if (!sea.det) fail('sea themes (#94 ph2): selection is not deterministic — same bar gave different themes');
+  if (sea.at0.name !== 'home') fail('sea themes (#94 ph2): bar 0 is not the home theme');
+  if (sea.atRot.name === sea.at0.name) fail('sea themes (#94 ph2): the theme did not rotate after ROTATE_BARS — the sea would sound static');
+  // (D) sailing a while swaps the live theme to a new, distinct air (the fun beat, live)
+  if (!(sea.sailed.bars >= sea.rotateBars)) fail(`sea themes (#94 ph2): sea-time did not accrue under sail (bars=${sea.sailed.bars})`);
+  if (sea.sailed.name === 'home') fail('sea themes (#94 ph2): sailing a long stretch did not shift the sea to a new theme — the open water still loops');
+  if (sea.sailed.name !== sea.expected.name) fail(`sea themes (#94 ph2): the live theme drifted from the deterministic schedule (live=${sea.sailed.name}, expected=${sea.expected.name})`);
+  // (E) yields to town + battle (frozen), resumes under sail
+  if (sea.townBars1 !== sea.townBars0) fail(`sea themes (#94 ph2): the rotation did not FREEZE ashore (town) — bars advanced ${sea.townBars0}→${sea.townBars1}`);
+  if (sea.afterTownBars <= sea.townBars1) fail('sea themes (#94 ph2): the rotation did not RESUME after leaving town');
+  if (!sea.engaged) {
+    console.warn('  (#94 ph2 sea themes: no foe to engage — live battle-yield check skipped; town-yield + pure yield still asserted)');
+  } else {
+    if (sea.batBars1 !== sea.batBars0) fail(`sea themes (#94 ph2): the rotation did not FREEZE in battle — bars advanced ${sea.batBars0}→${sea.batBars1}`);
+    if (sea.afterBatBars <= sea.batBars1) fail('sea themes (#94 ph2): the rotation did not RESUME after the fight');
+  }
+  if (process.exitCode !== 1) console.log(`  ✓ rotating sea themes (#94 ph2): the open sea EVOLVES — opens on the home Ionian hornpipe, then rotates through ${sea.themes.length} distinct airs on the bar-clock (deterministic); a long stretch shifts to a new air (${sea.sailed.name}); the rotation yields to town + battle and resumes under sail`);
+
   // 2k) Island names + landfall flavour (#19): every island carries a characterful name, and
   // the FIRST time you sail close to one, a one-time toast hails it by name with a comedic line.
   // Sail straight at the nearest isle and assert (1) it has a name, (2) the approach beat fired

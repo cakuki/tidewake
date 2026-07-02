@@ -53,6 +53,7 @@ import { centreSafeZone, clearsCentre, rectsOverlap } from './ui/safe-zone.js';
 import { HUD_FIELDS, fitsViewport, anchoredTopLeft } from './ui/hud-status.js';
 import { createOverShipBillboard, projectToScreen } from './ui/over-ship-billboard.js';
 import { raidPhaseModel } from './ui/raid-phases.js';
+import { seaThemeAt as seaThemeAtBar, SEA_THEMES, ROTATE_BARS } from './systems/sea-themes.js';
 import { threatLabelFor, selectLabels, maxLabelsForViewport } from './systems/threat-label.js';
 import { createAimIndicator, aimReadout } from './ui/aim-indicator.js';
 import { combatOdds, oddsReadout } from './systems/odds.js';
@@ -1140,6 +1141,7 @@ function newVoyage() {
   encounter.reset();                   // ...and meets no founderer mid-flight
   founderMesh.visible = false;
   mode.reset(); // a fresh voyage always starts under sail — deterministic (#95/#106)
+  music.resetSea(); // ...and the open-sea music rotation opens on the home air again (#94 ph2)
   landfall.reset(); // ...and with no landfall gesture mid-flight (#102)
   leftHarbour = false; // a fresh voyage re-arms auto-harbour from a clean slate (#67)
   themePort = null;    // re-key the tavern drone to wherever the fresh voyage starts (#69)
@@ -2343,7 +2345,7 @@ systems.register({ name: 'town-music', order: 300, update: (f) => {
 //   in on the phase transition (bar-quantised) — so you HEAR which act of the fight you're in.
 systems.register({ name: 'music', order: 310, update: (f) => {
   const raid = raidPhaseModel(battle.snapshot(), duel.snapshot());
-  music.update({ speed: f.state.speed, maxSpeed: sailing.MAX_SPEED, rudder: f.state.rudder, wave: ocean.swellScale, mode: mode.current, portDistance: f.harbourDistance, dockRadius: DOCK_RADIUS, lean: repLean, raidAct: raid ? raid.actKey : null });
+  music.update({ dt: f.dt, speed: f.state.speed, maxSpeed: sailing.MAX_SPEED, rudder: f.state.rudder, wave: ocean.swellScale, mode: mode.current, portDistance: f.harbourDistance, dockRadius: DOCK_RADIUS, lean: repLean, raidAct: raid ? raid.actKey : null });
 } });
 
 function update(dt, t) {
@@ -3008,6 +3010,16 @@ window.__tidewake = {
   // set from the raid act every frame with NO AudioContext — so a playtest can drive a fight and assert
   // each act maps to a distinct musical layer (a different mode/register, not merely louder).
   get battleScore() { return music.battleScore(); },
+  // Rotating sea themes (#94 phase 2) QA surface: the live target sea theme the open water is on
+  // ({ name, scale, rootOffset, bars, committed }), set every frame by the music system from the
+  // sea-clock with NO AudioContext — so a playtest can sail a while and assert the open sea ROTATES
+  // deterministically through distinct themes on the bar-clock, and freezes/resumes cleanly around
+  // town + battle music (which OWN the mix and hold the rotation). `seaThemeAt(bars)` is the pure
+  // lookup for ANY whole-bar count (headless-safe), and `seaThemes`/`rotateBars` expose the set + cadence.
+  get seaTheme() { return music.seaTheme(); },
+  seaThemeAt(bars) { return seaThemeAtBar(bars); },
+  get seaThemes() { return SEA_THEMES; },
+  get rotateBars() { return ROTATE_BARS; },
   // Invisible onboarding (#60) QA surface: the live progress flags, the next step, and
   // whether the seeded goal card is currently on screen.
   get onboarding() {

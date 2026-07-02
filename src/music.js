@@ -32,7 +32,9 @@ import { selectCue } from './systems/loop-cues.js';
 import { harmonicMood, IONIAN } from './systems/harmonic-mood.js';
 import { creakRate, creakGain, shouldCreak, creakGrain, CREAK_IDLE_RATE } from './systems/hull-creak.js';
 import { battleLayer, crossfadeGains, nextTransition } from './systems/battle-score.js';
+import { seaThemeAt, nextSeaTheme, SEA_THEMES, SEA_THEME_SEED, ROTATE_BARS } from './systems/sea-themes.js';
 import { townDockedCue } from './town-theme.js';
+import { SAILING } from './mode.js';
 
 // Per-phase battle crossfade (#158): pre-baked constant-power (equal-power) gain curves the battle-
 // layer crossfade rides — sampled from the PURE crossfadeGains() so a phase swap sums to unity loudness
@@ -299,6 +301,20 @@ export function createMusic() {
   let nextNoteTime = 0;
   let pass = 0;                              // 0-based loop counter; drives seeded per-pass variation (#117)
   const variationSeed = SEA_VARIATION_SEED;  // deterministic: same seed → same variation sequence
+
+  // Rotating sea themes (#94 phase 2): the open-sea bed EVOLVES over a long voyage — it rotates through
+  // a small set of DISTINCT sea themes (a mode + transposition RECOLOUR of the SAME procedural bed, like
+  // #132/#158 — no percussive bed, no loadTrack), cross-faded in ON a bar downbeat every ROTATE_BARS.
+  // `seaClock` accrues wall/sim seconds ONLY while at sea (frozen ashore/in a fight — the rotation
+  // yields, then resumes on the same air); `seaThemeState` is the live TARGET cast (headless-assertable
+  // via seaTheme(), set every frame by update() even with NO AudioContext — the #158 pattern), armed as
+  // `pendingSeaTheme`; the scheduler commits the swap on the next downbeat into `committedSeaTheme`,
+  // whose `scale` + `rootOffset` `seaCast` the sea voices (lead/bass/pad/recolour) read at schedule time.
+  let seaClock = 0;                          // seconds elapsed UNDER SAIL (accrued in update() from dt)
+  let seaThemeState = SEA_THEMES[0];         // QA surface: the live target sea theme (home at bar 0)
+  let pendingSeaTheme = SEA_THEMES[0];       // the theme update() wants; committed on the next downbeat
+  let committedSeaTheme = SEA_THEMES[0];     // the theme currently SOUNDING (lags until a bar downbeat)
+  let seaCast = { scale: committedSeaTheme.scale, rootOffset: committedSeaTheme.rootOffset };
 
   // (Re)lay the lead melody onto the eighth-note grid from a note list. Called once per pass with a
   // seeded per-pass variation (#117) so each 32-beat loop glints differently while staying in key —
@@ -619,6 +635,12 @@ export function createMusic() {
   function fireStep(s, time) {
     if (muted) return; // silent + cheap while muted; the grid clock keeps advancing
     try {
+      // Rotating sea themes (#94 ph2): the honest bed is voiced in the CURRENTLY-COMMITTED sea theme —
+      // its mode (`seaScale`) transposed to its key (`seaRoot`). Home (index 0) is Ionian at ROOT, so a
+      // fresh sail is byte-identical to the shipped hornpipe. The battle leads stay at ROOT (the bed
+      // ducks in a fight anyway). The recolour lead follows the sea key so the #132 needle stays in tune.
+      const seaRoot = ROOT + (seaCast.rootOffset || 0);
+      const seaScale = seaCast.scale;
       // The harmonic needle (#132 Slice B): when the recolour crossfade is audible, voice the SAME
       // lead melody a SECOND time in the pole's mode (read live from recolourState.scale) into the
       // recolourGain. The bass + chord pad below stay FIXED in D major (the DL#3 trap) — only the lead
@@ -636,14 +658,14 @@ export function createMusic() {
       const outScale = fading ? battleBusScale[battleOutBus] : null;
       const outOct = fading ? battleBusOctave[battleOutBus] * 12 : 0;
       for (const n of leadByStep[s]) {
-        voiceLead(time, degreeToFreq(n.deg, ROOT), n.durSec);
-        if (recolour) voiceLead(time, degreeToFreq(n.deg, ROOT, recolourState.scale), n.durSec, recolourBus);
+        voiceLead(time, degreeToFreq(n.deg, seaRoot, seaScale), n.durSec);
+        if (recolour) voiceLead(time, degreeToFreq(n.deg, seaRoot, recolourState.scale), n.durSec, recolourBus);
         if (inBattle && activeBusNode) voiceLead(time, degreeToFreq(n.deg, ROOT + activeOct, activeScale), n.durSec, activeBusNode);
         if (fading && outBusNode) voiceLead(time, degreeToFreq(n.deg, ROOT + outOct, outScale), n.durSec, outBusNode);
       }
-      for (const n of bassByStep[s]) voiceBass(time, degreeToFreq(n.deg, ROOT), n.durSec);
+      for (const n of bassByStep[s]) voiceBass(time, degreeToFreq(n.deg, seaRoot, seaScale), n.durSec);
       for (const c of chordByStep[s]) {
-        voiceChord(time, c.degs.map((d) => degreeToFreq(d, ROOT)), c.durSec);
+        voiceChord(time, c.degs.map((d) => degreeToFreq(d, seaRoot, seaScale)), c.durSec);
       }
     } catch {
       /* a bad note must never break the frame */
@@ -668,6 +690,11 @@ export function createMusic() {
           // (bar-quantised) — the constant-power layer crossfade lands like a composed cue, not a cut.
           const trans = nextTransition({ committed: committedBattleAct, target: pendingBattleAct, step, stepsPerBar: STEPS_PER_BAR });
           if (trans.fire) commitBattleAct(trans.act, stepSec * BATTLE_XFADE_STEPS);
+          // Rotating sea themes (#94 ph2): a pending theme swap (armed by update() from the sea-clock) is
+          // HELD until here, then commits ON the downbeat — a bar-quantised key/mode swap of the honest
+          // bed. The discrete plucks + the per-bar pad (old bar decaying as the new bar attacks) make the
+          // swap a natural crossfade on the beat, never a mid-phrase cut. Frozen ashore/in a fight.
+          if (pendingSeaTheme && pendingSeaTheme.name !== committedSeaTheme.name) commitSeaTheme(pendingSeaTheme);
         }
         fireStep(step, nextNoteTime);
         // Age the battle crossfade tail one step; when spent, stop voicing the outgoing act's bus (#158).
@@ -871,6 +898,41 @@ export function createMusic() {
     committedBattleAct = layer.act;
   }
 
+  // Rotating sea themes (#94 ph2): commit a theme swap ON a bar downbeat (the scheduler calls this when
+  // the live target differs from the sounding one). The bed's voices read `seaCast` at schedule time, so
+  // swapping it here re-keys the very next bar's lead/bass/pad — a bar-quantised, envelope-natural
+  // crossfade of the honest bed. NO node/gain juggling, NO percussive bed, NO loadTrack — just which
+  // scale/root the discrete plucks use. Never throws; safe with a junk theme (falls back to home).
+  function commitSeaTheme(theme) {
+    const t = theme && Array.isArray(theme.scale) ? theme : SEA_THEMES[0];
+    committedSeaTheme = t;
+    seaCast = { scale: t.scale, rootOffset: t.rootOffset || 0 };
+  }
+
+  // Arm the rotating sea theme (#94 ph2): accrue sea-time (ONLY while at sea), resolve the whole-bar
+  // count → the deterministic target theme, store it for the QA surface + as the pending swap. Pure +
+  // headless-safe: runs every frame even with NO AudioContext (the scheduler is what actually commits on
+  // a downbeat, but the TARGET is provable headless — the #158 setBattleAct pattern). While ashore/in a
+  // fight the clock freezes (atSea false) so the rotation HOLDS and resumes on the same air under sail.
+  // Rotating sea themes (#94 ph2): a fresh voyage always opens on the HOME air — reset the sea-clock
+  // and the committed/target theme to home (index 0). Called by newVoyage(); headless-safe (no ctx).
+  function resetSea() {
+    seaClock = 0;
+    seaThemeState = SEA_THEMES[0];
+    pendingSeaTheme = SEA_THEMES[0];
+    committedSeaTheme = SEA_THEMES[0];
+    seaCast = { scale: SEA_THEMES[0].scale, rootOffset: SEA_THEMES[0].rootOffset };
+  }
+
+  function setSeaTheme(dt, atSea) {
+    if (atSea && Number.isFinite(dt) && dt > 0) seaClock += dt;
+    const barSec = beatSec * BEATS_PER_BAR;
+    const barsAtSea = barSec > 0 ? Math.floor(seaClock / barSec) : 0;
+    const { theme } = nextSeaTheme({ committed: committedSeaTheme, barsAtSea, atSea, seed: SEA_THEME_SEED, rotateBars: ROTATE_BARS });
+    seaThemeState = theme || committedSeaTheme;
+    pendingSeaTheme = seaThemeState;
+  }
+
   // Per-town music identity (#69): re-voice the tavern drone toward a port's identity — transpose
   // the four chord oscillators to its key/mode (chordMidi), re-aim the lowpass to its timbre tint
   // and the LFO to its wheeze rate. Every change is a smooth setTargetAtTime GLIDE (a click-free
@@ -951,6 +1013,12 @@ export function createMusic() {
       // the battle-layer crossfade target. Pure + headless-safe (stores the QA cast even with no ctx),
       // BEFORE the engine-up early return, so a playtest can drive a fight and assert the act→layer map.
       setBattleAct(state?.raidAct);
+
+      // Rotating sea themes (#94 ph2): accrue sea-time + resolve the target theme every frame, even
+      // headless (no ctx → stores the QA target cast, no audio), BEFORE the engine-up early return, so a
+      // playtest can sail a while and assert the open sea ROTATES through distinct themes on the bar-clock
+      // — and freezes ashore/in a fight, then resumes. atSea is true only under sail (SAILING).
+      setSeaTheme(Number(state?.dt) || 0, state?.mode === SAILING || state?.mode == null);
 
       if (!ctx || !musicGain || muted) return;
       // Gentle overall swell with intensity, on top of the per-note adaptivity.
@@ -1037,5 +1105,21 @@ export function createMusic() {
   // the captain in its own key/mode/timbre, and that distinct towns get distinct docked flourishes.
   function dockedCue() { return lastDockedCue || currentDockedCue(); }
 
-  return { start, setMute, update, setMix, setMood, setBattleAct, setTownTheme, stinger, dockedCue, loopCue, lastCue, lastUnder, wakeLevel, creakLevel, variation, mood, battleScore };
+  // Rotating sea themes (#94 ph2) QA surface: the live TARGET sea theme the open water is on — its
+  // { name, scale, rootOffset } plus the whole-bar count under sail and the theme actually SOUNDING
+  // (committed; lags the target until a bar downbeat). Set every frame by update() from the sea-clock
+  // even with NO AudioContext — so a playtest can sail a while and assert the sea rotates deterministically
+  // through distinct themes on the bar-clock, and freezes/resumes cleanly around town + battle music.
+  function seaTheme() {
+    const barSec = beatSec * BEATS_PER_BAR;
+    return {
+      name: seaThemeState.name,
+      scale: seaThemeState.scale.slice(),
+      rootOffset: seaThemeState.rootOffset,
+      bars: barSec > 0 ? Math.floor(seaClock / barSec) : 0,
+      committed: committedSeaTheme.name,
+    };
+  }
+
+  return { start, setMute, update, setMix, setMood, setBattleAct, setTownTheme, stinger, dockedCue, loopCue, lastCue, lastUnder, wakeLevel, creakLevel, variation, mood, battleScore, seaTheme, resetSea };
 }
