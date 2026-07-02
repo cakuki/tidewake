@@ -4,6 +4,17 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #15 Comedic boot-tip pool: a wry line greets the cast-off — the game's voice before
+  you sail (Loop 142, v0.0.20260702101356; humour/polish, #15 CLOSED).** The loading overlay now speaks:
+  beneath CASTING OFF…, a wry, self-aware, kind-to-the-player one-liner from a pool of 20 original
+  in-voice tips (*"A wise captain fears three things: the deep, the Crown, and running out of rum. Mostly
+  the rum."*). A never-twice-in-a-row guarantee (reusing the #70 `pickLine` anti-repeat picker) keeps a
+  returning captain grinning at a fresh line each boot; the last-shown index persists in a DEDICATED
+  localStorage key, so the save schema is untouched (v18). PURE pool + picker (`src/boot-tips.js`) TDD'd
+  first (+7 unit tests, 1419 total); the headless gate asserts a tip renders on the overlay, is a real
+  pool member, and the picker never repeats the last line yet reaches every other. Text overlay = 0
+  draws (perf 31/130 draws · 93188/150000 tris). Gallery `v0.0.20260702101356.png`.
+
 - **2026-07-02 — #94 phase 2: rotating sea themes — the open sea evolves over a long voyage
   (Loop 141, v0.0.20260702100127; audio/fun, #94 STAYS OPEN for phases 4/5).** The once-static open-sea
   bed now rotates through 4 pairwise-distinct AIRS — a mode + transposition RECOLOUR of the SAME

@@ -863,6 +863,18 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
 ## Polish (cheap, charming, compounds shareability — natural fillers)
 
 17. **#15 — comedic loading-tip line pool.** — _humour surface, near-zero cost._
+    **SHIPPED & CLOSED (Loop 142, v0.0.20260702101356).** The loading overlay now speaks the game's
+    voice: beneath **CASTING OFF…**, a wry, self-aware, kind-to-the-player one-liner drawn from a pool
+    of **20 original in-voice tips** (*"A wise captain fears three things: the deep, the Crown, and
+    running out of rum. Mostly the rum."*). A **never-twice-in-a-row** guarantee (reusing the #70
+    `pickLine` anti-repeat picker) keeps a returning captain grinning at a fresh line each boot; the
+    last-shown index persists in a **DEDICATED localStorage key** so the **save schema is untouched
+    (stays v18)**. PURE pool + picker (`src/boot-tips.js`) TDD'd first (7 tests); the headless gate
+    asserts a tip renders on the overlay, is a real pool member, and the picker never repeats the last
+    line yet reaches every other. Text overlay = **0 draws** (perf unchanged, 31/130). All 5 acceptance
+    criteria met (15+ tips ✓, random tip per load ✓, single easy-to-extend data file ✓, warm
+    swashbuckling voice ✓, play-tested no layout breakage ✓). **Remains:** none owed — future polish
+    (contextual tips keyed to who you've become, a tip fade/rotate on a long load) is optional.
 18. **#21 — HUD coins placeholder + cleaner layout.** — _legibility; sets up future HUD work._
     **SHIPPED & CLOSED (Loop 140, v0.0.20260702093932).** THE RISE (#168) had piled coins, rank/title
     (#169), the ⚔ Infamy/⚖ Standing ledger, the reputation needle (#132) and the legend crown (#46)
