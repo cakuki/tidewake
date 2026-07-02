@@ -4,6 +4,19 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #158 Per-phase battle musical signatures shipped (Loop 122, v0.0.20260702020352).**
+  The raid's shipped three acts (⚔ Maneuver / 🪝 Boarding / 🗣 Duel — the #135 `raidPhaseModel`) are now
+  **HEARD, not just seen**: each act wears a **distinct musical LAYER** (a different mode + register +
+  drive, not merely louder) — ⚔ a driving mixolydian roll, 🪝 a dark freygish bite, 🗣 a sharp lydian a
+  register up — cross-fading **equal-power on the bar-clock** (a pending swap held until the next
+  downbeat), so **the score becomes the tutorial timer** (you hear the act change before you read it).
+  New PURE, TDD'd **`src/systems/battle-score.js`** (`battleLayer` phase→layer map with all three acts
+  sharing root/3rd/5th over the FIXED D-major bed, `crossfadeGains` constant-power, `nextTransition`
+  bar-quantised planner; 14 unit tests). `music.js` is the thin shell (a battle layer-gain off
+  `musicGain` with two parallel lead buses for a true act↔act crossfade committed on the downbeat) —
+  **recolours the lead like #132/#109; NO percussive-bed trap, NO `loadTrack`**. Save stays v17; audio =
+  0 draws. Deepens the shipped reactive-audio lane (#94/#109/#132) and reinforces the #135 legibility HUD.
+
 - **2026-07-02 — #167 Challenge on demand shipped — epic #162 COMPLETE (Loop 121, v0.0.20260702014146).**
   The payoff of the whole difficulty/stakes/variety lane: a player who WANTS a hard fight can now SEEK one
   and get it. Danger is **FIXED BY REGION** (owner decision #162 — NO rubber-band): the safe home coast

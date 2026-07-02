@@ -149,10 +149,13 @@ below — untouched. No save/schema change except where flagged (#157)._
   PM triage):** a dedicated bosun line for the verbal-duel phase + an optional spoken rumour/ballad audio clip
   for the cue. *"My first fight is winnable and legible."*
 
-- **#158 — Per-phase battle musical signatures (M · musician + software-developer).** Each raid act
-  (⚔ Maneuver / 🪝 Boarding / 🗣 Duel — the shipped phase model) gets a distinct musical *layer* (not just
-  louder), swapped on transition via the built bar-clock crossfade (#94/#109/#132; no percussive-bed trap).
-  The score becomes the tutorial timer. Reads the phase model (no new mechanics); no save change.
+- **✅ #158 — Per-phase battle musical signatures (M · musician + software-developer). SHIPPED
+  (v0.0.20260702020352).** Each raid act (⚔ Maneuver / 🪝 Boarding / 🗣 Duel — the shipped phase model) now
+  wears a distinct musical *layer* (a different mode + register + drive, not just louder): ⚔ a driving
+  mixolydian roll, 🪝 a dark freygish bite, 🗣 a sharp lydian a register up — cross-fading in on the phase
+  transition via the bar-clock (equal-power, no percussive-bed trap, no `loadTrack`; recolours the lead like
+  #132). The score becomes the tutorial timer. New pure `src/systems/battle-score.js` (phase→layer +
+  constant-power crossfade + bar-quantised planner, 14 unit tests); no new mechanics; save stays v17.
   *"I hear when to act before I know which key."*
 
 - **#159 — Diegetic age-of-sail keycap skin (S · graphic-designer + software-developer).** Dress the #153
