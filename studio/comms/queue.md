@@ -49,11 +49,16 @@ onto **parked owner-decision frontiers** and are surfaced as `[OWNER-DECISION]` 
   leaves Standing untouched & vice-versa). Card names the sting FIRST then "the tale is sung / a plank for
   your harbour / One more voyage?". PURE `salvagePlank`/`bankSalvage` + the defeat verse TDD'd first; NO save
   bump (stays v18). **#177 is next.**
-- **#177 — Fear you can SEE on your own ship** *(feature/art, S — P2)* **← NEXT.** Render Infamy on your OWN hull the
-  way #170 shows bought cannons: black sails / trophy flags / a fiercer figurehead as notoriety climbs, and a
-  bad loss visibly strips a trophy. **FUN:** fame you can see — and lose. *Derived from the persisted infamy
-  value; NO save bump.*
-- **#178 — The weather gage: wind as a global rule** *(design/tech, S/M — P2).* Promote the shipped wind
+- ✅ **#177 — Fear you can SEE on your own ship** *(feature/art, S — P2)* — **SHIPPED Loop 146,
+  v0.0.20260702115054, #177 CLOSED.** Notoriety is rendered on the PLAYER's OWN ship, derived purely from the
+  persisted Infamy value (NO save bump — v18): the sails darken toward a tarred **BLACK** and captured
+  **TROPHY pennants** run up the rigging at Infamy milestones. A #164 defeat dents Infamy, so a bad loss
+  visibly **strikes a trophy** (bounded, reversible by climbing again). PURE `fearRigging(infamy)` TDD'd first
+  (9 unit tests incl. real `defeatLedger` composition); composes OVER #132's aura (ONE extra sail multiply,
+  the layers stack) and rides the #171 class scale (trophies parented to the hull); cheap (#121: shared
+  geometry, hidden = not drawn, +2 draws at peak). Playtest asserts monotonic-with-Infamy + a real defeat
+  strips a trophy (2→1) + composition. Gallery `feared-black-sails-177.png`. **#178 is next.**
+- **#178 — The weather gage: wind as a global rule** *(design/tech, S/M — P2)* **← NEXT.** Promote the shipped wind
   vector (#88) to a property BOTH hulls obey — downwind = speed + smoke-screen approach, upwind = dictate
   range. One reused property → emergent tactics, no new system (the home for #88's deferred gameplay half).
   **FUN:** the sky suddenly matters to every chase. *Builds on weather #88 + maneuver #135; NO save bump.*

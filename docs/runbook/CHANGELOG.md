@@ -4,6 +4,18 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #177 Fear you can SEE on your own ship: Infamy dresses the rigging (Loop 146,
+  v0.0.20260702115054; the "one more voyage" retention lane slice 2/4, #177 CLOSED).** Notoriety is now
+  rendered on the PLAYER's OWN ship, derived purely from the persisted Infamy value (NO save bump — v18):
+  the sails darken toward a tarred BLACK and captured TROPHY pennants run up the rigging at Infamy
+  milestones. Because a #164 defeat DENTS Infamy, a bad loss visibly STRIKES a trophy — fear knocked back,
+  reversible by climbing again. PURE `fearRigging(infamy) → {sailDarken, trophies}` (`src/systems/
+  fear-rigging.js`), TDD'd first (9 unit tests incl. real `defeatLedger` composition, monotonicity, floor).
+  Composes OVER #132's aura — the sail-darken is ONE extra multiply the single ship-aura sail writer applies
+  AFTER the aura's cast (the layers stack, never fight); trophies are ship-group children so they ride the
+  #171 class scale for free. Cheap (#121): two tiny pennants share one geometry, hidden = not drawn (+2
+  draws/~130 tris at peak; leak-invariant clean). Playtest asserts monotonic-with-Infamy, a REAL #164 defeat
+  strips a trophy (2→1, bounded), and composition with the aura + class scale. Gallery: `feared-black-sails-177.png`.
 - **2026-07-02 — #176 Never close the tab empty-handed: a lost voyage still banks a scrap (Loop 145,
   v0.0.20260702113400; the "one more voyage" retention hook — R2 deep-reading convergence, PRODUCT refill
   lane slice 1/4, #176 CLOSED).** A LOST fight now shows a needle tick WITHOUT softening #164's sting. Two
