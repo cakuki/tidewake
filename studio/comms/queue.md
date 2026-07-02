@@ -767,7 +767,7 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
 4. **#106 — Mode-seam hardening, slice 1** (declarative `{[mode]:{onEnter,onLeave}}` registry — sugar
    over the bus). Cheap; **now overlaps #120's systems registry — sequence them together.** _(slice 4
    per-mode disposal PARKED — blocked on #100 battle meshes.)_
-5. ~~**#110 — Living fauna phase 2: jumping dolphins**~~ **SHIPPED + CLOSED Loop 75 (v0.0.20260628094945)** — instanced pod arcs alongside the moving ship, deterministic + distance-culled, ≤1 extra draw. _#97 stays OPEN for phase 3 (other animals)._
+5. ~~**#110 — Living fauna phase 2: jumping dolphins**~~ **SHIPPED + CLOSED Loop 75 (v0.0.20260628094945)** — instanced pod arcs alongside the moving ship, deterministic + distance-culled, ≤1 extra draw. **#97 gull-VISUAL coast-pairing ✅ SHIPPED (Loop 143, v0.0.20260702103620):** the gull flock is now a COASTAL creature — its on-screen presence is tied to the SAME nearest-shoreline `coastDist` #68's cries swell on, so gulls FADE in over a raised coast and CULL to nothing (0 draws, empty sky) at open sea — you now SEE the gulls exactly where you HEAR them (the visual half of #68 completed). PURE `coastPresence`/`COAST_VISIBLE_RANGE` in `src/fauna-math.js` (byte-equal to `audio.coastProximity`), gate + opacity fade in `src/fauna.js`; still ONE InstancedMesh (≤1 draw, cheaper at sea), no save change (v18). Gallery `coastal-gulls-97.png`. _**#97 STAYS OPEN** for the rest of the living-fauna umbrella (other sea/land animals via the same pooled/instanced idiom — phase 3)._
 6. **#101 — props phase 3: loose props** (lanterns/market stalls **feed the town mode** #96/#103).
    P2 from-owner. _**LOOSE-PROPS SLICE SHIPPED (Loop 138, v0.0.20260702090316):** every port now
    dresses its quay with glowing **lanterns** striding down the jetty + a little cluster of market
@@ -806,7 +806,9 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
    S2 visual flock wheels over islands via #97/#110). PURE AudioContext-free curve `coastProximity` →
    `gullCoastGain`/`gullCoastDelay` in `src/audio.js` (TDD'd); `src/fauna.js` exposes `coastDist`;
    `main.js` feeds it to `audio.update()` each frame. Ambient only, no mechanics, no draws, save stays v18.
-   **Remains:** nothing for this slice — a nicer canvas-sprite gull silhouette is a #97 art follow-up, not #68.
+   **Remains:** nothing for this slice. _**The VISUAL half of the pairing is now also shipped** (Loop 143,
+   v0.0.20260702103620) under #97 — see item 5 below: the flock is now coast-gated off the SAME `coastDist`,
+   so you SEE the gulls exactly where you HEAR them, and the open sea is an empty sky._
 
 ## #94 remaining phases (P1 OPEN — but phase-1 headline acceptance is MET; not top-of-queue)
 

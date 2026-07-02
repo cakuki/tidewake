@@ -4,6 +4,18 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #97 Coastal gull VISUAL: the flock you HEAR is now the flock you SEE (Loop 143,
+  v0.0.20260702103620; art/atmosphere, #97 STAYS OPEN).** #68 already made the gull CRIES coastal (swell
+  near a port, silent at open sea), but the #97 flock still wheeled over the ship everywhere — so you heard
+  gulls at the coast yet saw them mid-ocean. This slice ties the flock's on-screen presence to the SAME
+  nearest-shoreline `coastDist` the cries use: gulls fade in as you raise a coast and cull to nothing
+  (0 draws, empty sky) out at open sea. Turn toward a port → a handful of gulls wheel over the shore with
+  the swelling cries; out at sea, quiet water under an empty sky — the coast reads alive to both ear and
+  eye. PURE `coastPresence`/`COAST_VISIBLE_RANGE` in `src/fauna-math.js` (TDD'd; byte-equal to audio's
+  `coastProximity`), gate + opacity fade in `src/fauna.js`; still ONE InstancedMesh (≤1 draw, cheaper at
+  sea), save v18 unchanged. Headless gate proves seen-iff-audible near the coast and culled/silent at open
+  sea off one `coastDist`. Gallery `coastal-gulls-97.png`. #97 stays OPEN for the rest of the living-fauna
+  umbrella (other sea/land animals). 1420/1420 unit tests + playtest PASSED; perf 31/130 draws.
 - **2026-07-02 — #15 Comedic boot-tip pool: a wry line greets the cast-off — the game's voice before
   you sail (Loop 142, v0.0.20260702101356; humour/polish, #15 CLOSED).** The loading overlay now speaks:
   beneath CASTING OFF…, a wry, self-aware, kind-to-the-player one-liner from a pool of 20 original
