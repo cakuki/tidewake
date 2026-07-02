@@ -4,6 +4,17 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #180 Perf-gate hardened against the swiftshader `drawCalls=0` flake (Loop 150,
+  test-harness only; NO release, NO save bump).** The perf gate in `node tests/playtest.mjs` intermittently
+  false-failed on the LOCAL swiftshader rasteriser with "perf counters unpopulated (drawCalls=0)" (~1/3 of
+  runs all session), forcing a wasted re-run every cycle. Root cause (found via a cold-start probe): a
+  shader-PROGRAM warm-up race — swiftshader defers program compilation, so a cold render draws nothing and
+  `renderer.info.render.calls` reads 0 until the real rAF loop has run ~1s of wall-clock frames. Fix: the
+  perf-sampling step now POLLS `tw.perf` (yielding real wall-clock so the loop renders + compiles, nudging a
+  synchronous `qaRender()` each pass) until `drawCalls > 0`, bounded (≤60×50ms). **The ≤130 draws / ≤150k tris
+  budget is UNCHANGED** — a false-NEGATIVE removed, not a ceiling raised: an over-budget scene still draws >0
+  on pass 1 and still fails; CI/Linux compiles synchronously + stays authoritative. Verified 4× local runs
+  green (cold re-sampled ~14-16×, warm 1×; draws 31-32/130 every run). npm test 1484/1484 green. #180 CLOSED.
 - **2026-07-02 — #80 The LAST two game-feel beats: boarding rail-clash + harbour dock-settle (Loop 149,
   v0.0.20260702132747; #80 CLOSED — the game-feel juice pass is complete).** The two remaining deferred #80
   events, on the SAME juice.js machinery (the shake stack + the settle envelope), NOT a new system: (1) a

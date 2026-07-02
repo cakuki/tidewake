@@ -178,13 +178,48 @@ try {
     };
     // Deterministically measure perf from a REAL synchronous frame (#107 flake fix), instead of
     // racing the headless-throttled rAF loop that left the counters at 0 intermittently.
-    if (tw.qaRender) tw.qaRender();
+    //
+    // RE-SAMPLE on a degenerate drawCalls===0 reading (#180 — the swiftshader "perf counters
+    // unpopulated" flake). ROOT CAUSE: under the LOCAL swiftshader (software) rasteriser, shader-
+    // PROGRAM compilation is deferred — a render issued before the programs are ready draws NOTHING,
+    // so renderer.info.render.calls reads 0 even though this sailing scene plainly has geometry. The
+    // programs finish compiling only after the real rAF render loop has run a stack of wall-clock
+    // frames (~1s of real time from cold; empirically ~17 × 50ms). If sampling happens to land before
+    // that warm-up completes, tw.perf.drawCalls is still 0 — the intermittent ~1/3-of-local-runs
+    // flake — and the perf gate's "counters unpopulated" check below then FALSE-FAILS the whole
+    // playtest, forcing a wasted re-run. This is a false-NEGATIVE / environment warm-up race, NOT a
+    // real regression: CI/Linux compiles synchronously, populates the counter, and stays AUTHORITATIVE.
+    //
+    // The fix: instead of trusting one cold render, POLL until the counter populates — yield real
+    // wall-clock (setTimeout) so the rAF loop actually renders + finishes compiling programs, nudge a
+    // synchronous qaRender() each pass, and re-read tw.perf; stop as soon as drawCalls > 0. Bounded so
+    // a genuinely-0 scene can't hang. (In a full harness run the loop has usually warmed up during the
+    // prior awaited round-trips, so this breaks on the first pass — the wait is only paid on the flake.)
+    //
+    // This removes the false-NEGATIVE ONLY — it does NOT touch the budget. An over-budget scene draws
+    // >0 on the first pass and is still caught by the ≤130 draws / ≤150k tris assertions downstream; a
+    // scene that truly drew nothing would exhaust the poll and still fail the "unpopulated" gate, as it
+    // should. We re-sample here because this is the sailing scene, where a nonzero draw count is
+    // unambiguously expected — NOT on a legitimately 0-draw (pure-DOM) step.
+    let perfSample = tw.perf;
+    let perfAttempts = 0;
+    {
+      const MAX_PERF_ATTEMPTS = 60;  // ceiling ~60 × 50ms = ~3s; cold warm-up empirically settles by ~17
+      for (perfAttempts = 1; perfAttempts <= MAX_PERF_ATTEMPTS; perfAttempts++) {
+        if (tw.qaRender) tw.qaRender();   // nudge one synchronous frame; once programs are warm this populates
+        perfSample = tw.perf;             // the live rAF loop also refreshes this snapshot between waits
+        if (perfSample.drawCalls > 0) break; // populated → warm-up done, stop polling
+        await new Promise((r) => setTimeout(r, 50)); // still 0: yield real wall-clock so the loop renders + compiles
+      }
+    }
     return {
       version: tw.version,
       fps: tw.fps,
       // Perf budget gate (#52): deterministic renderer counters, read after a stack of
       // frames has rendered. GPU-independent, so they're trustworthy under swiftshader.
-      perf: tw.perf,
+      // Re-sampled above (#180) so a swiftshader warm-up 0 can't false-fail the "unpopulated" check.
+      perf: perfSample,
+      perfAttempts,
       startSpeed: start.speed,
       movingSpeed: moving.speed,
       distance: Math.hypot(moving.pos[0] - start.pos[0], moving.pos[2] - start.pos[2]),
@@ -5045,7 +5080,7 @@ try {
   if (!(perf.drawCalls > 0)) fail(`perf counters unpopulated (drawCalls=${perf.drawCalls}); cannot gate budget`);
   for (const v of budget.violations) fail(`perf budget exceeded: ${v.metric}=${v.value} > ${v.ceiling}`);
 
-  console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
+  console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless) · sampled in ${result.perfAttempts} render(s) [#180 re-sample: >1 means a swiftshader 0-flake was re-rolled, not a budget change]`);
   console.log(`leak-invariant (#121): ${leak.N}× mode cycles · geom ${leak.baseline.geometries}→${leak.final.geometries} (+${leak.geomGrowth}) · tex ${leak.baseline.textures}→${leak.final.textures} (+${leak.texGrowth}) · worst transition ${leak.worstTransition.drawCalls} draws/${leak.worstTransition.triangles} tris`);
   console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, weather, grade, needle, landfall, ballad, falseColours, marque, fauna, gulls, dolphins, curios, curiosLive, props, townProps, islandStyle, leak, broadside, cballs, juicePass, ammoCycle, boarding, gun, gunPersist, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');

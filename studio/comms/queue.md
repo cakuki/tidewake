@@ -1017,6 +1017,7 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
 
 ## Enablers / tech debt (schedule, don't let them perpetually lose)
 
+- **✅ #180 — playtest perf-gate hardened against the swiftshader `drawCalls=0` flake (Loop 150, test-only, no release).** ROOT CAUSE found: it's a shader-PROGRAM warm-up race, not a bare counter glitch — under local swiftshader, program compilation is deferred, so a cold render draws NOTHING (`render.calls`=0) until the real rAF loop has run ~1s of wall-clock frames; if perf-sampling lands before warm-up, the "perf counters unpopulated" check false-fails and forces a re-run (~1/3 of local runs all session). Fix: `tests/playtest.mjs` now POLLS `tw.perf` — yielding real wall-clock (setTimeout) so the loop renders + compiles, nudging a synchronous `qaRender()` each pass — until `drawCalls > 0`, bounded (≤60×50ms). **The ≤130 draws / ≤150k tris budget is UNCHANGED** (a false-NEGATIVE removed, not a ceiling raised); an over-budget scene still draws >0 on pass 1 and still fails; CI/Linux stays authoritative. Verified 4× local runs green (cold runs re-sampled ~14-16×, warm 1×). This is the local half of **#38**'s intent (a trustworthy gate) — the CI-side PR-validation gate below still stands.
 20. **#36 — fixed-timestep accumulator loop.** — _**DL #3 promotes this above #84**: "the world lives
     under a paused helm" wants a sim that steps independently of input/render; `playerPaused` is its
     natural seam. Unlocks #108 + record/replay golden traces (extends #107)._
