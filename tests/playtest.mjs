@@ -1464,6 +1464,88 @@ try {
   if (process.exitCode !== 1) console.log(`  ✓ buy a bigger ship (#171, THE RISE): steps class sloop→brig→frigate, deducts coin (−${shipBuy.buy1cost}c) + VISIBLY grows the hull (scale ×${shipBuy.startScale}→×${shipBuy.scale2.toFixed(2)}) + hits harder & soaks more (bite ${shipBuy.sloopCombat.enemyHit}→${shipBuy.frigateCombat.enemyHit}, fire taken ${shipBuy.sloopCombat.playerHit}→${shipBuy.frigateCombat.playerHit}); capped at frigate; SURVIVES a reload (v18 shipClass round-trip, NO new bump)`);
   await page.evaluate(() => window.__tidewake.newVoyage());
 
+  // 2b7c) Governor-pole symmetry — invest spoils to grow your HOME PORT VISIBLY (#174, epic #168 "The Rise",
+  // the FINALE). The mirror of buying a bigger ship: pour coin into your home port and SEE it PROSPER — new
+  // warehouses, more boats at anchor, more masts at the quay — in tiers off the persisted harbour.level (NO
+  // save change, stays v18). Prove all three beats in one deterministic pass: (1) INVEST→TIER-UP (each paid
+  // investment climbs the level → the growth tier); (2) PORT-VIEW-REFLECTS-TIER (the world's shown dressing
+  // grows and equals what the tier should reveal); (3) GATED-BY-SPEND (an empty purse refuses the invest and
+  // the port does NOT grow). Then a reload proves it's DERIVED from persisted state (no bump). Docked via a
+  // teleport onto the home port, driven through the QA hooks.
+  const portGrow = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);
+    // Drop onto the nearest port → landfall into TOWN, so state.port is set (claim/invest need a docked port).
+    let best = null, bd = Infinity;
+    for (const p of tw.ports) { const d = Math.hypot(p.pos[0] - tw.state.pos[0], p.pos[1] - tw.state.pos[2]); if (d < bd) { bd = d; best = p; } }
+    tw.qaTeleport(best.pos[0], best.pos[1]);
+    let inTown = false; for (let i = 0; i < 120 && !inTown; i++) { tw.step(0.1); inTown = tw.town.open === true; }
+    const port = tw.town.port;
+    // A well-funded, well-regarded captain: standing over the claim gate, a deep purse for the whole ladder.
+    tw.qaSetLedger({ coins: 5000, infamy: 0, standing: 500 });
+    const g0 = tw.portGrowth;                 // before any claim → tier 0, nothing shown
+    const claim = tw.claimHarbour();          // claim this port as home → tier 1
+    const g1 = tw.portGrowth;
+    // GATED-BY-SPEND: empty the purse, try to grow → refused, the port must NOT tier up.
+    tw.qaSetLedger({ coins: 0 });
+    const brokeInvest = tw.investHarbour();
+    const gBroke = tw.portGrowth;
+    // Fund it and climb the whole ladder to the top tier, snapshotting the shown dressing at each step.
+    tw.qaSetLedger({ coins: 5000 });
+    const steps = [];
+    let guard = 0;
+    while (tw.harbourCanInvest.ok && guard++ < 10) {
+      const r = tw.investHarbour();
+      const g = tw.portGrowth;
+      steps.push({ ok: r.ok, spent: r.spent, level: g.level, tier: g.tier, shown: g.shown, want: g.want });
+    }
+    const maxed = tw.investHarbour();         // one past the top → refused as 'maxed'
+    const gTop = tw.portGrowth;
+    return {
+      port, inTown,
+      g0: { tier: g0.tier, shownTotal: g0.shown.total, visible: g0.shown.visible },
+      claimOk: claim.ok, g1: { tier: g1.tier, shown: g1.shown, want: g1.want },
+      brokeOk: brokeInvest.ok, brokeReason: brokeInvest.reason, gBrokeTier: gBroke.tier,
+      steps,
+      maxedOk: maxed.ok, maxedReason: maxed.reason,
+      gTop: { tier: gTop.tier, level: gTop.level, shown: gTop.shown, want: gTop.want },
+    };
+  });
+  if (!portGrow.inTown) fail('grow your port (#174): could not dock at a home port to claim/invest');
+  if (portGrow.g0.tier !== 0 || portGrow.g0.shownTotal !== 0) fail(`grow your port (#174): an unclaimed port must show NO growth (tier=${portGrow.g0.tier}, shown=${portGrow.g0.shownTotal})`);
+  if (!portGrow.claimOk || portGrow.g1.tier !== 1) fail(`grow your port (#174): claiming a home port did not open growth at tier 1 (ok=${portGrow.claimOk}, tier=${portGrow.g1.tier})`);
+  if (!(portGrow.g1.shown.total > 0)) fail('grow your port (#174): a claimed berth shows NOTHING on the quay — the SEE beat is missing');
+  if (portGrow.g1.shown.building !== portGrow.g1.want.building || portGrow.g1.shown.boat !== portGrow.g1.want.boat) fail(`grow your port (#174): the port view does not reflect the claimed tier (shown ${JSON.stringify(portGrow.g1.shown)} vs want ${JSON.stringify(portGrow.g1.want)})`);
+  // GATED-BY-SPEND: an empty purse must refuse the grow and the port must not tier up.
+  if (portGrow.brokeOk || portGrow.brokeReason !== 'no-coins') fail(`grow your port (#174): investing with an empty purse should be refused as 'no-coins' (ok=${portGrow.brokeOk}, reason=${portGrow.brokeReason})`);
+  if (portGrow.gBrokeTier !== portGrow.g1.tier) fail(`grow your port (#174): a refused (unpaid) invest must NOT grow the port (tier ${portGrow.g1.tier} → ${portGrow.gBrokeTier})`);
+  // INVEST→TIER-UP + PORT-VIEW-REFLECTS-TIER: each paid step climbs the tier AND reveals strictly more dressing.
+  if (!(portGrow.steps.length >= 1)) fail('grow your port (#174): no investment step ran');
+  let prevTier = portGrow.g1.tier, prevTotal = portGrow.g1.shown.total;
+  for (const s of portGrow.steps) {
+    if (!s.ok || !(s.spent > 0)) fail(`grow your port (#174): a funded invest must spend coin and succeed (ok=${s.ok}, spent=${s.spent})`);
+    if (s.tier !== prevTier + 1) fail(`grow your port (#174): each investment must climb the growth tier by one (${prevTier} → ${s.tier})`);
+    if (!(s.shown.total > prevTotal)) fail(`grow your port (#174): the port view did not visibly grow at tier ${s.tier} (shown total ${prevTotal} → ${s.shown.total})`);
+    if (s.shown.building !== s.want.building || s.shown.boat !== s.want.boat) fail(`grow your port (#174): shown dressing must equal the tier's reveal (tier ${s.tier}: shown ${JSON.stringify(s.shown)} vs want ${JSON.stringify(s.want)})`);
+    prevTier = s.tier; prevTotal = s.shown.total;
+  }
+  if (portGrow.maxedOk || portGrow.maxedReason !== 'maxed') fail(`grow your port (#174): investing past the top tier should be refused as 'maxed' (ok=${portGrow.maxedOk}, reason=${portGrow.maxedReason})`);
+  if (!(portGrow.gTop.tier === portGrow.gTop.level && portGrow.gTop.tier >= 4)) fail(`grow your port (#174): the port did not reach its top growth tier (tier=${portGrow.gTop.tier}, level=${portGrow.gTop.level})`);
+
+  // DERIVED FROM PERSISTED STATE — a reload re-grows the port from harbour.level with NO save bump (v18).
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForFunction('window.__tidewake && window.__tidewake.ready === true', { timeout: 30000 });
+  const portPersist = await page.evaluate(() => {
+    const tw = window.__tidewake;
+    const g = tw.portGrowth;
+    return { tier: g.tier, level: g.level, shown: g.shown, want: g.want };
+  });
+  if (SAVE_VERSION !== 18) fail(`grow your port (#174): the save schema must stay v18 (derived from persisted harbour.level, NO bump) — got v${SAVE_VERSION}`);
+  if (portPersist.tier !== portGrow.gTop.tier) fail(`grow your port (#174): the grown port did NOT survive a reload (tier=${portPersist.tier}, expected ${portGrow.gTop.tier}) — it must derive from the persisted harbour.level`);
+  if (portPersist.shown.building !== portPersist.want.building || portPersist.shown.boat !== portPersist.want.boat) fail(`grow your port (#174): a returning captain must SEE the port they raised (shown ${JSON.stringify(portPersist.shown)} vs want ${JSON.stringify(portPersist.want)})`);
+  if (process.exitCode !== 1) console.log(`  ✓ grow your port (#174, THE RISE FINALE): claim→tier 1 then invest climbs the home port tier 1→${portGrow.gTop.tier}, VISIBLY growing the quay (dressing ${portGrow.g1.shown.total}→${portGrow.gTop.shown.total} pieces: ${portGrow.gTop.shown.building} warehouses + ${portGrow.gTop.shown.boat} boats/masts); an empty purse is refused ('no-coins', no growth); capped at the top tier; SURVIVES a reload DERIVED from persisted harbour.level (NO save bump, stays v18)`);
+  await page.evaluate(() => window.__tidewake.newVoyage());
+
   // 2b6b) Dedicated BATTLE arena foe (#135, Option-4 final slice): squaring up now gives you a foe that
   // ACTIVELY SAILS TO FIGHT instead of drifting on her open-sea waypoint. Driven headlessly: engage,
   // then hold the helm still and STEP — the foe must run her dedicated duel brain (a valid helm stance),

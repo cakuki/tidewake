@@ -68,6 +68,8 @@ import {
   sanitizeHarbour, claim as claimHome, invest as investHome, canClaim, canInvest, harbourLevelName,
   earnedGovernorship, governorTitle,
 } from './systems/home-port.js';
+import { createPortGrowth } from './port-growth-view.js';
+import { growthTier, revealCounts } from './systems/port-growth.js';
 import { makeObjective, resolvesAt, payoffFor, sanitizeObjective, makeContestedObjective, tickContest, isContested, isClaimed, rivalName, shouldContest, makeBounty, resolvesOnDefeat, bountyPayoff, isBounty, pickBounty } from './objectives.js';
 import { payoffCueName, approachCrossed, APPROACH_RADIUS, listenCueName, coinChimes, sightingEdge, RIVAL_SIGHT_RADIUS, RIVAL_SAIL_CUE } from './systems/loop-cues.js';
 import { createEncounter, HAIL_LINES, RESCUE_LINES, PLUNDER_LINES } from './systems/encounter.js';
@@ -197,6 +199,13 @@ scene.add(ports.group);
 // dressing pops in as you raise a port and vanishes again out at sea.
 const props = await loadProps({ ports: ports.portPlacements });
 scene.add(props.group);
+// Governor-pole symmetry (#174, epic #168 "The Rise" — the finale): your HOME port VISIBLY GROWS as you
+// invest — new warehouses on the shore, more boats at anchor, more masts crowding the quay, tier by tier
+// off the already-persisted harbour.level (NO save change, stays v18). The mirror of buying a bigger ship:
+// you spend, and the world visibly levels up. ONE instanced pool per kind, revealed by tier + distance-
+// culled wholesale (see port-growth-view.js), so a grown port costs at most three draws only when near home.
+const portGrowth = createPortGrowth({ ports: ports.portPlacements });
+scene.add(portGrowth.group);
 // Characterful island names + a one-time comedic landfall line (#19). Pure naming/approach
 // logic lives in src/islands.js; here we just fire the beat through the shared HUD toast.
 const islandNamer = createIslandNamer({ world });
@@ -974,6 +983,9 @@ deckGuns.setCount(state.extraCannons);
 // Grow the hull to her owned class (#171) so a returning captain boards the bigger ship they bought —
 // the SEE beat survives the reload. A fresh voyage is a sloop → ×1.0, byte-identical to before.
 applyShipClassScale();
+// Governor pole (#174): a returning captain SEES the home port they RAISED, grown to its tier — the
+// warehouses/boats/masts of the prosperity they invested in, derived from the restored harbour.level.
+portGrowth.applyGrowth(state.harbour);
 
 // ---- False Colours (#79) -------------------------------------------------------------
 // The displayed flag: true black (honest pirate) vs false merchant (a disguise). A restored
@@ -1079,6 +1091,7 @@ function newVoyage() {
   state.morale = freshMorale(); // ...and a fresh, willing crew at the START baseline (#124)
   state.objective = null; // a fresh voyage chases nothing yet — the chart starts unpinned (#111/#112)
   state.extraCannons = 0; state.shipClass = sanitizeShipClass(null); deckGuns.setCount(0); applyShipClassScale(); // ...and the bare sloop battery + starting hull again (#170/#171)
+  portGrowth.applyGrowth(null); // ...and no home port raised yet — the growth cluster clears (#174)
   state.colours = DEFAULT_COLOURS; // a fresh voyage flies honest black again (#79)
   applyColoursToShip();
   hud.renderColours(state.colours);
@@ -1406,6 +1419,7 @@ function claimHarbour() {
     state.harbour = res.harbour;
     state.standing = Math.max(0, (state.standing ?? 0) + (res.standingGain || 0));
     syncRenown(state);
+    portGrowth.applyGrowth(state.harbour); // SEE: the first berth appears on the quay this instant (#174)
     logDeed({ type: 'harbour', deed: 'claim', port, level: res.harbour.level }); // crown the Ballad (#78)
     persistence.write();                 // lock the claim the instant it's made
     hud.flashBanner('⚓ A home port claimed',
@@ -1424,6 +1438,7 @@ function investHarbour() {
     state.harbour = res.harbour;
     state.standing = Math.max(0, (state.standing ?? 0) + (res.standingGain || 0));
     syncRenown(state);
+    portGrowth.applyGrowth(state.harbour); // SEE: the port visibly PROSPERS a tier — the governor's bigger ship (#174)
     logDeed({ type: 'harbour', deed: 'grow', port, level: res.level }); // sing the growth (#78)
     applyMoraleEvent('harbourGrow');     // wages paid, warm berths kept — a prospering home lifts the crew (#124)
     persistence.write();                 // lock the investment the instant it's made
@@ -1490,6 +1505,7 @@ function standHarbourFirm() {
     if (!res.ok) return res;
     state.threat = null;
     state.harbour = res.harbour;            // intact on a win; demoted/lost on a defeat
+    portGrowth.applyGrowth(state.harbour);  // a sacked port visibly RECEDES a tier (or clears) (#174/#134)
     if (res.won) {
       state.standing = Math.max(0, (state.standing ?? 0) + (res.standingGain || 0));
       syncRenown(state);
@@ -2005,6 +2021,9 @@ systems.register({ name: 'curios', order: 195, update: (f) => curios.update(f.dt
   sampleHeight: (x, z) => ocean.sampleHeight(x, z, f.t),
 }) });
 systems.register({ name: 'props', order: 200, update: (f) => props.update([f.state.pos.x, f.state.pos.z]) });
+// Home-port growth cluster (#174): cull it wholesale by distance to your home port — drawn only on the
+// approach to the port you raised, 0 draws out at sea or with no home claimed.
+systems.register({ name: 'port-growth', order: 201, update: (f) => portGrowth.update([f.state.pos.x, f.state.pos.z]) });
 systems.register({ name: 'hud', order: 210, update: (f) => hud.update(f.state, sailing.MAX_SPEED) });
 // Reputation needle (#132): ease the gauge + fire the felt-shift sting/line. Right after the HUD so
 // it reads the same per-frame ledger; before legends so the swing lands ahead of any crown overlay.
@@ -2435,11 +2454,19 @@ function loop() {
   if (qa) {
     if (!qaCamera) qaCamera = new THREE.PerspectiveCamera(45, camera.aspect, 0.5, 6000);
     qaCamera.aspect = camera.aspect;
-    // `back` (default 0 = straight down) pulls the camera astern for a high-oblique deck
-    // view that clears the mainsail; height is the elevation above the ship.
-    const back = qa.back ?? 0;
-    qaCamera.position.set(ship.position.x, ship.position.y + qa.height, ship.position.z - back);
-    qaCamera.lookAt(ship.position.x, ship.position.y + 2, ship.position.z);
+    if (qa.at) {
+      // Frame an ARBITRARY world point every frame (e.g. a home port for the #174 growth gallery) with
+      // azimuth/dist/height control — honored by the render loop so a follow-camera lerp can't drift it.
+      const az = qa.az ?? 0, dist = qa.dist ?? 90, at = qa.at, ay = at.y ?? 4;
+      qaCamera.position.set(at.x + Math.sin(az) * dist, ay + (qa.height ?? 60), at.z + Math.cos(az) * dist);
+      qaCamera.lookAt(at.x, ay, at.z);
+    } else {
+      // `back` (default 0 = straight down) pulls the camera astern for a high-oblique deck
+      // view that clears the mainsail; height is the elevation above the ship.
+      const back = qa.back ?? 0;
+      qaCamera.position.set(ship.position.x, ship.position.y + qa.height, ship.position.z - back);
+      qaCamera.lookAt(ship.position.x, ship.position.y + 2, ship.position.z);
+    }
     qaCamera.updateProjectionMatrix();
     renderCam = qaCamera;
   }
@@ -2523,6 +2550,7 @@ window.__tidewake = {
   get perf() { return { ...perf }; },
   get perfBudget() { return { ...BUDGET }; },
   get ports() { return ports.ports; },
+  get portPlacements() { return ports.portPlacements; }, // incl. jetty angle — for the #174 growth gallery framing
   // Systems registry (#120, DL #4) QA surface: the migrated per-frame systems in their deterministic
   // dispatch order — so a headless playtest can assert the registry is wired and ordered as expected.
   get systems() { return systems.names; },
@@ -2619,6 +2647,21 @@ window.__tidewake = {
   get harbourCanInvest() { return canInvest({ harbour: state.harbour, port: state.port, coins: state.coins ?? 0 }); },
   claimHarbour() { return claimHarbour(); },
   investHarbour() { return investHarbour(); },
+  // Governor-pole symmetry (#174, epic #168 "The Rise" — the finale) QA surface. `portGrowth` reads the
+  // live home-port growth: the visible TIER derived from the persisted harbour.level, the pure counts
+  // that SHOULD show at that tier (revealCounts), and the counts actually SHOWN in the world by the
+  // instanced cluster (the SEE beat — the port view reflecting the tier). Investing (investHarbour, gated
+  // by coin) climbs the level → the tier → the shown dressing, all deterministically. Derived from state
+  // already persisted, so it round-trips a reload with NO save change (stays v18).
+  get portGrowth() {
+    const tier = growthTier(state.harbour, state.harbour ? state.harbour.name : null);
+    return {
+      tier,
+      level: state.harbour ? sanitizeHarbour(state.harbour)?.level ?? 0 : 0,
+      want: revealCounts(tier),          // the dressing this tier SHOULD reveal (pure)
+      shown: portGrowth.shownCounts(),   // the dressing the world actually draws (SEE)
+    };
+  },
   // Your Harbour, threatened (#134, DL #5) QA surface: the live persisted threat (or null), the
   // point-in-time eligibility off the live ledger, and the three drivers — so a headless playtest can
   // claim a home port, lean a pole hard, make landfall there to draw a threat, then resolve it both
@@ -3088,6 +3131,13 @@ window.__tidewake = {
     const sx = ship.position.x, sy = ship.position.y, sz = ship.position.z;
     camera.position.set(sx + Math.sin(az) * dist, sy + height, sz + Math.cos(az) * dist);
     camera.lookAt(sx, sy + look, sz);
+    return [camera.position.x, camera.position.y, camera.position.z];
+  },
+  // Frame the camera on an ARBITRARY world point (e.g. a home port for the #174 growth gallery) — the
+  // port-side mirror of qaFrameShip. Not used in play; a gallery/QA visual hook only.
+  qaLookFrom({ x = 0, z = 0, y = 4, dist = 90, height = 60, az = 0, look = 4 } = {}) {
+    camera.position.set(x + Math.sin(az) * dist, y + height, z + Math.cos(az) * dist);
+    camera.lookAt(x, look, z);
     return [camera.position.x, camera.position.y, camera.position.z];
   },
   // Non-occluding battle UI gate (#161 slice 2): are the shown fight prompts clear of the central
