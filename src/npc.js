@@ -6,6 +6,7 @@ import { vesselKind, isOutlaw } from './colours.js';
 import { shipEmphasis, DIM_OPACITY } from './ui/over-ship-billboard.js';
 import { shipStats } from './ship-classes.js';
 import { regionalSpec, regionDanger, DEEP_R } from './systems/danger.js';
+import { fleesOnSight } from './systems/dread.js';
 
 // Letters of Marque (#91): outlaw/pirate hulls fly a sullen blood-dark flag so a lawful
 // privateer can pick a fair target on the horizon — honest colours vs THIS one earns Standing.
@@ -216,6 +217,10 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   // false merchant colours they stay calm and let you approach (the disguise works). The
   // pure disposition math lives in colours.js; main.js passes the verdict in via `ctx`.
   const FLEE_RADIUS = 360; // how close the dread captain must be to scatter a vessel
+  // The world FEARS you (#172): a much-outclassed, notorious captain scatters WEAK prey on SIGHT — read
+  // from a bit further than the colours-flee so you SEE the sea part as your notorious sails crest. Per
+  // ship (each hull's own class tier vs yours), so a peer/apex holds while a merchant sloop bolts.
+  const DREAD_SIGHT_RADIUS = 460;
 
   // Battle-foe agility (#135, Option-4 final slice): the DUEL foe answers the helm quicker and pushes
   // harder than a wandering merchant, so the maneuver phase feels like a real contest of positioning.
@@ -223,13 +228,19 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
   const ARENA_SPEED = 26;       // base sail speed in the arena (throttle scales it per the helm stance)
 
   // ctx (optional): { playerPos:[x,z]|null, flee:boolean,
-  //   arena:{ index, playerPos:[x,z], playerHeading, moraleFrac }|null } — colours reaction + the
-  //   dedicated BATTLE foe. When `arena` names a ship index, THAT ship drops her waypoint wander and
-  //   sails to fight via the pure arenaHelm brain (seek beam / hold range / flee), zero extra draws.
+  //   dread:{ infamy, tier }|null,
+  //   arena:{ index, playerPos:[x,z], playerHeading, moraleFrac }|null } — colours reaction (#79),
+  //   the world-fears-you dread (#172, per-ship by her class vs yours), + the dedicated BATTLE foe.
+  //   When `arena` names a ship index, THAT ship drops her waypoint wander and sails to fight via the
+  //   pure arenaHelm brain (seek beam / hold range / flee), zero extra draws.
   function update(dt, t, ctx = {}) {
     if (dt <= 0) return;
     const playerPos = ctx && ctx.playerPos;
     const fleeOn = !!(ctx && ctx.flee) && Array.isArray(playerPos);
+    // The world fears you (#172): a per-ship dread flee-on-sight, only when NOT hidden by a disguise
+    // (main.js withholds this ctx under false colours, so the #79 bluff still works). Weak prey bolts;
+    // a peer/apex holds (fleesOnSight reads each hull's class tier vs yours).
+    const dread = (ctx && ctx.dread && Array.isArray(playerPos)) ? ctx.dread : null;
     const arena = ctx && ctx.arena;
     const arenaIdx = (arena && Number.isInteger(arena.index)) ? arena.index : -1;
     for (let si = 0; si < ships.length; si++) {
@@ -260,11 +271,20 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
       }
       s.arenaState = null;
 
-      // Are these colours making this vessel run? (player near + flee verdict on)
+      // Are these colours making this vessel run? (player near + flee verdict on, #79)
       let fleeing = false;
       if (fleeOn) {
         const dpx = s.x - playerPos[0], dpz = s.z - playerPos[1];
         fleeing = (dpx * dpx + dpz * dpz) < FLEE_RADIUS * FLEE_RADIUS;
+      }
+      // The world fears you (#172): a much-outclassed, notorious captain scatters WEAK prey on sight —
+      // per ship (her class tier vs yours), so a merchant sloop bolts while a peer/apex holds and fights.
+      if (!fleeing && dread && s.shipClass) {
+        const dpx = s.x - playerPos[0], dpz = s.z - playerPos[1];
+        if (dpx * dpx + dpz * dpz < DREAD_SIGHT_RADIUS * DREAD_SIGHT_RADIUS &&
+            fleesOnSight({ playerInfamy: dread.infamy, playerTier: dread.tier, foeTier: s.shipClass.tier, foeRole: s.shipClass.role })) {
+          fleeing = true;
+        }
       }
       s.fleeing = fleeing;
 
@@ -322,6 +342,22 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
     const s = ships[i];
     if (!s) return;
     s.x = x; s.z = z; s.wp = { x, z };
+  }
+
+  // QA/gallery hook (#172): force ship `i`'s CLASS so a headless test / gallery frame can pose a weak
+  // merchant sloop beside an apex man-o'-war deterministically and prove the dread flee reads per-hull.
+  // Rescales the mesh (mirrors spawn) so the fleeing prey reads visibly small. Sim otherwise untouched.
+  function setClass(i, classKey, role = 'warship') {
+    const s = ships[i];
+    if (!s) return null;
+    const st = shipStats(classKey, role);
+    s.shipClass = {
+      cls: st.cls, role: st.role, label: st.label, tier: st.tier,
+      hull: st.hull, maxHull: st.maxHull, gunnery: st.gunnery,
+      guns: st.guns, crew: st.crew, sizeScale: st.sizeScale,
+    };
+    s.mesh.scale.setScalar(st.sizeScale);
+    return snapshot()[i] || null;
   }
 
   // Target lock (#161 slice 3) — set each hull's opacity so the engaged foe reads instantly amid the
@@ -388,7 +424,7 @@ export function createNpcs({ ocean, world, count = 3 } = {}) {
     s.wp = pickWaypoint(rng, bounds);
   }
 
-  return { group, update, snapshot, respawn, place, setBattleFocus, emphasisSnapshot };
+  return { group, update, snapshot, respawn, place, setClass, setBattleFocus, emphasisSnapshot };
 }
 
 export { wrapAngle, steerToward, pickWaypoint, headingTo, hasArrived, avoidObstacles, arenaHelm };

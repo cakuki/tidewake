@@ -31,6 +31,7 @@ import {
 import { defeatLedger } from '../renown.js';
 import { ammoProfile, cycleAmmo, AMMO_TYPES } from './ammo.js';
 import { canBoard as canBoardHull, resolveBrawl, boardingEdge, offersSurrender } from './board.js';
+import { dreadPressure, strikesEarly } from './dread.js';
 
 // Slice 2 (#135) tunables — the Game Designer's fun-shaping numbers:
 //   RELOAD_SECONDS — how long the gun deck takes to swab and reload between volleys, so the
@@ -165,6 +166,11 @@ export function broadsideAim([sx, sz], heading, [fx, fz], { arcThreshold = ARC_T
 export function createBattle({
   npcs, getShipPos, getShipHeading, getLoadout, getCrewMorale, getBroadsideMult, getPlayerArmor, onEnter, onFlee, onResolve, onCycleAmmo, onBoard,
   onSurrender, onPressAttack, softenFoe,
+  // The world fears you (#172): main.js hands a read of the captain's dread ({ infamy, tier }) so a
+  // much-outclassed, notorious captain makes a broken foe strike her colours EARLY — fed straight into
+  // the EXISTING offersSurrender white-flag path below (never a new combat system). Defaults safe (no
+  // dread) so unit-test mocks and a green captain fight exactly as before.
+  getDread,
   // Loss stings (#164): the defeat ledger deducts from the captain's ALREADY-PERSISTED ledger, so
   // main.js provides a read of it (getLedger) and the context of the loss (getDefeatContext → 'raid'
   // dents Infamy / 'governor' dents Standing). Both default safe so unit-test mocks need neither.
@@ -392,11 +398,16 @@ export function createBattle({
 
     if (r.sunkEnemy) return finish('win');
     if (isDefeat({ playerHull: state.playerHull })) return finish('lose'); // your hull broke — colours struck (#164)
+    // The world fears you (#172): a much-outclassed, notorious captain makes a broken foe strike her
+    // colours EARLIER than a fearless crew would. This is NOT a new path — it just adds a dread `yielded`
+    // reason alongside cannons' strikesColours (r.yielded), so a weak, rattled prey folds sooner. A peer
+    // /apex has ~0 dread pressure (strikesEarly returns false), so they fight on to a real surrender.
+    const earlyYield = dreadStrikesEarly();
     // Early surrender / strike-colours short-circuit (#135, Option 4): a broken foe strikes her colours
     // BEFORE you board. Instead of auto-capturing, HOLD the offer open — the player chooses to accept the
     // quick prize or refuse quarter (below). Refuse once and she never strikes again (offersSurrender
     // gates on quarterRefused), so this can't loop; she fights on to a sinking or a boarding.
-    if (offersSurrender({ yielded: r.yielded, boarded: state.boarded, quarterRefused: state.quarterRefused })) {
+    if (offersSurrender({ yielded: r.yielded || earlyYield, boarded: state.boarded, quarterRefused: state.quarterRefused })) {
       return openSurrender();
     }
     // The quip reads from the LOADED shot's flavour — chain shreds rigging, the rest pound the hull.
@@ -504,6 +515,28 @@ export function createBattle({
     return brawl;
   }
 
+  // The world fears you (#172): how far YOUR dread exceeds THIS engaged foe's nerve (dreadPressure) —
+  // positive ⇒ she may strike early. Null while un-engaged / class-less / no dread hook. PURE-derived.
+  function foeDreadPressure() {
+    if (!state.active || !foe || !Number.isFinite(foe.tier) || !getDread) return null;
+    try {
+      const d = getDread() || {};
+      return dreadPressure({ playerInfamy: d.infamy ?? 0, playerTier: d.tier ?? 1, foeTier: foe.tier, foeRole: foe.role });
+    } catch { return null; } // dread must never break the fight
+  }
+
+  // Does this volley make a DREADED foe strike her colours early (#172)? Reuses strikesEarly against her
+  // live nerve/hull — a peer/apex (≤0 pressure) never triggers, so it only ever accelerates weak prey.
+  function dreadStrikesEarly() {
+    const pressure = foeDreadPressure();
+    if (pressure === null) return false;
+    return strikesEarly({
+      moraleFrac: state.maxMorale > 0 ? state.enemyMorale / state.maxMorale : 1,
+      hullFrac: state.maxHull > 0 ? state.enemyHull / state.maxHull : 1,
+      pressure,
+    });
+  }
+
   // The engaged foe's live helm stance (#135, Option-4 final slice), read off the npcs snapshot —
   // 'close' | 'open' | 'beam' | 'flee' | null. Lets the HUD/QA see the arena foe actively maneuvering.
   function foeHelm() {
@@ -543,6 +576,8 @@ export function createBattle({
       // her expected reply (skill=odds) and hint the loss STAKE (#164). null while un-engaged / class-less.
       foeGunnery: state.active && foe && Number.isFinite(foe.gunnery) ? foe.gunnery : null,
       foeTier: state.active && foe && Number.isFinite(foe.tier) ? foe.tier : null,
+      // The world fears you (#172): how far your dread exceeds her nerve (>0 ⇒ she may strike early).
+      foeDread: foeDreadPressure(),
       round: state.round,
       result: state.result,
       lastLine: state.lastLine,

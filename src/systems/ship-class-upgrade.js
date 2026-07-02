@@ -120,5 +120,12 @@ export function classLabel(id) {
   return SHIP_CLASSES[cls]?.label ?? SHIP_CLASSES[DEFAULT_SHIP_CLASS].label;
 }
 
+/** The player's ship-class THREAT tier (sloop 1 · brig 2 · frigate 3) — the dread model (#172) reads it
+ *  against a foe's tier to size the GAP. Shares the ONE class table so player + NPC tiers never drift. */
+export function classTier(id) {
+  const cls = sanitizeShipClass(id);
+  return SHIP_CLASSES[cls]?.tier ?? SHIP_CLASSES[DEFAULT_SHIP_CLASS].tier;
+}
+
 // Re-export the class sanitiser so callers can validate a stored/live class from one import.
 export { sanitizeShipClass };

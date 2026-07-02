@@ -14,6 +14,8 @@ import { regionDanger, regionalSpec, DEEP_R } from '../src/systems/danger.js'; /
 import { spoils } from '../src/cannons.js'; // #167: prove the sinking reward scales by foe tier
 import { battleLayer, nextTransition, DRIVE_SCALE, MENACE_SCALE, EDGE_SCALE } from '../src/systems/battle-score.js'; // #158: per-phase battle layers + bar-clock crossfade scheduling
 import { SAVE_VERSION } from '../src/save.js'; // #167 owner-decision: regional danger is positional — NO save bump (stays v17)
+import { dreadPressure, fleesOnSight, strikesEarly } from '../src/systems/dread.js'; // #172: the world FEARS you — the pure gap→flee/early-strike model
+import { offersSurrender } from '../src/systems/board.js'; // #172: prove the dread early-strike feeds the EXISTING white-flag path
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8799;
@@ -3413,6 +3415,132 @@ try {
   if (!curios.antiRepeat) fail(`curios (#70): the witty line repeated twice in a row — anti-repeat broken (lines=${JSON.stringify(curios.lines)})`);
   if (!(curios.distinct >= 2)) fail(`curios (#70): the witty-line pool never varied (distinct=${curios.distinct}) — it should draw several different lines`);
   if (process.exitCode !== 1) console.log(`  ✓ ocean sail-over curios (#70): a ${curiosLive.lastCue || 'curio'} drifted in + drew while sailing (spawns ${curiosLive.spawns}); probe: deterministic spawn, ≤1 draw, culled off-stage, cue fires, ${curios.distinct} distinct witty lines with no back-to-back repeat`);
+
+  // 2z-dread) THE WORLD FEARS YOU (#172, epic #168 "The Rise" slice 4): now that you can grow notorious
+  // (#169 ranks) and BIG (#171 class), the world NOTICES. A much-outclassed, much-feared captain makes
+  // WEAK prey blink — turn and RUN before you engage, or strike her colours EARLY once the fight starts —
+  // scaled by the GAP (your notoriety + class vs hers). A peer holds; the apex man-o'-war still fights
+  // (protects #167). Four proofs: (A) PURE gap→flee/early-strike + composition; (B) LIVE flee-on-sight —
+  // a weak sloop bolts from a notorious frigate captain while an apex holds; (C) LIVE in-engagement —
+  // dread is active vs weak prey (foeDread>0) and absent vs the apex (≤0); (D) LIVE compose — a dread
+  // early-strike opens the EXISTING surrender flag and ACCEPT ends the fight cleanly (no soft-lock).
+  {
+    // (A) PURE — the dread model itself (deterministic/headless)
+    const NOTORIOUS = 1500, FRIGATE = 3;
+    const prey = { foeTier: 1, foeRole: 'merchant' };  // a darting merchant sloop
+    const peer = { foeTier: 4, foeRole: 'warship' };   // a warship frigate — a fair fight
+    const apex = { foeTier: 5, foeRole: 'warship' };   // a warship man-o'-war — the deep terror (#167)
+    if (!fleesOnSight({ playerInfamy: NOTORIOUS, playerTier: FRIGATE, ...prey })) fail('dread (#172): a feared frigate captain did not scatter a merchant sloop (flee-on-sight)');
+    if (fleesOnSight({ playerInfamy: NOTORIOUS, playerTier: FRIGATE, ...peer })) fail('dread (#172): a PEER (warship frigate) flinched — an even fight must STAND');
+    if (fleesOnSight({ playerInfamy: NOTORIOUS, playerTier: FRIGATE, ...apex })) fail('dread (#172): the APEX man-o\'-war fled — it must still FIGHT (protects #167)');
+    if (fleesOnSight({ playerInfamy: 0, playerTier: 1, ...prey })) fail('dread (#172): a green captain scared weak prey — an unknown name must scatter no one');
+    const prPrey = dreadPressure({ playerInfamy: NOTORIOUS, playerTier: FRIGATE, ...prey });
+    const prPeer = dreadPressure({ playerInfamy: NOTORIOUS, playerTier: FRIGATE, ...peer });
+    if (!strikesEarly({ moraleFrac: 0.4, hullFrac: 0.55, pressure: prPrey })) fail('dread (#172): a dreaded, rattled prey did not strike her colours EARLY');
+    if (strikesEarly({ moraleFrac: 0.1, hullFrac: 0.4, pressure: prPeer })) fail('dread (#172): a PEER struck early — the duel must be decided by skill, not dread');
+    // composition: the dread early-strike feeds the EXISTING offersSurrender path; refuse/board don't double-fire
+    if (!offersSurrender({ yielded: strikesEarly({ moraleFrac: 0.4, hullFrac: 0.55, pressure: prPrey }), boarded: false, quarterRefused: false })) fail('dread (#172): a dread early-strike did not open the existing surrender flag (composition broken)');
+    if (offersSurrender({ yielded: true, boarded: false, quarterRefused: true })) fail('dread (#172): a refused-quarter foe re-offered surrender (double-trigger)');
+    if (offersSurrender({ yielded: true, boarded: true, quarterRefused: false })) fail('dread (#172): a boarded foe re-offered surrender (double-trigger with the board path)');
+
+    // (B–D) LIVE. NPCs are a SHARED fleet (newVoyage resets the player, not the fleet), and slot 1 is an
+    // outlaw whose sighting rings the #116 rival cue — so we work at a REMOTE empty patch, reclass only
+    // MERCHANT-kind slots (0, 2 — no false rival sting), and CAPTURE both class + position of every hull
+    // we touch to RESTORE the sea pristine for the downstream tests (#116 rival, #161 aim-line, #165 labels).
+    const RX = 30000, RZ = 30000; // an empty patch far from the whole fleet (spawns cluster near origin)
+    // This block runs sim steps that advance the SHARED fleet wander + moves the player, so snapshot the
+    // WHOLE world (every ship's pos + the two classes we reclass + the player pos) and restore it exactly,
+    // making the block a true no-op — downstream tests sail the same trajectory as if it never ran.
+    const orig = await page.evaluate((slots) => {
+      const tw = window.__tidewake;
+      const p = tw.state.pos; // [x,y,z]
+      return {
+        player: [p[0], p[2]],
+        positions: tw.npcs.map((n) => (n.pos ? [n.pos[0], n.pos[1]] : null)),
+        classes: slots.map((i) => { const n = tw.npcs[i]; return { i, cls: n?.shipClass?.cls, role: n?.shipClass?.role }; }),
+      };
+    }, [0, 2]);
+
+    // (B) flee-on-sight — a weak sloop bolts; an apex holds. Honest black colours + infamy 150 sits BELOW
+    // the #79 colours-flee threshold (menace 200), so this is DREAD (per-hull), not the old blanket flee.
+    const flee = await page.evaluate(async (P) => {
+      const tw = window.__tidewake;
+      tw.newVoyage();
+      tw.setColours('black');           // honest colours — no disguise hiding your dread
+      tw.setInfamy(150);                // feared, but under the #79 menace threshold (200)
+      tw.qaSetPlayerClass('frigate');   // a big hull — the size half of the gap
+      if (tw.npcs.length < 3) return { skipped: true };
+      tw.qaTeleport(P.RX, P.RZ);
+      // pose a weak merchant sloop and an apex warship man-o'-war both just off the bow (within sight)
+      tw.qaSetNpcClass(0, 'sloop', 'merchant');
+      tw.qaSetNpcClass(2, 'manowar', 'warship');
+      tw.qaPlaceShip(0, P.RX + 120, P.RZ + 120);
+      tw.qaPlaceShip(2, P.RX - 120, P.RZ + 120);
+      for (let i = 0; i < 20; i++) tw.step(1 / 60); // a beat for the helm to react
+      const snap = tw.npcs;
+      return { skipped: false, preyFleeing: !!snap[0].fleeing, apexFleeing: !!snap[2].fleeing };
+    }, { RX, RZ });
+    if (!flee.skipped) {
+      if (!flee.preyFleeing) fail('dread (#172) LIVE: a weak merchant sloop did NOT flee a notorious frigate captain on sight');
+      if (flee.apexFleeing) fail('dread (#172) LIVE: the apex man-o\'-war fled — it must hold and fight');
+    }
+
+    // (C+D) in-engagement — dread active vs weak prey (foeDread>0) / absent vs apex (≤0), and the dread
+    // early-strike opens the EXISTING surrender flag which ACCEPT resolves cleanly (no soft-lock).
+    const compose = await page.evaluate(async (P) => {
+      const tw = window.__tidewake;
+      function engageAt(cls, role) {
+        tw.newVoyage();
+        tw.setColours('black');
+        tw.setInfamy(1500);              // deeply notorious
+        tw.qaSetPlayerClass('frigate');
+        tw.qaSetNpcClass(0, cls, role);  // merchant-kind slot → no rival sting
+        tw.qaTeleport(P.RX, P.RZ);
+        tw.qaPlaceShip(0, P.RX + 30, P.RZ + 30); // right alongside → nearest in engage range
+        tw.step(1 / 60);
+        const ok = tw.engageBattle();
+        return ok ? tw.battle : null;
+      }
+      // weak prey: dread should be ACTIVE in the engagement
+      const preyB = engageAt('sloop', 'merchant');
+      const preyDread = preyB ? preyB.foeDread : null;
+      // break her nerve+hull into the strike window, fire → she strikes → ACCEPT ends it (no soft-lock)
+      let struck = false, endedClean = false, offerAfterAccept = null;
+      if (preyB && preyB.active) {
+        tw.battleBreakFoe();
+        tw.battleFire();
+        struck = !!tw.battle.surrenderPending;
+        const cap = tw.acceptSurrender();
+        endedClean = !tw.battle.active;      // engagement resolved — helm returns to sailing
+        offerAfterAccept = tw.surrenderOffer; // must be null now (no lingering soft-lock)
+        void cap;
+      }
+      // apex: dread must be ABSENT (she fights on)
+      const apexB = engageAt('manowar', 'warship');
+      const apexDread = apexB ? apexB.foeDread : null;
+      if (apexB && apexB.active) tw.fleeBattle();
+      return { preyEngaged: !!(preyB && preyB.active), preyDread, struck, endedClean, offerAfterAccept,
+               apexEngaged: !!(apexB && apexB.active), apexDread };
+    }, { RX, RZ });
+    if (compose.preyEngaged) {
+      if (!(compose.preyDread > 0)) fail(`dread (#172) LIVE: engaging weak prey as a notorious frigate showed no dread (foeDread=${compose.preyDread})`);
+      if (!compose.struck) fail('dread (#172) LIVE: a broken, dreaded prey did not strike her colours (surrender flag never opened)');
+      if (!compose.endedClean) fail('dread (#172) LIVE: accepting a dread surrender did NOT end the engagement (soft-lock)');
+      if (compose.offerAfterAccept) fail('dread (#172) LIVE: a surrender offer lingered after ACCEPT (soft-lock / double-state)');
+    }
+    if (compose.apexEngaged && !(compose.apexDread <= 0)) fail(`dread (#172) LIVE: the apex man-o'-war showed dread pressure (foeDread=${compose.apexDread}) — a peer/apex must fight on`);
+    // Restore the sea PRISTINE — every ship's position + the two reclassed hulls + the player pos + a clean
+    // ledger/colours, and NO trailing step (so the shared fleet wander isn't advanced past pristine). My
+    // block is now a true no-op for the downstream tests (#116 rival, #161 aim-line/isolation, #165 labels).
+    await page.evaluate((o) => {
+      const tw = window.__tidewake;
+      o.classes.forEach((c) => { if (c && c.cls) tw.qaSetNpcClass(c.i, c.cls, c.role); });
+      o.positions.forEach((p, i) => { if (p) tw.qaPlaceShip(i, p[0], p[1]); });
+      tw.newVoyage(); tw.setInfamy(0); tw.setColours('black');
+      if (o.player) tw.qaTeleport(o.player[0], o.player[1]);
+    }, orig);
+    if (process.exitCode !== 1) console.log(`  ✓ the world fears you (#172): weak prey flees a notorious/big captain on sight + strikes early (foeDread ${compose.preyDread?.toFixed?.(2)}); a peer/apex holds and fights (apex foeDread ${compose.apexDread?.toFixed?.(2)}); the dread strike reuses the surrender flag and ACCEPT ends it cleanly`);
+  }
 
   // 2p) CC0 Pirate Kit port dressing (#101): each port is dressed with instanced barrels,
   // crates & palms, and far clusters are distance-culled. Prove props were placed, that

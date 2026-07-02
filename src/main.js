@@ -8,7 +8,7 @@ import {
 } from './systems/gun-upgrade.js';
 import {
   buyClass as buyClassPure, canBuyClass, nextClass, nextClassCost,
-  classScale, classBroadsideMult, classArmor, classLabel,
+  classScale, classBroadsideMult, classArmor, classLabel, classTier,
 } from './systems/ship-class-upgrade.js';
 import { createWorld } from './world.js';
 import { createWake } from './wake.js';
@@ -499,6 +499,9 @@ const battle = createBattle({
   getCrewMorale: () => sanitizeMorale(state.morale), // slice 4: your crew's nerve feeds the boarding brawl (#124)
   getBroadsideMult: () => broadsideMult(state.extraCannons) * classBroadsideMult(state.shipClass), // buy a cannon (#170) + a bigger ship (#171): more/heavier guns → a heavier volley → she sinks faster
   getPlayerArmor: () => classArmor(state.shipClass), // buy a bigger ship (#171): a bigger hull takes more punishment
+  // The world fears you (#172): your notoriety (Infamy) + hull class vs hers — a broken weak prey strikes
+  // her colours EARLIER against a feared/bigger captain (a peer/apex has ~0 dread pressure and fights on).
+  getDread: () => ({ infamy: state.infamy ?? 0, tier: classTier(state.shipClass) }),
   // Soften a fresh captain's FIRST fight (#157): if the debut is still unspent, hand this engagement a
   // forgiving, already-battered foe and mark it the debut; a veteran fight passes through full-strength.
   softenFoe: (foe) => {
@@ -1807,6 +1810,11 @@ systems.register({ name: 'disguise', order: 60, when: (f) => !f.paused && isDece
 //   (False Colours #79 / Seen-through #91 read ctx.seenThrough from the disguise system above).
 systems.register({ name: 'npcs', order: 70, update: (f) => {
   const flee = npcFlees({ colours: f.state.colours, infamy: f.state.infamy ?? 0, seenThrough: f.seenThrough });
+  // The world fears you (#172): a much-outclassed, notorious captain scatters WEAK prey on sight (npc.js
+  // reads each hull's class tier vs yours). WITHHELD while a disguise holds — under false merchant
+  // colours the #79 bluff still works, so the sea stays calm until the lie is seen through (or dropped).
+  const disguised = isDeceptive(f.state.colours) && !f.seenThrough;
+  const dread = disguised ? null : { infamy: f.state.infamy ?? 0, tier: classTier(f.state.shipClass) };
   // Dedicated BATTLE arena-foe (#135, Option-4 final slice): while a deliberate stance is held and she
   // hasn't yet struck her colours or been boarded, hand her index + your pose + her nerve to the foe
   // helm so she actively sails to FIGHT (seek beam / hold range / flee) instead of drifting on her old
@@ -1818,7 +1826,7 @@ systems.register({ name: 'npcs', order: 70, update: (f) => {
     playerHeading: f.state.heading,
     moraleFrac: bs.maxMorale > 0 ? bs.enemyMorale / bs.maxMorale : 1,
   } : null;
-  npcs.update(f.dt, f.t, { playerPos: [f.state.pos.x, f.state.pos.z], flee, arena });
+  npcs.update(f.dt, f.t, { playerPos: [f.state.pos.x, f.state.pos.z], flee, dread, arena });
 } });
 // — emergent at-sea encounter (#125): seeded spawn (only while under sail, helm free); pose the
 //   founderer low + heeled when live, hide her otherwise (~1 draw call exactly when on screen).
@@ -2627,6 +2635,11 @@ window.__tidewake = {
     };
   },
   qaPlaceShip(i, x, z) { npcs.place(i, x, z); return npcs.snapshot()[i] || null; },
+  // The world fears you (#172) QA/gallery hooks: pose an NPC's CLASS (a weak merchant sloop vs an apex
+  // man-o'-war) and set YOUR ship class, so a headless test / gallery frame can prove — deterministically
+  // — that a big notoriety/class GAP makes weak prey flee-on-sight while a peer/apex holds and fights.
+  qaSetNpcClass(i, cls, role = 'warship') { return npcs.setClass(i, cls, role); },
+  qaSetPlayerClass(cls) { state.shipClass = sanitizeShipClass(cls); applyShipClassScale(); return sanitizeShipClass(state.shipClass); },
   // Living sea fauna (#97) QA surface: the gull flock's count, whether it's drawn (distance
   // cull), whether it's roosting over a coast, and the live flock centre — so a headless
   // playtest can assert the sky is alive and tracks the player.
