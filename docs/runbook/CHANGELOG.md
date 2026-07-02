@@ -4,6 +4,22 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #70 slice 1 Ocean sail-over curios shipped — a sea-delight beat (Loop 125,
+  v0.0.20260702025543).** The empty sea now rewards attention: while under way a small curio drifts in
+  ahead of the bow — a corked **BOTTLE** bobbing in the swell or a sea **TURTLE** breaking the surface —
+  and sailing over it plays a soft synthesised cue AND raises a **wry line** from an original pool that
+  **never repeats twice in a row**. Pure delight between the fights: no mechanics, **no save change (v17)**.
+  Matches the #110 dolphin idiom: PURE model TDD'd first (`src/curio-math.js` — seeded deterministic spawn
+  schedule, spawn-ahead-of-bow, a `sailedOver` distance trigger with no raycasting, distance cull, and the
+  charm-guarantee `pickLine` anti-repeat picker); the factory (`src/curios.js`) reuses **one mesh per kind**
+  (geometry allocated once, never per spawn → honours the #121 mesh-conservation gate), keeps **one curio
+  live at a time**, hidden wholesale between appearances / off-stage / **in battle** (ambient open-sea only)
+  → **≤1 extra draw**. Soft cues `audio.playCurio` + a HUD line. New playtest §2o'' asserts a curio spawns +
+  draws while sailing, deterministic spawn, ≤1 draw, culled to 0 off-stage, the cue fires, and the witty
+  line never repeats back-to-back. 1238 unit tests (9 new) + playtest; perf 29/130 draws · 92.8k/150k tris;
+  leak-invariant geom +0. Gallery `v0.0.20260702025543-sea-curio.png`. **#70 stays OPEN [STANDING-RULE]** —
+  home of the "1–2 sea-delight beats per loop" rule; deferred: more curio variety, tap-picking, #113
+  bow-spray, #114 sea-colour.
 - **2026-07-02 — #80 Combat game-feel "juice" pass shipped — make a hit LAND (Loop 124,
   v0.0.20260702023718).** The fights are visible (#161 cannonballs) but floaty; this makes impact FELT.
   **Generalises** the existing #155 broadside camera kick — the SAME shake stack + 0-draw `cameraOffset()`,

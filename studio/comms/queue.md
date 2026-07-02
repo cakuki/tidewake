@@ -558,10 +558,14 @@ remaining items are promoted into the top trio (#130/#121) and re-listed here; D
    P2 from-owner. _(island dressing shipped via #71; texture-embed + extra variety PARKED.)_
 7. **#129 — Per-town music, richer** (distinct melodies/instrument sets + a dedicated docked cue +
    live tempo — the #69 full follow-up). P3 audio.
-8. **#70 [STANDING-RULE] — ocean sail-over curios** (flotsam/turtle/bottle → SFX + witty-line pool —
-   the issue's *original* slice 1) + **#113** bow-spray flourish + **#114** sea-colour variation /
-   current streaks. **#70 stays OPEN deliberately** as the home of the "1–2 sea-delight beats per
-   loop" rule — do NOT close it. P2 from-owner.
+8. **#70 [STANDING-RULE] — ocean sail-over curios.** _**SLICE 1 SHIPPED (Loop 125, v0.0.20260702025543):**
+   a BOTTLE + a TURTLE drift in ahead of the bow while under way; sailing over one plays a soft cue + a
+   wry line (anti-repeat pool, never twice in a row). Deterministic + distance-culled + one reused mesh
+   per kind (≤1 draw, honours #121); ambient open-sea only, no save change (v17). `src/curio-math.js` +
+   `src/curios.js` + `audio.playCurio`._ **Remains (deferred follow-ups):** more curio kinds/variety,
+   **tap-picking** a curio (new raycaster in `input.js`), a "seen" set across sessions, + **#113**
+   bow-spray flourish + **#114** sea-colour variation / current streaks. **#70 stays OPEN deliberately**
+   as the home of the "1–2 sea-delight beats per loop" rule — do NOT close it. P2 from-owner.
 9. **#68 — seagulls: louder calls near the coast** (SFX exists) + tie to the #97 visual flock. P2 from-owner.
 
 ## #94 remaining phases (P1 OPEN — but phase-1 headline acceptance is MET; not top-of-queue)
