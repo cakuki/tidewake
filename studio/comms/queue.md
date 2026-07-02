@@ -66,11 +66,22 @@ Six original, vision-aligned, FUN-FIRST slices, sequenced value·complexity·dep
   forward + a frozen v18 corpus blob + coverage guard green (#122). Playtest asserts buy→coin-deducted +
   owned+1 + deck-gun-shown + heavier-bite + capped + **survives a reload (v18 round-trip)**. Gallery
   `buy-a-cannon-170.png`. **#171 BUILD NEXT** (rides this v18 — no further bump).
-- **#171 — Buy a bigger ship: the hull visibly grows (M · rides #170's v18 — NO further save bump). BUILD NEXT.** Give the PLAYER the existing
-  class system (#163); buy up sloop→brig→frigate. _FUN: SEE your ship dwarf the sloop you started in._
-  Exposes #144 (player-ship art) — class scale is a real visible change with no new art; CC0 set is a
-  parallel follow-up, not a blocker. Delivers #141 core.
-- **#172 — The world fears you: weak ships flee / strike early (M · no bump).** Infamy rank bends NPC
+- ✅ **#171 — Buy a bigger ship: the hull visibly grows — SHIPPED (Loop 128, v0.0.20260702043931, #171 CLOSED).**
+  At the town ⚓ Shipwright you now **spend coin to step UP a ship class** (sloop → brig → frigate; the
+  warship man-o'-war deferred to a follow-up). All three payoffs land — you **SEE** the hull grow to dwarf
+  the sloop you started in (the mesh scales by the REUSED `ship-classes.js` `sizeScale`, ~1.74× at frigate,
+  multiplied onto the base normalising scale — no new geometry, #121), **HEAR** a triumphant launch sting,
+  and **FEEL** the class combat stats now apply to YOU: a heavier broadside (offence flows through #170's
+  `getBroadsideMult` seam, composing with owned cannons) and a tougher hull (a new default-1 `playerArmor`
+  divisor on `resolveBroadside`/`resolveExchange` — byte-identical legacy). PURE core
+  `src/systems/ship-class-upgrade.js` (ladder + escalating cost 600/1400c + pure buy math + class→player-stat
+  map; sloop is the exact pre-#171 ×1.0 baseline so a fresh voyage is byte-identical), TDD'd. **NO save bump:**
+  persists in the v18 `shipClass` field #170 already RESERVED (default sloop) — just wired (persist on buy,
+  apply on load). Playtest asserts buy→coin-deducted + class-up + hull-scales + heavier-bite + soaks-more +
+  **survives a v18 reload** + combat reflects. Gallery `buy-a-bigger-ship-171.png` (a frigate dwarfing a
+  sloop at identical framing). **#172 BUILD NEXT** (no bump). Art follow-up #144 (a CC0 ship-class set) noted,
+  NOT a blocker — the class scale is a real visible change now.
+- **#172 — The world fears you: weak ships flee / strike early (M · no bump). BUILD NEXT.** Infamy rank bends NPC
   behaviour (bounded — only weak prey blinks; even/over-tier fights unchanged). _FUN: SEE a sloop run from
   your notorious sails._ Derived from persisted renown; reuses strike-colours/`arenaHelm`. Relates #128/#136.
 - **#173 — The bounty board: a named target + scaled reward (M · reuses the persisted objective slot).** The

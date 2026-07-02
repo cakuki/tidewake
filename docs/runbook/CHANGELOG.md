@@ -4,6 +4,23 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #171 Buy a bigger ship shipped — the hull VISIBLY grows (Loop 128,
+  v0.0.20260702043931).** Epic **#168 "The Rise"** slice 3/6 — the biggest power fantasy. At the town ⚓
+  Shipwright you now **spend coin to step UP a ship class** (sloop → brig → frigate; the warship man-o'-war
+  deferred), giving the PLAYER the class system that until now was NPC-only (#163). All three payoffs land:
+  **SEE** the hull grow to dwarf the sloop you started in (the mesh scales by the REUSED `ship-classes.js`
+  `sizeScale` — ~1.74× at frigate, multiplied onto the base normalising scale; no new geometry, #121),
+  **HEAR** a triumphant launch sting, **FEEL** the class combat stats apply to YOU — a heavier broadside
+  (offence flows through #170's `getBroadsideMult` seam, composing with owned cannons) and a tougher hull (a
+  new default-1 `playerArmor` divisor on `cannons.resolveBroadside`/`resolveExchange`, byte-identical legacy).
+  PURE core `src/systems/ship-class-upgrade.js` (ladder + escalating cost 600/1400c + pure buy math + the
+  class→player-stat map; the sloop is the exact pre-#171 ×1.0 baseline so a fresh voyage is byte-identical),
+  TDD'd. Shipwright plank in the town workshop (`src/ui/town.js` + `index.html` CSS). **NO save bump** —
+  persists in the v18 `shipClass` field #170 already RESERVED (default sloop); just wired (persist on buy,
+  apply on load). Playtest asserts buy→coin-deducted + class-up + hull-scales + heavier-bite + soaks-more +
+  **survives a v18 reload** + combat reflects. Gallery `buy-a-bigger-ship-171.png` (a frigate dwarfing a
+  sloop at identical framing). #171 CLOSED; epic #168 stays OPEN (#172 the world fears you next — no bump).
+  Art follow-up #144 (a CC0 ship-class set) noted, not a blocker — the class scale is a real visible change now.
 - **2026-07-02 — #170 Buy a cannon at the Gunner's Workshop shipped — SEE it on your deck (Loop 127,
   v0.0.20260702041455).** Epic **#168 "The Rise"** slice 2/6 — the owner's canonical broken-arrow fix. At
   the town ⚒ Gunner's Workshop you now **spend coin for a PERSISTENT extra cannon** (small cap +3), landing
