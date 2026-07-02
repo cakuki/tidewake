@@ -74,18 +74,26 @@ Brief [`docs/briefs/2026-07-02-post-rise-polish.md`](https://github.com/cakuki/t
   **Remains (why #80 stays OPEN):** the **harbour docking ease/settle** juice, the boarding rail-clash screenshake —
   both still-deferred #80 follow-ups, not blockers. **#70 curio next.**
 
-- **#70 — One new sea curio (S · game-designer + software-developer). [STANDING-RULE] — the 1–2-per-loop drip.**
-  Honour the standing #70 rule with one fresh ocean micro-detail that keeps the world alive between the big beats —
-  bias it RISE-flavoured (e.g. drifting flotsam that murmurs a rumour of *your* deeds by name, reusing #104b port
-  memory; or a gull that shadows a notorious hull). Data-driven prop + witty line pool (never twice running) + SFX,
-  on the shipped `src/sealife.js` pattern. **FUN:** SEE a small surprise reward attention; a smile between fights.
-  **NO save bump.**
+- **✅ #70 — One new sea curio: a DRIFTING SPAR — SHIPPED (this loop, v0.0.20260702075438). #70 STAYS OPEN [STANDING-RULE].**
+  A third open-sea curio in the shipped bottle/turtle idiom (`src/curios.js` + `src/curio-math.js`): a snapped
+  ship's beam wallowing **awash** — RISE-flavoured, the sea now carrying the **wreckage of the fights you've been
+  winning**. Deterministic seeded spawn, distance-culled, ONE reused low-poly tapered-beam mesh (**≤1 extra draw**),
+  its own soft **timber-groan SFX** (`audio.sfxSpar`), and an original 11-line **anti-repeat witty-line pool** (wry,
+  a touch dark, the world quietly noting a rising legend). Purely additive; ambient open-sea only (never a fight);
+  **NO save bump (stays v18).** PURE logic TDD'd (`curio-math.test.mjs` + the new-kind assertions); playtest extended
+  to prove the spar spawns, draws ≤1, culls off-stage, fires its cue, and never repeats a line. Perf 29/130 draws ·
+  92,780/150k tris. Gallery `drifting-spar-70.png`. **FUN delivered:** a soft groan + a wry line between fights — a
+  smile, and the sea stays alive. **This COMPLETES the post-RISE polish lane.**
+  **Remains (why #70 stays OPEN — the standing 1–2-per-loop drip):** more curio kinds are the standing follow-ups —
+  a gull that shadows a notorious hull; flotsam that murmurs a #104b port-memory rumour of *your* deeds by name; a
+  tattered rival's ensign adrift; a breaching ray. One per future loop, never all at once.
 
-**Sequencing note:** the remaining slices are unblocked, buildable now, original, in-vision, and carry **NO save bump** —
-**1 READY build slice left → the loop stays in DELIVERY.** #175 (Loop 132), #90 (Loop 133), #80 climax juice (Loop 134)
-all shipped; **#70 curio is the last slice of this lane** and keeps the sea-delight drip alive. This is a
-**deliberate consolidation lane** — small, cheap, low-risk — chosen over a third big epic while the owner reacts to
-THE RISE. The owner-decision items below are **questions to surface, NOT build blockers.**
+**Sequencing note — POST-RISE POLISH LANE COMPLETE (all 4 slices shipped).** #175 (Loop 132) · #90 (Loop 133) ·
+#80 climax juice (Loop 134) · **#70 drifting spar (this loop)** — all shipped, live, and green. **The queue now has
+NO READY build slice → the next cycle runs PRODUCT** to refill the roadmap (surface the owner-decision items below +
+pull a fresh fun frontier). This was a **deliberate consolidation lane** — small, cheap, low-risk — chosen over a
+third big epic while the owner reacts to THE RISE. The owner-decision items below are **questions to surface, NOT
+build blockers.**
 
 **[OWNER-DECISION] — Playtest THE RISE & steer the next MAJOR direction.** The loop has now delivered well beyond
 the explicit ask: three big fun-first lanes (#161 · #162 · #168) all live and green. The big open questions are the

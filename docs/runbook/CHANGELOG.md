@@ -4,6 +4,19 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #70 A drifting spar — the sea carries the wreckage of your wins (Loop 135,
+  v0.0.20260702075438; post-RISE polish lane slice 4/4 — the lane is now COMPLETE; #70 stays OPEN
+  [STANDING-RULE]).** A third open-sea curio in the shipped bottle/turtle idiom (`src/curios.js` +
+  `src/curio-math.js`): a snapped ship's beam wallowing **awash** — RISE-flavoured, the sea now carrying
+  the debris of the fights you've been winning, a wry (touch-dark) nod that the world notes a rising
+  legend. Deterministic seeded spawn, distance-culled, ONE reused low-poly tapered-beam mesh (**≤1 extra
+  draw**), its own soft **timber-groan SFX** (`audio.sfxSpar`), and an original **11-line anti-repeat
+  witty-line pool**. Purely additive; ambient open-sea only (never a fight); no mechanics. Pure logic
+  TDD'd (`curio-math.test.mjs` + a focused new-kind case); `qaProbe` extended to prove every kind's cue +
+  anti-repeat (`perKind`), playtest asserts the spar spawns, draws ≤1, culls off-stage, fires its cue, and
+  never repeats a line — no regression to bottle/turtle. 1350 unit tests + playtest green; perf 29/130
+  draws · 92,780/150k tris. Gallery `drifting-spar-70.png`. **NO save change — stays v18.** The post-RISE
+  polish lane (#175 · #90 · #80 · #70) is COMPLETE → the next cycle runs PRODUCT to refill the roadmap.
 - **2026-07-02 — #80 Climax juice — a notorious kill slow-mos, a surrender hushes the camera (Loop 134,
   v0.0.20260702074006; post-RISE polish lane slice 3/4; #80 stays OPEN for the deferred harbour-settle beat).**
   Built #80's two deferred climax events on the SAME `src/systems/juice.js` rig (the shake stack + the
