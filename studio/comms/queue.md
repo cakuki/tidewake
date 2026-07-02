@@ -158,10 +158,18 @@ below — untouched. No save/schema change except where flagged (#157)._
   constant-power crossfade + bar-quantised planner, 14 unit tests); no new mechanics; save stays v17.
   *"I hear when to act before I know which key."*
 
-- **#159 — Diegetic age-of-sail keycap skin (S · graphic-designer + software-developer).** Dress the #153
-  prompts as rope-bound brass / ink-on-parchment glyphs — same DOM component, labels still driven by the
-  single `src/keymap.js` source-of-truth so nothing drifts. Legibility & world-identity become one asset;
-  contrast survives haze; no gameplay/save change; gallery frame. *"The tutorial reads as the world speaking."*
+- **✅ #159 — Diegetic age-of-sail keycap skin (S · graphic-designer + software-developer). SHIPPED &
+  CLOSED (Loop 123, v0.0.20260702021440).** The #153 prompts are re-dressed as the world speaking:
+  **ink-on-parchment verb ribbons carrying rope-bound brass keycaps**, not a modern debug overlay — the
+  SAME DOM component, a pure CSS re-skin (0 markup change, 0 draws). Labels stay 100% keymap-driven
+  (`src/keymap.js`); a new render drift-lock (`tests/unit/key-prompts-render.test.mjs`, +4 tests) asserts
+  the glyph+verb text rendered ON the brass keycap == the keymap, so a hard-coded skin label fails loudly.
+  Contrast survives the sea haze — near-opaque cream parchment keeps dark ink legible over both bright
+  water AND a dark hull; reactive tone kept diegetic (BOARD = verdigris sea-patinated brass, SURRENDER =
+  deeper gilt edge); reduced-motion honoured; **no gameplay/save change (stays v17).** Gallery
+  `diegetic-keycaps-159.png` (the brass SPACE/X keycaps on parchment ribbons, legible over bright teal
+  water in a live broadside). **This DRAINS the deep-reading PRODUCT batch #153–#159 — all shipped.**
+  *"The tutorial reads as the world speaking."*
 
 **Sequencing note (updated Loop 109 — #156 SHIPPED & CLOSED):** #157/#158/#159 are all unblocked &
 buildable (their soft deps #153 + #154 + the #156 legibility guard are shipped) → **3 unblocked

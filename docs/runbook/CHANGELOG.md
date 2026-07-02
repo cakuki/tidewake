@@ -4,6 +4,19 @@ Terse history of how `LOOP.md` (and the studio process) evolved. **Full detail l
 files** `studio/retros/<date>-retro-N.md` and `studio/comms/decisions.md` — this is just the index so
 `LOOP.md` itself stays lean.
 
+- **2026-07-02 — #159 Diegetic age-of-sail keycap skin shipped — deep-reading batch #153–#159 DRAINED
+  (Loop 123, v0.0.20260702021440).** The #153 contextual key-prompts are re-dressed as the world speaking:
+  **ink-on-parchment verb ribbons carrying rope-bound brass keycaps**, not a modern debug overlay — the
+  SAME DOM component, a **pure CSS re-skin** (0 markup change, 0 draws). Labels stay 100% keymap-driven
+  (`src/keymap.js`); a new render **drift-lock** (`tests/unit/key-prompts-render.test.mjs`) asserts the
+  glyph+verb text rendered ON the brass keycap == the keymap, so a hard-coded skin label fails loudly.
+  Contrast **survives the sea haze** — near-opaque cream parchment keeps dark ink legible over both bright
+  water AND a dark hull; reactive tone kept diegetic (BOARD = verdigris sea-patinated brass, SURRENDER =
+  deeper gilt edge); reduced-motion honoured; **no gameplay/save change (stays v17)**. Legibility and
+  world-identity become one asset — the tutorial reads as the age of sail. Gallery `diegetic-keycaps-159.png`.
+  Completes the R2 deep-reading shortlist (#153 prompts → #154 earcons → #155 juice → #156 FTUE gate →
+  #157 first duel → #158 battle score → #159 skin).
+
 - **2026-07-02 — #158 Per-phase battle musical signatures shipped (Loop 122, v0.0.20260702020352).**
   The raid's shipped three acts (⚔ Maneuver / 🪝 Boarding / 🗣 Duel — the #135 `raidPhaseModel`) are now
   **HEARD, not just seen**: each act wears a **distinct musical LAYER** (a different mode + register +
