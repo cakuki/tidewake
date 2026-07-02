@@ -17,6 +17,7 @@ import { createFauna } from './fauna.js';
 import { createCurios } from './curios.js';
 import { createPorts, DOCK_RADIUS } from './ports.js';
 import { loadProps } from './props.js';
+import { createTownProps } from './town-props-view.js';
 import { createAudio } from './audio.js';
 import { createMusic } from './music.js';
 import { townMusicIdentity, townDockedCue } from './town-theme.js';
@@ -212,6 +213,13 @@ scene.add(ports.group);
 // dressing pops in as you raise a port and vanishes again out at sea.
 const props = await loadProps({ ports: ports.portPlacements });
 scene.add(props.group);
+// Loose town props (#101 phase 3): dress each port with glowing LANTERNS down the jetty + a little
+// cluster of market STALLS at its foot, so a port reads as LIVED-IN rather than a bare marker. Seeded
+// per-town (the #129 identity gives its LOOK, not just its sound), one InstancedMesh per kind per port
+// (≤2 extra draws), distance-culled wholesale so the open sea costs nothing. Purely visual, no save
+// change (stays v18). Pure placement in systems/town-props.js; the reveal in town-props-view.js.
+const townProps = createTownProps({ ports: ports.portPlacements });
+scene.add(townProps.group);
 // Governor-pole symmetry (#174, epic #168 "The Rise" — the finale): your HOME port VISIBLY GROWS as you
 // invest — new warehouses on the shore, more boats at anchor, more masts crowding the quay, tier by tier
 // off the already-persisted harbour.level (NO save change, stays v18). The mirror of buying a bigger ship:
@@ -2111,6 +2119,9 @@ systems.register({ name: 'props', order: 200, update: (f) => props.update([f.sta
 // Home-port growth cluster (#174): cull it wholesale by distance to your home port — drawn only on the
 // approach to the port you raised, 0 draws out at sea or with no home claimed.
 systems.register({ name: 'port-growth', order: 201, update: (f) => portGrowth.update([f.state.pos.x, f.state.pos.z]) });
+// Loose town props (#101 phase 3): cull each port's lanterns + stalls wholesale by distance — drawn
+// only when you're at the town, 0 draws out at sea.
+systems.register({ name: 'town-props', order: 202, update: (f) => townProps.update([f.state.pos.x, f.state.pos.z]) });
 systems.register({ name: 'hud', order: 210, update: (f) => hud.update(f.state, sailing.MAX_SPEED) });
 // Reputation needle (#132): ease the gauge + fire the felt-shift sting/line. Right after the HUD so
 // it reads the same per-frame ledger; before legends so the swing lands ahead of any crown overlay.
@@ -2934,6 +2945,10 @@ window.__tidewake = {
   // currently drawn (distance cull), and how many port clusters exist — so a headless playtest
   // can assert the harbours are furnished and that far clusters are culled to nothing.
   get props() { return props.snapshot(); },
+  // Loose town props (#101 phase 3) QA surface: how many lanterns + stalls were placed, how many are
+  // currently drawn (distance cull), and the port-cluster count — so a headless playtest can assert
+  // the quays feel lived-in near a port and cost ZERO out at sea.
+  get townProps() { return townProps.snapshot(); },
   // QA teleport: drop the hull at a world XZ (e.g. just off a port) so a gallery shot can frame
   // a dressed harbour without sailing there. Sim/state otherwise untouched.
   qaTeleport(x, z) { state.pos.x = x; state.pos.z = z; return [state.pos.x, state.pos.z]; },

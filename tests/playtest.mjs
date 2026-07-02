@@ -4134,6 +4134,34 @@ try {
   if (props.farAway !== 0) fail(`props: far clusters not culled (visible=${props.farAway} at open sea)`);
   if (!(props.nearPort > 0)) fail(`props: dressing not drawn near a port (visible=${props.nearPort})`);
 
+  // 2p′) Loose town props (#101 phase 3): every port is dressed with glowing LANTERNS + market STALLS
+  // so a quay feels LIVED-IN, placed DETERMINISTICALLY per-town, drawn only in the town view and CULLED
+  // to zero at open sea. Prove: props placed, per-town layout is stable across a reload, far sea = 0 cost,
+  // near a port the loose dressing draws.
+  const townProps = await page.evaluate(async () => {
+    const tw = window.__tidewake;
+    tw.newVoyage(); tw.step(0.1);
+    const all = tw.townProps;
+    // Sail far from every port → all clusters culled (0 cost at open sea).
+    tw.qaTeleport(8000, 8000); tw.step(0.1);
+    const farAway = tw.townProps.visible;
+    // Drop just off the first port (within cull, outside the dock radius) → its loose dressing draws.
+    const p = tw.ports[0].pos;
+    tw.qaTeleport(p[0] + 150, p[1]); tw.step(0.1);
+    const nearPort = tw.townProps.visible;
+    // Determinism: a fresh voyage lays out the SAME count of loose props (seeded per-town).
+    tw.newVoyage(); tw.step(0.1);
+    const reloadCount = tw.townProps.count;
+    return { count: all.count, clusters: all.clusters, kinds: all.kinds, farAway, nearPort, reloadCount };
+  });
+  if (!(townProps.count > 0)) fail(`town props (#101): no loose dressing placed (count=${townProps.count})`);
+  if (!(townProps.clusters > 0)) fail(`town props (#101): no port clusters built (clusters=${townProps.clusters})`);
+  if (!(Array.isArray(townProps.kinds) && townProps.kinds.includes('lantern') && townProps.kinds.includes('stall'))) fail(`town props (#101): missing lantern/stall kinds (${JSON.stringify(townProps.kinds)})`);
+  if (townProps.farAway !== 0) fail(`town props (#101): loose props not culled at sea (visible=${townProps.farAway}) — the open sea must cost nothing`);
+  if (!(townProps.nearPort > 0)) fail(`town props (#101): the quay is bare near a port (visible=${townProps.nearPort}) — the port must feel lived-in`);
+  if (townProps.reloadCount !== townProps.count) fail(`town props (#101): the per-town layout is not deterministic (${townProps.count} → ${townProps.reloadCount} after reload)`);
+  if (process.exitCode !== 1) console.log(`  ✓ loose town props (#101 phase 3): ${townProps.count} lanterns+stalls across ${townProps.clusters} ports feel lived-in near a quay (${townProps.nearPort} drawn), cost ZERO at open sea, deterministic per-town across a reload`);
+
   // 2q) Islands TLC (#71): every isle now has a deterministic FACE — a hue-jittered sand tone, a
   // varied silhouette (squash + tall/peak) and an instanced dressing scatter (rocks/palms/etc).
   // Assert the archipelago is varied + dressed, then RELOAD and confirm the look is byte-stable
@@ -4382,7 +4410,7 @@ try {
 
   console.log(`perf: ${perf.drawCalls}/${BUDGET.drawCalls} draw calls · ${perf.triangles}/${BUDGET.triangles} triangles · ${perf.fps} fps (headless)`);
   console.log(`leak-invariant (#121): ${leak.N}× mode cycles · geom ${leak.baseline.geometries}→${leak.final.geometries} (+${leak.geomGrowth}) · tex ${leak.baseline.textures}→${leak.final.textures} (+${leak.texGrowth}) · worst transition ${leak.worstTransition.drawCalls} draws/${leak.worstTransition.triangles} tris`);
-  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, weather, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, curios, curiosLive, props, islandStyle, leak, broadside, cballs, juicePass, ammoCycle, boarding, gun, gunPersist, errors }, null, 2));
+  console.log(JSON.stringify({ ok: process.exitCode !== 1, ...result, budget: { BUDGET, ...budget }, duel, cannon, onboarding, persisted, pwa, settings, settingsPersist, collision, settle, mode, harbour, bump, daynight, weather, grade, needle, landfall, ballad, falseColours, marque, fauna, dolphins, curios, curiosLive, props, townProps, islandStyle, leak, broadside, cballs, juicePass, ammoCycle, boarding, gun, gunPersist, errors }, null, 2));
   if (process.exitCode !== 1) console.log('✓ PLAYTEST PASSED');
 } catch (e) {
   fail(e.message || String(e));
